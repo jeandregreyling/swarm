@@ -288,6 +288,7 @@ def chat_via_gateway(
     options: Optional[dict] = None,
     temperature: Optional[float] = None,
     prefer_generate: bool = False,
+    response_format: str | dict[str, Any] | None = None,
 ) -> tuple[str, int]:
     """Stream a local Ollama chat through the Fridays runtime gateway.
 
@@ -366,6 +367,7 @@ def chat_via_gateway(
             on_token=on_chunk,
             on_event=_on_event,
             prefer_generate=prefer_generate,
+            response_format=response_format,
         )
         if not result.ok and not result.content:
             error = result.error or 'gateway error'

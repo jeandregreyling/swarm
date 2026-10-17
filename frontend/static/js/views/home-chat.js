@@ -51,8 +51,9 @@
     _hcFetchInterests();
     _hcInitMiniLandscape();
     _hcRestorePanelState();
-    _hcBindCrossSurfaceRefresh();
-    _hcPruneStaleAgentToggles();
+	    _hcBindCrossSurfaceRefresh();
+	    _hcPruneStaleAgentToggles();
+	    _hcLoadProofTrail();
 
     // Handle browser bfcache restore (back/forward) — re-reset to a new thread.
     window.addEventListener('pageshow', (ev) => {
@@ -84,7 +85,10 @@
         _hcNewThread();
         return;
       }
-      _hcLoadThreads();
+      // Created/updated conversations should only refresh the dropdown. A full
+      // _hcLoadThreads() reset clears _hcConvId and replaces the visible
+      // transcript with the starter screen while a just-sent turn is rendering.
+      _hcLoadThreadsListOnly();
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') _hcLoadThreads();
@@ -328,10 +332,13 @@
     const convId = msg.conversation_id || _hcConvId || '';
     const hasIds = msgId && convId;
 
+    const captureBtn = `<button class="hc-action-btn hc-capture-btn" data-conv="${_hcEsc(String(convId))}" data-msg="${_hcEsc(String(msgId))}" data-text="${rawText}" onclick="hcCaptureWork(this)">Capture</button>`;
+
     // Action buttons for user messages
     let actionHtml = '';
     if (isUser) {
       actionHtml = `<div class="hc-actions">` +
+        captureBtn +
         `<button class="hc-action-btn" data-text="${rawText}" onclick="hcResend(this.dataset.text)">Resend</button>` +
         (hasIds
           ? `<button class="hc-action-btn" data-conv="${Number(convId)}" data-msg="${Number(msgId)}" onclick="hcEditInline(this)">Change</button>` +
@@ -340,8 +347,11 @@
         `</div>`;
     } else if (!isSystem && hasIds) {
       actionHtml = `<div class="hc-actions">` +
+        captureBtn +
         `<button class="hc-action-btn" data-conv="${Number(convId)}" data-msg="${Number(msgId)}" onclick="hcDelete(${Number(convId)}, ${Number(msgId)})">Delete</button>` +
         `</div>`;
+    } else if (!isSystem) {
+      actionHtml = `<div class="hc-actions">${captureBtn}</div>`;
     }
 
     const div = document.createElement('div');
@@ -438,7 +448,124 @@
     }
   };
 
-  function _hcAgentDisplayName(name) {
+  function _hcLatestCaptureCandidate() {
+    const input = document.getElementById('home-chat-input');
+    const typed = String((input && input.value) || '').trim();
+    if (typed) {
+      return {
+        text: typed,
+        conversation_id: _hcConvId || '',
+        message_id: ''
+      };
+    }
+    const bubbles = Array.from(document.querySelectorAll('#home-chat-messages .hc-bubble'))
+      .filter(b => !b.classList.contains('hc-system'));
+    const last = bubbles.length ? bubbles[bubbles.length - 1] : null;
+    if (!last) return { text: '', conversation_id: _hcConvId || '', message_id: '' };
+    const body = last.querySelector('.hc-bubble-body');
+    return {
+      text: String((body && body.textContent) || '').trim(),
+      conversation_id: _hcConvId || '',
+      message_id: last.dataset.messageId || ''
+    };
+  }
+
+  window.hcCaptureWork = async function (btn) {
+    const fromButton = btn && btn.dataset && btn.dataset.text
+      ? {
+          text: String(btn.dataset.text || '').trim(),
+          conversation_id: btn.dataset.conv || _hcConvId || '',
+          message_id: btn.dataset.msg || ''
+        }
+      : _hcLatestCaptureCandidate();
+    const text = fromButton.text;
+    if (!text) {
+      if (typeof showToast === 'function') showToast('Type something or wait for a chat reply to capture.', 'error');
+      return;
+    }
+    const firstLine = text.split(/\r?\n/).find(Boolean) || 'Captured chat work';
+    const suggested = firstLine.length > 90 ? firstLine.slice(0, 87) + '...' : firstLine;
+    const title = prompt('Capture as Studio task:', suggested);
+    if (title === null) return;
+    const cleanTitle = String(title || '').trim() || suggested;
+    btn.disabled = true;
+    btn.textContent = 'Capturing';
+    try {
+      const payload = {
+        title: cleanTitle,
+        content: text,
+        conversation_id: fromButton.conversation_id,
+        message_id: fromButton.message_id
+      };
+      const r = await fetch('/api/knowledge/chat-capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      if (typeof showToast === 'function') {
+        showToast(`Captured to ${d.project_name || d.project_id}: ${d.step_id}`, 'success');
+      }
+	      if (typeof window.dispatchEvent === 'function') {
+	        window.dispatchEvent(new CustomEvent('fridays:studio-step-captured', { detail: d }));
+	      }
+	      _hcLoadProofTrail();
+	    } catch (e) {
+      if (typeof showToast === 'function') showToast('Capture failed: ' + (e.message || e), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Capture';
+    }
+	  };
+
+	  function _hcProofSummary(data) {
+	    const counts = data && data.counts ? data.counts : {};
+	    const docs = Number(counts.project_docs || 0);
+	    const steps = Number(counts.project_steps || 0);
+	    const evidence = Number(counts.project_step_evidence || 0);
+	    return `${evidence} evidence rows · ${steps} steps · ${docs} KC docs`;
+	  }
+
+	  function _hcProofItem(row) {
+	    const kind = String(row.source_type || row.title || 'evidence');
+	    const status = String(row.status || 'ok');
+	    const text = String(row.summary || row.step_title || row.source_ref || 'Evidence row').trim();
+	    const ref = [row.project_id, row.step_id, row.source_ref].filter(Boolean).join(' · ');
+	    const statusClass = status.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+	    return `<div class="proof-trail-item" title="${_hcEsc(text)}">` +
+	      `<div class="proof-trail-item-top">` +
+	        `<span class="proof-trail-kind">${_hcEsc(kind)}</span>` +
+	        `<span class="proof-trail-status ${_hcEsc(statusClass)}">${_hcEsc(status)}</span>` +
+	      `</div>` +
+	      `<div class="proof-trail-text">${_hcEsc(text)}</div>` +
+	      `<div class="proof-trail-ref">${_hcEsc(ref)}</div>` +
+	    `</div>`;
+	  }
+
+	  function _hcLoadProofTrail() {
+	    const itemsEl = document.getElementById('home-proof-trail-items');
+	    const summaryEl = document.getElementById('home-proof-trail-summary');
+	    if (!itemsEl || !summaryEl) return;
+	    fetch('/api/knowledge/evidence')
+	      .then(r => r.json())
+	      .then(data => {
+	        if (!data || !data.ok) throw new Error((data && data.error) || 'Evidence unavailable');
+	        const rows = (((data.latest || {}).project_step_evidence) || []).slice(0, 3);
+	        summaryEl.textContent = _hcProofSummary(data);
+	        itemsEl.innerHTML = rows.length
+	          ? rows.map(_hcProofItem).join('')
+	          : '<div class="proof-trail-empty">No step evidence has been written yet.</div>';
+	      })
+	      .catch(err => {
+	        summaryEl.textContent = 'Evidence unavailable';
+	        itemsEl.innerHTML = `<div class="proof-trail-empty">Proof trail failed: ${_hcEsc(String(err.message || err))}</div>`;
+	      });
+	  }
+
+	  window.homeLoadProofTrail = _hcLoadProofTrail;
+
+	  function _hcAgentDisplayName(name) {
     const agents = _hcAgentOptions();
     const match = agents.find(a => a.value === name || a.label?.toLowerCase() === name);
     return match ? match.label : (name.charAt(0).toUpperCase() + name.slice(1));
@@ -603,12 +730,16 @@
         try { return JSON.parse(perThread); } catch (e) { /* fall through */ }
       }
     }
+    const agents = _hcAgentOptions();
+    if (!_hcConvId) {
+      const hasSeven = agents.some(a => a && a.value === 'seven');
+      if (hasSeven) return ['seven'];
+    }
     const global = localStorage.getItem(HC_GLOBAL_AGENTS_KEY);
     if (global) {
       try { return JSON.parse(global); } catch (e) { /* fall through */ }
     }
     // Default: first local agent
-    const agents = _hcAgentOptions();
     return agents.length > 0 ? [agents[0].value] : [];
   }
 

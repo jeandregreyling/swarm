@@ -331,6 +331,7 @@ def test_status_reconciles_unowned_runners_while_job_is_running(monkeypatch):
 
     monkeypatch.setattr(chat_mod, '_chat_reconcile_unowned_ollama_runners', lambda conv_id: reconcile_calls.append(conv_id) or [])
     monkeypatch.setattr(chat_mod, 'get_open_chat_relay_recoveries', lambda *a, **k: [])
+    monkeypatch.setattr(chat_mod, '_CHAT_RECONCILE_LAST_TS', 0.0)
 
     app = Flask(__name__)
     app.register_blueprint(chat_mod.chat_bp)
@@ -765,7 +766,7 @@ def test_relay_recovery_leases_prevent_duplicate_active_reviews(monkeypatch, tmp
     conn = _conn()
     try:
         step = conn.execute(
-            "SELECT status FROM project_steps WHERE project_id='P-CHAT-RELAY-RECOVERY'"
+            "SELECT status, residual_risk FROM project_steps WHERE project_id='P-CHAT-RELAY-RECOVERY'"
         ).fetchone()
         evidence_count = conn.execute(
             "SELECT COUNT(*) FROM project_step_evidence WHERE project_id='P-CHAT-RELAY-RECOVERY'"
@@ -773,6 +774,7 @@ def test_relay_recovery_leases_prevent_duplicate_active_reviews(monkeypatch, tmp
     finally:
         conn.close()
     assert step['status'] == 'done'
+    assert step['residual_risk'] == ''
     assert evidence_count >= 3
 
 
@@ -875,11 +877,14 @@ def test_watchdog_escalates_when_ollama_stop_leaves_single_runner(monkeypatch):
     assert result['after_models'] == []
 
 
-def test_watchdog_waits_for_ollama_stop_to_settle(monkeypatch):
+def test_watchdog_waits_for_api_unload_to_settle(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     from frontend.blueprints import chat as chat_mod
 
-    calls = {'ps': 0, 'cmds': []}
+    with chat_mod._WATCHDOG_KILL_LOCK:
+        chat_mod._WATCHDOG_KILL_STATE.clear()
+
+    calls = {'ps': 0, 'cmds': [], 'api': []}
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'qwen'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'qwen2.5:latest')
@@ -899,13 +904,24 @@ def test_watchdog_waits_for_ollama_stop_to_settle(monkeypatch):
         return _Proc()
 
     monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', _running_models)
+    monkeypatch.setattr(
+        chat_mod,
+        '_watchdog_api_unload_model',
+        lambda model: calls['api'].append(model) or {
+            'model': model,
+            'ok': True,
+            'detail': 'mock api unload',
+            'action': 'api-unload',
+        },
+    )
     monkeypatch.setattr(chat_mod.subprocess, 'run', _run)
     monkeypatch.setattr(chat_mod.time, 'sleep', lambda *_: None)
 
     result = chat_mod._chat_try_hard_kill_local_agent('qwen')
 
     assert result['ok'] is True
-    assert ['ollama', 'stop', 'qwen2.5:latest'] in calls['cmds']
+    assert calls['api'] == ['qwen2.5:latest']
+    assert ['ollama', 'stop', 'qwen2.5:latest'] not in calls['cmds']
     assert ['pkill', '-f', 'ollama runner --model'] not in calls['cmds']
     assert result['after_models'] == []
 
@@ -920,6 +936,19 @@ def test_watchdog_does_not_stop_owned_ollama_runner(monkeypatch):
     monkeypatch.setattr(chat_mod, '_local_ollama_chat_agents', lambda: {'gemma'})
     monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'gemma'})
     monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda agent: 'gemma3:latest')
+    monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda agent: stop_calls.append(agent))
+
+    assert chat_mod._chat_reconcile_unowned_ollama_runners(2577) == []
+    assert stop_calls == []
+
+
+def test_watchdog_does_not_stop_sch_council_runners(monkeypatch):
+    _suppress_durable_spine_logs(monkeypatch)
+    from frontend.blueprints import chat as chat_mod
+
+    stop_calls = []
+    monkeypatch.setattr(chat_mod, '_chat_sch_council_active', lambda: True)
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['llama3.2:latest', 'qwen2.5:latest'])
     monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda agent: stop_calls.append(agent))
 
     assert chat_mod._chat_reconcile_unowned_ollama_runners(2577) == []
@@ -977,6 +1006,84 @@ def test_watchdog_treats_prompt_echo_as_unusable():
         'Tell me something interesting about yourself?',
         'I am Seven, the local swarm companion.',
     ) is False
+    assert chat_mod._chat_response_echoes_prompt(
+        'Look around and tell me one thing you notice and one gentle thing you want to explore next.',
+        'What you notice and one gentle thing you want to explore next?',
+    ) is True
+
+
+def test_watchdog_schedules_runner_reconcile_without_running_inline(monkeypatch):
+    from frontend.blueprints import chat as chat_mod
+
+    calls = []
+
+    class FakeThread:
+        def __init__(self, target, name, daemon):
+            calls.append((target, name, daemon))
+
+        def start(self):
+            calls.append('started')
+
+    monkeypatch.setattr(chat_mod.threading, 'Thread', FakeThread)
+    monkeypatch.setattr(chat_mod, '_CHAT_RECONCILE_LAST_TS', 0.0)
+    assert chat_mod._chat_schedule_unowned_runner_reconcile(2254) is True
+    assert chat_mod._chat_schedule_unowned_runner_reconcile(2254) is False
+    assert calls[-1] == 'started'
+    assert calls[0][1] == 'chat-runner-reconcile-2254'
+    assert calls[0][2] is True
+
+
+def test_watchdog_opens_recovery_for_persisted_prompt_fragment(monkeypatch):
+    import sqlite3
+    from frontend.blueprints import chat as chat_mod
+
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        'CREATE TABLE messages (id INTEGER, conversation_id INTEGER, from_agent TEXT, content TEXT)'
+    )
+    conn.executemany(
+        'INSERT INTO messages VALUES (?, ?, ?, ?)',
+        [
+            (1, 2254, 'user', 'Look around and tell me one thing you notice and one gentle thing you want to explore next.'),
+            (2, 2254, 'seven', 'What you notice and one gentle thing you want to explore next?'),
+        ],
+    )
+    monkeypatch.setattr(chat_mod, 'get_connection', lambda: conn)
+    monkeypatch.setattr(
+        chat_mod,
+        'ensure_chat_relay_recovery',
+        lambda **kwargs: {'created': True, 'recovery': kwargs, 'message': 'opened'},
+    )
+
+    result = chat_mod._chat_ensure_unusable_thread_recovery(2254)
+
+    assert result['created'] is True
+    assert result['recovery']['job_id'] == 'quality-thread-2254-2'
+    assert result['recovery']['stalled_agent'] == 'seven'
+
+
+def test_relay_recovery_labels_quality_failure_without_calling_it_a_stall():
+    from utils.db.chat import _format_relay_recovery_card, _relay_recovery_failure_label
+
+    reason = 'Watchdog: latest persisted agent reply is unusable or echoes the user prompt.'
+    assert _relay_recovery_failure_label(reason) == 'returned an unusable reply'
+    assert _relay_recovery_failure_label(
+        'Watchdog: seven exceeded runtime gateway idle cap.'
+    ) == 'stalled'
+    card = _format_relay_recovery_card(
+        'recovery-quality',
+        2254,
+        'quality-thread-2254-2',
+        'seven',
+        reason,
+        [],
+        [],
+        ('librarian', 'duck', 'vortex'),
+    )
+    assert 'Affected job: quality-thread-2254-2' in card
+    assert 'Affected agent: seven' in card
+    assert 'Stalled job:' not in card
 
 
 def test_timeout_self_handoff_is_not_successful_completion():

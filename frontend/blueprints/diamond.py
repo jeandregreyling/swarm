@@ -33,6 +33,17 @@ diamond_bp = Blueprint('diamond', __name__)
 # multiple tiles (sundial, monitor, chat mini-stats) share the same payload
 # without turning the sundial into a DB hammer.
 _PULSE_CACHE_TTL_S = 2.0
+
+
+@diamond_bp.route('/api/diamond/sch/state', methods=['GET'])
+def api_diamond_sch_state():
+    try:
+        from core.diamond_sch import state_snapshot
+        return jsonify({'ok': True, 'sch': state_snapshot()})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
 _pulse_cache = {'ts': 0.0, 'payload': None}
 
 

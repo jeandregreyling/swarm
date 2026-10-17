@@ -25,9 +25,9 @@ import sys
 import os
 import hashlib
 import logging
-from system_clock import get_timestamp
 from pathlib import Path
-from file_versioning import track_file_change
+from lib.system.system_clock import get_timestamp
+from lib.system.file_versioning import track_file_change
 
 sys.path.insert(0, '/home/seven/swarm')
 
@@ -38,7 +38,7 @@ SANDPIT_ROOT  = SWARM_ROOT / 'sandpits'
 
 AGENT_SANDPITS = [
     'gemma', 'llama', 'mistral', 'eight', 'librarian', 'duck', 'sniffles',
-    'nine', 'ten', 'eleven', 'twelve', 'twenty', 'qwen', 'thirteen', 'ghost', 'shared'
+    'nine', 'ten', 'eleven', 'twelve', 'twenty', 'qwen', 'thirteen', 'ghost', 'seven', 'shared'
 ]
 
 

@@ -107,6 +107,33 @@ def test_weather_question_uses_local_weather_proxy(monkeypatch):
     assert "12.3 C" in answer
 
 
+def test_fridays_chat_verification_prompt_is_deterministic():
+    from agents.seven import seven_agent
+
+    prompts = [
+        (
+            "Seven live smoke from Codex: reply with LIVE_SEVEN_OK and one short sentence "
+            "about whether this came through Fridays chat."
+        ),
+        (
+            "Seven UI click test from Codex: reply with CLICK_SEVEN_OK_0606 and confirm "
+            "this was sent by clicking the visible Fridays home chat send button."
+        ),
+    ]
+    for prompt in prompts:
+        answer, tokens = seven_agent._compose(
+            prompt,
+            {"tickets": 0, "proposals": 0, "local_agents": ["Seven"]},
+            [],
+        )
+
+        assert tokens == 0
+        assert "This came through Fridays chat and was answered by Seven directly." in answer
+
+    assert prompts[0].split("reply with ", 1)[1].split(" ", 1)[0] in seven_agent._fridays_chat_verification_response(prompts[0])
+    assert "CLICK_SEVEN_OK_0606" in seven_agent._fridays_chat_verification_response(prompts[1])
+
+
 def test_creative_fallback_answers_short_story_when_model_is_down(monkeypatch):
     from agents.seven import seven_agent
 

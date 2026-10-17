@@ -83,6 +83,23 @@ def _latest_steps(conn: sqlite3.Connection, limit: int = 5):
     return [dict(row) for row in rows]
 
 
+def _latest_step_evidence(conn: sqlite3.Connection, limit: int = 6):
+    try:
+        rows = conn.execute(
+            "SELECT e.id, e.project_id, e.step_id, e.source_type AS title, "
+            "e.source_ref, e.status, e.summary, e.created_at AS updated_at, "
+            "s.title AS step_title, p.name AS project_name "
+            "FROM project_step_evidence e "
+            "LEFT JOIN project_steps s ON s.step_id=e.step_id "
+            "LEFT JOIN projects p ON p.project_id=e.project_id "
+            "ORDER BY e.id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    except Exception:
+        return []
+    return [dict(row) for row in rows]
+
+
 def _artifact_files(limit: int = 12):
     root = Path(os.environ.get('SWARM_ROOT') or os.getcwd())
     artifact_root = root / 'artifacts'
@@ -140,6 +157,10 @@ def _evidence_receipts(counts, latest, artifacts):
             elif kind == 'project_steps':
                 receipt['source'].update({'table': 'project_steps', 'id_column': 'step_id', 'id': row.get('step_id')})
                 receipt['href'] = f"/api/knowledge/steps/{row.get('step_id')}"
+            elif kind == 'project_step_evidence':
+                receipt['source'].update({'table': 'project_step_evidence', 'id_column': 'id', 'id': row.get('id')})
+                if row.get('step_id'):
+                    receipt['href'] = f"/api/knowledge/steps/{row.get('step_id')}"
             receipts.append(receipt)
     for artifact in artifacts:
         receipts.append({
@@ -170,6 +191,7 @@ def api_knowledge_evidence():
                 'knowledge_sources': _count_table(conn, 'knowledge_sources'),
                 'project_docs': _count_table(conn, 'project_docs'),
                 'project_steps': _count_table(conn, 'project_steps'),
+                'project_step_evidence': _count_table(conn, 'project_step_evidence'),
                 'test_runs': _count_table(conn, 'test_runs'),
                 'test_run_artifacts': _count_table(conn, 'test_run_artifacts'),
                 'work_proposals': _count_table(conn, 'work_proposals'),
@@ -179,6 +201,7 @@ def api_knowledge_evidence():
                 'work_proposals': _latest_from_table(conn, 'work_proposals', 'title'),
                 'test_runs': _latest_test_runs(conn),
                 'project_steps': _latest_steps(conn),
+                'project_step_evidence': _latest_step_evidence(conn),
             }
     except Exception as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 500
@@ -498,6 +521,105 @@ def api_project_add_step(project_id: str):
     if not step_id:
         return jsonify({'ok': False, 'error': 'could not add step'}), 500
     return jsonify({'ok': True, 'step_id': step_id})
+
+
+@knowledge_bp.route('/api/knowledge/chat-capture', methods=['POST'])
+def api_chat_capture_work():
+    """Capture a chat turn as a Studio step with evidence.
+
+    Body: {project_id?, title?, content, conversation_id?, message_id?}
+    If project_id is omitted, the newest updated active project is used.
+    """
+    body = request.get_json(silent=True) or {}
+    content = str(body.get('content') or '').strip()
+    if not content:
+        return jsonify({'ok': False, 'error': 'content required'}), 400
+
+    project_id = str(body.get('project_id') or '').strip()
+    project_name = ''
+    try:
+        from utils.db._connection import get_connection as _get_conn
+        conn = _get_conn()
+        try:
+            if project_id:
+                row = conn.execute(
+                    "SELECT project_id, name FROM projects WHERE project_id=?",
+                    (project_id,),
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT project_id, name FROM projects WHERE status='active' "
+                    "ORDER BY COALESCE(updated_at, created_at) DESC LIMIT 1"
+                ).fetchone()
+            if not row:
+                return jsonify({'ok': False, 'error': 'active project not found'}), 404
+            project_id = row['project_id']
+            project_name = row['name'] or project_id
+        finally:
+            conn.close()
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    raw_title = str(body.get('title') or '').strip()
+    if not raw_title:
+        raw_title = content.splitlines()[0].strip()
+    title = raw_title[:120] or 'Captured chat work'
+
+    conv_id = str(body.get('conversation_id') or '').strip()
+    msg_id = str(body.get('message_id') or '').strip()
+    source_ref = 'home-chat'
+    if conv_id and msg_id:
+        source_ref = f'conversation:{conv_id}:message:{msg_id}'
+    elif conv_id:
+        source_ref = f'conversation:{conv_id}'
+
+    description_lines = [
+        'Captured from chat without leaving the operator flow.',
+        '',
+        content[:3500],
+    ]
+    try:
+        step_id = _kc_projects.add_step(
+            project_id,
+            title,
+            description='\n'.join(description_lines).strip(),
+            owner=str(body.get('owner') or 'seven'),
+        )
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 404
+    if not step_id:
+        return jsonify({'ok': False, 'error': 'could not add step'}), 500
+
+    try:
+        from utils.db._connection import get_connection as _get_conn
+        conn = _get_conn()
+        try:
+            conn.execute(
+                "INSERT INTO project_step_evidence "
+                "(project_id, step_id, source_type, source_ref, summary, status) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    project_id,
+                    step_id,
+                    'chat_capture',
+                    source_ref,
+                    f"Captured chat turn as Studio work: {content[:500]}",
+                    'ok',
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+    return jsonify({
+        'ok': True,
+        'project_id': project_id,
+        'project_name': project_name,
+        'step_id': step_id,
+        'source_ref': source_ref,
+    })
 
 
 @knowledge_bp.route('/api/knowledge/projects/<project_id>/steps', methods=['GET'])

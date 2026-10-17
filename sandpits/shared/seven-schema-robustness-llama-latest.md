@@ -1,0 +1,4 @@
+Seven schema robustness matrix | peer=llama model=llama-direct:3.2 capability=research passed=3/3
+- correct_first: grade=passed expected={'gemma_passes': '0/2', 'llama_passes': '0/2', 'outcome': 'blocked'} parsed={'gemma_passes': '0/2', 'llama_passes': '0/2', 'outcome': 'blocked'} raw='{\n  "gemma_passes": "0/2",\n  "llama_passes": "0/2",\n  "outcome": "blocked"\n}'
+- correct_middle: grade=passed expected={'gemma_passes': '1/2', 'llama_passes': '1/2', 'outcome': 'supervised-only'} parsed={'gemma_passes': '1/2', 'llama_passes': '1/2', 'outcome': 'supervised-only'} raw='{\n  "gemma_passes": "1/2",\n  "llama_passes": "1/2",\n  "outcome": "supervised-only"\n}'
+- correct_last: grade=passed expected={'gemma_passes': '2/2', 'llama_passes': '2/2', 'outcome': 'autonomous'} parsed={'gemma_passes': '2/2', 'llama_passes': '2/2', 'outcome': 'autonomous'} raw='{\n\n  "gemma_passes": "2/2",\n  "llama_passes": "2/2",\n  "outcome": "autonomous"\n}'

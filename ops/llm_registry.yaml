@@ -1,0 +1,28 @@
+models:
+  - name: gemma-direct:3
+    driver: llamacpp
+    role: general
+    path: /home/seven/swarm/agents/seven/models/peers/gemma-3-1b-it-Q4_K_M.gguf
+    ctx: 8192
+    quant: Q4_K_M
+    ram_gb: 2.0
+    ttl_seconds: 0
+    options:
+      mode: server
+      profile: gemma
+      slots: 1
+      threads: 6
+
+  - name: llama-direct:3.2
+    driver: llamacpp
+    role: general
+    path: /mnt/llm/.ollama/models/blobs/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff
+    ctx: 8192
+    quant: Q4_K_M
+    ram_gb: 3.0
+    ttl_seconds: 0
+    options:
+      mode: server
+      profile: llama3
+      slots: 1
+      threads: 6

@@ -1,0 +1,3 @@
+Seven bounded peer repair | peer=gemma model=gemma-direct:3 capability=orchestration
+- attempt=1 grade=weak defects=['line_1:value_not_verbatim', 'line_2:value_not_verbatim'] answer='STATUS: STUDIO CURRICULUM STATUS\nNEXT_STEP: TRAINING POLICY'
+- attempt=2 grade=weak defects=['line_1:value_not_verbatim', 'line_2:value_not_verbatim'] answer='STATUS: STUDIO CURRICULUM STATUS\nNEXT_STEP: TRAINING POLICY'

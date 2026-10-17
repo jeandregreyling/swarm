@@ -56,6 +56,9 @@ def _sse_chat(conversation_id, agent, status, **extra):
 chat_bp = Blueprint('chat', __name__)
 
 _CHAT_LOCAL_HANDOFF_DEADLINE_SECONDS = 2000
+_CHAT_RECONCILE_SCHEDULE_LOCK = threading.Lock()
+_CHAT_RECONCILE_LAST_TS = 0.0
+_CHAT_RECONCILE_MIN_INTERVAL_SECONDS = 5.0
 
 
 def _chat_local_handoff_deadline_seconds():
@@ -150,6 +153,12 @@ def _chat_response_echoes_prompt(prompt_text, response_text):
         response_norm in prompt_norm or prompt_norm in response_norm
     ):
         return True
+    response_words = response_norm.split()
+    prompt_words = set(prompt_norm.split())
+    if 5 <= len(response_words) <= 24:
+        overlap = sum(1 for word in response_words if word in prompt_words)
+        if overlap / len(response_words) >= 0.8:
+            return True
     return False
 
 
@@ -308,6 +317,33 @@ def _chat_error_should_disable_agent(text):
 # services/__init__.py. Names available here via `from services import *`:
 #   _local_ollama_chat_agents, _chat_model_aliases,
 #   _chat_agent_configured_model, _chat_running_ollama_models.
+_registry_chat_runtime_class = _chat_runtime_class
+
+
+def _chat_runtime_class(agent):
+    """Classify chat runtime, falling back to Ollama model config if registry is unavailable."""
+    normalized = _normalize_chat_participant(agent)
+    try:
+        runtime = str(_registry_chat_runtime_class(normalized) or '').strip().lower()
+    except Exception:
+        runtime = ''
+    if runtime and runtime != 'unknown':
+        return runtime
+
+    try:
+        if normalized and normalized in _all_local_ollama_chat_agents():
+            return 'local'
+    except Exception:
+        pass
+
+    model = ''
+    try:
+        model = str(_chat_agent_configured_model(normalized) or '').strip().lower()
+    except Exception:
+        model = ''
+    if model and model not in {'external', 'local-algorithm'} and not model.startswith('seven-direct:'):
+        return 'local'
+    return runtime or 'unknown'
 
 # Watchdog circuit breaker: per-model kill state to prevent infinite noisy
 # retries when `ollama stop` fails and the runner process is orphaned.
@@ -1050,6 +1086,21 @@ def _chat_active_local_agents_from_db(exclude_job_id=None):
         return set()
 
 
+def _chat_sch_council_active():
+    """Council models are owned by Seven's active SCH job, not orphan runners."""
+    try:
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                "SELECT is_council_active FROM diamond_sch_state WHERE state_id=1"
+            ).fetchone()
+            return bool(row and row['is_council_active'])
+        finally:
+            conn.close()
+    except Exception:
+        return False
+
+
 def _chat_reconcile_unowned_ollama_runners(conversation_id=None):
     """Stop local Ollama models that no live Fridays chat job owns.
 
@@ -1057,6 +1108,8 @@ def _chat_reconcile_unowned_ollama_runners(conversation_id=None):
     treats the DB/runtime job table as ownership truth and unloads matching
     chat-agent models when no active job exists for that agent.
     """
+    if _chat_sch_council_active():
+        return []
     active_agents = _chat_active_local_agents_from_db()
     running_models = _chat_running_ollama_models()
     if not running_models:
@@ -1084,6 +1137,84 @@ def _chat_reconcile_unowned_ollama_runners(conversation_id=None):
             _chat_runtime_stop_trace(result),
         )
     return stopped
+
+
+def _chat_schedule_unowned_runner_reconcile(conversation_id=None):
+    """Run wrapper cleanup without blocking the user-facing status poll."""
+    global _CHAT_RECONCILE_LAST_TS
+    now = time.monotonic()
+    with _CHAT_RECONCILE_SCHEDULE_LOCK:
+        if now - _CHAT_RECONCILE_LAST_TS < _CHAT_RECONCILE_MIN_INTERVAL_SECONDS:
+            return False
+        _CHAT_RECONCILE_LAST_TS = now
+
+    def _reconcile():
+        try:
+            _chat_reconcile_unowned_ollama_runners(conversation_id)
+        except Exception:
+            pass
+
+    try:
+        threading.Thread(
+            target=_reconcile,
+            name=f'chat-runner-reconcile-{int(conversation_id or 0)}',
+            daemon=True,
+        ).start()
+        return True
+    except Exception:
+        return False
+
+
+def _chat_ensure_unusable_thread_recovery(conversation_id):
+    """Open one watchdog card when the latest persisted reply is not useful."""
+    try:
+        conv_id = int(conversation_id or 0)
+    except Exception:
+        return {'created': False, 'recovery': None, 'message': ''}
+    if conv_id <= 0:
+        return {'created': False, 'recovery': None, 'message': ''}
+    try:
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                """
+                SELECT id, from_agent, content
+                FROM messages
+                WHERE conversation_id=?
+                ORDER BY id DESC
+                LIMIT 12
+                """,
+                (conv_id,),
+            ).fetchall()
+        finally:
+            conn.close()
+        latest_reply = next(
+            (dict(row) for row in rows if str(row['from_agent'] or '') not in {'user', 'watchdog'}),
+            None,
+        )
+        latest_user = next(
+            (dict(row) for row in rows if str(row['from_agent'] or '') == 'user'),
+            None,
+        )
+        if not latest_reply or not latest_user or int(latest_reply['id']) < int(latest_user['id']):
+            return {'created': False, 'recovery': None, 'message': ''}
+        reply_text = str(latest_reply.get('content') or '')
+        prompt_text = str(latest_user.get('content') or '')
+        agent = str(latest_reply.get('from_agent') or 'agent')
+        if not (
+            _chat_response_is_unusable(agent, reply_text)
+            or _chat_response_echoes_prompt(prompt_text, reply_text)
+        ):
+            return {'created': False, 'recovery': None, 'message': ''}
+        return ensure_chat_relay_recovery(
+            job_id=f'quality-thread-{conv_id}-{int(latest_reply["id"])}',
+            conversation_id=conv_id,
+            stalled_agent=agent,
+            reason='Watchdog: latest persisted agent reply is unusable or echoes the user prompt.',
+            stage_trace=[{'text': 'unusable persisted reply detected (watchdog)'}],
+        )
+    except Exception as exc:
+        return {'created': False, 'recovery': None, 'message': '', 'error': str(exc)}
 
 # Thread/history helpers live in services.chat_history and are re-exported
 # through services/__init__.py. Names available here via `from services import *`:
@@ -1895,7 +2026,16 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[{selected_agent}] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(_mod.chat, effective_prompt, history, _agent_stage_cb)
+                    if selected_agent == 'seven':
+                        future = executor.submit(
+                            _mod.chat,
+                            effective_prompt,
+                            history,
+                            _agent_stage_cb,
+                            conv_id,
+                        )
+                    else:
+                        future = executor.submit(_mod.chat, effective_prompt, history, _agent_stage_cb)
                     answer, tokens = _await_agent_future(future)
                     response_text = answer or f'[{selected_agent} unavailable]'
                     tokens_used = tokens or 0
@@ -2924,7 +3064,7 @@ def api_chat_jobs_status():
 
     if conv_id_int is not None:
         try:
-            _chat_reconcile_unowned_ollama_runners(conv_id_int)
+            _chat_schedule_unowned_runner_reconcile(conv_id_int)
             has_running = any(str(j.get('status') or '') == 'running' for j in jobs)
             if not has_running:
                 silent_result = ensure_silent_chat_thread_recovery(
@@ -2942,6 +3082,19 @@ def api_chat_jobs_status():
                             'terminal',
                             'silent_thread_recovery_created',
                             f"conversation={conv_id_int} recovery={recovery.get('recovery_id')}",
+                        )
+                quality_result = _chat_ensure_unusable_thread_recovery(conv_id_int)
+                quality_recovery = (
+                    quality_result.get('recovery')
+                    if isinstance(quality_result, dict) else None
+                )
+                if quality_recovery:
+                    recoveries.append(quality_recovery)
+                    if quality_result.get('created'):
+                        log_activity(
+                            'terminal',
+                            'unusable_thread_recovery_created',
+                            f"conversation={conv_id_int} recovery={quality_recovery.get('recovery_id')}",
                         )
         except Exception:
             pass
@@ -3073,7 +3226,8 @@ def api_chat_jobs_cancel():
             })
             update_chat_job_db(job_id, status='cancelled', stage='cancelled by user',
                                error='cancelled by user')
-            if hard_kill and _chat_runtime_class(job.get('agent')) == 'local':
+            job_runtime_class = str(job.get('runtime_class') or '').strip().lower()
+            if hard_kill and (job_runtime_class == 'local' or _chat_runtime_class(job.get('agent')) == 'local'):
                 agent_key = str(job.get('agent') or '').strip().lower()
                 if agent_key and agent_key not in local_agents_to_kill:
                     local_agents_to_kill[agent_key] = job_id

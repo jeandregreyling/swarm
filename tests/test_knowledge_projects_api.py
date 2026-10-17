@@ -266,11 +266,13 @@ def test_evidence_receipt_counts_tangible_records(projects_client):
         "knowledge_chunks",
         "knowledge_sources",
         "project_docs",
+        "project_step_evidence",
         "test_runs",
         "test_run_artifacts",
         "work_proposals",
     ):
         assert key in counts
+    assert "project_step_evidence" in body["latest"]
     assert "project_docs" in body["latest"]
     assert isinstance(body["artifacts"], list)
     assert body["evidence"]

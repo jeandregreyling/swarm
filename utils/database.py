@@ -6,9 +6,9 @@ Run: python3 database.py to initialise.
 """
 
 import logging
-from db import *          # noqa: F401,F403  — re-export every public symbol
-from db import get_connection, initialise_database   # explicit for __main__
-from db._schema import _migrate_schema  # noqa: F401 — private but imported by listener.py
+from utils.db import *          # noqa: F401,F403  — re-export every public symbol
+from utils.db import get_connection, initialise_database   # explicit for __main__
+from utils.db._schema import _migrate_schema  # noqa: F401 — private but imported by listener.py
 
 
 if __name__ == '__main__':

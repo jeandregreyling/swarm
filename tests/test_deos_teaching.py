@@ -8,6 +8,7 @@ def test_local_agent_packet_contains_deos_contract_and_role_hint():
 
     assert "DEOS = Decides, Executes, Operates, Sustains" in packet
     assert "You own exactly one claimed task packet" in packet
+    assert "CHM = Context Handoff Mapping" in packet
     assert "DEOS_STATUS: done | blocked | needs_human" in packet
     assert "tiny bounded tasks" in packet
 
@@ -23,6 +24,11 @@ def test_watchdog_work_prompt_teaches_local_agent_contract():
     })
 
     assert "DEOS LOCAL WORKER CONTRACT" in prompt
+    assert "CONTEXT HANDOFF MAP (CHM)" in prompt
+    assert "Source: watchdog:test" in prompt
+    assert "Target: gemma" in prompt
+    assert "Return path: watchdog" in prompt
+    assert "studio-step:S" in prompt
     assert "code review" in prompt
     assert "Patch and prove." in prompt
     assert "DEOS_STATUS: done | blocked | needs_human" in prompt

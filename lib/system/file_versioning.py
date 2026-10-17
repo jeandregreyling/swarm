@@ -31,8 +31,8 @@ Usage:
 
 import os
 import sys
-from system_clock import get_timestamp, get_timestamp_date
-from database import get_connection
+from .system_clock import get_timestamp, get_timestamp_date
+from utils.database import get_connection
 
 _SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

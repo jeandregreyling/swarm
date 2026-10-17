@@ -403,6 +403,7 @@ def chat(
     on_token: Any = None,
     on_event: Any = None,
     prefer_generate: bool = False,
+    response_format: str | dict[str, Any] | None = None,
 ) -> RuntimeResult:
     """Run a local chat with structured events and idle/absolute clocks.
 
@@ -422,6 +423,7 @@ def chat(
             options=options,
             on_token=on_token,
             on_event=on_event,
+            response_format=response_format,
         )
         if direct is not None:
             return direct
@@ -451,6 +453,8 @@ def chat(
             "keep_alive": keep_alive,
             "options": options or {},
         }
+        if response_format is not None:
+            payload["format"] = response_format
         if system_prompt:
             payload["system"] = system_prompt
 
@@ -497,14 +501,19 @@ def chat(
             "keep_alive": keep_alive,
             "options": options or {},
         }
+        if response_format is not None:
+            payload["format"] = response_format
         events.append(RuntimeEvent("dispatch", _now(), f"absolute={absolute_timeout_s}s idle={idle_timeout_s}s"))
         if on_event is not None:
             try:
                 on_event(events[-1].as_dict())
             except Exception:
                 pass
-        # Bound read timeout so a wedged /api/chat call quickly falls back to /api/generate.
-        chat_read_timeout_s = max(20, min(int(idle_timeout_s), 45))
+        # CPU councils can spend more than 45s before the first token while
+        # Llama and Qwen are both active. Respect the caller's idle clock,
+        # capped at two minutes, so healthy strict-JSON chats are not converted
+        # into a less reliable /api/generate fallback.
+        chat_read_timeout_s = max(20, min(int(idle_timeout_s), 120))
         with requests.post(
             f"{base_url}/api/chat",
             json=payload,
@@ -594,6 +603,7 @@ def _direct_chat_if_registered(
     options: dict[str, Any] | None,
     on_token: Any = None,
     on_event: Any = None,
+    response_format: str | dict[str, Any] | None = None,
 ) -> RuntimeResult | None:
     try:
         from core.seven_llm import registry
@@ -622,6 +632,8 @@ def _direct_chat_if_registered(
         driver = LlamaCppDriver(options={"timeout": absolute_timeout_s})
         merged_options = dict(options or {})
         merged_options.setdefault("timeout", absolute_timeout_s)
+        if response_format is not None:
+            merged_options["response_format"] = response_format
         saw_token = False
 
         def _on_direct_token(piece: str) -> None:

@@ -139,7 +139,7 @@
         "swarm_node_id": "",
         "handoff_mode": "local-first"
       },
-      "studio_project_id": "P-8C8F5F67DB"
+      "studio_project_id": "P-3DEF70A3FD"
     }
   ],
   "jobs": [
@@ -363,6 +363,6 @@
       ]
     }
   ],
-  "tracking_project_id": "P-DAEDF0C14D",
-  "updated_at": "2026-06-04T14:09:15+00:00"
+  "tracking_project_id": "P-ADB905DACF",
+  "updated_at": "2026-10-17T17:24:08+00:00"
 }

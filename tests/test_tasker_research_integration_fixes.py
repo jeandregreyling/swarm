@@ -381,6 +381,54 @@ def test_relay_recovery_sweep_hands_off_after_support_timeout(monkeypatch):
     assert jobs and jobs[0][0][2] == "done"
 
 
+def test_relay_recovery_sweep_total_budget_stops_later_workers(monkeypatch):
+    import json
+
+    import fridays.task_runner as task_runner
+    from utils.db import chat as db_chat
+
+    updates = []
+    asked = []
+    handoffs = []
+    ticks = iter([0.0, 1.0, 31.0, 31.0])
+    monkeypatch.setattr(task_runner.time, "monotonic", lambda: next(ticks, 31.0))
+    monkeypatch.setattr(db_chat, "lease_chat_relay_recoveries", lambda *args, **kwargs: [{
+        "recovery_id": "recovery-budget",
+        "conversation_id": 2833,
+        "stalled_agent": "mistral",
+        "summary": "mistral timed out",
+        "relay_context_json": json.dumps({"thread_tail": [], "stage_trace": []}),
+    }])
+    monkeypatch.setattr(
+        db_chat,
+        "update_chat_relay_recovery_status",
+        lambda rid, status, summary=None: updates.append((rid, status, summary)) or True,
+    )
+    monkeypatch.setattr(db_chat, "log_message", lambda *args, **kwargs: None)
+    monkeypatch.setattr(task_runner, "_log_run", lambda *a, **k: None)
+    monkeypatch.setattr(
+        task_runner,
+        "_ask_agent_with_timeout",
+        lambda agent, prompt, timeout_seconds=240: asked.append((agent, timeout_seconds)) or (False, "timed out"),
+    )
+    monkeypatch.setattr(
+        task_runner,
+        "_run_relay_handoff_agent",
+        lambda *args, **kwargs: handoffs.append((args, kwargs)) or (True, "done", 1),
+    )
+
+    ok, msg = task_runner.run_task(
+        "relay_recovery_sweep",
+        args="limit=1 run_agents=1 force=1 agents=librarian,duck agent_timeout_seconds=90 sweep_timeout_seconds=30",
+    )
+
+    assert ok is True
+    assert asked == [("librarian", 29)]
+    assert handoffs == []
+    assert updates[0][1] == "escalated"
+    assert "total budget" in updates[0][2]
+
+
 def test_relay_recovery_sweep_active_run_respects_idle_window(monkeypatch):
     import fridays.task_runner as task_runner
     from utils.db import chat as db_chat

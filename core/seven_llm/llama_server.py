@@ -218,6 +218,8 @@ def _chat_payload(model: str, messages: list[dict], *, temperature: float | None
     stops = options.get("stop") or default_stops(model, explicit=str(options.get("profile") or ""))
     if stops:
         payload["stop"] = [stops] if isinstance(stops, str) else list(stops)
+    if options.get("response_format") is not None:
+        payload["response_format"] = options["response_format"]
     return payload
 
 

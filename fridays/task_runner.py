@@ -341,6 +341,7 @@ def _task_relay_recovery_sweep(**kwargs):
       lease_minutes=30    active-review lease duration
       conversation_id=0    optional single thread to recover first
       agent_timeout_seconds=240
+      sweep_timeout_seconds=300  total wall-clock budget for one recovery card
       handoff_on_failure=1
       handoff_agents=qwen,gemma,llama,mistral
       handoff_timeout_seconds=120
@@ -368,6 +369,7 @@ def _task_relay_recovery_sweep(**kwargs):
         'lease_minutes': '30',
         'conversation_id': '0',
         'agent_timeout_seconds': '240',
+        'sweep_timeout_seconds': '300',
         'handoff_on_failure': '1',
         'handoff_agents': 'qwen,gemma,llama,mistral',
         'handoff_timeout_seconds': '120',
@@ -404,6 +406,10 @@ def _task_relay_recovery_sweep(**kwargs):
         agent_timeout_seconds = max(30, min(int(opts.get('agent_timeout_seconds') or 240), 1800))
     except Exception:
         agent_timeout_seconds = 240
+    try:
+        sweep_timeout_seconds = max(30, min(int(opts.get('sweep_timeout_seconds') or 300), 1800))
+    except Exception:
+        sweep_timeout_seconds = 300
     handoff_on_failure = str(opts.get('handoff_on_failure') or '').strip().lower() in {'1', 'true', 'yes', 'on'}
     try:
         handoff_timeout_seconds = max(30, min(int(opts.get('handoff_timeout_seconds') or 120), 300))
@@ -436,6 +442,7 @@ def _task_relay_recovery_sweep(**kwargs):
 
     reviewed = []
     for recovery in recoveries:
+        sweep_deadline = time.monotonic() + sweep_timeout_seconds
         recovery_id = str(recovery.get('recovery_id') or '').strip()
         conv_id = int(recovery.get('conversation_id') or 0)
         context = {}
@@ -451,11 +458,16 @@ def _task_relay_recovery_sweep(**kwargs):
         had_failure = False
         visible_completion = False
         for agent in agents:
+            remaining = sweep_deadline - time.monotonic()
+            if remaining <= 0:
+                had_failure = True
+                outputs.append(f'{agent}: skipped because recovery sweep reached {sweep_timeout_seconds}s total budget')
+                break
             _close_lingering_swarm_db_fds()
             ok, answer = _ask_agent_with_timeout(
                 agent,
                 prompt,
-                timeout_seconds=agent_timeout_seconds,
+                timeout_seconds=min(agent_timeout_seconds, max(1, int(remaining))),
             )
             if not ok:
                 had_failure = True
@@ -476,6 +488,13 @@ def _task_relay_recovery_sweep(**kwargs):
         if handoff_on_failure and had_failure and conv_id:
             handoff_prompt = _compact_relay_handoff_prompt(recovery, thread_tail, stage_trace, outputs)
             for handoff_agent in _relay_handoff_agents(recovery.get('stalled_agent'), opts.get('handoff_agents')):
+                remaining = sweep_deadline - time.monotonic()
+                if remaining <= 0:
+                    outputs.append(
+                        f'{handoff_agent}: handoff skipped because recovery sweep reached '
+                        f'{sweep_timeout_seconds}s total budget'
+                    )
+                    break
                 start = time.time()
                 if conv_id:
                     try:
@@ -496,7 +515,7 @@ def _task_relay_recovery_sweep(**kwargs):
                 ok, answer, tokens = _run_relay_handoff_agent(
                     handoff_agent,
                     handoff_prompt,
-                    timeout_seconds=handoff_timeout_seconds,
+                    timeout_seconds=min(handoff_timeout_seconds, max(1, int(remaining))),
                 )
                 elapsed_ms = int((time.time() - start) * 1000)
                 if ok:

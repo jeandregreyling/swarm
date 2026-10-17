@@ -16,9 +16,9 @@ Endpoints:
 
 import os
 from flask import Blueprint, request, jsonify
-from database import get_connection, log_activity, save_agent_memory
-from system_clock import get_timestamp
-from file_versioning import track_file_change
+from utils.database import get_connection, log_activity, save_agent_memory
+from lib.system.system_clock import get_timestamp
+from lib.system.file_versioning import track_file_change
 
 vs_bp = Blueprint('vs', __name__)
 

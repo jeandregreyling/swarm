@@ -27,6 +27,7 @@ from pathlib import Path
 
 NEG_PATTERNS = re.compile(
     r'\b(no(?:pe)?|wrong|stop|again|bullshit|slop|mediocre|lazy|guessing|hallucinat\w+|'
+    r'correction|correcting|do not|happy path|real user path|not enough|'
     r"that's not|that is not|don'?t|incorrect|fail(?:ed|ing)?|broke|broken)\b",
     re.IGNORECASE,
 )
@@ -92,7 +93,13 @@ def classify(user_msg: str) -> tuple[str | None, str | None]:
     """Return (kind, trigger) or (None, None) if no clear signal."""
     if not user_msg:
         return None, None
-    txt = user_msg.strip()
+    try:
+        from agents.seven.companion_contract import latest_user_turn
+        txt = latest_user_turn(user_msg)
+    except Exception:
+        txt = user_msg.strip()
+    if not txt:
+        return None, None
     # Negative signals dominate when both present (the user is correcting).
     m_neg = NEG_PATTERNS.search(txt) or PROFANE_NEG.search(txt)
     if m_neg:
@@ -110,6 +117,13 @@ def observe(user_msg: str, prior_seven_msg: str | None) -> dict | None:
     Returns the inserted lesson row dict, or None.
     """
     if not user_msg or not prior_seven_msg:
+        return None
+    try:
+        from agents.seven.companion_contract import latest_user_turn
+        user_msg = latest_user_turn(user_msg)
+    except Exception:
+        user_msg = str(user_msg or '').strip()
+    if not user_msg:
         return None
     kind, trigger = classify(user_msg)
     if not kind:

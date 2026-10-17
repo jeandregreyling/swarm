@@ -1,0 +1,4 @@
+Seven schema robustness matrix | peer=gemma model=gemma-direct:3 capability=orchestration passed=3/3
+- correct_first: grade=passed expected={'status': 'todo', 'next_step': 'isolated drill'} parsed={'status': 'todo', 'next_step': 'isolated drill'} raw='{\n  "status": "todo"\n  ,\n  "next_step": "isolated drill"\n}'
+- correct_middle: grade=passed expected={'status': 'doing', 'next_step': 'grounded transfer'} parsed={'status': 'doing', 'next_step': 'grounded transfer'} raw='{\n  "status": "doing"\n  ,\n  "next_step": "grounded transfer"\n}'
+- correct_last: grade=passed expected={'status': 'blocked', 'next_step': 'autonomy'} parsed={'status': 'blocked', 'next_step': 'autonomy'} raw='{\n  "status": "blocked"\n  ,\n  "next_step": "autonomy"\n}'

@@ -27,8 +27,13 @@ PORT = int(os.environ.get('PORT') or PORT_MAP.get(ENV, 5050))
 
 print(f"[Swarm Terminal] Starting in {ENV.upper()} mode on port {PORT}")
 
-# Ensure services module is importable (same directory)
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Ensure services module is importable (same directory) and root packages such as
+# utils/ are importable when this file is launched as frontend/terminal.py.
+_FRONTEND_DIR = os.path.dirname(os.path.abspath(__file__))
+_ROOT_DIR = os.path.dirname(_FRONTEND_DIR)
+for _path in (_FRONTEND_DIR, _ROOT_DIR):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
 from services import (
     Flask, initialise_database, mark_orphaned_chat_jobs,
@@ -41,7 +46,7 @@ from services import (
 # If a blueprint fails to import, the server still starts — just without that
 # blueprint's routes. The failure is logged and exposed on GET /_health.
 _BLUEPRINT_REGISTRY = [
-    ('vs_tools',                  'vs_bp'),
+    ('utils.vs_tools',            'vs_bp'),
     ('blueprints.agent_api',      'agent_api_bp'),
     ('blueprints.agents',         'agents_bp'),
     ('blueprints.auth',           'auth_bp'),

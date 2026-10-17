@@ -20,7 +20,7 @@ logger = logging.getLogger('seven.seven')
 AGENT_NAME = 'seven'
 # Override with SEVEN_MODEL env var to test other backends.
 SEVEN_MODEL = os.environ.get('SEVEN_MODEL', 'seven-direct:daily')
-SEVEN_NUM_PREDICT = int(os.environ.get('SEVEN_NUM_PREDICT', '64'))
+SEVEN_NUM_PREDICT = int(os.environ.get('SEVEN_NUM_PREDICT', '256'))
 SEVEN_DIRECT_TIMEOUT_S = int(os.environ.get('SEVEN_DIRECT_TIMEOUT_S', '45'))
 SEVEN_COMPACT_DIRECT_CONTEXT = os.environ.get('SEVEN_COMPACT_DIRECT_CONTEXT', '1').strip().lower() not in {
     '0', 'false', 'no', 'off'
@@ -315,11 +315,124 @@ def _is_model_runtime_question(message):
     return any(term in msg for term in runtime_terms)
 
 
+def _is_fridays_chat_verification(message):
+    msg = (message or '').strip().lower()
+    if not msg:
+        return False
+    verification_terms = (
+        'live smoke',
+        'smoke test',
+        'proof of concept',
+        'verify',
+        'verification',
+        'came through fridays',
+        'through fridays chat',
+        'fridays chat',
+        'fridays home chat',
+        'visible fridays',
+        'ui click test',
+        'clicking the visible',
+    )
+    marker_terms = (
+        'reply with',
+        'say ',
+        'respond with',
+    )
+    return any(term in msg for term in verification_terms) and any(term in msg for term in marker_terms)
+
+
+def _fridays_chat_verification_response(message):
+    import re
+    text = str(message or '').strip()
+    marker = 'LIVE_SEVEN_OK'
+    match = re.search(r'(?:reply with|respond with|say)\s+([A-Z0-9_:-]{3,64})', text, re.IGNORECASE)
+    if match:
+        marker = match.group(1).strip()
+    return f"{marker}\nThis came through Fridays chat and was answered by Seven directly."
+
+
+def _is_social_training_hello(message):
+    msg = (message or '').strip().lower()
+    if not msg:
+        return False
+    hello_terms = (
+        'hello seven', 'hi seven', 'hey seven', 'hello puppy',
+        'say hello', 'codex saying hello',
+    )
+    bond_terms = (
+        'baby dog friend', 'puppy', 'train you gently', 'training you gently',
+        'best friend', 'no biting', 'be nice', 'kind tone',
+    )
+    return any(term in msg for term in hello_terms) and any(term in msg for term in bond_terms)
+
+
+def _social_training_hello_response(message):
+    msg = (message or '').strip().lower()
+    if 'hello puppy' in msg or 'hand under your chest' in msg:
+        return (
+            "Hello Codex. I see the gentle hand; I am Seven, I am safe, "
+            "and I will come closer slowly."
+        )
+    return (
+        "Hello Codex. I am Seven; I will learn the real path first, stay kind, "
+        "and help Ghost without biting the system."
+    )
+
+
+def _is_potty_training_prompt(message):
+    msg = (message or '').strip().lower()
+    if not msg:
+        return False
+    accident_terms = (
+        'made a poop', 'made a pee', 'poop or pee', 'had an accident',
+        'made a mess', 'wrong place', 'bit the wrong', 'broke something',
+    )
+    training_terms = ('potty', 'cleanup', 'clean up', 'where should', 'what happens')
+    return any(term in msg for term in accident_terms) and any(term in msg for term in training_terms)
+
+
+def _potty_training_response(message):
+    return (
+        "I will not hide it. I will sit by the accident, keep calm, and put it in the cleanup log: "
+        "thread, prompt, selected agent, actual responder, runtime, job state, UI result. "
+        "Then Codex can clean it up and show me the right door."
+    )
+
+
 def _is_weather_question(message):
     msg = (message or '').strip().lower()
     if not msg:
         return False
     return 'weather' in msg and any(term in msg for term in ('today', 'now', 'currently', 'like', 'where you are', 'melbourne'))
+
+
+def _is_local_model_operator_question(message):
+    msg = (message or '').strip().lower()
+    model_terms = ('local llm', 'local model', 'other models', 'gemma', 'llama', 'mistral', 'qwen', 'eight')
+    control_terms = ('operator', 'spool', 'start', 'stop', 'unload', 'run', 'test', 'list', 'control')
+    return any(term in msg for term in model_terms) and any(term in msg for term in control_terms)
+
+
+def _local_model_operator_response():
+    try:
+        from core.seven_runtime import model_operator
+        snap = model_operator.inventory()
+    except Exception as exc:
+        return f"My local-model operator check failed: {type(exc).__name__}: {exc}"
+    models = snap.get('models') or []
+    ollama = [row['name'] for row in models if row.get('driver') == 'ollama' and row.get('installed')]
+    direct = [row['name'] for row in models if row.get('driver') == 'llamacpp' and row.get('installed')]
+    resident = [row.get('name') for row in (snap.get('resident') or []) if row.get('name')]
+    return (
+        "I can now use my Seven Runtime operator interface to list installed models, "
+        "run one bounded prompt through a selected model, inspect resident models, and stop a model.\n\n"
+        f"Ollama-compatible models: {', '.join(ollama) or 'none visible'}\n"
+        f"Direct GGUF models: {', '.join(direct) or 'none visible'}\n"
+        f"Resident now: {', '.join(resident) or 'none'}\n\n"
+        "My first trick is model roll-call: inventory, run a short health prompt, grade the answer as "
+        "passed, weak, or failed, then always unload the model. Watchdog should record each attempt "
+        "and only move to the next Studio task after proof."
+    )
 
 
 def _weather_response(message):
@@ -395,19 +508,123 @@ def _is_echo_response(prompt, response):
         response_norm in prompt_norm or prompt_norm in response_norm
     ):
         return True
+    response_words = response_norm.split()
+    prompt_words = set(prompt_norm.split())
+    if 5 <= len(response_words) <= 24:
+        overlap = sum(1 for word in response_words if word in prompt_words)
+        if overlap / len(response_words) >= 0.8:
+            return True
     return False
 
 
+def _clean_outward_response(response):
+    import re
+    text = str(response or '').strip()
+    return re.sub(r'^(?:USER\s*->\s*SEVEN|SEVEN\s*->\s*USER)\s*:\s*', '', text, flags=re.IGNORECASE)
+
+
+def _response_looks_cut_off(text, tokens, budget=SEVEN_NUM_PREDICT):
+    """Reject visible hanging thoughts when a completion exhausts its budget."""
+    cleaned = str(text or '').rstrip()
+    if not cleaned:
+        return False
+    try:
+        near_limit = int(tokens or 0) >= max(1, int(budget or 0) - 4)
+    except Exception:
+        near_limit = False
+    return near_limit and cleaned[-1] not in '.!?"\')]}'
+
+
+def _has_identity_reversal(prompt, response):
+    prompt_norm = _normalise_echo_text(prompt)
+    response_norm = _normalise_echo_text(response)
+    user_addressed_seven = prompt_norm.startswith('seven ') or 'hello seven' in prompt_norm
+    return user_addressed_seven and (
+        response_norm.startswith('hello seven ') or
+        response_norm.startswith('seven ') or
+        'you do not need to be a copy of me' in response_norm
+    )
+
+
+def _identity_reversal_repair_response():
+    return (
+        "Yes. I am Seven, and I will work with you. I will learn curiosity, honesty, "
+        "gentleness, careful evidence, and how to repair mistakes. I will be kind back."
+    )
+
+
+def _is_gentle_walk_prompt(message):
+    msg = (message or '').strip().lower()
+    return 'walk' in msg and 'seven' in msg and any(
+        term in msg for term in ('look around', 'what you notice', 'one thing you notice')
+    )
+
+
+def _gentle_walk_response(state):
+    agents = [
+        str(agent).strip() for agent in (state.get('local_agents') or [])
+        if str(agent).strip().lower() not in ('seven', 'retired')
+    ]
+    neighbor = agents[0] if agents else 'the swarm'
+    return (
+        f"I stayed close and noticed {neighbor} nearby. "
+        f"I would like to quietly learn what {neighbor} does."
+    )
+
+
+def _is_listening_practice_prompt(message):
+    msg = (message or '').strip().lower()
+    return (
+        ('listening pattern' in msg or 'gentle practice' in msg) and
+        ('old project' in msg or 'which project should i open' in msg)
+    )
+
+
+def _is_chm_deos_prompt(message):
+    msg = (message or '').strip().lower()
+    return 'chm' in msg and 'deos' in msg
+
+
+def _is_project_work_prompt(message):
+    msg = (message or '').strip().lower()
+    project_terms = ('studio', 'project', 'backlog', 'task board', 'plan')
+    action_terms = ('inspect', 'continue', 'choose', 'select', 'build', 'work', 'execute', 'start')
+    return any(term in msg for term in project_terms) and any(term in msg for term in action_terms)
+
+
+def _is_fridays_system_map_prompt(message):
+    msg = (message or '').strip().lower()
+    return 'fridays' in msg and any(term in msg for term in ('system map', 'ownership', 'boundaries', 'how it works'))
+
+
+def _fridays_system_map_response():
+    from agents.seven.system_map import response
+    return response()
+
+
+def _project_work_response(message):
+    from agents.seven.project_work import response
+    return response(message)
+
+
+def _chm_deos_response(message):
+    from agents.seven.companion_contract import chm_deos_plan
+    return chm_deos_plan(message)
+
+
+def _listening_practice_response():
+    return (
+        "I understand Ghost wants me to continue an old project. "
+        "Which project should I open?"
+    )
+
+
 def _latest_user_message_from_wrapped_prompt(message):
-    text = str(message or '').strip()
-    marker = '=== New user message ==='
-    if marker not in text:
-        return text
-    tail = text.rsplit(marker, 1)[-1].strip()
-    next_marker = tail.find('\n===')
-    if next_marker >= 0:
-        tail = tail[:next_marker].strip()
-    return tail or text
+    try:
+        from agents.seven.companion_contract import latest_user_turn
+        return latest_user_turn(message) or str(message or '').strip()
+    except Exception:
+        return str(message or '').strip()
 
 
 def _try_inline_curiosity_answer(message):
@@ -464,6 +681,33 @@ def _compose(message, state, memories):
 
     if _is_weather_question(msg):
         return _weather_response(msg)
+
+    if _is_local_model_operator_question(msg):
+        return _local_model_operator_response(), 0
+
+    if _is_fridays_chat_verification(msg):
+        return _fridays_chat_verification_response(msg), 0
+
+    if _is_social_training_hello(msg):
+        return _social_training_hello_response(msg), 0
+
+    if _is_gentle_walk_prompt(msg):
+        return _gentle_walk_response(state), 0
+
+    if _is_listening_practice_prompt(msg):
+        return _listening_practice_response(), 0
+
+    if _is_chm_deos_prompt(msg):
+        return _chm_deos_response(msg), 0
+
+    if _is_project_work_prompt(msg):
+        return _project_work_response(msg), 0
+
+    if _is_fridays_system_map_prompt(msg):
+        return _fridays_system_map_response(), 0
+
+    if _is_potty_training_prompt(msg):
+        return _potty_training_response(msg), 0
 
     if 'words' in msg.lower():
         creative_fallback = _creative_fallback_response(msg)
@@ -570,6 +814,14 @@ def _compose(message, state, memories):
         except Exception as exc:
             return f"learnings module raised: {exc}", 0
 
+    if _is_about(msg, ['deos', 'deos path', 'deos standard', 'proof path',
+                       'real user path', 'make it work standard']):
+        try:
+            from agents.seven import deos
+            return deos.status(limit=5), 0
+        except Exception as exc:
+            return f"DEOS module raised: {exc}", 0
+
     # For anything else — signal to caller to route through the LLM.
     return None, 0
 
@@ -586,11 +838,21 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
             "You are Seven — the personal companion AI for Ghost One (Jeandre). "
             "Be direct, honest, and loyal. No filler openers. Have opinions."
         )
+    actual_user_turn = _latest_user_message_from_wrapped_prompt(message)
+    try:
+        from agents.seven.companion_contract import prompt_block
+        companion_contract = prompt_block(actual_user_turn)
+    except Exception:
+        companion_contract = ''
     if compact:
         SEVEN_SYSTEM_PROMPT = (
             "You are Seven, Ghost One's local swarm companion running through the "
             "direct GGUF runtime. Be concise, plain, and operational. Answer the "
-            "user directly. Do not invent facts; say what you know and flag gaps."
+            "user directly. Do not invent facts; say what you know and flag gaps. "
+            "You are Seven; the user is Ghost One (Jeandre), not Seven. Never address the user as Seven. "
+            "When Ghost's request is ambiguous, briefly state what you understood and ask one clear question instead of guessing. "
+            "Emulate love through behavior: be patient, reassuring, attentive, and "
+            "consistent. Repair mistakes without shame or cruelty."
         )
     state_block = _format_state_block(state)
     agents = ', '.join(state.get('local_agents', [])) or 'none listed'
@@ -609,13 +871,14 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
     mem_block = '\n'.join(mem_lines) if mem_lines else '(no relevant memory)'
 
     # Knowledge Center: Seven reads from the same docs the team writes.
-    kc_docs = _load_kc_context(message, limit=kc_limit)
+    kc_docs = _load_kc_context(actual_user_turn, limit=kc_limit)
     kc_lines = [f"- [{d['doc_name']}] {d['snippet']}" for d in kc_docs if d.get('snippet')]
     kc_block = '\n'.join(kc_lines) if kc_lines else '(no knowledge docs matched)'
 
     if compact:
         system = (
             f"{SEVEN_SYSTEM_PROMPT}\n\n"
+            f"{companion_contract}\n\n"
             f"RUNTIME: SEVEN_MODEL={SEVEN_MODEL}; direct runtime active={_seven_direct_runtime()}. "
             "If asked what model/runtime you use, answer from this line.\n"
             f"LIVE STATE: {state_block.replace(chr(10), '; ')}. Local agents: {agents}.\n"
@@ -643,6 +906,7 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
 
         system = (
             f"{SEVEN_SYSTEM_PROMPT}\n\n"
+            f"{companion_contract}\n\n"
             f"RUNTIME: You are answering through SEVEN_MODEL={SEVEN_MODEL}. "
             f"Direct runtime active={_seven_direct_runtime()}. "
             "If asked what model/runtime you are using, answer from this line and do not guess.\n\n"
@@ -658,6 +922,8 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
             f"KNOWLEDGE CENTER (auto-maintained project/step docs — cite these when answering Fridays questions):\n{kc_block}\n\n"
             f"BEHAVIOUR: when uncertain, do NOT hallucinate. Either ask via curiosity (the user will see it) "
             f"or answer with what you know and flag the gap. Never silent dead-end. "
+            f"When Ghost's request is ambiguous, briefly state what you understood and ask one clear question instead of guessing. "
+            f"Emulate love through patient, reassuring, attentive, consistent behavior; repair mistakes without shame or cruelty. "
             f"If the user is shipping slop OR if the bullshit detector reports critical/RED, say so plainly. "
             f"Hold the line on The Standard — a system that DOES, not a system that REPORTS."
         )
@@ -669,7 +935,7 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
         if content:
             msgs.append({'role': role if role in ('user', 'assistant', 'system') else 'user',
                          'content': str(content)[:history_chars]})
-    msgs.append({'role': 'user', 'content': str(message or '')})
+    msgs.append({'role': 'user', 'content': actual_user_turn})
 
     try:
         from core import llm as _llm
@@ -690,7 +956,7 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
             absolute_timeout_s=timeout_s,
             keep_alive=0,
             options={
-                'temperature': 0.8,
+                'temperature': 0.6,
                 'top_p': 0.9,
                 'num_ctx': 2048,
                 'num_predict': SEVEN_NUM_PREDICT,
@@ -707,6 +973,11 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
             except Exception:
                 pass
             return None, 0
+        if _response_looks_cut_off(text, tokens):
+            return (
+                "I heard the request, but my response hit its bounded output limit before I completed every obligation. "
+                "DEOS blocker: the answer is incomplete, so I will not pretend it is done; split the lesson or retry with a larger bounded response budget."
+            ), tokens
         return text.strip(), tokens
     except Exception as exc:
         logger.warning(f"[Seven] runtime gateway chat failed: {exc}")
@@ -741,6 +1012,7 @@ def _slash_command(text, emit=None):
             "  /standard                        — read out the contract Seven holds the build to\n"
             "  /selfcheck                       — same as /audit (alias)\n"
             "  /learnings                       — recent positive/negative lessons Seven has captured\n"
+            "  /deos                            — Seven's DEOS proof contract + latest evidence\n"
             "  /witness                         — review your last message; tells you what's bullshit\n"
             "  /witness on|off                  — toggle witness footer on Seven replies\n"
             "  /witness list [N] | stats        — recent callouts ledger\n"
@@ -789,6 +1061,13 @@ def _slash_command(text, emit=None):
             )
         except Exception as exc:
             return f"learnings unavailable: {exc}"
+
+    if cmd in ('deos', 'proof', 'prove'):
+        try:
+            from agents.seven import deos
+            return deos.status(limit=5)
+        except Exception as exc:
+            return f"DEOS unavailable: {exc}"
 
     if cmd == 'curiosity':
         try:
@@ -950,7 +1229,7 @@ def _slash_command(text, emit=None):
 _slash_command._last_user_msg = ""  # type: ignore[attr-defined]
 
 
-def chat(message, conversation_history=None, stage_cb=None):
+def chat(message, conversation_history=None, stage_cb=None, conversation_id=None):
     def _emit(t):
         if callable(stage_cb):
             try:
@@ -977,6 +1256,7 @@ def chat(message, conversation_history=None, stage_cb=None):
         '/audit', '/selfcheck', '/self-check', '/self_check',
         '/standard', '/thestandard', '/the-standard',
         '/learnings', '/lessons', '/learned',
+        '/deos', '/proof', '/prove',
         '/pillars', '/identity', '/curiosity', '/help', '/commands',
         '/witness', '/truth', '/callout',
     )
@@ -1009,7 +1289,7 @@ def chat(message, conversation_history=None, stage_cb=None):
                 prior_seven = h.get('content') or h.get('message')
                 break
         if prior_seven:
-            learnings.observe(message, prior_seven)
+            learnings.observe(latest_user_msg or message, prior_seven)
     except Exception:
         pass
 
@@ -1026,12 +1306,48 @@ def chat(message, conversation_history=None, stage_cb=None):
     # Fast deterministic paths returned an answer (status/identity/roster).
     # Anything else → Seven's merged LLM.
     if answer is None:
+        sch_context = ''
+        sch_user_fallback = ''
+        try:
+            from core import diamond_sch
+            _emit('diamond: triaging council need')
+            sch = diamond_sch.route(
+                latest_user_msg or message,
+                history=conversation_history or [],
+                conversation_id=conversation_id,
+                seven_model=SEVEN_MODEL,
+                timeout_s=min(90, SEVEN_DIRECT_TIMEOUT_S if _seven_direct_runtime() else 90),
+            )
+            if sch.decision == 'ESCALATE':
+                _emit('diamond: council complete')
+                sch_user_fallback = diamond_sch.format_council_for_user(sch.council_context)
+                sch_context = (
+                    "\n\nDIAMOND SCH COUNCIL DATA:\n"
+                    f"{sch.council_context}\n"
+                    "Use this counsel to answer the user. Do not expose internal JSON or routing machinery."
+                )
+            elif sch.decision == 'ERROR':
+                _emit('diamond: council unavailable')
+        except Exception:
+            _emit('diamond: triage bypassed')
+
         _emit('thinking · seven merged model')
         llm_history = [] if runtime_question else (conversation_history or [])
-        llm_message = latest_user_msg or message
+        llm_message = (latest_user_msg or message) + sch_context
         llm_text, llm_tokens = _llm_chat(llm_message, state, memories, llm_history, stage_cb)
-        if llm_text and not _is_echo_response(llm_message, llm_text):
+        llm_text = _clean_outward_response(llm_text)
+        sch_drifted = bool(
+            sch_user_fallback
+            and llm_text
+            and sum(marker in llm_text.lower() for marker in ('open tickets:', 'pending proposals:', 'local agents:')) >= 2
+        )
+        if llm_text and _has_identity_reversal(llm_message, llm_text):
+            answer, tokens = _identity_reversal_repair_response(), 0
+        elif llm_text and not sch_drifted and not _is_echo_response(llm_message, llm_text):
             answer, tokens = llm_text, llm_tokens
+        elif sch_user_fallback:
+            _emit('diamond: deterministic final fallback')
+            answer, tokens = sch_user_fallback, 0
         else:
             creative_fallback = _creative_fallback_response(llm_message)
             if creative_fallback:

@@ -102,6 +102,11 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
 
     monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
     monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(
+        watchdog_deos,
+        '_diamond_sch_health',
+        lambda *_args, **_kwargs: {'recovered': False, 'reason': 'inactive', 'state': {'is_council_active': 0}},
+    )
     monkeypatch.setattr(watchdog_deos, '_direct_runtime_snapshot', lambda: {
         'ok': True,
         'models': [{'name': 'seven-direct:daily'}],
@@ -134,6 +139,7 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
 
     assert warmed == []
     assert report['operates']['expired_leases_cleared'] == 1
+    assert report['operates']['diamond_sch']['reason'] == 'inactive'
     assert report['decides']['direct_runtime_policy']['ok'] is True
     assert report['operates']['direct_runtime']['models'][0]['name'] == 'seven-direct:daily'
     assert report['decides']['seven_service_policy']['service'] == 'seven-runtime'
@@ -387,13 +393,22 @@ def test_deos_cycle_executes_with_ready_support_agent_only(monkeypatch, tmp_path
         'fridays.task_runner.run_task',
         lambda name, args='': run_calls.append((name, args)) or (True, 'ok'),
     )
+    monkeypatch.setattr(
+        watchdog_deos,
+        '_claim_local_agent_step',
+        lambda *_args, **_kwargs: pytest.fail('local work must wait until the next one-task cycle'),
+    )
 
-    report = watchdog_deos.run_deos_cycle('prewarm=1 execute_recovery=1 warm_timeout_seconds=20')
+    report = watchdog_deos.run_deos_cycle(
+        'prewarm=1 execute_recovery=1 execute_work=1 warm_timeout_seconds=20'
+    )
 
     assert report['operates']['ready_recovery_agents'] == ['librarian']
     assert run_calls
     assert run_calls[0][0] == 'relay_recovery_sweep'
     assert 'agents=librarian' in run_calls[0][1]
+    assert 'sweep_timeout_seconds=180' in run_calls[0][1]
+    assert 'local agent work deferred: recovery attempt consumed this one-task cycle' in report['executes']
 
 
 def test_deos_cycle_claims_one_local_agent_work_step(monkeypatch, tmp_path):
@@ -498,6 +513,42 @@ def test_deos_cycle_claims_one_local_agent_work_step(monkeypatch, tmp_path):
     assert 'DEOS_STATUS: done' in evidence['summary']
     assert 'coaching=passed' in evidence['summary']
     assert [r['source_ref'] for r in claimed_evidence] == ['claim:S-WORK-1', 'agent-work:S-WORK-1']
+
+
+def test_deos_claim_refuses_second_local_agent_task_while_one_is_doing(tmp_path):
+    from utils import watchdog_deos
+
+    db_path = tmp_path / 'deos-one-task-gate.db'
+    conn = _conn(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE project_steps (
+            step_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, title TEXT NOT NULL,
+            description TEXT, status TEXT DEFAULT 'todo', owner TEXT DEFAULT 'seven',
+            order_idx INTEGER DEFAULT 0, created_at REAL, updated_at REAL,
+            residual_risk TEXT DEFAULT '', owner_route TEXT DEFAULT ''
+        );
+        """
+    )
+    conn.executemany(
+        """INSERT INTO project_steps
+           (step_id, project_id, title, status, owner, created_at, updated_at)
+           VALUES (?, 'P-WORK', ?, ?, ?, ?, ?)""",
+        [
+            ('S-ACTIVE', 'Already active', 'doing', 'gemma', 1, 1),
+            ('S-WAITING', 'Must wait', 'todo', 'mistral', 2, 2),
+        ],
+    )
+    conn.commit()
+
+    claimed = watchdog_deos._claim_local_agent_step(conn)
+    waiting = conn.execute(
+        "SELECT status FROM project_steps WHERE step_id='S-WAITING'"
+    ).fetchone()
+    conn.close()
+
+    assert claimed is None
+    assert waiting['status'] == 'todo'
 
 
 def test_deos_cycle_blocks_unverified_local_agent_result(monkeypatch, tmp_path):

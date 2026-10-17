@@ -49,7 +49,8 @@ def test_r3_bfcache_pageshow_resets():
     src = HOME_CHAT_JS.read_text()
     idx = src.find("pageshow")
     assert idx >= 0
-    block = src[idx:idx + 800]
+    end = src.find("document.addEventListener('visibilitychange'", idx)
+    block = src[idx:end]
     assert "ev.persisted" in block
     assert "_hcConvId = null" in block
     assert "_hcShowWelcome(true)" in block
@@ -60,9 +61,13 @@ def test_r4_delete_current_conv_falls_back():
     src = HOME_CHAT_JS.read_text()
     idx = src.find("swarm:conversation-changed")
     assert idx >= 0
-    block = src[idx:idx + 400]
+    end = src.find("document.addEventListener('visibilitychange'", idx)
+    assert end > idx
+    block = src[idx:end]
     assert "detail.type === 'deleted'" in block
     assert "_hcNewThread()" in block
+    assert "_hcLoadThreadsListOnly()" in block
+    assert "_hcLoadThreads();" not in block
 
 
 # R5 THREAD LOAD — load also wipes stale marker
@@ -94,6 +99,16 @@ def test_home_chat_does_not_own_main_chat_active_thread():
     src = HOME_CHAT_JS.read_text()
     assert "window.__fridaysChatOpenWithConvId = _hcConvId" in src
     assert "window.__fridaysChatConversationId =" not in src
+
+
+def test_home_chat_fresh_canvas_defaults_to_seven_not_stale_global_agent():
+    src = HOME_CHAT_JS.read_text()
+    idx = src.find("function _hcGetEnabledAgents()")
+    assert idx >= 0
+    block = src[idx:idx + 900]
+    assert "if (!_hcConvId)" in block
+    assert "return ['seven']" in block
+    assert block.find("return ['seven']") < block.find("const global = localStorage.getItem(HC_GLOBAL_AGENTS_KEY)")
 
 
 # R7 REGRESSION GUARD — load path must wipe, not read, the active thread key

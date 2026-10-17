@@ -83,11 +83,21 @@ def log_agent_thinking(agent_name, action, duration_ms=0):
     log_action('agent', agent_name, detail)
 
 
+def _auto_git_commit_enabled():
+    return str(_os.environ.get('SWARM_ENABLE_AUTO_GIT_COMMIT', '')).strip().lower() in {
+        '1', 'true', 'yes', 'on',
+    }
+
+
 def batch_commit(message):
     """
     Batch commit to git when a major milestone happens.
-    Called after ticket closes, after debate finishes, etc.
+    Disabled by default because agent queries must never stage or commit the
+    operator's dirty worktree. Explicitly enable with
+    SWARM_ENABLE_AUTO_GIT_COMMIT=1 for a controlled workflow.
     """
+    if not _auto_git_commit_enabled():
+        return False
     try:
         ts = get_timestamp()
         full_msg = f'[{ts}] {message}'

@@ -44,12 +44,30 @@ CHATML = PromptProfile(
     assistant_label="<|im_start|>assistant",
     stops=("<|im_end|>", "<|im_start|>user", "<|im_start|>system", "\nUser:"),
 )
+GEMMA = PromptProfile(
+    "gemma",
+    system_label="<start_of_turn>user",
+    user_label="<start_of_turn>user",
+    assistant_label="<start_of_turn>model",
+    stops=("<end_of_turn>", "<start_of_turn>user"),
+)
+LLAMA3 = PromptProfile(
+    "llama3",
+    system_label="<|start_header_id|>system<|end_header_id|>",
+    user_label="<|start_header_id|>user<|end_header_id|>",
+    assistant_label="<|start_header_id|>assistant<|end_header_id|>",
+    stops=("<|eot_id|>", "<|start_header_id|>", "<|end_header_id|>"),
+)
 
 
 def get_profile(model: str = "", *, explicit: str | None = None) -> PromptProfile:
     key = (explicit or model or "").strip().lower()
     if key in {"chatml", "qwen", "qwen2", "qwen2.5", "seven"}:
         return CHATML
+    if key in {"gemma", "gemma3"} or "gemma" in key:
+        return GEMMA
+    if key in {"llama3", "llama3.2"} or "llama" in key:
+        return LLAMA3
     if "qwen" in key or "seven" in key:
         return CHATML
     return GENERIC
@@ -57,4 +75,3 @@ def get_profile(model: str = "", *, explicit: str | None = None) -> PromptProfil
 
 def default_stops(model: str = "", *, explicit: str | None = None) -> list[str]:
     return list(get_profile(model, explicit=explicit).stops)
-

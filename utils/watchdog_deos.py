@@ -131,6 +131,15 @@ def _now() -> float:
     return time.time()
 
 
+def _diamond_sch_health(stale_after_s: int = 300) -> Dict[str, Any]:
+    """Inspect SCH and recover only an abandoned, lock-free council state."""
+    try:
+        from core.diamond_sch import recover_stale_state
+        return recover_stale_state(stale_after_s=stale_after_s)
+    except Exception as exc:
+        return {'recovered': False, 'reason': f'{type(exc).__name__}: {exc}', 'state': {}}
+
+
 def _ensure_project(conn) -> None:
     now = _now()
     _execute_with_retry(
@@ -588,6 +597,8 @@ def _claim_local_agent_step(
     if not candidates:
         return None
     placeholders = ','.join('?' for _ in candidates)
+    active_candidates = tuple(WORK_AGENT_MODULES)
+    active_placeholders = ','.join('?' for _ in active_candidates)
     extra_where = []
     params: List[Any] = list(candidates)
     if project_id:
@@ -620,10 +631,20 @@ def _claim_local_agent_step(
     data = dict(row)
     now = _now()
     try:
-        conn.execute(
-            "UPDATE project_steps SET status='doing', updated_at=? WHERE step_id=? AND status IN ('todo', 'blocked')",
-            (now, data['step_id']),
+        cur = conn.execute(
+            f"""UPDATE project_steps
+                SET status='doing', updated_at=?
+                WHERE step_id=?
+                  AND status IN ('todo', 'blocked')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM project_steps active
+                    WHERE active.status='doing'
+                      AND lower(active.owner) IN ({active_placeholders})
+                  )""",
+            (now, data['step_id'], *active_candidates),
         )
+        if int(cur.rowcount or 0) != 1:
+            return None
         _add_step_evidence(
             conn,
             data['step_id'],
@@ -640,8 +661,34 @@ def _claim_local_agent_step(
 def _agent_work_prompt(step: Dict[str, Any]) -> str:
     context = _local_work_context(step)
     agent = str(step.get('owner') or '').strip().lower()
+    try:
+        from agents.seven.companion_contract import context_handoff_map
+        chm = context_handoff_map(
+            str(step.get('description') or step.get('title') or ''),
+            source=str(step.get('owner_route') or 'watchdog'),
+            target=agent or 'local-agent',
+            evidence=[
+                f"studio-project:{step.get('project_id')}",
+                f"studio-step:{step.get('step_id')}",
+            ],
+            unresolved=[str(step.get('title') or 'complete claimed Studio task')],
+            return_to='watchdog',
+        )
+        chm_block = (
+            "CONTEXT HANDOFF MAP (CHM):\n"
+            f"- Source: {chm['source']}\n"
+            f"- Target: {chm['target']}\n"
+            f"- Return path: {chm['return_to']}\n"
+            f"- Authoritative task context: {chm['authoritative_turn']}\n"
+            f"- Obligations: {chm['obligations']}\n"
+            f"- Evidence references: {chm['evidence']}\n"
+            f"- Unresolved items: {chm['unresolved']}\n"
+        )
+    except Exception:
+        chm_block = ''
     return (
         f'{local_agent_packet(agent)}\n\n'
+        f'{chm_block}\n'
         'You are running under Watchdog/Seven DEOS. Complete this Studio task if it is safe and concrete.\n'
         'Rules:\n'
         '- Work only on this one task.\n'
@@ -1055,6 +1102,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     work_project_id = str(opts.get('work_project_id') or '').strip()
     work_step_prefix = str(opts.get('work_step_prefix') or '').strip()
     work_owner = str(opts.get('work_owner') or '').strip().lower()
+    model_roll_call = str(opts.get('model_roll_call') or '').strip()
     try:
         warm_timeout = max(10, min(int(opts.get('warm_timeout_seconds') or 45), 300))
     except Exception:
@@ -1071,6 +1119,10 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
         local_work_stale = max(300, min(int(opts.get('local_work_stale_seconds') or 1800), 7200))
     except Exception:
         local_work_stale = 1800
+    try:
+        sch_stale = max(60, min(int(opts.get('sch_stale_seconds') or 300), 3600))
+    except Exception:
+        sch_stale = 300
 
     report: Dict[str, Any] = {
         'decides': {},
@@ -1078,6 +1130,12 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
         'operates': {},
         'sustains': [],
     }
+    sch_health = _diamond_sch_health(sch_stale)
+    report['operates']['diamond_sch'] = sch_health
+    if sch_health.get('recovered'):
+        report['executes'].append(
+            f"diamond SCH recovered stale session after {sch_health.get('age_s', 0)}s"
+        )
 
     conn = get_connection()
     _configure_connection(conn)
@@ -1147,6 +1205,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
         rerouted_work = _reroute_blocked_failed_local_steps(conn)
         counts = _recovery_counts(conn)
         report['operates'] = {
+            'diamond_sch': sch_health,
             'expired_leases_cleared': cleared,
             'stale_local_work_claims': stale_work_claims,
             'rerouted_local_work': rerouted_work,
@@ -1229,6 +1288,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
         if not _is_sqlite_lock_error(exc):
             raise
         report['operates'] = {
+            'diamond_sch': sch_health,
             'expired_leases_cleared': 0,
             'stale_local_work_claims': 0,
             'rerouted_local_work': 0,
@@ -1241,10 +1301,41 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     finally:
         conn.close()
 
+    if model_roll_call:
+        try:
+            from core.seven_runtime import model_operator
+            roll_call = model_operator.roll_call(model_roll_call, timeout_seconds=warm_timeout)
+            report['executes'].append(
+                f"model_roll_call model={model_roll_call} grade={roll_call.get('grade')} "
+                f"content={str(roll_call.get('content') or '')[:120]!r} "
+                f"unload_ok={bool((roll_call.get('unload') or {}).get('ok'))}"
+            )
+            conn = get_connection()
+            _configure_connection(conn)
+            try:
+                _add_evidence(
+                    conn,
+                    f'model-roll-call:{model_roll_call}',
+                    (
+                        f"Watchdog model roll-call grade={roll_call.get('grade')} "
+                        f"expected={roll_call.get('expected')} "
+                        f"content={str(roll_call.get('content') or '')[:160]!r} "
+                        f"unload={roll_call.get('unload')}"
+                    ),
+                    'ok' if roll_call.get('grade') == 'passed' else 'warn',
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception as exc:
+            report['executes'].append(f'model_roll_call failed: {type(exc).__name__}: {exc}')
+
     ready_agents = report.get('operates', {}).get('ready_recovery_agents') or []
+    recovery_attempted = False
     if execute_recovery and not ready_agents:
         report['executes'].append('recovery skipped: no support agents ready')
     elif execute_recovery:
+        recovery_attempted = True
         try:
             _close_lingering_swarm_db_fds()
             from fridays.task_runner import run_task
@@ -1253,14 +1344,17 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
                 args=(
                     'limit=1 run_agents=1 force=1 '
                     f'agents={",".join(ready_agents)} '
-                    f'agent_timeout_seconds={agent_timeout}'
+                    f'agent_timeout_seconds={agent_timeout} '
+                    f'sweep_timeout_seconds={agent_timeout}'
                 ),
             )
             report['executes'].append(f'relay_recovery_sweep ok={ok}: {output[:400]}')
         except Exception as exc:
             report['executes'].append(f'relay_recovery_sweep failed: {type(exc).__name__}: {exc}')
 
-    if execute_work:
+    if execute_work and recovery_attempted:
+        report['executes'].append('local agent work deferred: recovery attempt consumed this one-task cycle')
+    elif execute_work:
         conn = get_connection()
         _configure_connection(conn)
         try:

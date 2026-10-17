@@ -170,7 +170,14 @@ def _sync_relay_recovery_task_board(conn, recovery, card='', status='todo', evid
         owner = _relay_recovery_owner(stalled_agent)
         job_id = str(recovery.get('job_id') or '').strip()
         summary = str(recovery.get('summary') or '').strip()
-        title = f'Recover chat thread #{conv_id} after {stalled_agent} stalled'
+        quality_failure = (
+            job_id.startswith('quality-thread-')
+            or _relay_recovery_failure_label(summary) == 'returned an unusable reply'
+        )
+        failure = 'returned an unusable reply' if quality_failure else 'stalled'
+        job_label = 'Affected job' if quality_failure else 'Stalled job'
+        agent_label = 'Affected agent' if quality_failure else 'Stalled agent'
+        title = f'Recover chat thread #{conv_id} after {stalled_agent} {failure}'
         prompt = (
             'Recovery prompt for the next agent:\n'
             '- Work one recovery at a time; finish or escalate this card before claiming another.\n'
@@ -182,12 +189,17 @@ def _sync_relay_recovery_task_board(conn, recovery, card='', status='todo', evid
         description = (
             f'Recovery ID: {recovery_id}\n'
             f'Conversation: #{conv_id}\n'
-            f'Stalled job: {job_id}\n'
-            f'Stalled agent: {stalled_agent}\n'
+            f'{job_label}: {job_id}\n'
+            f'{agent_label}: {stalled_agent}\n'
             f'Summary: {summary}\n\n'
             f'{prompt}\n'
             f'Relay recovery card:\n{str(card or "").strip()[:4000]}'
         )[:6000]
+        residual_risk = {
+            'done': '',
+            'skipped': '',
+            'blocked': 'Recovery escalated; explicit blocker remains open.',
+        }.get(status, 'Open until an agent either completes the original user task or records an explicit blocker.')
         now = time.time()
         conn.execute(
             """
@@ -214,7 +226,7 @@ def _sync_relay_recovery_task_board(conn, recovery, card='', status='todo', evid
                 int(now),
                 now,
                 now,
-                'Open until an agent either completes the original user task or records an explicit blocker.',
+                residual_risk,
                 f'watchdog:{recovery_id}',
             ),
         )
@@ -387,6 +399,13 @@ def get_chat_jobs_by_ids(job_ids):
         return []
 
 
+def _relay_recovery_failure_label(reason):
+    reason_lower = str(reason or '').lower()
+    if any(term in reason_lower for term in ('unusable', 'echoes the user prompt', 'response quality')):
+        return 'returned an unusable reply'
+    return 'stalled'
+
+
 def ensure_chat_relay_recovery(
     job_id,
     conversation_id,
@@ -452,7 +471,11 @@ def ensure_chat_relay_recovery(
                     'Do not expose private chain-of-thought; write concise working notes.'
                 ),
             }
-            summary = f'{agent} stalled in conversation #{conv_id}; relay recovery opened for Librarian, Duck, and Vortex.'
+            failure = _relay_recovery_failure_label(reason)
+            summary = (
+                f'{agent} {failure} in conversation #{conv_id}; '
+                'relay recovery opened for Librarian, Duck, and Vortex.'
+            )
             recovery_id = f'recovery-{uuid.uuid4().hex[:12]}'
             card = _format_relay_recovery_card(
                 recovery_id=recovery_id,
@@ -820,11 +843,15 @@ def _format_relay_recovery_card(
     if not context_lines:
         context_lines.append('- No prior chat context found.')
 
+    quality_failure = _relay_recovery_failure_label(reason) == 'returned an unusable reply'
+    job_label = 'Affected job' if quality_failure else 'Stalled job'
+    agent_label = 'Affected agent' if quality_failure else 'Stalled agent'
+
     return (
         f'## Relay Recovery Card: {recovery_id}\n\n'
         f'Conversation: #{conv_id}\n'
-        f'Stalled job: {job_id}\n'
-        f'Stalled agent: {stalled_agent}\n'
+        f'{job_label}: {job_id}\n'
+        f'{agent_label}: {stalled_agent}\n'
         f'Reason: {reason}\n'
         f'Pickup agents: {", ".join(recovery_agents)}\n\n'
         '### Last Known Stages\n'

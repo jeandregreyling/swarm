@@ -46,6 +46,7 @@ def health_snapshot() -> dict[str, Any]:
         "direct": {},
     }
     try:
+        from core.seven_runtime.model_operator import SPEAKER_LOCK
         from core.seven_llm import registry
         from core.seven_llm import llama_server
 
@@ -66,6 +67,7 @@ def health_snapshot() -> dict[str, Any]:
             "registered": bool(entry and entry.driver == "llamacpp"),
             "models": direct_models,
             "resources": llama_server.resource_snapshot(),
+            "speaker_active": SPEAKER_LOCK.locked(),
         }
         if not snap["direct"]["registered"]:
             snap["ok"] = False
@@ -95,7 +97,12 @@ def _chat(payload: dict[str, Any]) -> dict[str, Any]:
         if text:
             stages.append(str(text))
 
-    answer, tokens = seven_agent.chat(message, conversation_history=history if isinstance(history, list) else [], stage_cb=_stage)
+    answer, tokens = seven_agent.chat(
+        message,
+        conversation_history=history if isinstance(history, list) else [],
+        stage_cb=_stage,
+        conversation_id=payload.get("conversation_id"),
+    )
     return {
         "ok": bool(answer),
         "content": str(answer or ""),
@@ -146,38 +153,51 @@ def guarded_chat(payload: dict[str, Any], *, timeout_s: int = DEFAULT_CHAT_TIMEO
     """Run Seven chat with a service-level timeout so callers never hang."""
     started = time.time()
     timeout = max(1, int(payload.get("timeout_seconds") or timeout_s or DEFAULT_CHAT_TIMEOUT_S))
-    ctx = get_context("spawn")
-    queue = ctx.Queue(maxsize=1)
-    proc = ctx.Process(target=_chat_worker, args=(payload, queue), name="seven-runtime-chat")
-    proc.start()
-    proc.join(timeout)
-    if proc.is_alive():
-        proc.terminate()
-        proc.join(3)
-        if proc.is_alive():
-            proc.kill()
-            proc.join(3)
-        _cleanup_direct_model_process(os.environ.get("SEVEN_MODEL", "seven-direct:daily"))
+    from core.seven_runtime.model_operator import SPEAKER_LOCK
+    acquired = SPEAKER_LOCK.acquire(timeout=timeout)
+    if not acquired:
         return {
             "ok": False,
             "content": "",
             "tokens": 0,
-            "error": f"seven runtime chat timeout after {timeout}s",
+            "error": "another local speaker is active",
             "elapsed_s": round(time.time() - started, 3),
         }
-    if not queue.empty():
-        out = queue.get()
-    elif proc.exitcode not in (0, None):
-        out = {
-            "ok": False,
-            "content": "",
-            "tokens": 0,
-            "error": f"seven runtime chat exited {proc.exitcode}",
-        }
-    else:
-        out = {"ok": False, "content": "", "tokens": 0, "error": "seven runtime chat returned no result"}
-    out["elapsed_s"] = round(time.time() - started, 3)
-    return out
+    ctx = get_context("spawn")
+    queue = ctx.Queue(maxsize=1)
+    proc = ctx.Process(target=_chat_worker, args=(payload, queue), name="seven-runtime-chat")
+    try:
+        proc.start()
+        proc.join(timeout)
+        if proc.is_alive():
+            proc.terminate()
+            proc.join(3)
+            if proc.is_alive():
+                proc.kill()
+                proc.join(3)
+            _cleanup_direct_model_process(os.environ.get("SEVEN_MODEL", "seven-direct:daily"))
+            return {
+                "ok": False,
+                "content": "",
+                "tokens": 0,
+                "error": f"seven runtime chat timeout after {timeout}s",
+                "elapsed_s": round(time.time() - started, 3),
+            }
+        if not queue.empty():
+            out = queue.get()
+        elif proc.exitcode not in (0, None):
+            out = {
+                "ok": False,
+                "content": "",
+                "tokens": 0,
+                "error": f"seven runtime chat exited {proc.exitcode}",
+            }
+        else:
+            out = {"ok": False, "content": "", "tokens": 0, "error": "seven runtime chat returned no result"}
+        out["elapsed_s"] = round(time.time() - started, 3)
+        return out
+    finally:
+        SPEAKER_LOCK.release()
 
 
 class SevenRuntimeHandler(BaseHTTPRequestHandler):
@@ -215,11 +235,150 @@ class SevenRuntimeHandler(BaseHTTPRequestHandler):
             models = [{"id": item.get("name"), "object": "model"} for item in (snap.get("direct") or {}).get("models") or []]
             self._send(200, {"object": "list", "data": models})
             return
+        if self.path == "/api/tags":
+            from core.seven_runtime import model_operator
+            self._send(200, model_operator.inventory())
+            return
+        if self.path == "/api/ps":
+            from core.seven_runtime import model_operator
+            snap = model_operator.inventory()
+            self._send(200, {"ok": snap.get("ok"), "models": snap.get("resident") or [], "warnings": snap.get("warnings") or []})
+            return
         self._send(404, {"ok": False, "error": "not found"})
 
     def do_POST(self) -> None:
         if self.path == "/chat":
             self._send(200, guarded_chat(self._read_json()))
+            return
+        if self.path in {"/api/chat", "/api/generate"}:
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            prompt = str(payload.get("prompt") or "").strip()
+            if not prompt:
+                messages = payload.get("messages") or []
+                for row in reversed(messages if isinstance(messages, list) else []):
+                    if isinstance(row, dict) and str(row.get("role") or "").lower() == "user":
+                        prompt = str(row.get("content") or "").strip()
+                        break
+            result = model_operator.run(
+                payload.get("model"),
+                prompt,
+                timeout_seconds=payload.get("timeout_seconds") or 120,
+                keep_alive=payload.get("keep_alive", "60s"),
+            )
+            self._send(200 if result.get("ok") else 400, result)
+            return
+        if self.path == "/api/stop":
+            from core.seven_runtime import model_operator
+            result = model_operator.stop(self._read_json().get("model"))
+            self._send(200 if result.get("ok") else 400, result)
+            return
+        if self.path == "/api/roll-call":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.roll_call(
+                payload.get("model"),
+                timeout_seconds=payload.get("timeout_seconds") or 120,
+            )
+            self._send(200, result)
+            return
+        if self.path == "/api/peer-turn":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.peer_turn(
+                payload.get("peer"),
+                payload.get("question") or payload.get("prompt"),
+                conversation_id=payload.get("conversation_id"),
+                project_id=str(payload.get("project_id") or ""),
+                timeout_seconds=payload.get("timeout_seconds") or 180,
+            )
+            self._send(200 if result.get("ok") else 400, result)
+            return
+        if self.path == "/api/constrained-peer-turn":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.constrained_peer_turn(
+                payload.get("peer"),
+                payload.get("question") or payload.get("prompt"),
+                contract_name=str(payload.get("contract_name") or ""),
+                conversation_id=payload.get("conversation_id"),
+                project_id=str(payload.get("project_id") or ""),
+                timeout_seconds=payload.get("timeout_seconds") or 180,
+            )
+            self._send(200 if result.get("ok") or result.get("fallback_used") else 400, result)
+            return
+        if self.path == "/api/consult":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.consult(
+                payload.get("question") or payload.get("prompt"),
+                conversation_id=payload.get("conversation_id"),
+                project_id=str(payload.get("project_id") or ""),
+                timeout_seconds=payload.get("timeout_seconds") or 180,
+            )
+            self._send(200 if result.get("ok") else 400, result)
+            return
+        if self.path == "/api/routed-acceptance-review":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.routed_acceptance_review(
+                payload.get("peer"),
+                project_id=str(payload.get("project_id") or ""),
+                rounds=payload.get("rounds") or 2,
+                timeout_seconds=payload.get("timeout_seconds") or 180,
+            )
+            self._send(200, result)
+            return
+        if self.path == "/api/instruction-drill":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.instruction_drill(
+                payload.get("peer"),
+                project_id=str(payload.get("project_id") or ""),
+                rounds=payload.get("rounds") or 1,
+                timeout_seconds=payload.get("timeout_seconds") or 120,
+            )
+            self._send(200, result)
+            return
+        if self.path == "/api/grounded-transfer-lesson":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.grounded_transfer_lesson(
+                payload.get("peer"),
+                project_id=str(payload.get("project_id") or ""),
+                timeout_seconds=payload.get("timeout_seconds") or 120,
+            )
+            self._send(200, result)
+            return
+        if self.path == "/api/bounded-repair-lesson":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.bounded_repair_lesson(
+                payload.get("peer"),
+                project_id=str(payload.get("project_id") or ""),
+                timeout_seconds=payload.get("timeout_seconds") or 120,
+            )
+            self._send(200, result)
+            return
+        if self.path == "/api/schema-constrained-lesson":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.schema_constrained_lesson(
+                payload.get("peer"),
+                project_id=str(payload.get("project_id") or ""),
+                timeout_seconds=payload.get("timeout_seconds") or 120,
+            )
+            self._send(200, result)
+            return
+        if self.path == "/api/schema-robustness-lesson":
+            from core.seven_runtime import model_operator
+            payload = self._read_json()
+            result = model_operator.schema_robustness_lesson(
+                payload.get("peer"),
+                project_id=str(payload.get("project_id") or ""),
+                timeout_seconds=payload.get("timeout_seconds") or 120,
+            )
+            self._send(200, result)
             return
         self._send(404, {"ok": False, "error": "not found"})
 
