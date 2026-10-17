@@ -13,6 +13,9 @@ from __future__ import annotations
 import os
 import tempfile
 
+# This standalone smoke script stubs global modules at import time; it is not a pytest test.
+collect_ignore = ["test_triage_queue_dryrun.py"]
+
 # ── UTF-8 mode ────────────────────────────────────────────────────────────────
 # pathlib.read_text() falls back to the locale codec on Windows (cp1252).
 # Setting this env var here ensures it applies even if the test module reads
