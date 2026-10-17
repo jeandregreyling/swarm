@@ -10,10 +10,28 @@ Also exercises the ``/api/coding-bible/probe`` HTTP route so the same
 report is visible to Studio / Settings.
 """
 from pathlib import Path
+import importlib
 
 import pytest
 
 from core.coding_bible_probe import probe, BIBLE_MARKER, EXPECTED_AGENTS
+
+
+@pytest.fixture(autouse=True)
+def _initialize_coding_bible_injection(monkeypatch):
+    from utils import coding_bible, config
+
+    monkeypatch.setattr(
+        coding_bible,
+        "quick_card",
+        lambda: f"{BIBLE_MARKER}\n\nProbe fixture quick card.",
+    )
+    importlib.reload(config)
+    try:
+        yield
+    finally:
+        monkeypatch.undo()
+        importlib.reload(config)
 
 
 def test_r15_probe_reports_ok():

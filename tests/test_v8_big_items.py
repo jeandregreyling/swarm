@@ -9,33 +9,8 @@ declared surface area so regressions in shape are caught.
 from __future__ import annotations
 
 import pathlib
-import sqlite3
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-
-
-def _read_doc(rel_path: str) -> str:
-    """Read a doc preferring Studio (`project_docs.doc_name`) over disk.
-
-    PACKET-01 moved doc-class .md files into Studio; the disk file is now a
-    redirect stub starting with 'Moved into Studio'. Tests asserting content
-    must read from Studio first.
-    """
-    try:
-        con = sqlite3.connect(str(ROOT / "swarm_memory.db"))
-        try:
-            row = con.execute(
-                "SELECT content FROM project_docs WHERE doc_name = ?",
-                (rel_path,),
-            ).fetchone()
-        finally:
-            con.close()
-    except Exception:
-        row = None
-    if row and row[0] and "Moved into Studio" not in row[0][:200]:
-        return row[0]
-    return (ROOT / rel_path).read_text()
-
 
 # ── Phase-7 Seven Runtime (S-C84B33F9A8, S-656DCD475C, S-5E73858F90, ────────
 #    S-3F610B254A, S-594AEA9884, S-02DD9A82C1) ────────────────────────────────
@@ -73,9 +48,11 @@ def test_seven_runtime_driver_abc():
     assert hasattr(Driver, "chat") and hasattr(Driver, "ps") and hasattr(Driver, "list_models")
 
 
-def test_seven_runtime_theme_doc():
-    txt = _read_doc("docs/SEVEN_RUNTIME.md")
-    assert "Feature flag" in txt and "SEVEN_RUNTIME=1" in txt
+def test_seven_runtime_feature_flag_contract():
+    src = (ROOT / "core" / "model_runtime_gateway.py").read_text()
+    assert 'os.environ.get("SEVEN_RUNTIME", "")' in src
+    assert 'return value in {"1", "true", "yes", "direct", "llamacpp"}' in src
+    assert "from core.seven_llm import registry" in src
 
 
 # ── Phase-7 Remote access (S-6B25D0490E, S-E9D6E762E5, S-E553444811, ────────
@@ -123,9 +100,13 @@ def test_remote_access_onboarding_pack():
     assert "enroll_2fa" in txt and "totp_enroll" in txt
 
 
-def test_remote_access_theme_doc():
-    txt = _read_doc("docs/REMOTE_ACCESS.md")
-    assert "/api/auth/2fa/enroll" in txt and "Caddy" in txt and "Cloudflare Tunnel" in txt
+def test_remote_access_runtime_surface():
+    auth = (ROOT / "frontend" / "blueprints" / "auth.py").read_text()
+    caddy = (ROOT / "ops" / "caddy" / "Caddyfile.template").read_text()
+    cloudflared = (ROOT / "ops" / "cloudflared" / "config.yml.template").read_text()
+    assert "/api/auth/2fa/enroll" in auth
+    assert "reverse_proxy 127.0.0.1:5050" in caddy
+    assert "{{TUNNEL_UUID}}" in cloudflared
 
 
 # ── Phase-7 Trainer (S-664A2D05E7) ──────────────────────────────────────────
@@ -158,8 +139,14 @@ def test_kc_seed_prompts_flow_into_library_seed_docs():
 
 
 def test_kc_seeds_readme():
-    txt = _read_doc("ops/kc_seeds/README.md")
-    assert "topic_id" in txt and "cadence" in txt
+    from ops.kc_seeds import _loader as loader
+
+    assert {"topic_id", "title", "cadence", "tags", "sources"} <= set(
+        loader.SeedTopic.__dataclass_fields__
+    )
+    topics = loader.load_all()
+    assert topics
+    assert all(topic.topic_id and topic.cadence in loader.VALID_CADENCES for topic in topics)
 
 
 # ── Phase-6 Fan / sysmod / onboarding (S-C194440A7C, S-514BB9FBD3, ──────────
@@ -246,9 +233,13 @@ def test_governance_tab_wired():
 
 # ── Tauri v2 desktop bundles (S-E7775EAA48) ─────────────────────────────────
 def test_tauri_v2_config_and_ui_route():
-    conf = (ROOT / "desktop" / "tauri.conf.json").read_text()
-    assert "schema.tauri.app/config/2" in conf
-    assert "localhost:5050" in conf
+    import json
+
+    conf = json.loads((ROOT / "desktop" / "tauri.conf.json").read_text())
+    assert conf["$schema"] == "https://schema.tauri.app/config/2"
+    assert conf["build"]["devUrl"] == "./src/index.html"
+    assert conf["build"]["frontendDist"] == "./src"
+    assert (ROOT / "desktop" / "src" / "index.html").is_file()
     term = (ROOT / "frontend" / "terminal.py").read_text()
     assert '@app.route("/ui"' in term
     build = ROOT / "desktop" / "build.sh"

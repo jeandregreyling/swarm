@@ -37,6 +37,10 @@ sys.path.insert(0, str(SWARM_ROOT))
 sys.path.insert(0, str(SWARM_ROOT / 'utils'))
 sys.path.insert(0, str(SWARM_ROOT / 'core' / 'pipeline'))
 
+from utils.env import load_local_env
+
+load_local_env(SWARM_ROOT)
+
 logger = logging.getLogger('seven.fridays.orchestrator')
 logging.basicConfig(
     level=logging.INFO,

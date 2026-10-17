@@ -22,6 +22,10 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'utils'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+from utils.env import load_local_env
+
+load_local_env()
+
 logger = logging.getLogger('seven.research')
 
 # Depth → config mapping

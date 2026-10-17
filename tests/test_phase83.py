@@ -6,6 +6,7 @@ All deterministic, no LLM calls, no network.
 """
 
 import json
+import importlib
 import sqlite3
 import pytest
 
@@ -145,14 +146,20 @@ def db83(tmp_path, monkeypatch):
         c.row_factory = sqlite3.Row
         return c
 
-    monkeypatch.setattr('utils.db._connection.get_connection', mock_get_connection)
-    monkeypatch.setattr('agents.twenty.observer.get_connection', mock_get_connection)
-    monkeypatch.setattr('agents.twenty.memory.get_connection', mock_get_connection)
-    monkeypatch.setattr('agents.twenty.decisions.get_connection', mock_get_connection)
-    monkeypatch.setattr('agents.twenty.mapper.get_connection', mock_get_connection)
-    monkeypatch.setattr('frontend.blueprints.council_bp.get_connection', mock_get_connection)
+    db_connection = importlib.import_module('utils.db._connection')
+    observer = importlib.import_module('agents.twenty.observer')
+    memory = importlib.import_module('agents.twenty.memory')
+    decisions = importlib.import_module('agents.twenty.decisions')
+    mapper = importlib.import_module('agents.twenty.mapper')
+    council_bp = importlib.import_module('frontend.blueprints.council_bp')
+    monkeypatch.setattr(db_connection, 'get_connection', mock_get_connection)
+    monkeypatch.setattr(observer, 'get_connection', mock_get_connection)
+    monkeypatch.setattr(memory, 'get_connection', mock_get_connection)
+    monkeypatch.setattr(decisions, 'get_connection', mock_get_connection)
+    monkeypatch.setattr(mapper, 'get_connection', mock_get_connection)
+    monkeypatch.setattr(council_bp, 'get_connection', mock_get_connection)
     # health_bp module is shadowed by the Blueprint object in __init__.py
-    import frontend.blueprints.health_bp as _hbp_mod
+    _hbp_mod = importlib.import_module('frontend.blueprints.health_bp')
     monkeypatch.setattr(_hbp_mod, 'get_connection', mock_get_connection)
 
     return conn, db_path

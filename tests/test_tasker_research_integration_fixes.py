@@ -1,3 +1,4 @@
+import importlib
 import sqlite3
 import sys
 from pathlib import Path
@@ -450,6 +451,7 @@ def test_research_quick_api_creates_single_session(monkeypatch):
     from flask import Flask
 
     import frontend.blueprints.research as research_bp
+    research_workflow = importlib.import_module("fridays.research_workflow")
 
     calls = []
 
@@ -457,7 +459,7 @@ def test_research_quick_api_creates_single_session(monkeypatch):
         calls.append((topic, depth, requesting_agent))
         return 42, "summary"
 
-    monkeypatch.setattr("fridays.research_workflow.run_research", fake_run_research)
+    monkeypatch.setattr(research_workflow, "run_research", fake_run_research)
 
     app = Flask(__name__)
     app.register_blueprint(research_bp.research_bp)
@@ -906,6 +908,7 @@ def test_tasker_run_watched_topic_now_runs_task_and_returns_evidence(tmp_path, m
     from flask import Flask
 
     import frontend.blueprints.tasker_bp as tasker_bp
+    task_runner = importlib.import_module("fridays.task_runner")
 
     db_path = tmp_path / "watch-topic-run-now.db"
     calls = []
@@ -944,7 +947,7 @@ def test_tasker_run_watched_topic_now_runs_task_and_returns_evidence(tmp_path, m
         return True, "Research session 11 found 1 qualified new evidence item(s); email sent."
 
     monkeypatch.setattr(tasker_bp, "_get_conn", get_conn)
-    monkeypatch.setattr("fridays.task_runner.run_task", fake_run_task)
+    monkeypatch.setattr(task_runner, "run_task", fake_run_task)
     with get_conn() as conn:
         conn.execute(
             """INSERT INTO scheduled_tasks
@@ -980,6 +983,8 @@ def test_interest_research_update_emails_only_qualified_novel_evidence(tmp_path,
     from datetime import datetime
 
     import fridays.task_runner as task_runner
+    db_connection = importlib.import_module("utils.db._connection")
+    research_workflow = importlib.import_module("fridays.research_workflow")
 
     db_path = tmp_path / "watched-topic.db"
     topic = "SAP payroll Australia"
@@ -1035,8 +1040,8 @@ def test_interest_research_update_emails_only_qualified_novel_evidence(tmp_path,
             conn.commit()
         return sid, "fresh summary"
 
-    monkeypatch.setattr("utils.db._connection.get_connection", get_conn)
-    monkeypatch.setattr("fridays.research_workflow.run_research", fake_run_research)
+    monkeypatch.setattr(db_connection, "get_connection", get_conn)
+    monkeypatch.setattr(research_workflow, "run_research", fake_run_research)
     monkeypatch.setattr(task_runner, "_log_run", lambda *a, **k: None)
     monkeypatch.setattr(task_runner, "_email_research_update", lambda **kwargs: sent.append(kwargs) or True)
 
@@ -1083,6 +1088,8 @@ def test_interest_research_update_emails_only_qualified_novel_evidence(tmp_path,
 
 def test_interest_research_update_suppresses_low_quality_new_evidence(tmp_path, monkeypatch):
     import fridays.task_runner as task_runner
+    db_connection = importlib.import_module("utils.db._connection")
+    research_workflow = importlib.import_module("fridays.research_workflow")
 
     db_path = tmp_path / "watched-topic-low-quality.db"
     sent = []
@@ -1104,8 +1111,8 @@ def test_interest_research_update_suppresses_low_quality_new_evidence(tmp_path, 
             conn.commit()
         return sid, "weak summary"
 
-    monkeypatch.setattr("utils.db._connection.get_connection", get_conn)
-    monkeypatch.setattr("fridays.research_workflow.run_research", fake_run_research)
+    monkeypatch.setattr(db_connection, "get_connection", get_conn)
+    monkeypatch.setattr(research_workflow, "run_research", fake_run_research)
     monkeypatch.setattr(task_runner, "_log_run", lambda *a, **k: None)
     monkeypatch.setattr(task_runner, "_email_research_update", lambda **kwargs: sent.append(kwargs) or True)
 
@@ -1182,6 +1189,7 @@ def test_watched_topic_recency_filters_historical_evidence():
 
 def test_email_research_update_includes_interactive_date_and_historical_sections(monkeypatch):
     import fridays.task_runner as task_runner
+    email_handler = importlib.import_module("lib.email.email_handler")
 
     sent = []
 
@@ -1190,7 +1198,7 @@ def test_email_research_update_includes_interactive_date_and_historical_sections
         return True
 
     monkeypatch.setenv("SWARM_UI_URL", "http://studio.local/ui")
-    monkeypatch.setattr("lib.email.email_handler.send_reply", fake_send_reply)
+    monkeypatch.setattr(email_handler, "send_reply", fake_send_reply)
 
     ok = task_runner._email_research_update(
         topic="SAP payroll Australia",

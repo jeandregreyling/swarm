@@ -14,6 +14,7 @@ duckduckgo-search>=8.0
 openai>=2.32
 google-genai>=1.70
 tavily-python>=0.7
+PyYAML>=6.0
 
 # Optional integrations — install as needed
 # google-api-python-client

@@ -13,6 +13,10 @@
 #   ops/seed_agent_permissions.py — IDENTITY_TEMPLATES.model fields should
 #                             match the model strings set in this file.
 
+from utils.env import load_local_env as _load_local_env
+
+_load_local_env()
+
 GEMINI_MODEL   = "gemini-2.0-flash"
 
 # Gmail - email interface (Step 3)
@@ -566,13 +570,14 @@ Your job: deliver one clear answer. Lead with the recommended approach or direct
 # Nine's sandpit: sandpits/nine/ — architectural notes, draft code, session plans.
 
 def _load_env_key(name):
-    """Load an API key from environment, /etc/environment, or .env.agents."""
+    """Load an API key from environment, local env files, or /etc/environment."""
     import os
     val = os.environ.get(name, '').strip()
     if val:
         return val
     _env_files = [
         '/etc/environment',
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'),
         os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env.agents'),
     ]
     for path in _env_files:
