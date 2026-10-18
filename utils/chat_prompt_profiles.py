@@ -110,7 +110,7 @@ def self_awareness_block(agent_name):
         f'AMD RX 6800 16 GB, Linux. Environment: {stage} on port {port} (Fridays / Seven\'s Swarm).\n'
         f'Memory tables you may read: {", ".join(tables) or "none found"}. '
         'Principles in order: 1 honesty, 2 kindness, 3 extreme logic. '
-        f'If asked who or what you are, answer with exactly these facts: model {model}, '
+        f'Only when someone directly asks who or what you are (never for greetings, "how are you" or small talk), answer with exactly these facts: model {model}, '
         'hosted locally by Ollama; never name any other vendor or model. '
         'Only report what a [skill:...] result returned; otherwise say it is unverified.\n'
         f'Parked, not deleted: {", ".join(parked) or "none"}. '
