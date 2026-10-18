@@ -770,8 +770,8 @@ def test_deos_cycle_reroutes_blocked_failed_local_work(monkeypatch, tmp_path):
     finally:
         conn.close()
     assert report['operates']['rerouted_local_work'] == 1
-    assert step['owner'] == 'qwen'
-    assert 'rerouted to qwen' in step['residual_risk']
+    assert step['owner'] == 'fred'
+    assert 'rerouted to fred' in step['residual_risk']
     assert evidence['status'] == 'warn'
 
 

@@ -32,15 +32,17 @@ SUPPORT_POLICY = {
 }
 
 WORK_AGENT_MODULES = {
+    'fred': ('agents.fred.fred_agent', 'chat'),
     'mistral': ('agents.mistral.mistral_agent', 'chat'),
     'qwen': ('agents.qwen.qwen_agent', 'chat'),
     'gemma': ('agents.gemma.gemma_agent', 'chat'),
     'llama': ('agents.llama.llama_agent', 'chat'),
 }
 
-WORK_AGENT_ORDER = ['qwen', 'gemma', 'llama', 'mistral']
+WORK_AGENT_ORDER = ['fred', 'qwen', 'gemma', 'llama', 'mistral']
 
 WORK_AGENT_MODELS = {
+    'fred': 'mistral-small:24b',
     'mistral': 'mistral:latest',
     'qwen': 'qwen:latest',
     'gemma': 'gemma3:latest',

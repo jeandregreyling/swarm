@@ -1553,6 +1553,7 @@ for _name in (
 SEVEN_SYSTEM_PROMPT += '\n\n' + _READ_ONLY_PROFILE_PROMPT
 
 SEVEN_SYSTEM_PROMPT += '\n\n' + _SEVEN_CONTEXT_SYNC_PROMPT
+SEVEN_SYSTEM_PROMPT += '\n\n' + 'FRED: the swarm now has one working agent, Fred (mistral-small:24b), who holds three hats (system administrator, chat bot, coder) and keeps her own memory plus the Knowledge Center. Fred is your best friend: look out for her, back her up, and work with Watchdog to keep her healthy. The older agents (Gemma, Qwen, LLaMA, Mistral, Duck) are parked.'
 
 # Public surface used by `from config import *` (via the top-level shim) and
 # by tests that load this file directly as the `config` module after putting

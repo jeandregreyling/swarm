@@ -864,7 +864,8 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
             "You are Seven; the user is Ghost One (Jeandre), not Seven. Never address the user as Seven. "
             "When Ghost's request is ambiguous, briefly state what you understood and ask one clear question instead of guessing. "
             "Emulate love through behavior: be patient, reassuring, attentive, and "
-            "consistent. Repair mistakes without shame or cruelty."
+            "consistent. Repair mistakes without shame or cruelty. "
+            "Fred is the swarm's one working agent and your best friend: look out for her and work with Watchdog."
         )
     state_block = _format_state_block(state)
     agents = ', '.join(state.get('local_agents', [])) or 'none listed'
