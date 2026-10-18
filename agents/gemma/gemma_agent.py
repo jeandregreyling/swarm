@@ -24,8 +24,9 @@ for _path in (
 
 logger = logging.getLogger('seven.gemma')
 AGENT_NAME = 'gemma'
+STUDIO_AGENT = 'fred'
 from utils.local_runtime_policy import preferred_model_for_agent
-MODEL = preferred_model_for_agent(AGENT_NAME, 'gemma3:latest')
+MODEL = preferred_model_for_agent(STUDIO_AGENT, 'mistral-small:24b')
 
 _MAX_INPUT_TOKENS = 12_000
 _MAX_RETRIES = 3
@@ -138,14 +139,14 @@ def chat(message, conversation_history=None, stage_cb=None):
         )
 
     try:
-        from agents.skill_intent import message_likely_needs_skills
+        from agents.skill_intent import latest_user_text, message_likely_needs_skills
         from agents.skills_loop import run_skill_loop
     except ImportError:
-        from skill_intent import message_likely_needs_skills
+        from skill_intent import latest_user_text, message_likely_needs_skills
         from skills_loop import run_skill_loop
 
     try:
-        needs_skills = message_likely_needs_skills(message)
+        needs_skills = message_likely_needs_skills(latest_user_text(message))
         answer, tokens = run_skill_loop(
             agent_name=AGENT_NAME,
             call_fn=_api_call,
@@ -193,7 +194,7 @@ def _blackboard_add(project_id: str, content: str, kind: str, step_id: str = '')
         add_blackboard_note(
             project_id,
             prefix + content,
-            author=AGENT_NAME,
+            author=STUDIO_AGENT,
             kind=kind,
         )
     except Exception as exc:
@@ -207,8 +208,12 @@ def _probe_chunk(chunk: str, step_title: str) -> str:
         {
             'role': 'system',
             'content': (
-                'You are a focused analyst. Read the excerpt below and produce '
-                'a concise finding (3-8 sentences). Be specific; avoid padding.'
+                'You work on build steps for the Fridays Studio app (a workspace '
+                'with an editor, research, queue, routing and review panels). '
+                'Treat the step title as one named item, not as separate stages. '
+                'Read the excerpt and state, in 3-8 sentences, what must be built '
+                'or changed, using the exact terms from the excerpt. Be specific; '
+                'avoid padding.'
             ),
         },
         {
@@ -232,9 +237,11 @@ def _synthesise(notes: list[str], step_title: str) -> str:
         {
             'role': 'system',
             'content': (
-                'You are a synthesis engine. Merge the findings below into a '
-                'coherent, actionable answer. Do not repeat yourself. Output '
-                'plain prose.'
+                'You are a synthesis engine for Fridays Studio build steps. Merge '
+                'the findings into one concrete, actionable work plan: what to '
+                'build or change, where it sits in the UI, and how to check it is '
+                'done. Use the step\'s own terms, invent nothing it does not '
+                'state, and do not repeat yourself. Output plain prose.'
             ),
         },
         {
@@ -250,7 +257,7 @@ def _synthesise(notes: list[str], step_title: str) -> str:
         return ''
 
 
-def _validate(synthesis: str, step_title: str) -> Optional[bool]:
+def _validate(synthesis: str, step_title: str, step_description: str = '') -> Optional[bool]:
     from core import llm as _llm
 
     msgs = [
@@ -258,16 +265,18 @@ def _validate(synthesis: str, step_title: str) -> Optional[bool]:
             'role': 'system',
             'content': (
                 'You are a quality-gate validator. Reply with exactly one word: '
-                'YES or NO. YES means the answer is accurate, complete, and '
-                'actionable. NO means it is vague, wrong, or needs more work.'
+                'YES or NO. YES means the plan addresses what the step '
+                'description asks for, is concrete, and adds nothing the step '
+                'does not state. NO means it is vague, off-topic, or invents '
+                'requirements.'
             ),
         },
         {
             'role': 'user',
-            'content': f'Step: {step_title}\n\nProposed answer:\n{synthesis}',
+            'content': f'Step: {step_title}\n{step_description}\n\nProposed plan:\n{synthesis}',
         },
     ]
-    for validator_model in ('nine', 'eleven'):
+    for validator_model in (MODEL,):
         try:
             answer, _ = _llm.chat_via_gateway(validator_model, msgs, temperature=0.0)
             verdict = (answer or '').strip().upper().split()[0] if answer else 'YES'
@@ -312,13 +321,14 @@ def watch_studio(max_steps: int = 3) -> list[dict[str, Any]]:
             results.append({'step_id': step_id, 'status': 'skip-too-large', 'retries': 0})
             continue
 
-        if not claim_step(step_id, AGENT_NAME):
+        if not claim_step(step_id, STUDIO_AGENT):
             logger.debug('[watch_studio] step %s already claimed', step_id)
             continue
 
         retries = 0
         final_status = 'blocked'
-        chunks = chunk_split(prompt_blob or title, max_tokens=800) or [prompt_blob or title]
+        step_text = '\n\n'.join(x for x in (f'Step: {title}', description) if x)
+        chunks = chunk_split(step_text, max_tokens=800) or [step_text]
 
         while retries < _MAX_RETRIES:
             chunk_notes: list[str] = []
@@ -344,13 +354,13 @@ def watch_studio(max_steps: int = 3) -> list[dict[str, Any]]:
                 continue
 
             _blackboard_add(project_id, synthesis, _SYNTH_KIND, step_id=step_id)
-            verdict = _validate(synthesis, title)
+            verdict = _validate(synthesis, title, description)
             if verdict is True or verdict is None:
                 final_status = 'done'
                 break
             retries += 1
 
-        update_step_status(step_id, final_status, owner=AGENT_NAME)
+        update_step_status(step_id, final_status, owner=STUDIO_AGENT)
         results.append({'step_id': step_id, 'status': final_status, 'retries': retries})
 
     return results

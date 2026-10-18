@@ -48,14 +48,14 @@ def test_watch_studio_processes_step_and_writes_quintum_notes(isolated_db, monke
         "_synthesise",
         lambda notes, step_title: f"synthesis for {step_title} with {len(notes)} notes",
     )
-    monkeypatch.setattr(gemma_agent, "_validate", lambda synthesis, step_title: True)
+    monkeypatch.setattr(gemma_agent, "_validate", lambda synthesis, step_title, step_description="": True)
 
     results = gemma_agent.watch_studio(max_steps=1)
 
     assert results == [{"step_id": sid, "status": "done", "retries": 0}]
     step = pj.get_step(sid)
     assert step["status"] == "done"
-    assert step["owner"] == "gemma"
+    assert step["owner"] == "fred"
 
     notes = pj.list_blackboard_notes(pid, status=None)
     assert any(note["kind"] == "quintum-chunk" for note in notes)
