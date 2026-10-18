@@ -90,13 +90,13 @@ ROLE_KEYWORDS = {
 # resolution consults the routable list so disabled/missing agents fall through
 # to the next-best candidate.
 ROLE_DEFAULT_AGENTS = {
-    'coder':        ('ten', 'nine', 'ghost_coder', 'qwen'),
-    'researcher':   ('gemma', 'llama', 'mistral'),  # routed through silent-api (scholar/seeker) internally
-    'orchestrator': ('duck', 'seven'),
-    'memory':       ('librarian', 'duck'),
-    'auditor':      ('duck', 'eleven', 'nineteen'),
-    'messenger':    ('duck',),
-    'voice':        ('seven', 'duck', 'gemma'),
+    'coder':        ('fred', 'ten', 'nine', 'ghost_coder', 'qwen'),
+    'researcher':   ('fred', 'gemma', 'llama', 'mistral'),  # routed through silent-api (scholar/seeker) internally
+    'orchestrator': ('fred', 'duck', 'seven'),
+    'memory':       ('fred', 'librarian', 'duck'),
+    'auditor':      ('fred', 'duck', 'eleven', 'nineteen'),
+    'messenger':    ('fred', 'duck',),
+    'voice':        ('fred', 'seven', 'duck', 'gemma'),
 }
 
 # @mention pattern — captures `@name`, `@Ten`, `@ghost_coder`. Case-insensitive.

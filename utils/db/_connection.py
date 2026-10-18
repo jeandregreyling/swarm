@@ -25,7 +25,7 @@ DB_PATH = os.environ.get('SWARM_DB_PATH', os.path.join(SWARM_ROOT, 'swarm_memory
 # Global mapping to ensure consistency across the swarm
 AGENT_POOL_MAP = {
     'llama': 'memory_llama', 'qwen': 'memory_qwen',
-    'mistral': 'memory_mistral',
+    'mistral': 'memory_mistral', 'fred': 'memory_fred',
     'gemma': 'memory_gemma', 'eight': 'memory_eight',
     'nine': 'memory_nine', 'librarian': 'memory',
     'duck': 'memory', 'sniffles': 'memory',

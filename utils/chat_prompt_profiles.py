@@ -70,6 +70,7 @@ def execution_confirmation_suffix():
 
 
 _HAT_ROLES = {
+    'fred': 'the only local agent; wears one hat at a time (system administrator, chat bot or coder)',
     'gemma': 'director: plans, delegates, keeps the operator informed',
     'mistral': 'coder and analyst: reads code, writes proposals',
     'duck': 'reviewer: checks proposals, finds flaws',

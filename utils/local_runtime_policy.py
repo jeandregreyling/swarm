@@ -21,7 +21,7 @@ EMBEDDING_ONLY_MODELS = frozenset({"nomic-embed-text:latest", "nomic-embed-text"
 # One model wears every local hat. Override with SWARM_ONE_MODEL; set it to an
 # empty string to fall back to the per-agent models below.
 ONE_MODEL = os.environ.get("SWARM_ONE_MODEL", "mistral-small:24b").strip()
-_HAT_AGENTS = ("gemma", "mistral", "llama", "qwen", "duck")
+_HAT_AGENTS = ("fred", "gemma", "mistral", "llama", "qwen", "duck")
 if ONE_MODEL:
     PREFERRED_AGENT_MODELS = {name: ONE_MODEL for name in _HAT_AGENTS}
 else:
@@ -47,7 +47,7 @@ QWEN_CHAT_SYSTEM_PROMPT = (
 )
 
 READ_ONLY_AGENT_PROFILES = frozenset({"seven"})
-MEMORY_WRITE_AGENT_PROFILES = frozenset({"gemma", "qwen", "llama"})
+MEMORY_WRITE_AGENT_PROFILES = frozenset({"fred", "gemma", "qwen", "llama"})
 READ_ONLY_AGENT_CAPABILITIES = frozenset({
     "coordinate",
     "git_execute",

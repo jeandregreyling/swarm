@@ -52,3 +52,12 @@ Honesty rule in code: a fact exists only if a skill returned it.
 - Models: `SWARM_ONE_MODEL=` (empty), restart.
 - Unpark: `UPDATE agents SET enabled=1, registry_status='ACTIVE' WHERE name IN (...)`. Full snapshot of the eleven local agents: session `files/local_agents_snapshot.json`; DB backups `/tmp/swarm_memory.pre-*.db`.
 - Memory: delete `mind.db`; nothing else depends on it.
+
+## Fred (one agent, many roles)
+
+Fred is the only local agent: `agents/fred/fred_agent.py`, prompt `FRED_SYSTEM_PROMPT` in `utils/config.py`, hats in `utils/fred_hats.py` (system administrator, chat bot, coder; one at a time, picked per message or forced with `hat: coder`).
+- Roles (`agents.roles`): system_administrator, chat_bot, coder, director, analyst, researcher, auditor. All 17 registered capabilities granted; skills and per-user skill permissions are the union of the old hats. Write skills stay revoked.
+- Swap: gemma, mistral, qwen, llama, duck hot-swapped to Fred (28 proposals, 63 queue items), then parked (`enabled=0, registry_status='parked'`). Seven is unchanged.
+- Routing: `core/routing.py` lists Fred first for every role.
+- Memory: `memory_fred` table plus `mind.db` notes (handover, roles, onboarding).
+- Undo: restore `/tmp/swarm_memory.pre-fred.db` (taken before the swap), or unpark the old agents with the SQL above.

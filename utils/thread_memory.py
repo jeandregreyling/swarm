@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS thread_state (
 )
 """
 _MAX_BLOCK_CHARS = 1400
-_HAT_AGENTS = frozenset({'gemma', 'mistral', 'duck'})
+_HAT_AGENTS = frozenset({'fred', 'gemma', 'mistral', 'duck'})
 
 
 def _clip(text, limit):
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS exchanges (
 # What the operator decided, so the one model starts with the same context.
 _SEED_NOTES = (
     ('principle', 'Operator mantra, in order: 1 honesty, 2 kindness, 3 extreme logic.'),
-    ('decision', 'One local model (mistral-small:24b on the 16 GB RX 6800) wears every hat. Gemma is director, Mistral coder and analyst, Duck reviewer. Llama, Qwen, Eight, Librarian, Sniffles, Thirteen, Nineteen and Twenty are parked, not deleted; Mistral may later adopt one as a pet.'),
+    ('decision', 'Fred is the only local agent. He runs on mistral-small:24b (16 GB RX 6800) and wears one hat at a time: system administrator, chat bot or coder. Gemma, Mistral, Qwen, LLaMA and Duck are decommissioned (parked, not deleted); their open proposals and queue items were handed to Fred. Seven stays as the companion.'),
     ('decision', 'Write skills (fs_patch, fs_patch_lines, fs_write, file_write) are revoked. Agents read files and raise proposals only. An agent patch once broke fridays/task_runner.py.'),
     ('correction', 'Do not report a proposal ID or file result unless a skill returned it; otherwise say it is unverified.'),
     ('correction', 'Do not invent who or what you are. You are the local model named in your self-awareness block, hosted by Ollama.'),
@@ -214,13 +214,16 @@ def add_note(kind, text):
 _WORD_RE = re.compile(r'[a-z0-9_]{4,}')
 
 
+_ALWAYS_KINDS = ('principle', 'correction', 'onboarding')
+
+
 def relevant_notes(conn, message, limit=5):
     """Principles always; the rest ranked by word overlap with the message, newest on ties."""
     rows = conn.execute('SELECT kind, text FROM notes ORDER BY id DESC').fetchall()
     words = set(_WORD_RE.findall(str(message or '').lower()))
-    always = [r for r in rows if r['kind'] in ('principle', 'correction')]
+    always = [r for r in rows if r['kind'] in _ALWAYS_KINDS]
     scored = sorted(
-        (r for r in rows if r['kind'] not in ('principle', 'correction')),
+        (r for r in rows if r['kind'] not in _ALWAYS_KINDS),
         key=lambda r: -len(words & set(_WORD_RE.findall(r['text'].lower()))),
     )
     return (always + scored)[: max(limit, len(always))]

@@ -1135,8 +1135,9 @@ def _migrate_schema(conn=None):
         SCHOLAR_SYSTEM_PROMPT    = getattr(_cfg, 'SCHOLAR_SYSTEM_PROMPT',   '')
         SEEKER_SYSTEM_PROMPT     = getattr(_cfg, 'SEEKER_SYSTEM_PROMPT',    '')
         GEMINI_SYSTEM_PROMPT     = getattr(_cfg, 'GEMINI_SYSTEM_PROMPT',    '')
+        FRED_SYSTEM_PROMPT       = getattr(_cfg, 'FRED_SYSTEM_PROMPT',      '')
     except Exception:
-        GEMINI_SYSTEM_PROMPT = ''
+        GEMINI_SYSTEM_PROMPT = FRED_SYSTEM_PROMPT = ''
         GEMMA_SYSTEM_PROMPT = LLAMA_SYSTEM_PROMPT = QWEN_SYSTEM_PROMPT = SEVEN_SYSTEM_PROMPT = ''
         LIBRARIAN_SYSTEM_PROMPT = MISTRAL_SYSTEM_PROMPT = ''
         NINE_SYSTEM_PROMPT = TEN_SYSTEM_PROMPT = ELEVEN_SYSTEM_PROMPT = TWELVE_SYSTEM_PROMPT = ''
@@ -1147,6 +1148,7 @@ def _migrate_schema(conn=None):
         ('llama',     LLAMA_SYSTEM_PROMPT,      '',                  'local'),
         ('mistral',   MISTRAL_SYSTEM_PROMPT,    '',                  'local'),
         ('qwen',      QWEN_SYSTEM_PROMPT,       '',                  'local'),
+        ('fred',      FRED_SYSTEM_PROMPT,       '',                  'local'),
         ('seven',     SEVEN_SYSTEM_PROMPT,     '',                  'local'),
         ('librarian', LIBRARIAN_SYSTEM_PROMPT,  '',                  'local'),
         ('duck',      '',                       '',                  'local'),

@@ -87,6 +87,8 @@ GUARD_PACK = ['ticket_query', 'sandpit_read', 'skill_search', 'memory_write', 'g
 AGENT_ROLE_MAP = {
     # coordinator
     'gemma':     ('coordinator', FULL_AGENT_PACK),
+    # the one-agent architecture: Fred holds every hat
+    'fred':      ('all_hats', FULL_AGENT_PACK),
     # analyst
     'qwen':      ('analyst',    FULL_AGENT_PACK),
     'llama':     ('analyst',    FULL_AGENT_PACK),
@@ -245,7 +247,7 @@ def _write_identity(agent_name, identity):
     caps = AGENT_ROLE_MAP.get(agent_name, ('unknown', []))[1]
     cap_list = '\n'.join(f'  - {c}: {AGENT_CAPABILITY_REGISTRY.get(c, {}).get("desc", c)}' for c in sorted(set(caps)))
     
-    if agent_name in {'gemma', 'qwen', 'llama'}:
+    if agent_name in {'fred', 'gemma', 'qwen', 'llama'}:
         workflow = (
             "- Read the repository and Vortex context supplied by the local retrieval layer.\n"
             "- Use only explicitly authorized skills for the operator's requested task.\n"
@@ -380,7 +382,7 @@ def run():
             )
         print(f'    capabilities: {len(set(capabilities))} granted')
 
-        if agent_name in {'gemma', 'qwen', 'llama'}:
+        if agent_name in {'fred', 'gemma', 'qwen', 'llama'}:
             skill_overrides = _full_agent_skill_overrides()
             for skill_name in skill_overrides:
                 set_user_skill_permission(

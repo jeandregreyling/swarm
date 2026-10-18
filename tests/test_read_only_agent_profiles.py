@@ -33,7 +33,7 @@ def test_read_only_profiles_deny_execution_capabilities():
         ):
             assert not agent_capability_allowed(agent, capability)
     assert agent_capability_allowed('mistral', 'git_execute')
-    assert MEMORY_WRITE_AGENT_PROFILES == {'gemma', 'qwen', 'llama'}
+    assert MEMORY_WRITE_AGENT_PROFILES == {'fred', 'gemma', 'qwen', 'llama'}
     for agent in MEMORY_WRITE_AGENT_PROFILES:
         assert all(
             agent_capability_allowed(agent, capability)

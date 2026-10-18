@@ -102,7 +102,7 @@ def _chat_agent_timeout_seconds(agent_name, persistent_mode=False):
     agent = str(agent_name or '').strip().lower()
     if persistent_mode:
         if agent in {
-            'gemma', 'llama', 'llama3', 'mistral', 'qwen', 'eight', 'seven',
+            'gemma', 'llama', 'llama3', 'mistral', 'qwen', 'eight', 'seven', 'fred',
             'twenty', 'librarian', 'duck', 'sniffles', 'phi3',
             'deepseek_local', 'deepseek-local', 'lmstudio'
         }:
@@ -2156,7 +2156,7 @@ def api_chat():
 
         try:
             _trace(conv_id, selected_agent, 'dispatch', f'route={selected_agent} prompt_len={len(effective_prompt)}')
-            if selected_agent in {'gemma', 'qwen', 'eight', 'seven', 'twenty'}:
+            if selected_agent in {'gemma', 'qwen', 'eight', 'seven', 'twenty', 'fred'}:
                 # Route through agent .chat() directly — enables skills_loop
                 if selected_agent == 'seven':
                     _stage('dispatching to Seven Runtime · seven', est_eta)

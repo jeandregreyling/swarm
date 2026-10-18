@@ -46,6 +46,7 @@ _AGENT_MODEL_MAP = {
     'llama':          preferred_model_for_agent('llama', 'llama3.2:latest'),
     'qwen':           preferred_model_for_agent('qwen', 'qwen:latest'),
     'mistral':        preferred_model_for_agent('mistral', 'mistral:latest'),
+    'fred':           preferred_model_for_agent('fred', 'mistral-small:24b'),
     'eight':          'gemma3:latest',
     'phi3':           'phi3:mini',
     'deepseek_local': 'deepseek-r1:7b',
