@@ -190,3 +190,17 @@ def test_bare_db_query_line_becomes_shell_skill():
 
     text = '```shell\npython3 scripts/db_query.py "select 1"\n```'
     assert _extract_skill_cmds(text) == [('shell', 'python3 scripts/db_query.py "select 1"')]
+
+
+def test_proposal_id_from_operator_message_is_not_flagged():
+    from agents.skills_loop import run_skill_loop
+
+    msgs = [{'role': 'user', 'content': 'Which project is INTERNAL-FRED-2118 linked to?'}]
+    answer, _ = run_skill_loop(
+        agent_name='fred',
+        call_fn=lambda m: ('INTERNAL-FRED-2118 is linked to P-00221285D1.', 5),
+        messages=msgs,
+        emit_fn=lambda *_: None,
+        max_passes=1,
+    )
+    assert '[verification]' not in answer

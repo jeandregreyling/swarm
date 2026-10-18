@@ -184,6 +184,8 @@ def _chat_response_echoes_prompt(prompt_text, response_text):
     response_words = response_norm.split()
     prompt_words = set(prompt_norm.split())
     if 5 <= len(response_words) <= 24:
+        if any(word not in prompt_words and any(c.isdigit() for c in word) for word in response_words):
+            return False
         overlap = sum(1 for word in response_words if word in prompt_words)
         if overlap / len(response_words) >= 0.8:
             return True
@@ -1422,6 +1424,8 @@ def _should_attach_ticket_snapshot(latest_message, thread_rows):
     if re.search(r'(?m)^\s*/?skill\s+[a-z0-9_-]+\b|\bskill\s+(?:shell|fs_readonly)\b', text):
         return False
     if re.search(r'\b(?:project[_ ]steps?|steps?|database|db|sqlite|scheduled[_ ]tasks?)\b', text):
+        return False
+    if re.search(r'\b(?:internal-[a-z]+-\d+|ticket-\d+|tg-\d+|s-[0-9a-f]{10}|p-[0-9a-f]{10})\b', text):
         return False
     triggers = (
         'ticket', 'tickets', 'queue', 'triage', 'open',

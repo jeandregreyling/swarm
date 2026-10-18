@@ -33,14 +33,14 @@ def read_only_guard(prefix_for_system_prompt=False):
             f'\n\n=== {READ_ONLY_GUARD_MARKER} ===\n'
             'The latest user message is informational/status-seeking. '
             'Do not create proposals, approve work, complete work, or modify files. '
-            'Use read-only inspection only. If the request is ambiguous, ask "What do you mean?" '
-            'with the missing target/context.\n'
+            'Use read-only inspection only (reading files and read-only database queries via SKILL shell python3 scripts/db_query.py are both fine). '
+            'If the request is ambiguous, ask "What do you mean?" with the missing target/context.\n'
             f'=== END {READ_ONLY_GUARD_MARKER} ===\n'
         )
     return (
         f'=== {READ_ONLY_GUARD_MARKER} ===\n'
         'This is a status/informational chat turn. Do not create proposals, approve work, '
-        'complete work, or modify files. Use read-only inspection only. If the request is '
+        'complete work, or modify files. Use read-only inspection only (reading files and read-only database queries via SKILL shell python3 scripts/db_query.py are both fine). If the request is '
         'ambiguous, ask "What do you mean?" with the missing target/context.\n'
         f'=== END {READ_ONLY_GUARD_MARKER} ===\n\n'
     )
@@ -115,7 +115,7 @@ def self_awareness_block(agent_name):
         'Only report what a [skill:...] result returned; otherwise say it is unverified.\n'
         f'Parked, not deleted: {", ".join(parked) or "none"}. '
         + (mind_overview() + ' ' if hat else '')
-        + 'File writes are off; you read files and raise proposals.\n'
+        + 'To look up a stored record or a count (proposal, ticket, step, project, queue), run SKILL shell python3 scripts/db_query.py "select ..." : ids are rows, not files. Writes to protected paths such as databases are refused.\n'
         '=== END WHERE AND WHAT YOU ARE ===\n\n'
     )
 

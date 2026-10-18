@@ -69,6 +69,7 @@ _SKILL_NUDGE = (
     'Never infer a request to edit, patch, write, schedule, or create a proposal from a read or diagnostic task.\n'
     'For a requested mutation, stop at any required human or ALM approval gate; never self-approve.\n'
     'Start repository searches with SKILL fs_readonly grep, and use workspace-relative paths returned by the backend.\n'
+    'For stored records and counts (proposals, tickets, steps, projects, queue) use SKILL shell python3 scripts/db_query.py "select ..."; an id is a database row, not a file.\n'
     'Do NOT describe what you plan to do — emit the SKILL line directly.\n'
     'Key directories (in order of relevance for backend/config tasks):\n'
     '  frontend/blueprints/   ← backend Python: agent dispatch, timeouts, routes\n'
@@ -783,9 +784,11 @@ def run_skill_loop(
         str(answer or ''),
     )
     # An ID the model read from a skill result this turn is not an invented one.
+    # Nor is one the operator named in their own message.
+    operator_ids = _latest_operator_text(messages)
     if not claims:
         claims = any(
-            pid not in joined
+            pid not in joined and pid not in operator_ids
             for pid in re.findall(r'\bINTERNAL-[A-Z]+-\d+\b', str(answer or ''))
         )
     if claims and '[skill:alm_create_proposal] OK' not in joined:

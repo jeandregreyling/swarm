@@ -14,6 +14,22 @@ DBS = {'swarm': 'swarm_memory.db', 'mind': 'mind.db'}
 MAX_ROWS = 50
 
 
+def _hint(conn, error):
+    """Name real tables or columns after a 'no such table/column' error."""
+    try:
+        missing = re.search(r'no such table: (\w+)', error)
+        if missing:
+            stem = missing.group(1).lower().rstrip('s')[:5]
+            names = [r[0] for r in conn.execute("select name from sqlite_master where type='table' order by name")]
+            close = [n for n in names if stem and stem in n.lower()] or names[:40]
+            return 'Tables you may mean: ' + ', '.join(close[:25])
+        if 'no such column' in error:
+            return 'Run: select * from <table> limit 1  to see the real column names.'
+    except sqlite3.Error:
+        pass
+    return ''
+
+
 def main(argv):
     if len(argv) < 2:
         print('usage: db_query.py "SELECT ..." [swarm|mind]')
@@ -39,6 +55,7 @@ def main(argv):
             print(' | '.join(str(v) for v in row))
     except sqlite3.Error as exc:
         print(f'SQL error: {exc}')
+        print(_hint(conn, str(exc)))
         return 1
     finally:
         conn.close()
