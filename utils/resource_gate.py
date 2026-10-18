@@ -55,7 +55,7 @@ _AGENT_MODEL_MAP = {
 _EXCLUSIVE_AGENTS = {'eight'}
 
 # Agents that are NOT local Ollama models — skip the gate entirely
-_CLOUD_AGENTS = {'nine', 'ten', 'eleven', 'twelve', 'scholar', 'seeker',
+_CLOUD_AGENTS = {'nine', 'ten', 'eleven', 'twelve', 'gemini', 'scholar', 'seeker',
                  'duck', 'sniffles', 'librarian'}
 
 # How long to wait polling for a free slot (seconds)

@@ -254,6 +254,7 @@ from .chat_relay import (
     _resolve_chat_reply_target,
     _strip_auto_relay_banner,
     _strip_relay_routing,
+    _strip_placeholder_relay,
 )
 
 
@@ -374,6 +375,7 @@ __all__ = [
     '_streams',
     '_strip_auto_relay_banner',
     '_strip_relay_routing',
+    '_strip_placeholder_relay',
     '_tavily_search',
     '_thread_transcript_from_rows',
     '_validate_agent_request',

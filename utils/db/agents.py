@@ -36,6 +36,8 @@ AGENT_CAPABILITY_REGISTRY = {
     'skill_search':     {'desc': 'Run DuckDuckGo web searches',                          'trust': 0},
     'skill_schedule':   {'desc': 'Create scheduled tasks',                                'trust': 2},
     'memory_write':     {'desc': 'Save to own agent memory',                              'trust': 1},
+    'shared_memory_read':  {'desc': 'Read the dedicated trio shared-memory pool',          'trust': 0},
+    'shared_memory_write': {'desc': 'Add explicitly requested notes to trio shared memory','trust': 1},
     'memory_read_all':  {'desc': 'Read memory of other agents (cross-agent awareness)',   'trust': 2},
     'git_propose':      {'desc': 'Create ALM-gated Git proposals (stage/unstage/commit)', 'trust': 1},
     'git_execute':      {'desc': 'Execute approved ALM-gated Git proposals',               'trust': 2},

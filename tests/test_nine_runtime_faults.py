@@ -29,3 +29,32 @@ def test_chat_disable_logic_treats_groq_403_as_runtime_fault():
 
     text = '[Nine] Groq access denied. Check network egress, proxy, firewall, or account policy.'
     assert chat_mod._chat_error_should_disable_agent(text) is True
+
+
+def test_chat_disable_logic_ignores_auth_words_in_successful_skill_output():
+    import importlib
+    from frontend.terminal import create_app
+
+    app = create_app()
+    assert app is not None
+    chat_mod = importlib.import_module('blueprints.chat')
+
+    text = (
+        '[skill:fs_readonly] OK\n'
+        '[utils/governance.py lines 80–100]\n'
+        'Ask Ghost One for approval before changing authentication settings.'
+    )
+    assert chat_mod._chat_error_should_disable_agent(text) is False
+
+
+def test_chat_disable_logic_recognizes_structured_local_runtime_errors():
+    import importlib
+    from frontend.terminal import create_app
+
+    app = create_app()
+    assert app is not None
+    chat_mod = importlib.import_module('blueprints.chat')
+
+    assert chat_mod._chat_error_should_disable_agent(
+        '[local runtime error: 401 Unauthorized]'
+    ) is True

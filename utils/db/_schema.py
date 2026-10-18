@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS memory_llama (
     subject TEXT DEFAULT '',
     content TEXT NOT NULL,
     tags TEXT DEFAULT '',
+    source TEXT DEFAULT 'learned',
     importance INTEGER DEFAULT 5,
     ticket_ref TEXT DEFAULT '',
     archived INTEGER DEFAULT 0,
@@ -99,6 +100,7 @@ CREATE TABLE IF NOT EXISTS memory_qwen (
     subject TEXT DEFAULT '',
     content TEXT NOT NULL,
     tags TEXT DEFAULT '',
+    source TEXT DEFAULT 'learned',
     importance INTEGER DEFAULT 5,
     ticket_ref TEXT DEFAULT '',
     archived INTEGER DEFAULT 0,
@@ -116,6 +118,24 @@ CREATE TABLE IF NOT EXISTS memory_gemma (
     archived INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS trio_shared_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_name TEXT NOT NULL,
+    note_content TEXT NOT NULL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_trio_shared_notes_timestamp
+    ON trio_shared_notes (timestamp DESC);
+CREATE TRIGGER IF NOT EXISTS trg_trio_shared_notes_no_update
+BEFORE UPDATE ON trio_shared_notes
+BEGIN
+    SELECT RAISE(ABORT, 'trio_shared_notes is append-only');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_trio_shared_notes_no_delete
+BEFORE DELETE ON trio_shared_notes
+BEGIN
+    SELECT RAISE(ABORT, 'trio_shared_notes is append-only');
+END;
 CREATE TABLE IF NOT EXISTS memory_eight (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     agent TEXT DEFAULT 'eight',
@@ -856,6 +876,17 @@ def _migrate_schema(conn=None):
         conn.commit()
     # New tables
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    for memory_table in ('memory_llama', 'memory_qwen'):
+        memory_cols = {
+            row[1] for row in conn.execute(
+                f"PRAGMA table_info({memory_table})"
+            ).fetchall()
+        }
+        if 'source' not in memory_cols:
+            conn.execute(
+                f"ALTER TABLE {memory_table} ADD COLUMN source TEXT DEFAULT 'learned'"
+            )
+            conn.commit()
     # Add channel column to trusted_domains if missing
     if 'trusted_domains' in tables:
         domain_cols = {row[1] for row in conn.execute("PRAGMA table_info(trusted_domains)").fetchall()}
@@ -925,6 +956,7 @@ def _migrate_schema(conn=None):
         ('memory_twelve', "CREATE TABLE IF NOT EXISTS memory_twelve (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'twelve', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
         ('memory_mistral', "CREATE TABLE IF NOT EXISTS memory_mistral (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'mistral', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
         ('memory_thirteen', "CREATE TABLE IF NOT EXISTS memory_thirteen (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'thirteen', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
+        ('memory_gemini', "CREATE TABLE IF NOT EXISTS memory_gemini (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'gemini', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
         ('memory_scholar', "CREATE TABLE IF NOT EXISTS memory_scholar (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'scholar', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
         ('memory_seeker', "CREATE TABLE IF NOT EXISTS memory_seeker (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'seeker', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'session', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
         ('memory_twenty', "CREATE TABLE IF NOT EXISTS memory_twenty (id INTEGER PRIMARY KEY AUTOINCREMENT, agent TEXT DEFAULT 'twenty', subject TEXT DEFAULT '', content TEXT NOT NULL, tags TEXT DEFAULT '', importance INTEGER DEFAULT 7, source TEXT DEFAULT 'council', ticket_ref TEXT DEFAULT '', archived INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"),
@@ -1102,7 +1134,9 @@ def _migrate_schema(conn=None):
         THIRTEEN_SYSTEM_PROMPT   = getattr(_cfg, 'THIRTEEN_SYSTEM_PROMPT',  '')
         SCHOLAR_SYSTEM_PROMPT    = getattr(_cfg, 'SCHOLAR_SYSTEM_PROMPT',   '')
         SEEKER_SYSTEM_PROMPT     = getattr(_cfg, 'SEEKER_SYSTEM_PROMPT',    '')
+        GEMINI_SYSTEM_PROMPT     = getattr(_cfg, 'GEMINI_SYSTEM_PROMPT',    '')
     except Exception:
+        GEMINI_SYSTEM_PROMPT = ''
         GEMMA_SYSTEM_PROMPT = LLAMA_SYSTEM_PROMPT = QWEN_SYSTEM_PROMPT = SEVEN_SYSTEM_PROMPT = ''
         LIBRARIAN_SYSTEM_PROMPT = MISTRAL_SYSTEM_PROMPT = ''
         NINE_SYSTEM_PROMPT = TEN_SYSTEM_PROMPT = ELEVEN_SYSTEM_PROMPT = TWELVE_SYSTEM_PROMPT = ''
@@ -1119,11 +1153,12 @@ def _migrate_schema(conn=None):
         ('sniffles',  '',                       '',                  'local'),
         ('eight',     '',                       '',                  'local'),
         ('nine',      NINE_SYSTEM_PROMPT,       'GROQ_API_KEY',      'paid'),
-        ('ten',       TEN_SYSTEM_PROMPT,        'GITHUB_TOKEN',      'paid'),
+        ('ten',       TEN_SYSTEM_PROMPT,        'GEMINI_API_KEY',    'paid'),
         ('eleven',    ELEVEN_SYSTEM_PROMPT,     'XAI_API_KEY',       'paid'),
         ('twelve',    TWELVE_SYSTEM_PROMPT,     'ANTHROPIC_API_KEY', 'paid'),
         ('thirteen',  THIRTEEN_SYSTEM_PROMPT,   'HF_API_TOKEN',      'paid'),
         ('scholar',   SCHOLAR_SYSTEM_PROMPT,    'GEMINI_API_KEY',    'service'),
+        ('gemini',    GEMINI_SYSTEM_PROMPT,     'GEMINI_API_KEY',    'paid'),
         ('seeker',    SEEKER_SYSTEM_PROMPT,     'TAVILY_API_KEY',    'service'),
         ('ghost',     '',                       '',                  'human'),
     ]
@@ -1153,11 +1188,12 @@ def _migrate_schema(conn=None):
         ('sniffles',  'memory',          'SNIFFLES',                          '[]',                                   160,  300),
         ('eight',     'memory_eight',    'EIGHT',                             '[]',                                   120,  300),
         ('nine',      'memory_nine',     'NINE (GROQ LLAMA 3.3 70B)',        '["claude"]',                           8,    None),
-        ('ten',       'memory_ten',      'TEN (GPT-5.3-CODEX)',              '["copilot","gpt"]',                    8,    None),
+        ('ten',       'memory_ten',      'TEN (Gemini 3.6 Flash)',            '["copilot","gpt"]',                    8,    None),
         ('eleven',    'memory_grok',     'ELEVEN (GROK API)',                 '["grok"]',                             10,   None),
         ('twelve',    'memory_twelve',   'TWELVE (CLAUDE HAIKU)',            '["timewizard","timewizardagent","haiku"]', 10, None),
         ('thirteen',  'memory_thirteen', 'THIRTEEN (HF)',                    '["huggingface"]',                      12,   None),
-        ('scholar',   'memory_scholar',  'SCHOLAR (GEMINI)',                 '["gemini"]',                           12,   None),
+        ('scholar',   'memory_scholar',  'SCHOLAR (GEMINI)',                 '[]',                                   12,   None),
+        ('gemini',    'memory_gemini',   'GEMINI (GOOGLE)',                  '["google","gemini-api"]',              12,   None),
         ('seeker',    'memory_seeker',   'SEEKER (TAVILY)',                  '["tavily"]',                           8,    None),
         ('twenty',    'memory_twenty',   'TWENTY (LOCAL)',                    '["council","nervous"]',                None, None),
     ]
@@ -1808,10 +1844,11 @@ def _seed_agents():
         (20,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
         ( 8,  'eight',     'Eight',     'gemma3:latest',             0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
         ( 9,  'nine',      'Groq',      'llama-3.3-70b-versatile',              0.5,  'Developer Agent — system architect, proposals, Ghost One-directed execution'),
-        (10,  'ten',       'Github',    'gpt-4o',                                0.4,  'Developer Agent — software engineer, code quality, implementation'),
+        (10,  'ten',       'Github',    'gemini-3.6-flash',                                0.4,  'Developer Agent — software engineer, code quality, implementation'),
         (11,  'eleven',    'Grok',      'grok-api',                              0.5,  'Developer Agent — lateral thinker, creative synthesis, alternatives'),
         (12,  'twelve',    'Claude',    'claude-haiku-4-5',                      0.3,  'Developer Agent — time wizard, session continuity, Vortex'),
         (13,  'thirteen',  'Thirteen',  'llama3.2:latest',          0.5,  'Local developer agent — Llama'),
+        (18,  'gemini',    'Gemini',    'gemini-3.8-flash',                      0.4,  'Developer Agent — Google Gemini API: long-context analysis, multimodal reasoning, second-opinion review'),
         (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514', 0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
         ( 7,  'seven',      'Seven',      'seven-direct:daily',              0.0,  'Personal companion — loyal, thinks out loud'),
         (21,  'twenty',     'Twenty',     'qwen:latest',             0.8,  'Local Qwen agent — multi-file coding and deeper refactoring'),
@@ -1854,6 +1891,14 @@ def _seed_agents():
     conn.execute(
         "UPDATE agents SET model='llama3.2:latest', label='Thirteen', "
         "role='Local developer agent — Llama', tier='local' WHERE name='thirteen'"
+    )
+    conn.execute(
+        "UPDATE agents SET tier='paid', api_key_var='GEMINI_API_KEY' "
+        "WHERE name='gemini' AND (tier IS NULL OR tier IN ('', 'local'))"
+    )
+    conn.execute(
+        "UPDATE agents SET model='gemini-3.6-flash', api_key_var='GEMINI_API_KEY' "
+        "WHERE name='ten' AND api_key_var='GITHUB_TOKEN'"
     )
     conn.execute(
         "UPDATE agents SET model='qwen:latest', "

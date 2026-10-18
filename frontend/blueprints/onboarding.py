@@ -19,9 +19,10 @@ _TIMEOUT = 5  # seconds
 # Cloud agent definitions: (agent_name, env_var, display_label, test_url, test_method)
 _CLOUD_AGENTS = [
     ('nine',    'GROQ_API_KEY',     'Groq (Agent 9)',       'https://api.groq.com/openai/v1/models'),
-    ('ten',     'GITHUB_TOKEN',     'GitHub (Agent 10)',    'https://api.github.com/user'),
+    ('ten',     'GEMINI_API_KEY',   'Gemini (Agent 10)',    'https://generativelanguage.googleapis.com/v1beta/models'),
     ('eleven',  'XAI_API_KEY',      'xAI / Grok (Agent 11)', 'https://api.x.ai/v1/models'),
     ('twelve',  'ANTHROPIC_API_KEY','Anthropic (Agent 12)', 'https://api.anthropic.com/v1/models'),
+    ('gemini',  'GEMINI_API_KEY',   'Gemini (Agent 18)',    'https://generativelanguage.googleapis.com/v1beta/models'),
     ('scholar', 'GEMINI_API_KEY',   'Gemini (Scholar)',     'https://generativelanguage.googleapis.com/v1beta/models'),
     ('seeker',  'TAVILY_API_KEY',   'Tavily (Seeker)',      'https://api.tavily.com/search'),
 ]

@@ -1,0 +1,102 @@
+from agents import skills_loop as sl
+
+
+def _user(text):
+    return [{'role': 'user', 'content': text}]
+
+
+def test_prose_no_write_does_not_make_turn_read_only():
+    relayed = 'Mistral: checkpointing. No write occurs without an active Vortex ID.'
+    assert sl._is_explicitly_read_only_task(_user(relayed)) is False
+
+
+def test_explicit_do_not_edit_is_still_read_only():
+    assert sl._is_explicitly_read_only_task(_user('Please do not edit any files.')) is True
+
+
+def test_only_latest_user_turn_counts():
+    msgs = _user('Do not edit anything.') + [{'role': 'assistant', 'content': 'ok'}]
+    msgs += _user('Now create the proposal.')
+    assert sl._is_explicitly_read_only_task(msgs) is False
+
+
+def test_bracket_skill_inside_is_executed_as_skill():
+    cmds = sl._extract_skill_cmds('[skill:alm_create_proposal "Database Connection Error"]')
+    assert cmds == [('alm_create_proposal', '"Database Connection Error"')]
+
+
+def test_bracket_skill_with_trailing_args_is_executed_as_skill():
+    cmds = sl._extract_skill_cmds('[skill:fs_readonly] lines fridays/task_runner.py 1 40')
+    assert cmds == [('fs_readonly', 'lines fridays/task_runner.py 1 40')]
+
+
+def test_echoed_skill_result_is_not_a_command():
+    for text in ('[skill:fs_readonly] OK', '[skill:fs_patch_lines] FAILED\nNot authorized'):
+        assert sl._extract_skill_cmds(text) == []
+
+
+def test_plain_skill_line_still_parses():
+    cmds = sl._extract_skill_cmds('SKILL fs_readonly lines fridays/task_runner.py 1 40')
+    assert cmds == [('fs_readonly', 'lines fridays/task_runner.py 1 40')]
+
+
+def test_fenced_skill_has_no_trailing_fence_in_args():
+    text = '1. Read it.\n```bash\nSKILL fs_readonly lines fridays/task_runner.py 1 60\n```\nDone.'
+    assert sl._extract_skill_cmds(text) == [
+        ('fs_readonly', 'lines fridays/task_runner.py 1 60'),
+    ]
+
+
+def test_handoff_block_teaches_chain_of_command_and_real_skills():
+    from frontend.services.chat_history import _build_chat_handoff_block
+
+    block = _build_chat_handoff_block('gemma', {'latest_sender': 'user'})
+    assert 'placeholder' in block
+    assert 'CHAIN OF COMMAND' in block
+    assert 'SKILL fs_patch_lines <path> <start> <end>' in block
+    assert 'approval is open' in block
+
+
+def test_nudge_example_is_neutral_not_a_magic_number():
+    assert 'chat.py 900' not in sl._SKILL_NUDGE
+    assert 'SKILL fs_readonly lines README.md 1 20' in sl._SKILL_NUDGE
+
+
+def test_literal_agentname_placeholder_is_stripped_in_any_mode():
+    from frontend.services.chat_relay import _strip_placeholder_relay
+
+    text = 'AgentName: Please investigate.\nReal finding here.\nAgentName: another'
+    assert _strip_placeholder_relay(text) == 'Real finding here.'
+    assert _strip_placeholder_relay('Qwen: can you check?') == 'Qwen: can you check?'
+
+
+def test_fs_readonly_does_not_absorb_echoed_prompt_text():
+    text = (
+        'SKILL fs_readonly lines fridays/task_runner.py 1 60\n'
+        '=== RELAY DISABLED - HARD RULE ===\n'
+        'Auto Relay is OFF.'
+    )
+    assert sl._extract_skill_cmds(text) == [
+        ('fs_readonly', 'lines fridays/task_runner.py 1 60'),
+    ]
+
+
+def _run(replies, monkeypatch, ok=True):
+    calls = iter(replies)
+    monkeypatch.setattr(sl, '_execute_skill_cmds',
+                        lambda cmds, *a, **k: '[skill:%s] %s\nProposal ID: 7' % (cmds[0][0], 'OK' if ok else 'FAILED'))
+    return sl.run_skill_loop(
+        agent_name='qwen', call_fn=lambda m: (next(calls), 1),
+        messages=_user('make a proposal'), emit_fn=lambda *_: None,
+        max_passes=1, nudge_if_no_skills=False,
+    )[0]
+
+
+def test_trailing_skill_line_is_executed(monkeypatch):
+    out = _run(['SKILL alm_create_proposal "T" "D"', 'SKILL alm_create_proposal "T" "D"'], monkeypatch)
+    assert 'Proposal ID: 7' in out and '[verification]' not in out
+
+
+def test_unverified_proposal_claim_is_flagged(monkeypatch):
+    out = _run(['I created the proposal, ID 12345.'], monkeypatch)
+    assert out.startswith('[verification]')

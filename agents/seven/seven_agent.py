@@ -947,7 +947,11 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
             SEVEN_CONTEXT_SYNC_PROMPT,
         )
 
-        local_context = build_local_agent_context(AGENT_NAME, actual_user_turn)
+        local_context = build_local_agent_context(
+            AGENT_NAME,
+            actual_user_turn,
+            max_chars=700 if _seven_direct_runtime() else 5000,
+        )
         system += f'\n\n{READ_ONLY_PROFILE_PROMPT}\n\n{SEVEN_CONTEXT_SYNC_PROMPT}'
         system += f'\n\nREAD-ONLY REPOSITORY / VORTEX / CHECKPOINT CONTEXT:\n{local_context}'
     except Exception:

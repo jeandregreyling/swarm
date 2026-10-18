@@ -33,6 +33,7 @@ AGENT_POOL_MAP = {
     'eleven': 'memory_grok', 'grok': 'memory_grok',
     'thirteen': 'memory_thirteen',
     'scholar': 'memory_scholar', 'seeker': 'memory_seeker',
+    'gemini': 'memory_gemini',
     'twenty': 'memory_twenty',
     # STEP-MEMORIES-HIVE-KNOWLEDGE-SYNC-20260430 — restore writes for the
     # agents that previously fell off the map (Seven herself plus the local

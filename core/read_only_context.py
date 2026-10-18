@@ -309,6 +309,11 @@ def _vortex_checkpoints(query: str, limit: int = 4) -> list[dict[str, str]]:
 
 def build_local_agent_context(agent_name: str, query: str, *, max_chars: int = 5000) -> str:
     """Retrieve bounded repository, Git, Vortex, and checkpoint context without writes."""
+    from utils.local_runtime_policy import is_explicitly_no_tools_request
+
+    if is_explicitly_no_tools_request(query):
+        return '(local context retrieval skipped because tools were explicitly disallowed)'
+
     matches, history_path = _repository_matches(query)
     history = _git_history(history_path)
     events = _vortex_events(query)

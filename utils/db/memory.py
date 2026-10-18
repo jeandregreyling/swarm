@@ -97,6 +97,87 @@ def get_agent_memory(agent_name, query='', limit=5):
     return rows
 
 
+def save_shared_agent_memory(agent_name, subject, content, tags=''):
+    """Append one note to the dedicated shared pool, subject to its capability."""
+    from utils.db.agents import agent_has_capability
+    from utils.local_runtime_policy import MEMORY_WRITE_AGENT_PROFILES
+
+    agent = str(agent_name or '').strip().lower()
+    if agent not in MEMORY_WRITE_AGENT_PROFILES:
+        raise PermissionError(f'{agent or "unknown"} cannot write shared memory')
+    if not agent_has_capability(agent, 'shared_memory_write'):
+        raise PermissionError(f'{agent} lacks shared_memory_write permission')
+    if not isinstance(subject, str) or not isinstance(content, str) or not isinstance(tags, str):
+        raise TypeError('subject, content, and tags must be strings')
+    subject = subject.strip()
+    content = content.strip()
+    tags = tags.strip()
+    if not content:
+        raise ValueError('shared-memory content is required')
+    if len(subject) > 200 or len(content) > 4000 or len(tags) > 200:
+        raise ValueError(
+            'shared-memory subject and tags are limited to 200 characters; '
+            'content is limited to 4000'
+        )
+    import json
+
+    note_content = json.dumps(
+        {'subject': subject or 'Shared note', 'content': content, 'tags': tags},
+        ensure_ascii=False,
+        separators=(',', ':'),
+    )
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            """INSERT INTO trio_shared_notes (agent_name, note_content)
+               VALUES (?, ?)""",
+            (agent, note_content),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def get_shared_agent_memory(agent_name, query='', limit=5):
+    """Read only the trio's shared scratchpad, never another private pool."""
+    from utils.db.agents import agent_has_capability
+    from utils.local_runtime_policy import MEMORY_WRITE_AGENT_PROFILES
+
+    agent = str(agent_name or '').strip().lower()
+    if agent not in MEMORY_WRITE_AGENT_PROFILES:
+        raise PermissionError(f'{agent or "unknown"} cannot read shared memory')
+    if not agent_has_capability(agent, 'shared_memory_read'):
+        raise PermissionError(f'{agent} lacks shared_memory_read permission')
+    limit = max(1, min(int(limit), 50))
+    query = str(query or '').strip()
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """SELECT id, agent_name, note_content, timestamp
+               FROM trio_shared_notes
+               WHERE note_content LIKE ?
+               ORDER BY timestamp DESC LIMIT ?""",
+            (f'%{query}%', limit),
+        ).fetchall()
+        import json
+
+        memories = []
+        for row in rows:
+            note = json.loads(row['note_content'])
+            memories.append({
+                'id': row['id'],
+                'source_agent': row['agent_name'],
+                'subject': note['subject'],
+                'content': note['content'],
+                'tags': note['tags'],
+                'created_at': row['timestamp'],
+            })
+        return memories
+    finally:
+        conn.close()
+
+
 def search_project_docs(query='', limit=3):
     """
     Keyword search across project_docs sections.

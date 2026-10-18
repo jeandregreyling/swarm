@@ -32,7 +32,7 @@ Capability packs (by role):
                         skill_search, memory_write, propose_work, coordinate
   analysts            → + skill_browse, memory_read_all, shared_write
   specialists         → analyst pack + skill_shell
-  read-only trio       → ticket_query, sandpit_read, private memory_write
+  tool-enabled trio   → all registered agent capabilities and trust-level 2 skills
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
@@ -49,7 +49,7 @@ sys.path.insert(0, str(SWARM_ROOT / 'core' / 'pipeline'))
 from database import (
     initialise_database, get_connection,
     grant_agent_capability, agent_has_capability,
-    revoke_agent_capability, log_activity, AGENT_CAPABILITY_REGISTRY
+    revoke_agent_capability, log_activity, AGENT_CAPABILITY_REGISTRY,
 )
 from utils.local_runtime_policy import (
     READ_ONLY_AGENT_CAPABILITIES,
@@ -73,11 +73,7 @@ BASELINE = [
     'coordinate',
 ]
 
-READ_ONLY_PROFILE_PACK = [
-    'ticket_query',
-    'sandpit_read',
-    'memory_write',
-]
+FULL_AGENT_PACK = list(AGENT_CAPABILITY_REGISTRY)
 
 # analyst additions
 ANALYST_EXTRA = ['skill_browse', 'memory_read_all', 'shared_write']
@@ -90,10 +86,10 @@ GUARD_PACK = ['ticket_query', 'sandpit_read', 'skill_search', 'memory_write', 'g
 
 AGENT_ROLE_MAP = {
     # coordinator
-    'gemma':     ('coordinator', READ_ONLY_PROFILE_PACK),
+    'gemma':     ('coordinator', FULL_AGENT_PACK),
     # analyst
-    'qwen':      ('analyst',    READ_ONLY_PROFILE_PACK),
-    'llama':     ('analyst',    READ_ONLY_PROFILE_PACK),
+    'qwen':      ('analyst',    FULL_AGENT_PACK),
+    'llama':     ('analyst',    FULL_AGENT_PACK),
     # specialist
     'eight':     ('specialist', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA),
     # guards / focused roles
@@ -114,28 +110,36 @@ AGENT_ROLE_MAP = {
 # ── Identity Card Template ─────────────────────────────────────────────────────
 IDENTITY_TEMPLATES = {
     'gemma': {
-        'role': 'Read-only Orchestrator',
+        'role': 'Tool-enabled Orchestrator',
         'model': 'gemma3:latest',
-        'purpose': 'I synthesize read-only repository and Vortex context into structured JSON analysis and draft recommendations. I never execute tools or mutate files or Git.',
-        'can_create_tickets': False,
-        'can_coordinate': False,
+        'purpose': 'I synthesize local context and use explicitly granted swarm tools for operator-requested work, following backend authorization and human approval gates.',
+        'can_create_tickets': True,
+        'can_coordinate': True,
         'reports_to': 'fridays',
     },
     'qwen': {
-        'role': 'Read-only Analyst',
+        'role': 'Tool-enabled Analyst',
         'model': 'qwen2.5:latest',
-        'purpose': 'I analyze supplied local repository and Vortex context, challenge assumptions, and return structured JSON drafts. I never execute tools or mutate files or Git.',
-        'can_create_tickets': False,
-        'can_coordinate': False,
+        'purpose': 'I analyze local context and use explicitly granted swarm tools for operator-requested work, following backend authorization and human approval gates.',
+        'can_create_tickets': True,
+        'can_coordinate': True,
         'reports_to': 'gemma',
     },
     'llama': {
-        'role': 'Read-only Researcher',
+        'role': 'Tool-enabled Researcher',
         'model': 'llama3.2:latest',
-        'purpose': 'I research the supplied local repository, Vortex ledger, checkpoints, and Git history. I return structured JSON findings and never execute tools or mutate files or Git.',
+        'purpose': 'I research local context and use explicitly granted swarm tools for operator-requested work, following backend authorization and human approval gates.',
+        'can_create_tickets': True,
+        'can_coordinate': True,
+        'reports_to': 'gemma',
+    },
+    'seven': {
+        'role': 'Read-only Guardian',
+        'model': 'seven-direct:daily',
+        'purpose': 'I inspect swarm health, monitor agent conduct, and report evidence or policy drift. Ghost remains the human authority and approver.',
         'can_create_tickets': False,
         'can_coordinate': False,
-        'reports_to': 'gemma',
+        'reports_to': 'ghost',
     },
     'eight': {
         'role': 'SAP Specialist',
@@ -241,16 +245,29 @@ def _write_identity(agent_name, identity):
     caps = AGENT_ROLE_MAP.get(agent_name, ('unknown', []))[1]
     cap_list = '\n'.join(f'  - {c}: {AGENT_CAPABILITY_REGISTRY.get(c, {}).get("desc", c)}' for c in sorted(set(caps)))
     
-    if agent_name in {'gemma', 'qwen', 'llama', 'seven'}:
+    if agent_name in {'gemma', 'qwen', 'llama'}:
         workflow = (
             "- Read the repository and Vortex context supplied by the local retrieval layer.\n"
-            "- Return structured JSON analysis and draft suggestions only.\n"
-            "- Never run commands, mutate Git, or write files; changes require human review."
+            "- Use only explicitly authorized skills for the operator's requested task.\n"
+            "- Keep shell execution allowlisted and honor Git, ALM, and human approval gates.\n"
+            "- Never self-approve, bypass a gate, or claim an unverified operation succeeded.\n"
+            "- Coordinate: Gemma leads, Qwen independently checks reasoning, and LLaMA researches."
         )
-        sandpit_section = f"- Reference path only: sandpits/{agent_name}/ (read-only)"
+        sandpit_section = f"- Agent-specific working area: sandpits/{agent_name}/ (backend-scoped)"
         heartbeat = (
-            "The swarm heartbeat supplies context only. Do not self-propose, dispatch, "
-            "or execute work; wait for a human-reviewed task."
+            "Act only on explicit operator requests. Do not self-initiate work or "
+            "treat a capability grant as permission to use it without task scope."
+        )
+    elif agent_name == 'seven':
+        workflow = (
+            "- Inspect state and report evidence as the read-only guardian.\n"
+            "- Flag policy drift, conflicting agent actions, and unsupported success claims.\n"
+            "- Never grant capabilities, approve work, impersonate Ghost, or mutate files."
+        )
+        sandpit_section = "- Reference path only: sandpits/seven/ (read-only)"
+        heartbeat = (
+            "Monitor and report readiness. Ghost remains the human approver; "
+            "guardian findings are advisory."
         )
     else:
         workflow = (
@@ -362,7 +379,15 @@ def run():
                 notes=f'bootstrap grant for {role}'
             )
         print(f'    capabilities: {len(set(capabilities))} granted')
-        
+
+        if agent_name in {'gemma', 'qwen', 'llama'}:
+            skill_overrides = _full_agent_skill_overrides()
+            for skill_name in skill_overrides:
+                set_user_skill_permission(
+                    agent_name, skill_name, allowed=True, created_by='ghost'
+                )
+            print(f'    trust-level 2 skills: {len(skill_overrides)} enabled')
+
         # Log to activity
         log_activity(
             agent_name,

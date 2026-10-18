@@ -1,9 +1,9 @@
 """
-agents/skills_loop.py — Shared SKILL execution loop for paid Developer Agents.
+agents/skills_loop.py — Shared SKILL execution loop for tool-enabled agents.
 
-Nine, Eleven, Twelve, and Thirteen all use this module to gain real tool-execution
-capability. When a model emits a SKILL line, the runtime intercepts it, runs the
-skill, and feeds the output back for a synthesised final answer.
+Developer agents and the tool-enabled local trio use this module for controlled
+tool execution. When a model emits a SKILL line, the runtime intercepts it, runs
+the skill, and feeds the output back for a synthesised final answer.
 
 Usage
 -----
@@ -33,7 +33,9 @@ each SKILL pass so the model always sees the full conversation including prior
 skill results.
 """
 
+import json
 import logging
+import re
 
 logger = logging.getLogger('seven.skills_loop')
 
@@ -50,10 +52,23 @@ def _tl(conv_id, agent, event_type, payload):
 
 _MAX_SKILL_CMDS_PER_PASS  = 6
 _MAX_SKILL_OUTPUT_CHARS   = 8000  # default; override via max_skill_chars arg
+_READ_ONLY_SKILL_COMMAND_RE = re.compile(
+    r'^\s*/?SKILL\s+([a-z0-9_-]+)\b(.*)$',
+    re.IGNORECASE,
+)
+_READ_ONLY_TASK_RE = re.compile(
+    r'\b(?:do not|don\'t|never)\s+'
+    r'(?:edit|modify|change|write|patch|create|delete|remove|use|run)\b',
+    re.IGNORECASE,
+)
+_READ_ONLY_TASK_SKILLS = {'fs_readonly'}
 _SKILL_NUDGE = (
     'Your response did not contain any SKILL commands.\n'
-    'If this request requires reading or modifying files, emit the SKILL commands now.\n'
-    'Start with SKILL fs_readonly grep to find values by pattern — do NOT read files line by line from the top.\n'
+    'Only emit a SKILL command if the operator explicitly requested an action that needs it.\n'
+    'For inspection-only requests, use only the exact read-only operation needed and then report its output.\n'
+    'Never infer a request to edit, patch, write, schedule, or create a proposal from a read or diagnostic task.\n'
+    'For a requested mutation, stop at any required human or ALM approval gate; never self-approve.\n'
+    'Start repository searches with SKILL fs_readonly grep, and use workspace-relative paths returned by the backend.\n'
     'Do NOT describe what you plan to do — emit the SKILL line directly.\n'
     'Key directories (in order of relevance for backend/config tasks):\n'
     '  frontend/blueprints/   ← backend Python: agent dispatch, timeouts, routes\n'
@@ -61,12 +76,40 @@ _SKILL_NUDGE = (
     '  utils/                 ← config and system prompts\n'
     '  frontend/static/js/views/ ← frontend JS\n'
     'Example workflow:\n'
-    '  SKILL fs_readonly grep frontend/blueprints/chat.py 900        ← find 900 instantly\n'
-    '  SKILL fs_readonly lines frontend/blueprints/chat.py 825 875   ← read context\n'
+    '  SKILL fs_readonly lines README.md 1 20              ← read a line range\n'
+    '  SKILL fs_readonly grep README.md install            ← find text in a file\n'
+    'These two lines only show the format. Replace the file, range and text with what the request asks for.\n'
     'Never read a whole file from line 1 when you can grep for the value.\n'
     'Never guess paths that do not appear in ls output (backend/, config/, src/ do not exist).\n'
     'If this request needed no file access, respond with your final answer and ignore this message.'
 )
+
+
+# Models imitate the echoed result format ("[skill:name] OK"), so accept
+# "[skill:name args]" and "[skill:name] args" as commands, but never an echoed result.
+_BRACKET_SKILL_INSIDE_RE = re.compile(r'^\s*\[skill:([a-z0-9_-]+)\s+(.+)\]\s*$', re.IGNORECASE)
+_BRACKET_SKILL_AFTER_RE = re.compile(
+    r'^\s*\[skill:([a-z0-9_-]+)\]\s+(?!(?:OK|FAILED|SKIPPED|ERROR)\b)(\S.*)$',
+    re.IGNORECASE,
+)
+
+
+def _normalize_bracket_skill_line(line):
+    for pattern in (_BRACKET_SKILL_INSIDE_RE, _BRACKET_SKILL_AFTER_RE):
+        match = pattern.match(line)
+        if match:
+            return f'SKILL {match.group(1).lower()} {match.group(2).strip()}'
+    return line
+
+
+def _extract_read_only_skill_cmds(text):
+    """Parse simple one-line commands for the read-only profile's safe hook."""
+    commands = []
+    for line in str(text or '').splitlines():
+        match = _READ_ONLY_SKILL_COMMAND_RE.match(line)
+        if match:
+            commands.append((match.group(1).lower(), match.group(2).strip()))
+    return commands
 
 
 def _extract_skill_cmds(text):
@@ -81,7 +124,7 @@ def _extract_skill_cmds(text):
     except Exception:
         return []
 
-    lines = str(text or '').splitlines()
+    lines = [_normalize_bracket_skill_line(ln) for ln in str(text or '').splitlines()]
     cmds = []
     i = 0
 
@@ -104,6 +147,13 @@ def _extract_skill_cmds(text):
         # - The next SKILL command always terminates unconditionally.
         collected = [line]
         i += 1
+        # Read-only skills are always one line; never absorb echoed prompt text after them.
+        if line.split(None, 2)[1:2] and line.split(None, 2)[1].lower() == 'fs_readonly':
+            full = line[7:].strip() if line.upper().startswith('/SKILL ') else line
+            parsed = parse_skill_command(full if full.upper().startswith('SKILL ') else 'SKILL ' + full)
+            if parsed and parsed[0] != 'list':
+                cmds.append(parsed)
+            continue
         in_patch_block = False  # True once we've seen <<<OLD>>> or <<<NEW>>>
         in_new_block = False    # True once we've seen <<<NEW>>> (enables prose guard)
 
@@ -150,6 +200,10 @@ def _extract_skill_cmds(text):
             if not in_patch_block and not nxt_stripped:
                 break
 
+            # A closing code fence is never part of a skill's arguments
+            if not in_patch_block and nxt_stripped.startswith('```'):
+                break
+
             collected.append(nxt)
             i += 1
 
@@ -166,6 +220,27 @@ def _extract_skill_cmds(text):
         cmds.append((skill_name, skill_args))
 
     return cmds
+
+
+def _is_explicitly_read_only_task(messages):
+    # Only the latest user turn counts: earlier turns, and prose like "No write
+    # occurs without a Vortex ID" in relayed peer messages, must not strip write skills.
+    for message in reversed(messages or []):
+        if not isinstance(message, dict) or message.get('role') != 'user':
+            continue
+        return bool(_READ_ONLY_TASK_RE.search(str(message.get('content') or '')))
+    return False
+
+
+def _is_explicitly_no_tools_task(messages):
+    from utils.local_runtime_policy import is_explicitly_no_tools_request
+
+    for message in reversed(messages or []):
+        if not isinstance(message, dict) or message.get('role') != 'user':
+            continue
+        if is_explicitly_no_tools_request(message.get('content')):
+            return True
+    return False
 
 
 def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_id=None, allowed_skill_names=None):
@@ -196,9 +271,9 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
         if allowed_skill_names is not None and skill_name not in allowed_skill_names:
             parts.append(
                 f'[skill:{skill_name}] SKIPPED\n'
-                'Watchdog read-only guard: this chat turn can only run read-only skills.'
+                'Turn policy denied skill execution.'
             )
-            _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] SKIPPED — watchdog read-only guard')
+            _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] SKIPPED — turn policy')
             continue
 
         # Optional per-agent permission check (non-fatal if missing)
@@ -269,10 +344,15 @@ def run_skill_loop(
     (answer: str, tokens: int)
     """
     skill_char_limit = max_skill_chars or _MAX_SKILL_OUTPUT_CHARS
-    if allowed_skill_names is None:
+    no_tools_requested = _is_explicitly_no_tools_task(messages)
+    if no_tools_requested:
+        allowed_skill_names = set()
+    elif allowed_skill_names is None:
         guard_text = '\n'.join(str(m.get('content', '')) for m in messages if isinstance(m, dict))
         if 'WATCHDOG READ-ONLY ROUTING GUARD' in guard_text:
-            allowed_skill_names = {'fs_readonly'}
+            allowed_skill_names = set(_READ_ONLY_TASK_SKILLS)
+        elif _is_explicitly_read_only_task(messages):
+            allowed_skill_names = set(_READ_ONLY_TASK_SKILLS)
     elif not isinstance(allowed_skill_names, set):
         allowed_skill_names = set(allowed_skill_names)
     # Track the baseline message count so we can trim accumulated turns later.
@@ -295,12 +375,111 @@ def run_skill_loop(
 
     total_tokens += tokens
 
-    from utils.local_runtime_policy import is_read_only_agent, normalize_read_only_response
-    if is_read_only_agent(agent_name):
-        answer = normalize_read_only_response(agent_name, first_content)
-        _tl(source_conv_id, agent_name, 'response', answer[:1200])
-        _tl(source_conv_id, agent_name, 'final', answer[:1200])
-        return answer, total_tokens
+    from utils.local_runtime_policy import (
+        MEMORY_WRITE_AGENT_PROFILES,
+        is_read_only_agent,
+        normalize_read_only_response,
+    )
+    is_read_only = is_read_only_agent(agent_name)
+    if is_read_only or str(agent_name or '').strip().lower() in MEMORY_WRITE_AGENT_PROFILES:
+        commands = _extract_read_only_skill_cmds(first_content)
+        can_write_shared_note = (
+            len(commands) == 1
+            and commands[0][0] == 'shared_memory_write'
+            and (
+                allowed_skill_names is None
+                or 'shared_memory_write' in allowed_skill_names
+            )
+        )
+        if can_write_shared_note:
+            from utils.local_runtime_policy import (
+                agent_capability_allowed,
+                persist_explicit_shared_memory_note,
+            )
+
+            if not agent_capability_allowed(agent_name, 'shared_memory_write'):
+                answer = normalize_read_only_response(agent_name, first_content)
+                _tl(source_conv_id, agent_name, 'response', answer[:1200])
+                _tl(source_conv_id, agent_name, 'final', answer[:1200])
+                return answer, total_tokens
+
+            emit_fn('saving explicitly shared note')
+            shared_note_saved = False
+            write_error = ''
+            try:
+                shared_note_saved = persist_explicit_shared_memory_note(
+                    agent_name, commands[0][1]
+                )
+                if shared_note_saved:
+                    write_result = 'Shared-memory write succeeded.'
+                    emit_fn('shared note saved')
+                else:
+                    write_error = 'backend declined the shared-memory write'
+                    write_result = f'Shared-memory write failed: {write_error}'
+            except Exception as exc:
+                logger.exception('[%s] shared-memory write failed', agent_name)
+                write_error = str(exc)
+                write_result = f'Shared-memory write failed: {write_error}'
+                emit_fn('shared-memory write failed')
+
+            final_messages = list(working_messages[:baseline_len]) + [
+                {'role': 'assistant', 'content': first_content},
+                {
+                    'role': 'user',
+                    'content': (
+                        f'{write_result} Return the final answer as one valid JSON '
+                        'object using the required read-only response schema. '
+                        'Do not issue another tool request.'
+                    ),
+                },
+            ]
+            try:
+                final_content, final_tokens = call_fn(final_messages)
+                total_tokens += final_tokens
+                normalized = normalize_read_only_response(agent_name, final_content)
+                if shared_note_saved:
+                    final_payload = json.loads(normalized)
+                    evidence = final_payload.get('evidence', [])
+                    evidence.append({
+                        'source': 'shared-memory backend',
+                        'finding': 'The note was appended to trio_shared_notes.',
+                    })
+                    final_payload['evidence'] = evidence[:20]
+                    answer = json.dumps(
+                        final_payload, ensure_ascii=True, separators=(',', ':')
+                    )
+                else:
+                    answer = normalize_read_only_response(
+                        agent_name,
+                        json.dumps({
+                            'kind': 'error',
+                            'summary': f'Shared-memory write failed: {write_error}',
+                            'evidence': [],
+                            'proposed_changes': [],
+                            'human_review_required': True,
+                        }),
+                    )
+            except Exception as exc:
+                logger.exception('[%s] shared-memory result synthesis failed', agent_name)
+                answer = normalize_read_only_response(
+                    agent_name,
+                    json.dumps({
+                        'kind': 'error',
+                        'summary': (
+                            'Shared-memory write completed, but final response '
+                            f'generation failed: {exc}'
+                        ),
+                        'evidence': [],
+                        'proposed_changes': [],
+                        'human_review_required': True,
+                    }),
+                )
+        elif is_read_only:
+            answer = normalize_read_only_response(agent_name, first_content)
+        if can_write_shared_note or is_read_only:
+            _tl(source_conv_id, agent_name, 'response', answer[:1200])
+            _tl(source_conv_id, agent_name, 'final', answer[:1200])
+            return answer, total_tokens
 
     answer = first_content
 
@@ -316,7 +495,12 @@ def run_skill_loop(
     )
 
     # Nudge pass — one extra call if no skills and the caller requested it.
-    if nudge_if_no_skills and not has_skill and str(first_content or '').strip():
+    if (
+        nudge_if_no_skills
+        and not no_tools_requested
+        and not has_skill
+        and str(first_content or '').strip()
+    ):
         emit_fn('nudging for skill commands')
         nudge_messages = working_messages + [
             {'role': 'assistant', 'content': answer},
@@ -336,6 +520,7 @@ def run_skill_loop(
             logger.warning(f'[{agent_name}] nudge call failed: {exc}')
 
     pass_num = 0
+    _all_results = []
     _mid_loop_nudges_remaining = 2  # allow up to 2 mid-loop nudges per request
 
     for _pass in range(max_passes):
@@ -373,10 +558,13 @@ def run_skill_loop(
                             allowed_skill_names=allowed_skill_names,
                         )
                         pass_num += 1
+                        _all_results.append(nudge_results)
                         follow_up = (
                             'Skill outputs below.\n'
-                            'If the original request was a code/file change and you now have enough information, '
-                            'emit SKILL fs_patch_lines NOW. '
+                            "Only continue with another skill if it is necessary for the operator's explicit request. "
+                            'A read, search, or diagnostic request does not authorize a change. '
+                            'If the operator explicitly requested a mutation, follow its required approval workflow '
+                            'and never self-approve. '
                             'Only produce a final text answer when all changes are done and verified.\n\n'
                             + nudge_results
                         )
@@ -408,6 +596,7 @@ def run_skill_loop(
             allowed_skill_names=allowed_skill_names,
         )
         pass_num += 1
+        _all_results.append(skill_results)
 
         logger.debug(
             f'[{agent_name}] pass {pass_num}: ran {len(skill_cmds)} skill(s); '
@@ -452,6 +641,31 @@ def run_skill_loop(
             answer = (answer or '') + f'\n\n[skills_loop error on pass {pass_num + 1}: {exc}]'
             break
         total_tokens += tokens
+
+    # A reply that still ends in SKILL lines never got to run them; run them now.
+    trailing = _extract_skill_cmds(answer) if answer else []
+    if trailing:
+        try:
+            _all_results.append(_execute_skill_cmds(
+                trailing, agent_name, emit_fn, skill_char_limit,
+                source_conv_id=source_conv_id,
+                allowed_skill_names=allowed_skill_names,
+            ))
+            answer = (
+                'Ran the final skill lines:\n' + _all_results[-1]
+            )
+        except Exception as exc:
+            logger.warning(f'[{agent_name}] trailing skill run failed: {exc}')
+
+    # Small models sometimes claim a proposal exists without ever creating one.
+    joined = '\n'.join(_all_results)
+    claims = re.search(r'(?i)\bproposal\b[^\n]{0,80}\b(created|id|submitted)\b|\bcreated\b[^\n]{0,40}\bproposal\b', str(answer or ''))
+    if claims and '[skill:alm_create_proposal] OK' not in joined:
+        answer = (
+            "[verification] No proposal was actually created: alm_create_proposal did not "
+            "return OK in this turn, so any proposal ID mentioned below is not real.\n\n"
+            + str(answer or '')
+        )
 
     _tl(source_conv_id, agent_name, 'final', str(answer or '')[:1200])
     return answer, total_tokens

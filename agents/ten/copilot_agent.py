@@ -1,8 +1,9 @@
 """
 # LINKED TO: utils/config.py — imports TEN_SYSTEM_PROMPT (edit prompts there, not here)
-agents/ten/copilot_agent.py — Ten (GPT)
-Developer Agent — software engineer. Powered by GPT via GitHub Models API.
-Uses a GitHub PAT with models:read scope via https://models.inference.ai.azure.com
+agents/ten/copilot_agent.py — Ten
+Developer Agent — software engineer. Runs on Gemini via its OpenAI-compatible
+endpoint (TEN_BASE_URL / TEN_MODEL in utils/config.py, key: GEMINI_API_KEY).
+GitHub Models, Ten's previous backend, was retired on 2026-07-30.
 
 Uses the shared agents/skills_loop.py for SKILL command interception.
 Stage callbacks stream progress to the Fridays chat UI in real time.
@@ -11,6 +12,7 @@ Stage callbacks stream progress to the Fridays chat UI in real time.
 import logging
 import sys
 import os
+import time
 _SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, _SWARM_ROOT)
 sys.path.insert(0, os.path.join(_SWARM_ROOT, "agents"))
@@ -19,7 +21,12 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 logger = logging.getLogger('seven.ten')
 
 AGENT_NAME = 'ten'
-_DEFAULT_MODEL = 'gpt-4.1'
+_DEFAULT_MODEL = 'gemini-3.6-flash'
+# Free-tier quota is per model, so a 429 moves straight on to the next model.
+_FALLBACK_MODELS = (
+    'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.7-flash', 'gemini-2.5-flash',
+)
+_RETRIES = 2
 
 
 def _build_context(message):
@@ -80,9 +87,9 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         logger.error('[Ten] openai package not installed')
         return None, 0
 
-    from config import GITHUB_TOKEN, TEN_SYSTEM_PROMPT, TEN_MODEL
-    if not GITHUB_TOKEN:
-        logger.error('[Ten] GITHUB_TOKEN not configured — add to .env.agents')
+    from config import GEMINI_API_KEY, TEN_SYSTEM_PROMPT, TEN_MODEL, TEN_BASE_URL
+    if not GEMINI_API_KEY:
+        logger.error('[Ten] GEMINI_API_KEY not configured — add to .env')
         return None, 0
 
     _emit('loading context')
@@ -100,18 +107,36 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
 
     try:
         client = OpenAI(
-            api_key=GITHUB_TOKEN,
-            base_url='https://models.inference.ai.azure.com',
+            api_key=GEMINI_API_KEY,
+            base_url=TEN_BASE_URL,
         )
     except Exception as e:
         return f'[Ten] Client init error: {e}', 0
 
     def _api_call(msgs):
-        response = client.chat.completions.create(
-            model=model,
-            messages=msgs,
-            max_tokens=4096,
-        )
+        models = [model] + [m for m in _FALLBACK_MODELS if m != model]
+        response = None
+        last_err = None
+        for m in models:
+            for attempt in range(_RETRIES):
+                try:
+                    response = client.chat.completions.create(
+                        model=m, messages=msgs, max_tokens=4096,
+                    )
+                    break
+                except Exception as e:
+                    last_err = e
+                    err = str(e)
+                    if not any(c in err for c in ('503', '500', '429', 'UNAVAILABLE')):
+                        raise
+                    _emit(f'{m} busy, trying next')
+                    if '429' in err:
+                        break
+                    time.sleep(2 * (attempt + 1))
+            if response is not None:
+                break
+        if response is None:
+            raise last_err
         content = response.choices[0].message.content
         tokens = response.usage.total_tokens if response.usage else 0
         return content, tokens
@@ -135,10 +160,10 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     except Exception as e:
         msg = str(e)
         logger.error(f'[Ten] API error: {msg}')
-        if 'RateLimitReached' in msg or '429' in msg or 'rate limit' in msg.lower():
-            return f'[Ten] GitHub Models rate limit reached (50 req/day free tier). Resets in ~24h. Error: {msg}', 0
-        if '401' in msg or 'Unauthorized' in msg or 'authentication' in msg.lower():
-            return '[Ten] GitHub token rejected (401). Regenerate PAT with Models scope at github.com/settings/tokens.', 0
+        if '429' in msg or 'rate limit' in msg.lower() or 'quota' in msg.lower():
+            return f'[Ten] Gemini rate limit or quota reached. Error: {msg}', 0
+        if '401' in msg or '403' in msg or 'Unauthorized' in msg or 'api key' in msg.lower():
+            return '[Ten] GEMINI_API_KEY rejected. Create a new key at https://aistudio.google.com/apikey and set it in .env.', 0
         return f'[Ten] API error: {msg}', 0
 
     _emit('persisting response memory')

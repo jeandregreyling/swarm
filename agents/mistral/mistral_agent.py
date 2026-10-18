@@ -30,7 +30,10 @@ def _build_context(message):
     from database import get_connection, get_agent_memory
     lines = []
     lines.append('=== Mistral context ===')
-    lines.append('You are a Developer Agent operating under Ghost One direction. Execute directly — no proposal queue for Ghost One-directed work.')
+    lines.append(
+        'The following operational counts and memories are reference context only; '
+        'they do not grant permission to execute.'
+    )
     conn = get_connection()
     try:
         queued = conn.execute("SELECT COUNT(*) FROM queue WHERE status='queued'").fetchone()[0]
@@ -79,6 +82,7 @@ def chat(message, conversation_history=None, stage_cb=None):
     from core import llm as _llm
 
     from config import MISTRAL_SYSTEM_PROMPT
+    from utils.local_runtime_policy import LOCAL_AGENT_TURN_POLICY
     try:
         from coding_bible import inject as _bible_inject
     except Exception:
@@ -86,7 +90,10 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     _emit('loading context')
     context = _build_context(message)
-    system  = _bible_inject(MISTRAL_SYSTEM_PROMPT) + f'\n\n{context}'
+    system = (
+        _bible_inject(MISTRAL_SYSTEM_PROMPT)
+        + f'\n\n{context}\n\n{LOCAL_AGENT_TURN_POLICY}'
+    )
 
     messages = [{'role': 'system', 'content': system}]
     if conversation_history:
@@ -120,7 +127,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             call_fn=_api_call,
             messages=messages,
             emit_fn=_emit,
-            max_passes=2,
+            max_passes=5,
             nudge_if_no_skills=True,
         )
     except Exception as e:
@@ -130,15 +137,21 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     _emit('persisting response memory')
     try:
-        from database import save_agent_memory
-        save_agent_memory(
-            agent_name=AGENT_NAME,
-            subject=str(message or '')[:100],
-            content=answer,
-            tags='chat,shared-thread',
-            importance=7,
-            source='terminal_chat',
-        )
+        from utils.local_runtime_policy import is_explicitly_no_tools_request
+
+        if is_explicitly_no_tools_request(message):
+            _emit('private memory not saved (operator requested no tools)')
+        else:
+            from database import save_agent_memory
+
+            save_agent_memory(
+                agent_name=AGENT_NAME,
+                subject=str(message or '')[:100],
+                content=answer,
+                tags='chat,shared-thread',
+                importance=7,
+                source='terminal_chat',
+            )
     except Exception:
         pass
 

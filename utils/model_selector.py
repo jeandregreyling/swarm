@@ -92,7 +92,7 @@ _DEFAULTS = {
     'deepseek_local': 'deepseek-r1:7b',
     'phi3':          'phi3:latest',
     'nine':          'llama-3.3-70b-versatile',
-    'ten':           'gpt-4o',
+    'ten':           'gemini-3.6-flash',
     'eleven':        'grok-api',
     'twelve':        'claude-haiku-4-5',
     'thirteen':      'llama3.2:latest',

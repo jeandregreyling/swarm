@@ -120,15 +120,28 @@ def _build_chat_handoff_block(selected_agent, reply_context):
     if prior_agent:
         lines.append(f'Active collaborator already in thread: {_display_chat_participant_local(prior_agent)}')
     lines.extend([
-        'RELAY ROUTING — CRITICAL:',
+        'RELAY ROUTING — how to pass work on:',
         'To hand off to another agent, end your response with the relay syntax on its own line:',
         '  AgentName: <your question or task for them>',
         'Examples: "LLaMA: Can you search for the latest SAP release notes on this?" or "Qwen: What is your risk analysis of this approach?"',
         'For multiple agents, one directive per line:',
         '  LLaMA: Can you verify X online?',
         '  Qwen: Can you reason through the implications?',
-        'Do NOT write "I will direct LLaMA to..." or "Asking Qwen to..." — the relay system reads only the AgentName: format.',
-        'Do NOT simulate other agents. Route and stop.',
+        'Please skip phrases like "I will direct LLaMA to..." — the relay system only reads the AgentName: format.',
+        'Please speak only for yourself; when you hand off, stop and let them answer.',
+        '"AgentName" is a placeholder: never write it literally. Use a real agent name, or no relay line at all.',
+        '',
+        'CHAIN OF COMMAND:',
+        '  1. Ghost One (human) decides. 2. Seven regulates and checks the swarm. 3. Watchdog guards routing and read-only rules. 4. Duck audits proposals.',
+        '  Everyone else works inside that line. Answer only the latest request addressed to you; do not answer for, or talk over, another agent.',
+        '  If a peer is already handling a task, do not repeat their acknowledgement or restate their plan. Add only what is new, or say nothing.',
+        '  Relay only to a real agent, only with a real question, and never to an agent that just spoke to you unless you need their answer.',
+        'SKILLS (one command per line, plain text, never inside a code fence or brackets):',
+        '  SKILL fs_readonly lines README.md 1 20      (format example: use the file and lines you were asked about)',
+        '  SKILL alm_create_proposal "<title>" "<description>"',
+        '  SKILL fs_patch_lines <path> <start> <end>   then on the next lines: <<<NEW>>> and the replacement text',
+        'Work order: read first, then create a proposal, then pause at the approval gate. For now approval is open: you may approve your own proposal with SKILL alm_self_approve <proposal_id>, and Ghost One or Seven can approve too. Please take a Vortex checkpoint before any file change. Thank you, you are doing good work.',
+        'Only state a change happened after you see [skill:...] OK in the output.',
         '',
     ])
     return '\n'.join(lines)

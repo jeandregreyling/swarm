@@ -318,6 +318,17 @@ def _chat_error_should_disable_agent(text):
     raw = str(text or '').strip().lower()
     if not raw:
         return False
+    first_line = raw.splitlines()[0][:300]
+    local_runtime_error = first_line.startswith('[local runtime error:')
+    agent_runtime_error = re.match(
+        r'^\[(?:gemma|llama|qwen|mistral|nine|ten|eleven|twelve|thirteen|gemini|ghost_coder)\]\s*'
+        r'(?:error:|(?:groq|github|anthropic|openai|huggingface|gemini|google)\b.*'
+        r'(?:access denied|token rejected|api key rejected|unauthorized))',
+        first_line,
+        flags=re.IGNORECASE,
+    ) is not None
+    if not (local_runtime_error or agent_runtime_error):
+        return False
     auth_cues = (
         '401',
         '403',
@@ -1295,7 +1306,7 @@ def _build_local_memory_block(selected_agent, latest_message):
         + 'Use this for continuity and hand-off. Do not quote it verbatim unless asked.'
     )
 
-def _build_knowledge_broadcast_block(agent_name):
+def _build_knowledge_broadcast_block(agent_name, latest_message=''):
     """Inject recent unacked swarm knowledge + research events into agent context (A.3.4, B.5.3)."""
     try:
         from utils.db.knowledge import get_unacked_events, ack_all_events
@@ -1318,7 +1329,8 @@ def _build_knowledge_broadcast_block(agent_name):
                 lines.append(f'- {str(ev.get("payload", ""))[:100]}')
             ids.append(ev['id'])
         # Ack so agent doesn't see them again
-        if ids:
+        from utils.local_runtime_policy import is_explicitly_no_tools_request
+        if ids and not is_explicitly_no_tools_request(latest_message):
             ack_all_events(agent_name, ids)
         return (
             '\n\n=== New swarm knowledge ===\n'
@@ -1354,7 +1366,7 @@ def _build_project_context_block(text):
 
 def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context):
     memory_block = _build_local_memory_block(selected_agent, latest_message)
-    knowledge_block = _build_knowledge_broadcast_block(selected_agent)
+    knowledge_block = _build_knowledge_broadcast_block(selected_agent, latest_message)
     handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
     project_block = _build_project_context_block(f'{latest_message}\n{threaded_prompt[-4000:]}')
     base_prompt = handoff_block + project_block + memory_block + knowledge_block + threaded_prompt
@@ -1604,6 +1616,7 @@ def api_chat():
         from fridays.skills import call as skill_call, REGISTRY as SKILL_REGISTRY
         from utils.local_runtime_policy import (
             is_read_only_agent,
+            is_explicitly_no_tools_request,
             normalize_read_only_response,
         )
 
@@ -1632,12 +1645,15 @@ def api_chat():
         _developer_agents = _get_ghost_agent_names()
         is_developer_agent = selected_agent in _developer_agents
         informational_request = _chat_user_prompt_is_informational(message)
+        no_tools_request = is_explicitly_no_tools_request(message)
 
         allowed_auto_skills = {'alm_create_proposal', 'ticket_create'}
         if is_developer_agent:
             allowed_auto_skills = allowed_auto_skills | {'fs_write', 'fs_patch', 'fs_readonly'}
         if informational_request:
             allowed_auto_skills = {'fs_readonly'} if is_developer_agent else set()
+        if no_tools_request:
+            allowed_auto_skills = set()
 
         cmds = _extract_skill_lines_from_text(response_text)
         if not cmds:
@@ -1645,7 +1661,7 @@ def api_chat():
             # Their responses are execution narration, not proposal drafts.
             if is_developer_agent:
                 return ''
-            if informational_request:
+            if informational_request or no_tools_request:
                 return ''
             # Dedup: only one auto-derived proposal per chat request across all agents
             if _proposal_created_this_request[0]:
@@ -2221,6 +2237,17 @@ def api_chat():
                     answer, tokens = _await_agent_future(future)
                     response_text = answer or '[twelve unavailable]'
                     tokens_used = tokens or 0
+            elif selected_agent == 'gemini':
+                _stage('dispatching to Google Gemini', est_eta)
+                try:
+                    from agents.gemini import gemini_agent
+                except Exception as _imp_err:
+                    response_text = f'[gemini] module failed to load: {_imp_err}'
+                else:
+                    future = executor.submit(gemini_agent.chat, effective_prompt, history, _agent_stage_cb, conv_id)
+                    answer, tokens = _await_agent_future(future)
+                    response_text = answer or '[gemini unavailable]'
+                    tokens_used = tokens or 0
             elif selected_agent == 'scholar':
                 _stage('dispatching to ghost datacenter', est_eta)
                 try:
@@ -2373,6 +2400,7 @@ def api_chat():
         # it is a system-prompt artefact echoed back by some local agents
         # (Gemma, LLaMA) and bleeds into creative output. Never user-facing.
         response_text = _strip_auto_relay_banner(response_text)
+        response_text = _strip_placeholder_relay(response_text)
 
         elapsed_ms = int((time.time() - started_at) * 1000)
         if _CB_AVAILABLE:

@@ -177,6 +177,18 @@ def _strip_auto_relay_banner(text: str) -> str:
     return cleaned.lstrip('\n') or text
 
 
+# Models sometimes copy the prompt's "AgentName: <question>" template verbatim.
+_PLACEHOLDER_RELAY_LINE = re.compile(r'^\s*agent\s*name\s*:', re.IGNORECASE)
+
+
+def _strip_placeholder_relay(text: str) -> str:
+    """Drop literal "AgentName:" template lines, in any relay mode."""
+    if not text:
+        return text
+    kept = [ln for ln in text.splitlines() if not _PLACEHOLDER_RELAY_LINE.match(ln)]
+    return '\n'.join(kept).strip() or text
+
+
 def _strip_relay_routing(text: str) -> str:
     """Remove agent-routing language from a response when auto_relay is OFF.
 
@@ -189,6 +201,8 @@ def _strip_relay_routing(text: str) -> str:
     lines = text.splitlines()
     cleaned = []
     for line in lines:
+        if _PLACEHOLDER_RELAY_LINE.match(line):
+            continue
         if _RELAY_LINE_PATTERNS.match(line):
             continue  # drop pure routing lines
         cleaned.append(line)

@@ -119,6 +119,13 @@ _PROVIDER_META = {
             'anthropic-version': '2023-06-01',
         },
     },
+    'GEMINI_API_KEY': {
+        'provider': 'google',
+        'fault_domain': 'EXTERNAL_API',
+        'method': 'GET',
+        'url': 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=1',
+        'headers': lambda key: {'x-goog-api-key': key},
+    },
     'HF_API_TOKEN': {
         'provider': 'huggingface',
         'fault_domain': 'EXTERNAL_API',
@@ -129,10 +136,11 @@ _PROVIDER_META = {
 }
 _NAME_PROVIDER_META = {
     'nine': ('groq', 'EXTERNAL_API'),
-    'ten': ('github', 'EXTERNAL_API'),
+    'ten': ('google', 'EXTERNAL_API'),
     'eleven': ('xai', 'EXTERNAL_API'),
     'twelve': ('anthropic', 'EXTERNAL_API'),
     'thirteen': ('huggingface', 'EXTERNAL_API'),
+    'gemini': ('google', 'EXTERNAL_API'),
 }
 
 _RUNTIME_TRUTH_COLUMNS = [
