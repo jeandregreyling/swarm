@@ -36,6 +36,15 @@ _OPERATIONAL_CONTEXT_TERMS = re.compile(
 )
 
 
+def latest_user_text(prompt):
+    """The operator's newest message, without injected context blocks."""
+    text = str(prompt or '')
+    marker = '=== New user message ==='
+    if marker in text:
+        text = text.rsplit(marker, 1)[1]
+    return text.strip()
+
+
 def message_likely_needs_skills(message):
     """Return True when a user request probably needs local skills/tools.
 

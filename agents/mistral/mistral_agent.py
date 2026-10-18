@@ -119,8 +119,10 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     try:
         from agents.skills_loop import run_skill_loop
+        from agents.skill_intent import latest_user_text, message_likely_needs_skills
     except ImportError:
         from skills_loop import run_skill_loop
+        from skill_intent import latest_user_text, message_likely_needs_skills
 
     try:
         answer, tokens = run_skill_loop(
@@ -129,7 +131,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             messages=messages,
             emit_fn=_emit,
             max_passes=5,
-            nudge_if_no_skills=True,
+            nudge_if_no_skills=message_likely_needs_skills(latest_user_text(message)),
         )
     except Exception as e:
         msg = str(e)

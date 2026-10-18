@@ -92,3 +92,19 @@ def test_overview_reports_counts(memdb):
     thread_memory.record_exchange(1, "gemma", "a", "b")
     text = thread_memory.mind_overview()
     assert "mind.db" in text and "1 exchanges" in text
+
+
+def test_injected_blocks_do_not_trigger_skill_nudge(memdb):
+    from agents.skill_intent import latest_user_text, message_likely_needs_skills
+    from utils.chat_prompt_profiles import self_awareness_block
+
+    question = "In two sentences: which model are you, which hat, and where are you running?"
+    prompt = (
+        self_awareness_block("mistral")
+        + thread_memory.carry_over_block("mistral", 1, question)
+        + "=== Shared conversation thread (latest) ===\nNo previous messages.\n\n"
+        + "=== New user message ===\n" + question
+    )
+    assert latest_user_text(prompt) == question
+    assert message_likely_needs_skills(latest_user_text(prompt)) is False
+    assert message_likely_needs_skills(latest_user_text("x\n=== New user message ===\nRead README.md and propose a fix")) is True

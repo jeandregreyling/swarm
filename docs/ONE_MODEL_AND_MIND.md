@@ -37,8 +37,9 @@ Honesty rule in code: a fact exists only if a skill returned it.
 
 ## Known issues (not hidden)
 
-- Duck replies with SKILL lines inside code fences, so they do not run. Duck did approve Gemma's proposals through the review path.
-- Mistral invented "Amazon / GPT6 Astra" when asked what it was. The block now says to state only the real model; the fixed wording is live but only partly re-tested.
+- Duck replies with SKILL lines inside code fences, so they do not run in chat. Duck's review path still works (it approved Gemma's proposals). Dropped for now at the operator's request.
+- Fixed and verified live: Mistral invented "Amazon / GPT6 Astra" when asked what it was; it now answers "model mistral-small:24b, hosted locally by Ollama".
+- Fixed and verified live: a plain question ("who are you") made Mistral read files and raise an unrequested proposal (1117). Cause: Mistral always forced the skill nudge, and later the injected carry-over text tripped the intent check. Now intent is judged on the operator's latest message only (`latest_user_text`). Re-test: two plain questions, 0 new proposals, replies in 8 s and 16 s. Gemma still uses the old check on the full prompt and likely has the same issue.
 - Mistral also tried `alm_complete` and `alm_self_approve` (both recorded as failed facts).
 - Gemma wandered into `fridays/task_runner.py` for a second proposal.
 - The carry-over summary is built from templates and facts, not rewritten by the model. A model-written summary for idle threads is not built.
