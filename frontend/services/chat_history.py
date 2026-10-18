@@ -109,6 +109,19 @@ def _build_chat_handoff_block(selected_agent, reply_context):
     prior_agent = reply_context.get('prior_agent') or ''
     default_target = _display_chat_participant_local(reply_context.get('default_reply_target') or 'user')
 
+    if str(selected_agent or '').lower() == 'fred':
+        return '\n'.join([
+            '=== Thread routing ===',
+            'You are FRED, the only local agent. Answer the latest message yourself; no relay is needed.',
+            f'Latest visible sender: {latest_sender}',
+            f'Default reply target: {default_target}',
+            'SKILLS (one command per line, plain text, never inside a code fence):',
+            '  SKILL shell python3 scripts/db_query.py "select ... from ..."   (stored records and counts; ids are rows, not files)',
+            '  SKILL fs_readonly read <full/path/to/file>   (files)',
+            '  SKILL alm_create_proposal "<title>" "<description>"   (changes go through a proposal)',
+            'Only state a change happened after you see [skill:...] OK in the output.',
+            '',
+        ])
     lines = [
         '=== Thread routing ===',
         f'You are {selected_agent.upper()}.',

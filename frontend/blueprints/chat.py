@@ -1380,6 +1380,12 @@ def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, r
     knowledge_block = _build_knowledge_broadcast_block(selected_agent, latest_message)
     handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
     project_block = _build_project_context_block(f'{latest_message}\n{threaded_prompt[-4000:]}')
+    if str(selected_agent or '').lower() == 'fred':
+        # Fred runs on a 4096-token context: only carry project context when asked about it.
+        if re.search(r'(?i)\b(projects?|studio|steps?|scenes?|P-[0-9A-F]{10})\b', str(latest_message or '')):
+            project_block = project_block[:900]
+        else:
+            project_block = ''
     base_prompt = handoff_block + project_block + memory_block + knowledge_block + threaded_prompt
     if str(selected_agent or '').lower() in _THREAD_HATS:
         try:
