@@ -1636,3 +1636,11 @@ def test_terminal_job_ignores_late_stage_after_failed():
     cj._chat_update_job('job-failed', stage='finalizing answer')
 
     assert cj._CHAT_JOBS['job-failed']['stage'] == 'stalled'
+
+
+def test_skill_name_write_requests_are_not_informational():
+    from frontend.blueprints.chat import _chat_user_prompt_is_informational as info
+
+    assert not info('Please use fs_write on sandpits/fred/hello.txt, then tell me what you see')
+    assert not info('rewrite the file and tell me what you see')
+    assert info('tell me what you see in the docs folder')

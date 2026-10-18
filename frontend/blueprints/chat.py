@@ -241,6 +241,8 @@ def _chat_user_prompt_is_informational(text):
         r'\bmodify\b',
         r'\bpatch\b',
         r'\bwrite\b',
+        r'\b(?:fs|file)_(?:write|patch|patch_lines)\b',
+        r'\b(?:rewrite|restore|save|overwrite|append|edit)\b',
         r'\bcreate\b',
         r'\bdelete\b',
         r'\badd\b',
