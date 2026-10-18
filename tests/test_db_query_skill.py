@@ -21,3 +21,9 @@ def test_script_refuses_writes():
         capture_output=True, text=True,
     )
     assert out.returncode == 2 and 'Refused' in out.stdout
+
+
+def test_whitelist_accepts_trailing_semicolon_only():
+    from fridays.shell_agent import _match_whitelist
+    assert _match_whitelist('python3 scripts/db_query.py "select 1;"')
+    assert _match_whitelist('python3 scripts/db_query.py "select 1; drop table x"') is None
