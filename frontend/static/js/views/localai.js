@@ -1,6 +1,7 @@
 /* views/localai.js — Local AI tile: Seven Runtime · Ollama fallback · LM Studio · Picoclaw */
 
 const _LOCAL_AGENTS = [
+  { name: 'fred',           label: 'Fred (Mistral)',  model: 'mistral-small:24b', match: 'mistral-small', source: 'ollama', desc: 'System administrator, chat bot, coder' },
   { name: 'gemma',          label: 'Gemma',           model: 'gemma3:4.3B',      source: 'ollama',   desc: 'Orchestrator, front of house'   },
   { name: 'qwen',           label: 'Qwen',            model: 'qwen2.5:7.6B',     source: 'ollama',   desc: 'Deep reasoning analyst'         },
   { name: 'llama',          label: 'LLaMA',           model: 'llama3.2:3.2B',    source: 'ollama',   desc: 'Fast researcher'                },
@@ -735,7 +736,7 @@ function _renderAgentRoster(data) {
   const ollamaModels    = (data?.ollama?.models || []).map(m => m.name);
 
   el.innerHTML = _LOCAL_AGENTS.map(a => {
-    const prefix = (a.name === 'deepseek_local' ? 'deepseek-r1' : a.name === 'llama' ? 'llama' : a.name).toLowerCase();
+    const prefix = (a.match || (a.name === 'deepseek_local' ? 'deepseek-r1' : a.name === 'llama' ? 'llama' : a.name)).toLowerCase();
     const available = a.source === 'ollama'
       ? (ollamaRunning && ollamaModels.some(m => m.toLowerCase().startsWith(prefix)))
       : (a.source === 'lmstudio' ? lmsRunning : false);
