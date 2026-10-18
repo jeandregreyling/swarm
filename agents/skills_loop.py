@@ -94,7 +94,13 @@ _BRACKET_SKILL_AFTER_RE = re.compile(
 )
 
 
+_BARE_DB_QUERY_RE = re.compile(r'^\s*(?:\$\s*)?(python3 scripts/db_query\.py\s+".+")\s*$')
+
+
 def _normalize_bracket_skill_line(line):
+    bare = _BARE_DB_QUERY_RE.match(line)
+    if bare:
+        return f'SKILL shell {bare.group(1)}'
     for pattern in (_BRACKET_SKILL_INSIDE_RE, _BRACKET_SKILL_AFTER_RE):
         match = pattern.match(line)
         if match:
@@ -310,6 +316,18 @@ def _is_duplicate_proposal(agent_name, source_conv_id, skill_args):
     return False
 
 
+def _is_level0_shell(skill_name, skill_args, allowed_skill_names):
+    """Read-only turns may still run whitelisted level-0 shell commands (not when tools are off)."""
+    if skill_name != 'shell' or not allowed_skill_names:
+        return False
+    try:
+        from fridays.shell_agent import _match_whitelist
+        match = _match_whitelist(str(skill_args or '').strip())
+        return bool(match) and match[0] == 0
+    except Exception:
+        return False
+
+
 def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_id=None, allowed_skill_names=None):
     """Execute a list of (skill_name, skill_args) pairs. Returns joined output string."""
     char_limit = max_chars or _MAX_SKILL_OUTPUT_CHARS
@@ -335,7 +353,11 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
         args_preview = str(skill_args or '')[:300]
         _tl(source_conv_id, agent_name, 'skill_call', f'{skill_name} {args_preview}'.strip())
 
-        if allowed_skill_names is not None and skill_name not in allowed_skill_names:
+        if (
+            allowed_skill_names is not None
+            and skill_name not in allowed_skill_names
+            and not _is_level0_shell(skill_name, skill_args, allowed_skill_names)
+        ):
             parts.append(
                 f'[skill:{skill_name}] SKIPPED\n'
                 'Turn policy denied skill execution.'
