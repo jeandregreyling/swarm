@@ -94,6 +94,50 @@ def test_read_only_chat_memory_skips_errors_and_denied_grants(monkeypatch):
     assert not writes
 
 
+@pytest.mark.parametrize(
+    ('module_name', 'agent_name'),
+    [
+        ('agents.gemma.gemma_agent', 'gemma'),
+        ('agents.qwen.qwen_agent', 'qwen'),
+        ('agents.llama.llama_agent', 'llama'),
+    ],
+)
+def test_trio_chat_routes_successful_responses_to_private_memory(
+    monkeypatch, module_name, agent_name
+):
+    import importlib
+    from agents import skill_intent, skills_loop
+    from utils import local_runtime_policy
+
+    writes = []
+    response = json.dumps({
+        'kind': 'analysis',
+        'summary': f'{agent_name} status is ready.',
+        'evidence': [],
+        'proposed_changes': [],
+        'human_review_required': True,
+    })
+    module = importlib.import_module(module_name)
+    monkeypatch.setattr(module, '_build_context', lambda _message: '')
+    monkeypatch.setattr(
+        skills_loop,
+        'run_skill_loop',
+        lambda **_kwargs: (response, 8),
+    )
+    monkeypatch.setattr(skill_intent, 'message_likely_needs_skills', lambda _message: False)
+    monkeypatch.setattr(
+        local_runtime_policy,
+        'persist_read_only_chat_memory',
+        lambda name, prompt, answer: writes.append((name, prompt, answer)) or True,
+    )
+
+    answer, tokens = module.chat('Check local readiness.')
+
+    assert answer == response
+    assert tokens == 8
+    assert writes == [(agent_name, 'Check local readiness.', response)]
+
+
 def test_read_only_response_suppresses_skill_requests_as_json():
     result = json.loads(normalize_read_only_response(
         'gemma',
