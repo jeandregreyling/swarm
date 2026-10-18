@@ -57,7 +57,11 @@ def test_read_only_chat_memory_is_private_and_capability_gated(monkeypatch):
 
     assert persist_read_only_chat_memory('qwen', 'Check local storage', response)
     assert writes == [(
-        ('qwen', 'Check local storage', response),
+        (
+            'qwen',
+            'Check local storage',
+            json.dumps(json.loads(response), ensure_ascii=True, separators=(',', ':')),
+        ),
         {
             'tags': 'chat,review_gated',
             'importance': 5,
