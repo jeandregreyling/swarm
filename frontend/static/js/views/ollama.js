@@ -5,9 +5,9 @@
 // OLLAMA MODEL PANEL
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Swarm models in display order — matches orchestrator.py AGENTS
+// Fred's model first, then the other swarm models; any other installed model is appended.
 const SWARM_MODELS = [
-  'gemma3:latest', 'gemma4:26b', 'llama3.2:latest',
+  'mistral-small:24b', 'gemma3:latest', 'gemma4:26b', 'llama3.2:latest',
   'qwen2.5:latest', 'qwen:latest', 'deepseek-r1:7b',
 ];
 
@@ -26,7 +26,10 @@ function loadOllamaPanel() {
       if (m && m.name) loadedMap[m.name] = m;
     });
 
-    const rows = SWARM_MODELS.map(name => {
+    const modelNames = SWARM_MODELS.concat(
+      Object.keys(installedMap).filter(n => !SWARM_MODELS.includes(n)).sort()
+    );
+    const rows = modelNames.map(name => {
       const inst    = installedMap[name];
       const loaded  = loadedMap[name];
       const missing = !inst;
