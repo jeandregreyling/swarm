@@ -3,10 +3,25 @@
 A fact exists only if a skill returned it, so carry-over never contains guesses.
 All functions are best-effort: a failure here must never break a chat turn.
 """
+import contextvars
 import logging
+import os
 import re
+import sqlite3
 
 logger = logging.getLogger(__name__)
+
+# The model's own database. Nothing else writes to it.
+MIND_DB_PATH = os.environ.get(
+    'SWARM_MIND_DB',
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'mind.db'),
+)
+
+
+def _conn():
+    conn = sqlite3.connect(MIND_DB_PATH, timeout=30)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 _MAX_ARGS_CHARS = 200
 _MAX_RESULT_CHARS = 300
@@ -32,6 +47,8 @@ def ensure_tables(conn):
     conn.execute(_SCHEMA)
     conn.execute(_INDEX)
     conn.execute(_STATE_SCHEMA)
+    conn.execute(_NOTES_SCHEMA)
+    conn.execute(_EXCHANGES_SCHEMA)
 
 
 _STATE_SCHEMA = """
@@ -76,8 +93,7 @@ def update_thread_state(conversation_id, agent, user_message, reply):
             f"Last reply: {_clip(reply, 260)}"
         )
         open_tasks = ', '.join(f'proposal {p} awaiting execution' for p in dict.fromkeys(proposals))
-        from utils.db import get_connection
-        conn = get_connection()
+        conn = _conn()
         try:
             ensure_tables(conn)
             conn.execute(
@@ -96,34 +112,158 @@ def update_thread_state(conversation_id, agent, user_message, reply):
         return False
 
 
-def carry_over_block(agent, conversation_id):
-    """Small prompt block from this agent's latest saved state; '' when there is none."""
+def carry_over_block(agent, conversation_id, message=''):
+    """Prompt block: latest saved state plus the few notes most relevant to this message."""
     try:
-        from utils.db import get_connection
-        conn = get_connection()
+        conn = _conn()
         try:
             ensure_tables(conn)
+            seed_notes(conn)
             row = conn.execute(
                 'SELECT conversation_id, summary, open_tasks, updated_at FROM thread_state '
                 'WHERE agent=? ORDER BY updated_at DESC, rowid DESC LIMIT 1',
                 (str(agent),),
             ).fetchone()
+            notes = relevant_notes(conn, message)
         finally:
             conn.close()
-        if not row:
+        if not row and not notes:
             return ''
-        source = 'this thread' if str(row['conversation_id']) == str(conversation_id) else f"thread {row['conversation_id']}"
-        lines = [
-            '=== CARRY-OVER (saved from earlier work; verified by skill results) ===',
-            f"From {source}, {row['updated_at']}: {row['summary']}",
-        ]
-        if row['open_tasks']:
-            lines.append(f"Still open: {row['open_tasks']}")
-        lines.append('Use as background only; do not repeat it back unless asked.')
+        lines = ['=== CARRY-OVER (your own saved memory, mind.db; background only) ===']
+        if row:
+            source = 'this thread' if str(row['conversation_id']) == str(conversation_id) else f"thread {row['conversation_id']}"
+            lines.append(f"Last work ({source}, {row['updated_at']}): {row['summary']}")
+            if row['open_tasks']:
+                lines.append(f"Still open: {row['open_tasks']}")
+        for note in notes:
+            lines.append(f"- [{note['kind']}] {_clip(note['text'], 260)}")
+        lines.append('Do not repeat this back unless asked. Facts from skills are verified; notes are what the operator decided.')
         lines.append('=== END CARRY-OVER ===\n\n')
         return '\n'.join(lines)
     except Exception as exc:
         logger.warning('thread_memory: could not build carry-over: %s', exc)
+        return ''
+
+
+_current_conversation = contextvars.ContextVar('mind_conversation', default=None)
+
+
+def run_in_conversation(conversation_id, fn, *args, **kwargs):
+    """Run fn with the conversation ID visible to fact recording (works in worker threads)."""
+    token = _current_conversation.set(conversation_id)
+    try:
+        return fn(*args, **kwargs)
+    finally:
+        _current_conversation.reset(token)
+
+
+_NOTES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+"""
+_EXCHANGES_SCHEMA = """
+CREATE TABLE IF NOT EXISTS exchanges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id TEXT NOT NULL,
+    agent TEXT NOT NULL,
+    user_message TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+# What the operator decided, so the one model starts with the same context.
+_SEED_NOTES = (
+    ('principle', 'Operator mantra, in order: 1 honesty, 2 kindness, 3 extreme logic.'),
+    ('decision', 'One local model (mistral-small:24b on the 16 GB RX 6800) wears every hat. Gemma is director, Mistral coder and analyst, Duck reviewer. Llama, Qwen, Eight, Librarian, Sniffles, Thirteen, Nineteen and Twenty are parked, not deleted; Mistral may later adopt one as a pet.'),
+    ('decision', 'Write skills (fs_patch, fs_patch_lines, fs_write, file_write) are revoked. Agents read files and raise proposals only. An agent patch once broke fridays/task_runner.py.'),
+    ('correction', 'Do not report a proposal ID or file result unless a skill returned it; otherwise say it is unverified.'),
+    ('correction', 'Do not invent who or what you are. You are the local model named in your self-awareness block, hosted by Ollama.'),
+    ('preference', 'Operator wants one step at a time, asked before anything big. Think twice, build once. Be kind and concise, never shout at agents.'),
+    ('design', 'mind.db is your own memory: exchanges (full text), thread_facts (skill results), thread_state (per-thread summary), notes (decisions and corrections). Only relevant notes are loaded into each prompt.'),
+)
+
+
+def seed_notes(conn):
+    if conn.execute('SELECT COUNT(*) FROM notes').fetchone()[0]:
+        return
+    conn.executemany('INSERT INTO notes (kind, text) VALUES (?, ?)', _SEED_NOTES)
+    conn.commit()
+
+
+def add_note(kind, text):
+    try:
+        conn = _conn()
+        try:
+            ensure_tables(conn)
+            seed_notes(conn)
+            conn.execute('INSERT INTO notes (kind, text) VALUES (?, ?)', (str(kind), str(text)))
+            conn.commit()
+        finally:
+            conn.close()
+        return True
+    except Exception as exc:
+        logger.warning('thread_memory: could not add note: %s', exc)
+        return False
+
+
+_WORD_RE = re.compile(r'[a-z0-9_]{4,}')
+
+
+def relevant_notes(conn, message, limit=5):
+    """Principles always; the rest ranked by word overlap with the message, newest on ties."""
+    rows = conn.execute('SELECT kind, text FROM notes ORDER BY id DESC').fetchall()
+    words = set(_WORD_RE.findall(str(message or '').lower()))
+    always = [r for r in rows if r['kind'] in ('principle', 'correction')]
+    scored = sorted(
+        (r for r in rows if r['kind'] not in ('principle', 'correction')),
+        key=lambda r: -len(words & set(_WORD_RE.findall(r['text'].lower()))),
+    )
+    return (always + scored)[: max(limit, len(always))]
+
+
+def record_exchange(conversation_id, agent, user_message, reply):
+    """Full text of the exchange, uncut."""
+    if not conversation_id:
+        return False
+    try:
+        conn = _conn()
+        try:
+            ensure_tables(conn)
+            conn.execute(
+                'INSERT INTO exchanges (conversation_id, agent, user_message, reply) VALUES (?, ?, ?, ?)',
+                (str(conversation_id), str(agent), str(user_message or ''), str(reply or '')),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return True
+    except Exception as exc:
+        logger.warning('thread_memory: could not record exchange: %s', exc)
+        return False
+
+
+def mind_overview():
+    """Short line for the self-awareness block: where the memory is and how big it is."""
+    try:
+        conn = _conn()
+        try:
+            ensure_tables(conn)
+            counts = {
+                t: conn.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
+                for t in ('exchanges', 'thread_facts', 'thread_state', 'notes')
+            }
+        finally:
+            conn.close()
+        return (
+            f'Your own memory is mind.db ({MIND_DB_PATH}): '
+            + ', '.join(f'{n} {t}' for t, n in counts.items()) + '.'
+        )
+    except Exception:
         return ''
 
 
@@ -139,11 +279,11 @@ def _fact_ref(skill, args, result):
 
 
 def record_fact(conversation_id, agent, skill, args, ok, result):
+    conversation_id = conversation_id or _current_conversation.get()
     if not conversation_id:
         return False
     try:
-        from utils.db import get_connection
-        conn = get_connection()
+        conn = _conn()
         try:
             ensure_tables(conn)
             conn.execute(
@@ -167,8 +307,7 @@ def record_fact(conversation_id, agent, skill, args, ok, result):
 
 def recent_facts(conversation_id, limit=10):
     try:
-        from utils.db import get_connection
-        conn = get_connection()
+        conn = _conn()
         try:
             ensure_tables(conn)
             rows = conn.execute(

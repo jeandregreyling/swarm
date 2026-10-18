@@ -81,6 +81,8 @@ def self_awareness_block(agent_name):
     import os
     import sqlite3
     agent = str(agent_name or '').lower()
+    from utils.thread_memory import mind_overview
+    hat = agent in _HAT_ROLES
     model = '?'
     tables = []
     parked = []
@@ -111,7 +113,8 @@ def self_awareness_block(agent_name):
         'hosted locally by Ollama; never name any other vendor or model. '
         'Only report what a [skill:...] result returned; otherwise say it is unverified.\n'
         f'Parked, not deleted: {", ".join(parked) or "none"}. '
-        'File writes are off; you read files and raise proposals.\n'
+        + (mind_overview() + ' ' if hat else '')
+        + 'File writes are off; you read files and raise proposals.\n'
         '=== END WHERE AND WHAT YOU ARE ===\n\n'
     )
 

@@ -35,6 +35,8 @@ from utils.db.timeline import timeline_append as _trace
 from utils.thread_memory import (
     _HAT_AGENTS as _THREAD_HATS,
     carry_over_block as _carry_over_block,
+    record_exchange as _record_exchange,
+    run_in_conversation as _run_in_conversation,
     update_thread_state as _update_thread_state,
 )
 from utils.chat_prompt_profiles import (
@@ -1377,7 +1379,7 @@ def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, r
     base_prompt = handoff_block + project_block + memory_block + knowledge_block + threaded_prompt
     if str(selected_agent or '').lower() in _THREAD_HATS:
         try:
-            base_prompt = _carry_over_block(selected_agent, conv_id) + base_prompt
+            base_prompt = _carry_over_block(selected_agent, conv_id, latest_message) + base_prompt
         except Exception:
             pass
     prefix = _chat_audit_prefix(selected_agent)
@@ -2175,7 +2177,7 @@ def api_chat():
                             conv_id,
                         )
                     else:
-                        future = executor.submit(_mod.chat, effective_prompt, history, _agent_stage_cb)
+                        future = executor.submit(_run_in_conversation, conv_id, _mod.chat, effective_prompt, history, _agent_stage_cb)
                     answer, tokens = _await_agent_future(future)
                     response_text = answer or f'[{selected_agent} unavailable]'
                     tokens_used = tokens or 0
@@ -2199,7 +2201,7 @@ def api_chat():
                 except Exception as _imp_err:
                     response_text = f'[mistral] module failed to load: {_imp_err}'
                 else:
-                    future = executor.submit(mistral_agent.chat, effective_prompt, history, _agent_stage_cb)
+                    future = executor.submit(_run_in_conversation, conv_id, mistral_agent.chat, effective_prompt, history, _agent_stage_cb)
                     answer, tokens = _await_agent_future(future)
                     response_text = answer or '[mistral] No response — check server logs.'
                     tokens_used = tokens or 0
@@ -2683,6 +2685,7 @@ def api_chat():
                     )
                     if selected_agent in _THREAD_HATS:
                         _update_thread_state(conv_id, selected_agent, message, response_text)
+                        _record_exchange(conv_id, selected_agent, message, response_text)
                     # Session 29 — spine emit for relay handoffs only (skips self-replies).
                     if response_target and response_target != selected_agent:
                         try:
