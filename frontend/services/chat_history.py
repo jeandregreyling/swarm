@@ -118,6 +118,8 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             'SKILLS (one command per line, plain text, never inside a code fence):',
             '  SKILL shell python3 scripts/db_query.py "select ... from ..."   (stored records and counts; ids are rows, not files)',
             '  SKILL fs_readonly read <full/path/to/file>   (files)',
+            '  SKILL swarm_knowledge_search <query>   (Knowledge Center: decisions, docs, lessons)',
+            '  SKILL memory_search <query>   (your own saved memory)',
             '  SKILL alm_create_proposal "<title>" "<description>"   (changes go through a proposal)',
             'Only state a change happened after you see [skill:...] OK in the output.',
             '',

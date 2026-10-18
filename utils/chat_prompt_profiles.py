@@ -6,6 +6,12 @@ READ_ONLY_GUARD_MARKER = 'WATCHDOG READ-ONLY ROUTING GUARD'
 
 
 def chat_handoff_contract(agent_name, deadline_seconds):
+    if str(agent_name or '').lower() == 'fred':
+        return (
+            "\n\n=== FRIDAYS STUDIO HANDOFF TIMER ===\n"
+            f"Deadline {int(deadline_seconds)}s. Answer with what you have; if unfinished, end with a short SELF-HANDOFF (finding, next action).\n"
+            "=== END TIMER CONTRACT ===\n"
+        )
     return (
         "\n\n=== FRIDAYS STUDIO HANDOFF TIMER ===\n"
         f"You are running as {agent_name}. Your visible deadline is {int(deadline_seconds)} seconds.\n"

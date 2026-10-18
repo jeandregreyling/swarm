@@ -136,7 +136,7 @@ def carry_over_block(agent, conversation_id, message=''):
             if row['open_tasks']:
                 lines.append(f"Still open: {row['open_tasks']}")
         for note in notes:
-            lines.append(f"- [{note['kind']}] {_clip(note['text'], 260)}")
+            lines.append(f"- [{note['kind']}] {_clip(note['text'], 200)}")
         lines.append('Do not repeat this back unless asked. Facts from skills are verified; notes are what the operator decided.')
         lines.append('=== END CARRY-OVER ===\n\n')
         return '\n'.join(lines)
@@ -217,7 +217,7 @@ _WORD_RE = re.compile(r'[a-z0-9_]{4,}')
 _ALWAYS_KINDS = ('principle', 'correction', 'onboarding')
 
 
-def relevant_notes(conn, message, limit=5):
+def relevant_notes(conn, message, limit=4):
     """Principles always; the rest ranked by word overlap with the message, newest on ties."""
     rows = conn.execute('SELECT kind, text FROM notes ORDER BY id DESC').fetchall()
     words = set(_WORD_RE.findall(str(message or '').lower()))
