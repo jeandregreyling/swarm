@@ -709,6 +709,24 @@ def _fs_safe_path(path_text):
     return resolved
 
 
+_FS_PROTECTED_SUFFIXES = ('.db', '.db-wal', '.db-shm', '.sqlite', '.sqlite3', '.pyc')
+_FS_PROTECTED_PARTS = ('.git', '.venv', '.venv-win')
+
+
+def _fs_write_refusal(target, rel):
+    """Plain-language reason a write skill must not touch this path, or ''."""
+    name = target.name.lower()
+    if name == '.env' or name.startswith('.env.') or name.endswith(_FS_PROTECTED_SUFFIXES):
+        return (
+            f'Refused: {rel} is a database or secret file. Write skills rewrite files as text '
+            'and would destroy it. Read it with a query (python3 -c with sqlite3, read only) '
+            'instead of patching it.'
+        )
+    if any(part in _FS_PROTECTED_PARTS for part in target.parts):
+        return f'Refused: {rel} is inside a protected folder (.git or a virtualenv).'
+    return ''
+
+
 def _skill_fs_readonly(args, agent, **_):
     raw = (args or '').strip()
     if not raw:
@@ -1252,6 +1270,9 @@ def _skill_fs_write(args, agent, **_):
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'
+    refusal = _fs_write_refusal(target, rel)
+    if refusal:
+        return False, refusal
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding='utf-8')
@@ -1293,6 +1314,9 @@ def _skill_fs_patch(args, agent, **_):
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'
+    refusal = _fs_write_refusal(target, rel)
+    if refusal:
+        return False, refusal
     if not target.exists() or not target.is_file():
         return False, f'File not found: {rel}'
     try:
@@ -1348,6 +1372,9 @@ def _skill_fs_patch_lines(args, agent, **_):
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'
+    refusal = _fs_write_refusal(target, rel)
+    if refusal:
+        return False, refusal
     if not target.exists() or not target.is_file():
         return False, f'File not found: {rel}'
     try:
