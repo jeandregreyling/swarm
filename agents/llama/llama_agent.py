@@ -99,5 +99,16 @@ def chat(message, conversation_history=None, stage_cb=None):
 
         return normalize_read_only_response(AGENT_NAME, f'[llama] error: {e}'), 0
 
+    _emit('persisting private memory')
+    try:
+        from utils.local_runtime_policy import persist_read_only_chat_memory
+
+        memory_saved = persist_read_only_chat_memory(AGENT_NAME, message, answer)
+    except Exception:
+        logger.exception('[LLaMA] private memory persistence failed')
+        _emit('private memory persistence failed')
+    else:
+        _emit('private memory saved' if memory_saved else 'private memory not saved')
+
     logger.info(f'[LLaMA] model={MODEL} tokens={tokens}')
     return answer, tokens

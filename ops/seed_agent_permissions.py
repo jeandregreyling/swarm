@@ -32,7 +32,7 @@ Capability packs (by role):
                         skill_search, memory_write, propose_work, coordinate
   analysts            → + skill_browse, memory_read_all, shared_write
   specialists         → analyst pack + skill_shell
-  read-only guards    → ticket_query, sandpit_read, skill_search, memory_write
+  read-only trio       → ticket_query, sandpit_read, private memory_write
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
@@ -76,6 +76,7 @@ BASELINE = [
 READ_ONLY_PROFILE_PACK = [
     'ticket_query',
     'sandpit_read',
+    'memory_write',
 ]
 
 # analyst additions

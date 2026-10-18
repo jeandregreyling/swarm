@@ -12,9 +12,11 @@ from agents.skills_loop import run_skill_loop
 from core import read_only_context
 from frontend.blueprints import agent_api, agents as agents_api
 from utils.local_runtime_policy import (
+    MEMORY_WRITE_AGENT_PROFILES,
     READ_ONLY_AGENT_PROFILES,
     agent_capability_allowed,
     normalize_read_only_response,
+    persist_read_only_chat_memory,
 )
 
 
@@ -23,10 +25,73 @@ def test_read_only_profiles_deny_execution_capabilities():
     for agent in READ_ONLY_AGENT_PROFILES:
         for capability in (
             'skill_shell', 'sandpit_write', 'git_propose', 'git_execute',
-            'ticket_create', 'memory_write',
+            'ticket_create', 'memory_read_all', 'coordinate',
         ):
             assert not agent_capability_allowed(agent, capability)
     assert agent_capability_allowed('mistral', 'git_execute')
+    assert MEMORY_WRITE_AGENT_PROFILES == {'gemma', 'qwen', 'llama'}
+    for agent in MEMORY_WRITE_AGENT_PROFILES:
+        assert agent_capability_allowed(agent, 'memory_write')
+        assert not agent_capability_allowed(agent, 'git_execute')
+    assert not agent_capability_allowed('seven', 'memory_write')
+
+
+def test_read_only_chat_memory_is_private_and_capability_gated(monkeypatch):
+    from utils.db import agents as db_agents
+
+    writes = []
+    monkeypatch.setattr(db_agents, 'agent_has_capability', lambda agent, cap: (
+        agent == 'qwen' and cap == 'memory_write'
+    ))
+    monkeypatch.setattr(
+        'database.save_agent_memory',
+        lambda *args, **kwargs: writes.append((args, kwargs)),
+    )
+    response = json.dumps({
+        'kind': 'analysis',
+        'summary': 'Local storage is available.',
+        'evidence': [],
+        'proposed_changes': [],
+        'human_review_required': True,
+    })
+
+    assert persist_read_only_chat_memory('qwen', 'Check local storage', response)
+    assert writes == [(
+        ('qwen', 'Check local storage', response),
+        {
+            'tags': 'chat,review_gated',
+            'importance': 5,
+            'source': 'read_only_chat',
+        },
+    )]
+    assert not persist_read_only_chat_memory('gemma', 'Do not cross-write', response)
+    assert len(writes) == 1
+
+
+def test_read_only_chat_memory_skips_errors_and_denied_grants(monkeypatch):
+    from utils.db import agents as db_agents
+
+    writes = []
+    monkeypatch.setattr(db_agents, 'agent_has_capability', lambda *_args: False)
+    monkeypatch.setattr(
+        'database.save_agent_memory',
+        lambda *args, **kwargs: writes.append((args, kwargs)),
+    )
+
+    error_response = normalize_read_only_response('llama', '[llama] error: offline')
+    assert not persist_read_only_chat_memory('llama', 'check status', error_response)
+    assert not persist_read_only_chat_memory(
+        'llama',
+        'check status',
+        json.dumps({
+            'kind': 'analysis',
+            'summary': 'Not review-gated.',
+            'evidence': [],
+            'proposed_changes': [],
+            'human_review_required': False,
+        }),
+    )
+    assert not writes
 
 
 def test_read_only_response_suppresses_skill_requests_as_json():
