@@ -761,10 +761,15 @@ def run_skill_loop(
     joined = '\n'.join(_all_results)
     claims = re.search(
         r'(?i)\b(i|we|have|has)\s+(?:\w+\s+)?(created|submitted|raised|filed)\b[^\n]{0,40}\bproposal\b'
-        r'|\bproposal\b[^\n]{0,40}\b(was|has been|is now)\s+(created|submitted|raised|filed)\b'
-        r'|\bINTERNAL-[A-Z]+-\d+\b',
+        r'|\bproposal\b[^\n]{0,40}\b(was|has been|is now)\s+(created|submitted|raised|filed)\b',
         str(answer or ''),
     )
+    # An ID the model read from a skill result this turn is not an invented one.
+    if not claims:
+        claims = any(
+            pid not in joined
+            for pid in re.findall(r'\bINTERNAL-[A-Z]+-\d+\b', str(answer or ''))
+        )
     if claims and '[skill:alm_create_proposal] OK' not in joined:
         answer = (
             "[verification] No proposal was actually created: alm_create_proposal did not "

@@ -157,3 +157,11 @@ def test_all_asks_reminder_quotes_operator_message_without_injected_blocks():
     assert 'rules' not in out
     assert 'EVERY part' in out
     assert _all_asks_reminder([]) == ''
+
+
+def test_verification_ignores_proposal_ids_read_from_skill_results():
+    import inspect
+    from agents import skills_loop
+
+    src = inspect.getsource(skills_loop.run_skill_loop)
+    assert 'pid not in joined' in src
