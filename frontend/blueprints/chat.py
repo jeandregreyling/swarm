@@ -32,6 +32,11 @@ from utils.db.chat import (
     update_chat_relay_recovery_status,
 )
 from utils.db.timeline import timeline_append as _trace
+from utils.thread_memory import (
+    _HAT_AGENTS as _THREAD_HATS,
+    carry_over_block as _carry_over_block,
+    update_thread_state as _update_thread_state,
+)
 from utils.chat_prompt_profiles import (
     apply_local_chat_profile,
     audit_prefix as _chat_audit_prefix,
@@ -1364,12 +1369,17 @@ def _build_project_context_block(text):
     )
 
 
-def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context):
+def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context, conv_id=None):
     memory_block = _build_local_memory_block(selected_agent, latest_message)
     knowledge_block = _build_knowledge_broadcast_block(selected_agent, latest_message)
     handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
     project_block = _build_project_context_block(f'{latest_message}\n{threaded_prompt[-4000:]}')
     base_prompt = handoff_block + project_block + memory_block + knowledge_block + threaded_prompt
+    if str(selected_agent or '').lower() in _THREAD_HATS:
+        try:
+            base_prompt = _carry_over_block(selected_agent, conv_id) + base_prompt
+        except Exception:
+            pass
     prefix = _chat_audit_prefix(selected_agent)
     if prefix:
         return prefix + base_prompt
@@ -2106,7 +2116,7 @@ def api_chat():
         def _agent_stage_cb(stage_text, eta_seconds=None):
             _stage(stage_text, est_eta if eta_seconds is None else eta_seconds)
 
-        effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context)
+        effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context, conv_id=conv_id)
         effective_prompt = apply_local_chat_profile(
             agent_name=selected_agent,
             base_prompt=effective_prompt,
@@ -2671,6 +2681,8 @@ def api_chat():
                         message_type='response',
                         tokens_used=int(tokens_used or 0),
                     )
+                    if selected_agent in _THREAD_HATS:
+                        _update_thread_state(conv_id, selected_agent, message, response_text)
                     # Session 29 — spine emit for relay handoffs only (skips self-replies).
                     if response_target and response_target != selected_agent:
                         try:

@@ -59,7 +59,7 @@ def test_handoff_block_teaches_chain_of_command_and_real_skills():
 
 def test_nudge_example_is_neutral_not_a_magic_number():
     assert 'chat.py 900' not in sl._SKILL_NUDGE
-    assert 'SKILL fs_readonly lines README.md 1 20' in sl._SKILL_NUDGE
+    assert 'SKILL fs_readonly lines docs/sample.md 1 20' in sl._SKILL_NUDGE
 
 
 def test_literal_agentname_placeholder_is_stripped_in_any_mode():

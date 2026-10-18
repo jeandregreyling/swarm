@@ -12,7 +12,8 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 
 logger = logging.getLogger('seven.llama')
 AGENT_NAME = 'llama'
-MODEL      = 'llama3.2:latest'
+from utils.local_runtime_policy import preferred_model_for_agent
+MODEL      = preferred_model_for_agent('llama', 'llama3.2:latest')
 
 
 def _build_context(message):

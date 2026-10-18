@@ -1681,16 +1681,7 @@ def run_task(name, args=''):
     """
     entry = TASK_REGISTRY.get(name)
     if not entry:
- from core.vortex_ledger import record_action \nrecord_action(\n    'task_execution',\n    source_agent='fridays_tasker',\n    target_agent=str(name or 'unknown_task'),\n    status='failed',\n    context_parts=(str(args or ''),),\n    details={'reason': 'unknown_task'},\n    source='fridays.task_runner',\n)
-record_action(
-    'task_execution',
-    source_agent='fridays_tasker',
-    target_agent=str(name or 'unknown_task'),
-    status='failed',
-    context_parts=(str(args or ''),),
-    details={'reason': 'unknown_task'},
-    source='fridays.task_runner',
-)
+        known = ', '.join(sorted(TASK_REGISTRY.keys()))
         try:
             from core.vortex_ledger import record_action
             record_action(

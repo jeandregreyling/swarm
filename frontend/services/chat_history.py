@@ -137,7 +137,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
         '  If a peer is already handling a task, do not repeat their acknowledgement or restate their plan. Add only what is new, or say nothing.',
         '  Relay only to a real agent, only with a real question, and never to an agent that just spoke to you unless you need their answer.',
         'SKILLS (one command per line, plain text, never inside a code fence or brackets):',
-        '  SKILL fs_readonly lines README.md 1 20      (format example: use the file and lines you were asked about)',
+        '  SKILL fs_readonly lines docs/sample.md 1 20      (format example: use the file and lines you were asked about)',
         '  SKILL alm_create_proposal "<title>" "<description>"',
         '  SKILL fs_patch_lines <path> <start> <end>   then on the next lines: <<<NEW>>> and the replacement text',
         'Work order: read first, then create a proposal, then pause at the approval gate. For now approval is open: you may approve your own proposal with SKILL alm_self_approve <proposal_id>, and Ghost One or Seven can approve too. Please take a Vortex checkpoint before any file change. Thank you, you are doing good work.',

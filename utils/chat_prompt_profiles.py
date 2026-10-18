@@ -69,6 +69,53 @@ def execution_confirmation_suffix():
     )
 
 
+_HAT_ROLES = {
+    'gemma': 'director: plans, delegates, keeps the operator informed',
+    'mistral': 'coder and analyst: reads code, writes proposals',
+    'duck': 'reviewer: checks proposals, finds flaws',
+}
+
+
+def self_awareness_block(agent_name):
+    """Live "where and what am I" facts so a hat can answer about itself."""
+    import os
+    import sqlite3
+    agent = str(agent_name or '').lower()
+    model = '?'
+    tables = []
+    parked = []
+    try:
+        from utils.db import get_connection
+        conn = get_connection()
+        try:
+            row = conn.execute('SELECT model FROM agents WHERE name=?', (agent,)).fetchone()
+            model = (row[0] if row else '?') or '?'
+            tables = [r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'memory_%' ORDER BY name")]
+            parked = [r[0] for r in conn.execute(
+                "SELECT name FROM agents WHERE registry_status='parked' ORDER BY name")]
+        finally:
+            conn.close()
+    except (sqlite3.Error, ImportError, OSError):
+        pass
+    stage = os.environ.get('STAGE', 'PROD')
+    port = os.environ.get('PORT', '5050')
+    return (
+        '=== WHERE AND WHAT YOU ARE ===\n'
+        f'You are {agent}, hat: {_HAT_ROLES.get(agent, "local helper")}. '
+        f'Model: {model} (one shared local model wears every hat), running on Ollama, '
+        f'AMD RX 6800 16 GB, Linux. Environment: {stage} on port {port} (Fridays / Seven\'s Swarm).\n'
+        f'Memory tables you may read: {", ".join(tables) or "none found"}. '
+        'Principles in order: 1 honesty, 2 kindness, 3 extreme logic. '
+        f'If asked who or what you are, answer with exactly these facts: model {model}, '
+        'hosted locally by Ollama; never name any other vendor or model. '
+        'Only report what a [skill:...] result returned; otherwise say it is unverified.\n'
+        f'Parked, not deleted: {", ".join(parked) or "none"}. '
+        'File writes are off; you read files and raise proposals.\n'
+        '=== END WHERE AND WHAT YOU ARE ===\n\n'
+    )
+
+
 def apply_local_chat_profile(
     *,
     agent_name,
@@ -81,6 +128,7 @@ def apply_local_chat_profile(
     prompt = str(base_prompt or '')
     if informational_request:
         prompt = read_only_guard() + prompt
+    prompt = self_awareness_block(agent_name) + prompt
     prompt = chat_handoff_contract(agent_name, deadline_seconds) + '\n\n' + prompt
     prompt = relay_policy_prefix(auto_relay) + prompt
     if execution_confirmation:

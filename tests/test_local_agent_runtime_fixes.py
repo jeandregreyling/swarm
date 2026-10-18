@@ -296,7 +296,7 @@ def test_mistral_uses_shorter_gateway_no_token_timeout(monkeypatch):
 
     assert answer == "mistral ok"
     assert tokens == 9
-    assert called["model"] == "mistral:latest"
+    assert called["model"] == "mistral-small:24b"
     assert called["kwargs"]["idle_timeout_s"] == mistral_agent.GATEWAY_IDLE_TIMEOUT_S
     assert called["kwargs"]["absolute_timeout_s"] == mistral_agent.GATEWAY_ABSOLUTE_TIMEOUT_S
 

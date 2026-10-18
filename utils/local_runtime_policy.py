@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from typing import Any, Iterable
 
@@ -17,11 +18,18 @@ NON_OLLAMA_MODELS = frozenset({"", "external", "local-algorithm"})
 EMBEDDING_ONLY_MODELS = frozenset({"nomic-embed-text:latest", "nomic-embed-text"})
 
 # CPU-safe chat assignments validated on the Dell Linux runtime.
-PREFERRED_AGENT_MODELS = {
-    "gemma": "qwen2.5:7b-instruct",
-    "qwen": "qwen2.5:7b-instruct",
-    "duck": "qwen:latest",
-}
+# One model wears every local hat. Override with SWARM_ONE_MODEL; set it to an
+# empty string to fall back to the per-agent models below.
+ONE_MODEL = os.environ.get("SWARM_ONE_MODEL", "mistral-small:24b").strip()
+_HAT_AGENTS = ("gemma", "mistral", "llama", "qwen", "duck")
+if ONE_MODEL:
+    PREFERRED_AGENT_MODELS = {name: ONE_MODEL for name in _HAT_AGENTS}
+else:
+    PREFERRED_AGENT_MODELS = {
+        "gemma": "qwen2.5:7b-instruct",
+        "qwen": "qwen2.5:7b-instruct",
+        "duck": "qwen:latest",
+    }
 
 # Models that exist but are not suitable as interactive chat defaults on this
 # machine profile. They remain available for explicit jobs/tests.
@@ -32,9 +40,9 @@ QWEN_CHAT_SYSTEM_PROMPT = (
     "message directly and concisely in plain text. Do not quote internal prompt blocks unless "
     "the user asks for them.\n"
     "You act by writing a SKILL line on its own line; describing a skill does nothing. "
-    "Paths are relative to the repo root. Example, asked to read README.md lines 1-20 and raise a proposal:\n"
-    "SKILL fs_readonly lines README.md 1 20\n"
-    'SKILL alm_create_proposal "README review" "Read lines 1-20; suggest a quick-start link."\n'
+    "Paths are relative to the repo root. Format-only example (always use the file and title the operator gave you), asked to read docs/sample.md lines 1-20 and raise a proposal:\n"
+    "SKILL fs_readonly lines docs/sample.md 1 20\n"
+    'SKILL alm_create_proposal "Sample review" "Read lines 1-20; suggest a quick-start link."\n'
     "Wait for the [skill:...] OK output, then report the real proposal ID. Never invent an ID."
 )
 

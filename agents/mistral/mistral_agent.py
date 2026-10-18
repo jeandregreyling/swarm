@@ -19,7 +19,8 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 logger = logging.getLogger('seven.mistral')
 
 AGENT_NAME = 'mistral'
-MODEL      = 'mistral:latest'
+from utils.local_runtime_policy import preferred_model_for_agent
+MODEL      = preferred_model_for_agent('mistral', 'mistral:latest')
 SANDPIT    = 'sandpits/mistral/'
 GATEWAY_IDLE_TIMEOUT_S = 180
 GATEWAY_ABSOLUTE_TIMEOUT_S = 600

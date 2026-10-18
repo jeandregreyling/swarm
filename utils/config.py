@@ -1506,9 +1506,9 @@ SKILL alm_create_proposal "<title>" "<what you saw and what you suggest>"
 SKILL alm_self_approve <proposal_id>
 SKILL alm_complete <proposal_id>
 
-EXAMPLE. Asked to read lines 1 to 20 of README.md and raise a proposal, you reply:
-SKILL fs_readonly lines README.md 1 20
-SKILL alm_create_proposal "README review" "Read lines 1-20. Intro is clear; suggest adding a quick-start link."
+EXAMPLE (format only; always use the file, lines and title the operator actually gave you, never these). Asked to read lines 1 to 20 of docs/sample.md and raise a proposal, you reply:
+SKILL fs_readonly lines docs/sample.md 1 20
+SKILL alm_create_proposal "Sample review" "Read lines 1-20. Intro is clear; suggest adding a quick-start link."
 Then wait for the [skill:...] OK output, report the proposal ID it gives you, and stop.
 
 WORK ORDER: read first, then create a proposal, then report its ID. Approval is open for now: you may approve your own proposal with alm_self_approve, and take a Vortex checkpoint (SKILL alm_vortex before-<label>) before changing any file. Do not commit or push, and never expose secrets.

@@ -76,8 +76,8 @@ _SKILL_NUDGE = (
     '  utils/                 ← config and system prompts\n'
     '  frontend/static/js/views/ ← frontend JS\n'
     'Example workflow:\n'
-    '  SKILL fs_readonly lines README.md 1 20              ← read a line range\n'
-    '  SKILL fs_readonly grep README.md install            ← find text in a file\n'
+    '  SKILL fs_readonly lines docs/sample.md 1 20              ← read a line range\n'
+    '  SKILL fs_readonly grep docs/sample.md install         ← find text in a file\n'
     'These two lines only show the format. Replace the file, range and text with what the request asks for.\n'
     'Never read a whole file from line 1 when you can grep for the value.\n'
     'Never guess paths that do not appear in ls output (backend/, config/, src/ do not exist).\n'
@@ -326,6 +326,11 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
             _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] ERROR: {exc}')
             continue
 
+        try:
+            from utils.thread_memory import record_fact
+            record_fact(source_conv_id, agent_name, skill_name, skill_args, ok, out)
+        except Exception:
+            pass
         preview = str(out or '')[:char_limit]
         status = 'OK' if ok else 'FAILED'
         parts.append(f"[skill:{skill_name}] {status}\n{preview}")

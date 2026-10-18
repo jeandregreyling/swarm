@@ -43,9 +43,9 @@ except Exception:
 # Ollama model names mapped to swarm agent names
 _AGENT_MODEL_MAP = {
     'gemma':          preferred_model_for_agent('gemma', 'gemma3:latest'),
-    'llama':          'llama3.2:latest',
+    'llama':          preferred_model_for_agent('llama', 'llama3.2:latest'),
     'qwen':           preferred_model_for_agent('qwen', 'qwen:latest'),
-    'mistral':        'mistral:latest',
+    'mistral':        preferred_model_for_agent('mistral', 'mistral:latest'),
     'eight':          'gemma3:latest',
     'phi3':           'phi3:mini',
     'deepseek_local': 'deepseek-r1:7b',
@@ -64,9 +64,9 @@ POLL_INTERVAL   = 5     # check every 5 seconds
 
 # The 16 GB GPU holds several models at once; Ollama's own auto limit is 3.
 try:
-    MAX_CONCURRENT_LOCAL = max(1, int(os.environ.get('SWARM_MAX_CONCURRENT_LOCAL', '3')))
+    MAX_CONCURRENT_LOCAL = max(1, int(os.environ.get('SWARM_MAX_CONCURRENT_LOCAL', '1')))
 except ValueError:
-    MAX_CONCURRENT_LOCAL = 3
+    MAX_CONCURRENT_LOCAL = 1
 
 # ── State ─────────────────────────────────────────────────────────────────────
 
