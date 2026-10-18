@@ -120,3 +120,29 @@ def test_duplicate_proposal_in_same_thread_is_skipped():
     assert sl._is_duplicate_proposal('llama', 99, '"Same title" "d1"') is False
     assert sl._is_duplicate_proposal('llama', 99, '"Same title" "d2"') is True
     assert sl._is_duplicate_proposal('llama', 100, '"Same title" "d1"') is False
+
+
+def test_look_and_explain_request_is_look_only():
+    assert sl._asks_only_to_look(_user('List docs with SKILL fs_readonly ls docs and tell me what you see.')) is True
+
+
+def test_injected_context_does_not_make_a_look_request_an_action():
+    text = '=== CARRY-OVER ===\nplease create and update things\n=== END CARRY-OVER ===\n=== New user message ===\nWhat do you see in docs?'
+    assert sl._asks_only_to_look(_user(text)) is True
+
+
+def test_change_or_proposal_request_is_not_look_only():
+    assert sl._asks_only_to_look(_user('Read README.md then raise a proposal.')) is False
+    assert sl._asks_only_to_look(_user('Fix the typo on line 3.')) is False
+
+
+def test_describing_proposals_is_not_a_false_claim():
+    calls = iter(['To suggest a change, create a proposal and report the ID. Ghost reviews proposals.'])
+    out, _ = sl.run_skill_loop('fred', lambda m: (next(calls), 1), _user('What is a proposal?'), lambda t: None)
+    assert '[verification]' not in out
+
+
+def test_claiming_a_proposal_without_a_skill_is_flagged():
+    calls = iter(['I created a proposal, it is INTERNAL-FRED-9999.'])
+    out, _ = sl.run_skill_loop('fred', lambda m: (next(calls), 1), _user('Hello'), lambda t: None)
+    assert out.startswith('[verification]')

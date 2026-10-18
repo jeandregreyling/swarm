@@ -61,3 +61,9 @@ Fred is the only local agent: `agents/fred/fred_agent.py`, prompt `FRED_SYSTEM_P
 - Routing: `core/routing.py` lists Fred first for every role.
 - Memory: `memory_fred` table plus `mind.db` notes (handover, roles, onboarding).
 - Undo: restore `/tmp/swarm_memory.pre-fred.db` (taken before the swap), or unpark the old agents with the SQL above.
+
+### Teaching Fred (2026-10-19)
+- Field guide: `docs/FRED_FIELD_GUIDE.md` (Fred reads it with her own `fs_readonly` skill); pointer saved in `mind.db` notes along with a repo map and housekeeping notes.
+- Skill-loop fix (`agents/skills_loop.py`): when the operator only asks to look and explain, the follow-up now says "answer now" instead of pushing a code-change workflow, and mid-loop skill nudges are off. Before: Fred chained unrequested skills and ended with "I do not know".
+- `[verification]` flag narrowed to real claims (past-tense "created a proposal" or an `INTERNAL-X-n` ID no skill returned). Before: it fired on any sentence describing proposals.
+- Observed: Fred answers one ask per message reliably; multi-part messages lose parts.

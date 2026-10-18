@@ -231,6 +231,25 @@ def _operator_text(content):
     return _INJECTED_BLOCK_RE.sub('', str(content or ''))
 
 
+_ACTION_WORDS_RE = re.compile(
+    r'(?i)\b(patch|edit|change|modify|write|fix|update|implement|create|add|apply|refactor|'
+    r'delete|remove|rename|proposal|approve|complete|commit|push|deploy|install|restart)\b'
+)
+
+
+def _asks_only_to_look(messages):
+    """True when the operator's newest message asks for no change, only to look and explain."""
+    for message in reversed(messages or []):
+        if not isinstance(message, dict) or message.get('role') != 'user':
+            continue
+        text = _operator_text(message.get('content'))
+        marker = '=== New user message ==='
+        if marker in text:
+            text = text.rsplit(marker, 1)[1]
+        return not _ACTION_WORDS_RE.search(text)
+    return False
+
+
 def _is_explicitly_read_only_task(messages):
     # Only the latest user turn counts: earlier turns, and prose like "No write
     # occurs without a Vortex ID" in relayed peer messages, must not strip write skills.
@@ -565,7 +584,8 @@ def run_skill_loop(
 
     pass_num = 0
     _all_results = []
-    _mid_loop_nudges_remaining = 2  # allow up to 2 mid-loop nudges per request
+    _look_only = _asks_only_to_look(messages)
+    _mid_loop_nudges_remaining = 0 if _look_only else 2  # allow up to 2 mid-loop nudges per request
 
     for _pass in range(max_passes):
         skill_cmds = _extract_skill_cmds(answer)
@@ -654,6 +674,15 @@ def run_skill_loop(
                 'Final skill outputs below. Produce your final answer now.\n\n'
                 + skill_results
             )
+        elif _look_only:
+            follow_up = (
+                'Skill outputs below. The operator only asked you to look and explain, so answer '
+                'them now in plain words, using only what these outputs show. Run another skill only '
+                'if you truly cannot answer without it. If the output has odd or unrelated lines, '
+                'mention them briefly rather than chasing them. If you cannot answer, say what is '
+                'missing instead of writing "I do not know".\n\n'
+                + skill_results
+            )
         else:
             follow_up = (
                 'Skill outputs below.\n'
@@ -703,7 +732,12 @@ def run_skill_loop(
 
     # Small models sometimes claim a proposal exists without ever creating one.
     joined = '\n'.join(_all_results)
-    claims = re.search(r'(?i)\bproposal\b[^\n]{0,80}\b(created|id|submitted)\b|\bcreated\b[^\n]{0,40}\bproposal\b', str(answer or ''))
+    claims = re.search(
+        r'(?i)\b(i|we|have|has)\s+(?:\w+\s+)?(created|submitted|raised|filed)\b[^\n]{0,40}\bproposal\b'
+        r'|\bproposal\b[^\n]{0,40}\b(was|has been|is now)\s+(created|submitted|raised|filed)\b'
+        r'|\bINTERNAL-[A-Z]+-\d+\b',
+        str(answer or ''),
+    )
     if claims and '[skill:alm_create_proposal] OK' not in joined:
         answer = (
             "[verification] No proposal was actually created: alm_create_proposal did not "
