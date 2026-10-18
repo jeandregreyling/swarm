@@ -26,6 +26,16 @@ def test_direct_registry_discovers_repo_local_seven_model():
     assert entry.path and entry.path.endswith("seven-7b-q8_0.gguf")
 
 
+def test_server_environment_loads_adjacent_llama_cpp_libraries(monkeypatch, tmp_path):
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/existing/lib")
+    binary = tmp_path / "bin" / "llama-server"
+    env = llama_server._server_environment(str(binary))
+    assert env["LD_LIBRARY_PATH"].split(os.pathsep) == [
+        str(binary.parent),
+        "/existing/lib",
+    ]
+
+
 def test_inventory_reports_mounted_root_and_repo_ggufs():
     snap = scan_gguf(roots=["/mnt/llm", "agents/seven/models"], limit=20)
     roots = {r["path"]: r for r in snap["roots"]}

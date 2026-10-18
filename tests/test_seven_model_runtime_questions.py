@@ -198,3 +198,7 @@ def test_echo_response_is_rejected():
         "Tell me something interesting about yourself?",
         "I am Seven, the local swarm companion.",
     )
+    assert not seven_agent._is_echo_response(
+        "Reply with exactly READY.",
+        "READY",
+    )

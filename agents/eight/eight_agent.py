@@ -1,6 +1,6 @@
 """
 agents/eight/eight_agent.py — Gemma 4 (agent Eight)
-Model: gemma4:26b via Ollama.
+Model: gemma3:latest via Ollama.
 """
 import logging, sys
 from typing import Optional
@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 
 logger = logging.getLogger('seven.eight')
 AGENT_NAME = 'eight'
-MODEL = 'gemma4:26b'
+MODEL = 'gemma3:latest'
 
 
 def _resolve_model() -> str:
@@ -21,6 +21,8 @@ def _resolve_model() -> str:
         from utils.db.registry import get_agent_models
         configured = str((get_agent_models() or {}).get(AGENT_NAME) or '').strip()
         if configured:
+            if configured.lower() == 'gemma4:26b':
+                return MODEL
             return configured
     except Exception:
         pass

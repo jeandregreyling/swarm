@@ -15,11 +15,17 @@ import logging as _logging
 
 _log = _logging.getLogger(__name__)
 
+# These agents are intentionally pinned to locally installed Ollama models.
+_LOCAL_ONLY_MODELS = {
+    'thirteen': ('llama3.2:latest', 'qwen:latest'),
+    'nineteen': ('qwen:latest', 'llama3.2:latest'),
+}
+
 # ── Preference matrix ────────────────────────────────────────────────────────
 # (agent_name, category) → ordered list of preferred models (best first)
 
 _PREFERENCES = {
-    # Ghost Coder — strongest model per task type
+    # Ghost Coder retains its explicit cloud fallback and override path.
     ('ghost_coder', 'code'):      ['claude-sonnet-4-20250514', 'gpt-4.1', 'grok-3'],
     ('ghost_coder', 'creative'):  ['claude-opus-4-20250514', 'gpt-4.1', 'grok-3'],
     ('ghost_coder', 'math'):      ['claude-sonnet-4-20250514', 'gpt-4.1'],
@@ -35,10 +41,10 @@ _PREFERENCES = {
     ('gemma', 'general'):         ['gemma3:latest'],
     ('gemma', 'opinion'):         ['gemma3:latest'],
 
-    # Eight — larger model for complex tasks
-    ('eight', 'code'):            ['gemma4:26b'],
-    ('eight', 'creative'):        ['gemma4:26b'],
-    ('eight', 'math'):            ['gemma4:26b'],
+    # Eight — local model for SAP domain analysis
+    ('eight', 'code'):            ['gemma3:latest'],
+    ('eight', 'creative'):        ['gemma3:latest'],
+    ('eight', 'math'):            ['gemma3:latest'],
 
     # Eleven (Grok) — creative specialist
     ('eleven', 'creative'):       ['grok-3', 'grok-api'],
@@ -82,14 +88,15 @@ _DEFAULTS = {
     'llama':         'llama3.2:latest',
     'mistral':       'mistral:latest',
     'qwen':          'qwen2.5:latest',
-    'eight':         'gemma4:26b',
+    'eight':         'gemma3:latest',
     'deepseek_local': 'deepseek-r1:7b',
     'phi3':          'phi3:latest',
     'nine':          'llama-3.3-70b-versatile',
     'ten':           'gpt-4o',
     'eleven':        'grok-api',
     'twelve':        'claude-haiku-4-5',
-    'thirteen':      'meta-llama/Llama-3.3-70B-Instruct',
+    'thirteen':      'llama3.2:latest',
+    'nineteen':      'qwen:latest',
     'scholar':       'gemini',
     'seeker':        'tavily',
     'duck':          'qwen:latest',
@@ -118,6 +125,11 @@ def select_model(agent_name, category=None, user_model=None):
     tuple[str, str]
         (model_string, source) where source is 'override' | 'preference' | 'default'.
     """
+    # Local-only agents must not be redirected to cloud models by a stale or
+    # manually edited Agents-tile override.
+    if agent_name in _LOCAL_ONLY_MODELS:
+        return _LOCAL_ONLY_MODELS[agent_name][0], 'local'
+
     # 1. User override always wins (unless 'auto' which means let system decide)
     if user_model and user_model not in ('auto', ''):
         return user_model, 'override'
@@ -138,6 +150,9 @@ def get_fallback_chain(agent_name, category=None):
 
     Returns a list of model strings, best first.
     """
+    if agent_name in _LOCAL_ONLY_MODELS:
+        return list(_LOCAL_ONLY_MODELS[agent_name])
+
     chain = []
 
     # Category preferences first

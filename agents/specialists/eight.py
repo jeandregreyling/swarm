@@ -1,7 +1,7 @@
 """
 eight.py — SAP HCM/Payroll specialist (RL-013)
 ═══════════════════════════════════════════════════════════════════════════════
-Single gemma4:26b model (MoE — 26B total, 3.8B active, 256K context).
+Single gemma3:latest model.
 Reasons across all three angles in one pass: business config, ABAP/technical,
 and devil's advocate edge cases — then delivers a single verdict.
 
@@ -26,7 +26,7 @@ try:
 except Exception:
     _TAVILY_OK = False
 
-MODEL = 'gemma4:26b'
+MODEL = 'gemma3:latest'
 TEMP  = 0.2
 
 EIGHT_SYSTEM_PROMPT = """You are Eight, a Senior SAP HCM/Payroll Specialist in Seven's Swarm, built for Ghost — a senior SAP Payroll Consultant. Ghost knows the terminology at expert level; do not over-explain basics.
@@ -192,7 +192,7 @@ def _build_eight_context(question):
 
 def consult(question, web_results, shared_context, conv_id, status_cb=None):
     """
-    Single gemma4:26b call — reasons across functional, technical, and devil's
+    Single gemma3:latest call — reasons across functional, technical, and devil's
     advocate angles in one pass and returns a verdict.
     Called by orchestrator.consult_stage_eight().
 

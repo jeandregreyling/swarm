@@ -1,7 +1,4 @@
-"""
-agents/twenty/twenty_agent.py - Twenty (Qwen3.6)
-Local Qwen3.6 agent served via Ollama.
-"""
+"""Twenty — local Qwen agent served via Ollama."""
 import logging, sys, re
 import os
 import sys
@@ -11,20 +8,20 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 
 logger = logging.getLogger('seven.twenty')
 AGENT_NAME = 'twenty'
-MODEL = 'qwen3.6:latest'
+MODEL = 'qwen:latest'
 GATEWAY_IDLE_TIMEOUT_S = 900
 GATEWAY_ABSOLUTE_TIMEOUT_S = 2000
 
 
 def _resolve_model():
-    """Prefer the DB registry model, but repair the legacy qwen3 alias."""
+    """Prefer the DB registry model unless it names an unavailable Qwen tag."""
     try:
         from utils.db.registry import get_agent_models
         configured = str((get_agent_models() or {}).get(AGENT_NAME) or '').strip()
     except Exception:
         configured = ''
     chosen = configured or MODEL
-    if chosen.lower() in {'qwen3:latest', 'qwen3'}:
+    if chosen.lower() in {'qwen3:latest', 'qwen3', 'qwen3.6:latest'}:
         return MODEL
     return chosen
 

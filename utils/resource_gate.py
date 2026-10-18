@@ -4,7 +4,7 @@ utils/resource_gate.py — Ollama model resource gate
 Enforces a one-model-at-a-time policy for local Ollama inference.
 
 Rules:
-  • Eight (gemma4:26b, 17GB) runs exclusively — no other local agent may start
+  • Eight (gemma3:latest) runs exclusively — no other local agent may start
     while Eight is actively running, and Eight will not start while another
     local agent is actively running.
   • All other local models (Mistral, LLaMA, Qwen, Gemma3) queue if another
@@ -46,7 +46,7 @@ _AGENT_MODEL_MAP = {
     'llama':          'llama3.2:latest',
     'qwen':           preferred_model_for_agent('qwen', 'qwen:latest'),
     'mistral':        'mistral:latest',
-    'eight':          'gemma4:26b',
+    'eight':          'gemma3:latest',
     'phi3':           'phi3:mini',
     'deepseek_local': 'deepseek-r1:7b',
 }

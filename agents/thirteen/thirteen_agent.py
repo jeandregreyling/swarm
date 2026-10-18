@@ -1,7 +1,7 @@
 """
 # LINKED TO: utils/config.py — imports THIRTEEN_SYSTEM_PROMPT (edit prompts there, not here)
-agents/thirteen/thirteen_agent.py — Thirteen (HuggingFace Inference API)
-Developer Agent — HuggingFace specialist (testing). Powered by HuggingFace Inference API via OpenAI-compatible endpoint.
+agents/thirteen/thirteen_agent.py — Thirteen (local Ollama)
+Developer Agent powered by the installed local Llama model.
 """
 
 import logging
@@ -13,9 +13,8 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 
 logger = logging.getLogger('seven.thirteen')
 
-AGENT_NAME  = 'thirteen'
-HF_BASE_URL = 'https://router.huggingface.co/v1'
-HF_MODEL    = 'meta-llama/Llama-3.3-70B-Instruct'
+AGENT_NAME = 'thirteen'
+LOCAL_MODEL = 'llama3.2:latest'
 
 
 def _build_context(message):
@@ -56,7 +55,7 @@ def _build_context(message):
 
 def chat(message, conversation_history=None, stage_cb=None):
     """
-    Send a message to Thirteen (HuggingFace Inference API).
+    Send a message to Thirteen through the local Ollama gateway.
     Returns (answer, tokens_used).
     """
     def _emit(text):
@@ -66,17 +65,8 @@ def chat(message, conversation_history=None, stage_cb=None):
             except Exception:
                 pass
 
-    try:
-        from openai import OpenAI
-    except ImportError:
-        return '[Thirteen] openai package not installed', 0
-
-    from config import HF_API_TOKEN, THIRTEEN_SYSTEM_PROMPT
+    from config import THIRTEEN_SYSTEM_PROMPT
     system_prompt = THIRTEEN_SYSTEM_PROMPT
-    hf_key = HF_API_TOKEN
-    if not hf_key:
-        logger.error('[Thirteen] HF_API_TOKEN not configured')
-        return '[Thirteen] HF_API_TOKEN not set in .env.agents', 0
 
     _emit('loading context')
     context = _build_context(message)
@@ -88,15 +78,14 @@ def chat(message, conversation_history=None, stage_cb=None):
     messages.append({'role': 'user', 'content': message})
 
     try:
-        client = OpenAI(api_key=hf_key, base_url=HF_BASE_URL)
-
         def _api_call(msgs):
-            resp = client.chat.completions.create(
-                model=HF_MODEL,
-                messages=msgs,
-                max_tokens=2048,
+            from core import llm
+            return llm.chat_via_gateway(
+                LOCAL_MODEL,
+                msgs,
+                stage_cb=stage_cb,
+                temperature=0.5,
             )
-            return resp.choices[0].message.content, (resp.usage.total_tokens if resp.usage else 0)
 
         from agents.skills_loop import run_skill_loop
         answer, tokens = run_skill_loop(
@@ -120,16 +109,9 @@ def chat(message, conversation_history=None, stage_cb=None):
         except Exception:
             pass
 
-        logger.info(f'[Thirteen] tokens={tokens} | {message[:60]}')
+        logger.info(f'[Thirteen] model={LOCAL_MODEL} tokens={tokens} | {message[:60]}')
         return answer, tokens
 
     except Exception as e:
-        msg = str(e)
-        logger.error(f'[Thirteen] API error: {msg}')
-        if '401' in msg or 'authentication' in msg.lower() or 'unauthorized' in msg.lower():
-            return '[Thirteen] HF API key invalid or expired.', 0
-        if '429' in msg or 'rate limit' in msg.lower():
-            return f'[Thirteen] HuggingFace rate limit hit. {msg}', 0
-        if '503' in msg or 'loading' in msg.lower():
-            return f'[Thirteen] Model is loading on HuggingFace servers, try again in a moment.', 0
-        return f'[Thirteen] API error: {msg}', 0
+        logger.error(f'[Thirteen] local inference error: {e}')
+        return f'[Thirteen] local inference error: {e}', 0

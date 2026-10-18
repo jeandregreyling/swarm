@@ -15,14 +15,14 @@ def test_twenty_repairs_legacy_qwen_alias(monkeypatch):
         lambda: {"twenty": "qwen3:latest"},
     )
 
-    assert twenty_agent._resolve_model() == "qwen3.6:latest"
+    assert twenty_agent._resolve_model() == "qwen:latest"
 
 
 def test_twenty_gateway_uses_long_local_timeouts(monkeypatch):
     from agents.twenty import twenty_agent
 
     monkeypatch.setattr(twenty_agent, "_build_context", lambda _message: "")
-    monkeypatch.setattr(twenty_agent, "_resolve_model", lambda: "qwen3.6:latest")
+    monkeypatch.setattr(twenty_agent, "_resolve_model", lambda: "qwen:latest")
     monkeypatch.setattr("database.save_agent_memory", lambda *args, **kwargs: None)
     monkeypatch.setattr("coding_bible.inject", lambda prompt: prompt)
 
@@ -39,7 +39,7 @@ def test_twenty_gateway_uses_long_local_timeouts(monkeypatch):
 
     assert answer == "twenty ok"
     assert tokens == 12
-    assert called["model"] == "qwen3.6:latest"
+    assert called["model"] == "qwen:latest"
     assert called["kwargs"]["idle_timeout_s"] == twenty_agent.GATEWAY_IDLE_TIMEOUT_S
     assert called["kwargs"]["absolute_timeout_s"] == twenty_agent.GATEWAY_ABSOLUTE_TIMEOUT_S
 
@@ -48,7 +48,7 @@ def test_eight_uses_runtime_gateway_path(monkeypatch):
     from agents.eight import eight_agent
 
     monkeypatch.setattr(eight_agent, "_build_context", lambda _message: "context")
-    monkeypatch.setattr(eight_agent, "_resolve_model", lambda: "gemma4:26b")
+    monkeypatch.setattr(eight_agent, "_resolve_model", lambda: "gemma3:latest")
 
     called = {}
 
@@ -65,7 +65,7 @@ def test_eight_uses_runtime_gateway_path(monkeypatch):
 
     assert answer == "eight ok"
     assert tokens == 42
-    assert called["model"] == "gemma4:26b"
+    assert called["model"] == "gemma3:latest"
     assert callable(called["kwargs"]["stage_cb"]) or called["kwargs"]["stage_cb"] is None
     assert callable(called["kwargs"]["on_chunk"])
     assert called["messages"][-1]["content"] == "hello"
@@ -105,6 +105,32 @@ def test_seven_uses_direct_runtime_gateway(monkeypatch):
     assert called["kwargs"]["keep_alive"] == 0
     assert called["messages"][-1]["content"] == "hello"
     assert "thinking · seven merged model" in stages
+
+
+def test_seven_does_not_discard_a_short_valid_answer_as_an_echo(monkeypatch):
+    from types import SimpleNamespace
+    from agents.seven import seven_agent
+
+    monkeypatch.setattr(seven_agent, "SEVEN_MODEL", "seven-direct:daily")
+    monkeypatch.setattr(seven_agent, "_read_state", lambda: {"local_agents": ["Seven"]})
+    monkeypatch.setattr(seven_agent, "_load_memory", lambda _message: [])
+    monkeypatch.setattr(seven_agent, "_load_kc_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_identity_beliefs", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_open_curiosity", lambda *args, **kwargs: [])
+    monkeypatch.setattr(seven_agent, "_load_pillars_context", lambda: {})
+    monkeypatch.setattr(seven_agent, "_compose", lambda *args, **kwargs: (None, 0))
+    monkeypatch.setattr("core.diamond_sch.route", lambda *args, **kwargs: SimpleNamespace(decision="ERROR"))
+    monkeypatch.setattr("database.save_agent_memory", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "core.llm.chat_via_gateway",
+        lambda *args, **kwargs: ("READY", 1),
+    )
+
+    answer, tokens = seven_agent.chat("Reply with exactly READY.")
+    payload = json.loads(answer)
+    assert payload["kind"] == "analysis"
+    assert payload["summary"] == "READY"
+    assert tokens == 1
 
 
 def test_seven_direct_runtime_failure_falls_back_to_state(monkeypatch):
@@ -165,7 +191,53 @@ def test_mistral_uses_shorter_gateway_no_token_timeout(monkeypatch):
     assert called["kwargs"]["absolute_timeout_s"] == mistral_agent.GATEWAY_ABSOLUTE_TIMEOUT_S
 
 
-def test_schema_seeds_twenty_with_qwen36_alias():
+def test_schema_uses_installed_local_models():
     src = (ROOT / "utils" / "db" / "_schema.py").read_text(encoding="utf-8")
     assert "'twenty'" in src
-    assert "qwen3.6:latest" in src
+    assert "qwen:latest" in src
+    assert "gemma3:latest" in src
+    assert "llama3.2:latest" in src
+
+
+def test_thirteen_uses_local_ollama_gateway(monkeypatch):
+    from agents.thirteen import thirteen_agent
+
+    monkeypatch.setattr(thirteen_agent, "_build_context", lambda _message: "local context")
+    monkeypatch.setattr("database.save_agent_memory", lambda **kwargs: None)
+    called = {}
+
+    def _fake_gateway(model, messages, **kwargs):
+        called["model"] = model
+        return "thirteen local", 8
+
+    def _fake_skill_loop(agent_name, call_fn, messages, emit_fn, **kwargs):
+        return call_fn(messages)
+
+    monkeypatch.setattr("core.llm.chat_via_gateway", _fake_gateway)
+    monkeypatch.setattr("agents.skills_loop.run_skill_loop", _fake_skill_loop)
+
+    answer, tokens = thirteen_agent.chat("hello")
+    assert (answer, tokens) == ("thirteen local", 8)
+    assert called["model"] == "llama3.2:latest"
+
+
+def test_nineteen_uses_local_ollama_gateway(monkeypatch):
+    from agents.nineteen import nineteen_agent
+
+    monkeypatch.setattr(nineteen_agent, "_build_context", lambda _message: "local context")
+    monkeypatch.setattr("database.save_agent_memory", lambda *args, **kwargs: None)
+    called = {}
+
+    def _fake_gateway(model, messages, **kwargs):
+        called["model"] = model
+        return "nineteen local", 9
+
+    def _fake_skill_loop(agent_name, call_fn, messages, emit_fn, **kwargs):
+        return call_fn(messages)
+
+    monkeypatch.setattr("core.llm.chat_via_gateway", _fake_gateway)
+    monkeypatch.setattr("agents.skills_loop.run_skill_loop", _fake_skill_loop)
+
+    answer, tokens = nineteen_agent.chat("hello")
+    assert (answer, tokens) == ("nineteen local", 9)
+    assert called["model"] == "qwen:latest"

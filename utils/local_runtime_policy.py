@@ -6,9 +6,12 @@ across chat routing, model-store guards, probes, and agent wrappers.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any, Iterable
 
+
+logger = logging.getLogger(__name__)
 
 NON_OLLAMA_MODELS = frozenset({"", "external", "local-algorithm"})
 EMBEDDING_ONLY_MODELS = frozenset({"nomic-embed-text:latest", "nomic-embed-text"})
@@ -30,11 +33,11 @@ QWEN_CHAT_SYSTEM_PROMPT = (
 )
 
 READ_ONLY_AGENT_PROFILES = frozenset({"gemma", "qwen", "llama", "seven"})
+MEMORY_WRITE_AGENT_PROFILES = frozenset({"gemma", "qwen", "llama"})
 READ_ONLY_AGENT_CAPABILITIES = frozenset({
     "coordinate",
     "git_execute",
     "git_propose",
-    "memory_write",
     "memory_read_all",
     "propose_work",
     "sandpit_write",
@@ -56,6 +59,10 @@ READ_ONLY_PROFILE_PROMPT = (
     "Chat → Studio → ticket/project → staging workflow; never bypass its "
     "approval gates. The backend supplies relevant repository, Vortex ledger, "
     "checkpoint, and commit-history excerpts as read-only context.\n\n"
+    "A separate memory_write permission may let the backend retain your "
+    "successful responses in your own private memory pool. This is not a tool "
+    "you can invoke or verify; never claim to have saved a memory yourself. "
+    "Do not write to another agent's pool or to the Vortex ledger.\n\n"
     "Every response must be one valid JSON object with this shape: "
     '{"kind":"analysis|recommendation|draft|error","summary":"...","evidence":['
     '{"source":"...","finding":"..."}],"proposed_changes":['
@@ -89,10 +96,47 @@ def is_read_only_agent(agent_name: Any) -> bool:
 
 
 def agent_capability_allowed(agent_name: Any, capability: Any) -> bool:
+    agent = normalize_agent_name(agent_name)
+    capability_name = str(capability or "").strip().lower()
+    if capability_name == "memory_write":
+        return agent in MEMORY_WRITE_AGENT_PROFILES
     return not (
-        is_read_only_agent(agent_name)
-        and str(capability or "").strip().lower() in READ_ONLY_AGENT_CAPABILITIES
+        agent in READ_ONLY_AGENT_PROFILES
+        and capability_name in READ_ONLY_AGENT_CAPABILITIES
     )
+
+
+def persist_read_only_chat_memory(agent_name: Any, user_message: Any, response: Any) -> bool:
+    """Persist a successful read-only chat response to that agent's own pool."""
+    agent = normalize_agent_name(agent_name)
+    if agent not in MEMORY_WRITE_AGENT_PROFILES:
+        return False
+
+    payload = json.loads(str(response or ""))
+    if (
+        not isinstance(payload, dict)
+        or payload.get("kind") not in {"analysis", "recommendation", "draft"}
+        or payload.get("human_review_required") is not True
+    ):
+        return False
+
+    from utils.db.agents import agent_has_capability
+
+    if not agent_has_capability(agent, "memory_write"):
+        return False
+
+    from database import save_agent_memory
+
+    subject = str(user_message or "").strip()[:100] or "Read-only chat response"
+    save_agent_memory(
+        agent,
+        subject,
+        json.dumps(payload, ensure_ascii=True, separators=(",", ":")),
+        tags="chat,review_gated",
+        importance=5,
+        source="read_only_chat",
+    )
+    return True
 
 
 def agent_skill_allowed(agent_name: Any, skill_name: Any) -> bool:

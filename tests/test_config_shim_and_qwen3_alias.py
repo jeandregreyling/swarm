@@ -1,9 +1,9 @@
-"""Lock the legacy config shim and qwen3 alias mapping.
+"""Lock the legacy config shim and Twenty's installed local model mapping.
 
 Regression for S-F0D3F4B8DA: the live config moved to ``utils.config`` but
 many call sites still ``from config import ...``. The shim must re-export
 ``OPENAI_API_KEY`` even when the env var is unset, and Twenty must repair
-the ``qwen3:latest`` alias to its real model.
+unavailable Qwen3 aliases to an installed Ollama model.
 """
 import importlib
 import os
@@ -78,13 +78,13 @@ class TestTwentyQwen3Alias:
         )
         assert twenty_agent._resolve_model() == twenty_agent.MODEL
 
-    def test_passthrough_for_real_model(self, monkeypatch):
+    def test_repairs_qwen36_model(self, monkeypatch):
         from agents.twenty import twenty_agent
         monkeypatch.setattr(
             "utils.db.registry.get_agent_models",
             lambda: {"twenty": "qwen3.6:latest"},
         )
-        assert twenty_agent._resolve_model() == "qwen3.6:latest"
+        assert twenty_agent._resolve_model() == "qwen:latest"
 
     def test_falls_back_to_default_when_registry_empty(self, monkeypatch):
         from agents.twenty import twenty_agent

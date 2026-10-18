@@ -48,6 +48,16 @@ def default_binary() -> str:
     )
 
 
+def _server_environment(binary: str) -> dict[str, str]:
+    env = os.environ.copy()
+    library_dir = os.path.dirname(os.path.abspath(binary))
+    existing = env.get("LD_LIBRARY_PATH", "")
+    env["LD_LIBRARY_PATH"] = os.pathsep.join(
+        path for path in (library_dir, existing) if path
+    )
+    return env
+
+
 def _preferred_port(model: str) -> int:
     digest = hashlib.sha1(model.encode("utf-8")).hexdigest()
     return BASE_PORT + (int(digest[:4], 16) % 1000)
@@ -194,6 +204,7 @@ def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
             stderr=subprocess.STDOUT,
             text=True,
             close_fds=True,
+            env=_server_environment(binary),
         )
         _PROCS[model] = proc
 

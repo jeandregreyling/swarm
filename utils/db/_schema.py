@@ -1806,15 +1806,15 @@ def _seed_agents():
         ( 5,  'librarian', 'Vortex',    'qwen:latest',               0.1,  'Gatekeeper + Vortex — tags, queues, closes, checkpoints'),
         ( 6,  'duck',      'Duck',      'qwen:latest',               0.1,  'Sanity checker — YES/NO after every ticket'),
         (20,  'sniffles',  'Sniffles',  'deepseek-r1:7b',            0.2,  'Inspector — memory auditor, read only, chain-of-thought'),
-        ( 8,  'eight',     'Eight',     'gemma4:26b',                0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
+        ( 8,  'eight',     'Eight',     'gemma3:latest',             0.5,  'SAP specialist — three-voice debate (Functional/Technical/Devil)'),
         ( 9,  'nine',      'Groq',      'llama-3.3-70b-versatile',              0.5,  'Developer Agent — system architect, proposals, Ghost One-directed execution'),
         (10,  'ten',       'Github',    'gpt-4o',                                0.4,  'Developer Agent — software engineer, code quality, implementation'),
         (11,  'eleven',    'Grok',      'grok-api',                              0.5,  'Developer Agent — lateral thinker, creative synthesis, alternatives'),
         (12,  'twelve',    'Claude',    'claude-haiku-4-5',                      0.3,  'Developer Agent — time wizard, session continuity, Vortex'),
-        (13,  'thirteen',  'HuggingFace', 'meta-llama/Llama-3.3-70B-Instruct',  0.5,  'Developer Agent — HuggingFace specialist (testing)'),
-        (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514',        0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
+        (13,  'thirteen',  'Thirteen',  'llama3.2:latest',          0.5,  'Local developer agent — Llama'),
+        (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514', 0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
         ( 7,  'seven',      'Seven',      'seven-direct:daily',              0.0,  'Personal companion — loyal, thinks out loud'),
-        (21,  'twenty',     'Qwen3.6',    'qwen3.6:latest',                  0.8,  'Nervous system — observes, deliberates, suggests (no LLM)'),
+        (21,  'twenty',     'Twenty',     'qwen:latest',             0.8,  'Local Qwen agent — multi-file coding and deeper refactoring'),
     ]
     conn = get_connection()
     for number, name, label, model, temp, role in roster:
@@ -1840,11 +1840,25 @@ def _seed_agents():
             "UPDATE agents SET number=-1, label='Retired', role=? WHERE name=?",
             (retired_note, retired_name)
         )
-    # Self-heal runtime drift from the earlier Twenty alias bug. Existing DBs
-    # may still hold qwen3:latest, which causes chat-time 404s against Ollama.
+    # Replace unavailable model tags with locally installed Ollama models.
     conn.execute(
-        "UPDATE agents SET model='qwen3.6:latest' "
-        "WHERE name='twenty' AND lower(trim(COALESCE(model,''))) IN ('qwen3:latest','qwen3')"
+        "UPDATE agents SET model='gemma3:latest' "
+        "WHERE name='eight' AND lower(trim(COALESCE(model,'')))='gemma4:26b'"
+    )
+    conn.execute(
+        "UPDATE agents SET model='qwen:latest', label='Twenty', "
+        "role='Local Qwen agent — multi-file coding and deeper refactoring' "
+        "WHERE name='twenty' AND lower(trim(COALESCE(model,''))) IN "
+        "('qwen3:latest','qwen3','qwen3.6:latest')"
+    )
+    conn.execute(
+        "UPDATE agents SET model='llama3.2:latest', label='Thirteen', "
+        "role='Local developer agent — Llama', tier='local' WHERE name='thirteen'"
+    )
+    conn.execute(
+        "UPDATE agents SET model='qwen:latest', "
+        "role='Local reasoning agent — fast analysis and structured problem solving', "
+        "tier='local' WHERE name='nineteen'"
     )
 
     # ── proposal_attachments table (ALM file attachments) ─────────────────────

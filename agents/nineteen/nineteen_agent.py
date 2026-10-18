@@ -1,8 +1,7 @@
 """
 # LINKED TO: utils/config.py — imports NINETEEN_SYSTEM_PROMPT (edit prompts there, not here)
-agents/nineteen/nineteen_agent.py — Nineteen (o4-mini)
-Fast reasoning agent. Powered by o4-mini via GitHub Models API.
-Uses a GitHub PAT with models:read scope via https://models.inference.ai.azure.com
+agents/nineteen/nineteen_agent.py — Nineteen (local Ollama)
+Fast reasoning agent powered by the installed local Qwen model.
 
 Uses the shared agents/skills_loop.py for SKILL command interception.
 Stage callbacks stream progress to the Fridays chat UI in real time.
@@ -19,7 +18,7 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 logger = logging.getLogger('seven.nineteen')
 
 AGENT_NAME = 'nineteen'
-_DEFAULT_MODEL = 'o4-mini'
+LOCAL_MODEL = 'qwen:latest'
 
 
 def _build_context(message):
@@ -59,7 +58,7 @@ def _build_context(message):
 
 def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     """
-    Send a message to Nineteen (o4-mini via GitHub Models API).
+    Send a message to Nineteen through the local Ollama gateway.
 
     Uses the shared run_skill_loop for SKILL command interception.
     stage_cb(text, eta_seconds) — called throughout to push progress to the UI.
@@ -74,16 +73,7 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
             except Exception:
                 pass
 
-    try:
-        from openai import OpenAI
-    except ImportError:
-        logger.error('[Nineteen] openai package not installed')
-        return None, 0
-
-    from config import GITHUB_TOKEN, NINETEEN_SYSTEM_PROMPT, NINETEEN_MODEL
-    if not GITHUB_TOKEN:
-        logger.error('[Nineteen] GITHUB_TOKEN not configured — add to .env.agents')
-        return None, 0
+    from config import NINETEEN_SYSTEM_PROMPT
 
     _emit('loading context')
     context = _build_context(message)
@@ -94,26 +84,14 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         messages.extend(conversation_history[-6:])
     messages.append({'role': 'user', 'content': message})
 
-    # ── API call wrapper for skills_loop ───────────────────────────────────────
-    model = NINETEEN_MODEL or _DEFAULT_MODEL
-
-    try:
-        client = OpenAI(
-            api_key=GITHUB_TOKEN,
-            base_url='https://models.inference.ai.azure.com',
-        )
-    except Exception as e:
-        return f'[Nineteen] Client init error: {e}', 0
-
     def _api_call(msgs):
-        response = client.chat.completions.create(
-            model=model,
-            messages=msgs,
-            max_completion_tokens=16384,
+        from core import llm
+        return llm.chat_via_gateway(
+            LOCAL_MODEL,
+            msgs,
+            stage_cb=stage_cb,
+            temperature=0.4,
         )
-        content = response.choices[0].message.content
-        tokens = response.usage.total_tokens if response.usage else 0
-        return content, tokens
 
     # ── Run through shared skill loop ──────────────────────────────────────────
     try:
@@ -133,12 +111,8 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
         )
     except Exception as e:
         msg = str(e)
-        logger.error(f'[Nineteen] API error: {msg}')
-        if 'RateLimitReached' in msg or '429' in msg or 'rate limit' in msg.lower():
-            return f'[Nineteen] GitHub Models rate limit reached. Resets in ~24h. Error: {msg}', 0
-        if '401' in msg or 'Unauthorized' in msg or 'authentication' in msg.lower():
-            return '[Nineteen] GitHub token rejected (401). Regenerate PAT with Models scope at github.com/settings/tokens.', 0
-        return f'[Nineteen] API error: {msg}', 0
+        logger.error(f'[Nineteen] local inference error: {msg}')
+        return f'[Nineteen] local inference error: {msg}', 0
 
     _emit('persisting response memory')
     try:
@@ -154,5 +128,5 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
     except Exception:
         pass
 
-    logger.info(f'[Nineteen] model={model} tokens={tokens} | {str(message or "")[:60]}')
+    logger.info(f'[Nineteen] model={LOCAL_MODEL} tokens={tokens} | {str(message or "")[:60]}')
     return answer, tokens

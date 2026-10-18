@@ -505,8 +505,12 @@ def _is_echo_response(prompt, response):
         return False
     if response_norm == prompt_norm:
         return True
-    if len(response_norm) <= len(prompt_norm) + 12 and (
-        response_norm in prompt_norm or prompt_norm in response_norm
+    if (
+        prompt_norm in response_norm and len(prompt_norm) >= 20
+    ) or (
+        response_norm in prompt_norm
+        and len(response_norm) >= 20
+        and len(response_norm) / len(prompt_norm) >= 0.6
     ):
         return True
     response_words = response_norm.split()

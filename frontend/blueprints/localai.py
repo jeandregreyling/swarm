@@ -257,7 +257,7 @@ def _start_seven_runtime():
     env.setdefault('SEVEN_RUNTIME_PORT', str(_SEVEN_RUNTIME_PORT))
     env.setdefault('SEVEN_RUNTIME_CHAT_TIMEOUT_S', '90')
     env.setdefault('SEVEN_DIRECT_TIMEOUT_S', '30')
-    env.setdefault('SEVEN_NUM_PREDICT', '32')
+    env.setdefault('SEVEN_NUM_PREDICT', '256')
     log_path = '/tmp/seven-runtime-service.log'
     with open(log_path, 'a', encoding='utf-8') as log:
         subprocess.Popen(
