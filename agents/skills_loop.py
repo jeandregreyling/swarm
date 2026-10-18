@@ -237,6 +237,30 @@ _ACTION_WORDS_RE = re.compile(
 )
 
 
+def _latest_operator_text(messages):
+    for message in reversed(messages or []):
+        if not isinstance(message, dict) or message.get('role') != 'user':
+            continue
+        text = _operator_text(message.get('content'))
+        marker = '=== New user message ==='
+        if marker in text:
+            text = text.rsplit(marker, 1)[1]
+        return text.strip()
+    return ''
+
+
+def _all_asks_reminder(messages):
+    """Reminder carrying the operator's own words so no part of a multi-part ask is dropped."""
+    text = _latest_operator_text(messages)
+    if not text:
+        return ''
+    return (
+        f'The operator wrote: "{text[:600]}"\n'
+        'Answer EVERY part of that message in your reply, in order. Skill output covers only some '
+        'parts; the rest you answer from your own knowledge of who and where you are.\n\n'
+    )
+
+
 def _asks_only_to_look(messages):
     """True when the operator's newest message asks for no change, only to look and explain."""
     for message in reversed(messages or []):
@@ -668,6 +692,7 @@ def run_skill_loop(
         )
 
         is_final_pass = (_pass == max_passes - 1)
+        _asks_reminder = _all_asks_reminder(messages)
 
         if is_final_pass:
             follow_up = (
@@ -695,6 +720,8 @@ def run_skill_loop(
                 'Only produce a final text answer when all changes are done and verified.\n\n'
                 + skill_results
             )
+
+        follow_up = _asks_reminder + follow_up
 
         # Keep context lean: baseline messages + last assistant turn + new follow_up.
         # This prevents unbounded growth that blows token limits on tight APIs.

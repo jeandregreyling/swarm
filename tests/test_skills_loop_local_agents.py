@@ -146,3 +146,14 @@ def test_claiming_a_proposal_without_a_skill_is_flagged():
     calls = iter(['I created a proposal, it is INTERNAL-FRED-9999.'])
     out, _ = sl.run_skill_loop('fred', lambda m: (next(calls), 1), _user('Hello'), lambda t: None)
     assert out.startswith('[verification]')
+
+
+def test_all_asks_reminder_quotes_operator_message_without_injected_blocks():
+    from agents.skills_loop import _all_asks_reminder
+
+    msgs = [{'role': 'user', 'content': '=== RELAY ===\nrules\n=== END RELAY ===\n=== New user message ===\n1) say your role 2) list docs'}]
+    out = _all_asks_reminder(msgs)
+    assert '1) say your role 2) list docs' in out
+    assert 'rules' not in out
+    assert 'EVERY part' in out
+    assert _all_asks_reminder([]) == ''
