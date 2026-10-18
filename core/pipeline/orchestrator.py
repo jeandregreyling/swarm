@@ -307,10 +307,21 @@ def _select_keep_alive(agent_name):
 def ask_agent(agent_name, prompt, retries=2):
     agent_name = agent_name.lower()  # normalize — AGENTS dict uses lowercase keys
     agents_live = _get_agents()
+    prompts_live = _get_system_prompts()
+    role_name = agent_name
+    if agent_name not in agents_live and 'fred' in agents_live and agent_name in AGENTS:
+        # Parked agent: Fred covers its role on her own model so no second model is loaded.
+        role_prompt = prompts_live.get(agent_name, '')
+        agent_name = 'fred'
+        prompts_live = dict(prompts_live)
+        prompts_live['fred'] = (
+            prompts_live.get('fred', '')
+            + f'\n\nFor this task you are covering the retired {role_name} role. '
+            + 'Work in the role described here, as yourself:\n' + role_prompt
+        )
     model = agents_live.get(agent_name) or AGENTS.get(agent_name)
     if not model:
         raise KeyError(f'Unknown agent: {agent_name}')
-    prompts_live = _get_system_prompts()
     system = prompts_live.get(agent_name, '')
     temps_live = _get_temps()
     temp = temps_live.get(agent_name, 0.5)

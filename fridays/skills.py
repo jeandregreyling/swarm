@@ -1226,6 +1226,20 @@ def _skill_fs_verify(args, agent, **_):
         return False, f'No syntax checker for {suffix} files (supported: .py, .js)'
 
 
+_FS_WRITE_WRAPPER_RE = re.compile(r'^\s*(?:<<<(?:NEW|OLD|END)>>>|```[\w-]*)\s*$')
+_FS_WRITE_LINENO_RE = re.compile(r'^[ ]{0,4}\d{1,5}(?:  |$)')
+
+
+def _clean_fs_write_content(content):
+    """Drop patch markers, code fences and fs_readonly line numbers pasted into fs_write content."""
+    lines = str(content).split('\n')
+    body = [l for l in lines if not _FS_WRITE_WRAPPER_RE.match(l)]
+    non_empty = [l for l in body if l.strip()]
+    if non_empty and all(_FS_WRITE_LINENO_RE.match(l) for l in non_empty):
+        body = [_FS_WRITE_LINENO_RE.sub('', l, count=1) for l in body]
+    return '\n'.join(body).strip('\n') + ('\n' if str(content).endswith('\n') else '')
+
+
 def _skill_fs_write(args, agent, **_):
     """Write (overwrite) any file within the swarm repo."""
     raw = (args or '').strip()
@@ -1234,7 +1248,7 @@ def _skill_fs_write(args, agent, **_):
     parts = raw.split(None, 1)
     if len(parts) < 2:
         return False, 'Usage: SKILL fs_write <path> <content>'
-    rel, content = parts[0], parts[1]
+    rel, content = parts[0], _clean_fs_write_content(parts[1])
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'
