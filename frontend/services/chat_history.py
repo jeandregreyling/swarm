@@ -129,7 +129,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
         '  Qwen: Can you reason through the implications?',
         'Please skip phrases like "I will direct LLaMA to..." — the relay system only reads the AgentName: format.',
         'Please speak only for yourself; when you hand off, stop and let them answer.',
-        '"AgentName" is a placeholder: never write it literally. Use a real agent name, or no relay line at all.',
+        '"AgentName" is only a placeholder; use a real agent name in a relay line, or no relay line at all.',
         '',
         'CHAIN OF COMMAND:',
         '  1. Ghost One (human) decides. 2. Seven regulates and checks the swarm. 3. Watchdog guards routing and read-only rules. 4. Duck audits proposals.',

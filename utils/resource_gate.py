@@ -42,7 +42,7 @@ except Exception:
 
 # Ollama model names mapped to swarm agent names
 _AGENT_MODEL_MAP = {
-    'gemma':          'gemma3:latest',
+    'gemma':          preferred_model_for_agent('gemma', 'gemma3:latest'),
     'llama':          'llama3.2:latest',
     'qwen':           preferred_model_for_agent('qwen', 'qwen:latest'),
     'mistral':        'mistral:latest',
@@ -61,6 +61,12 @@ _CLOUD_AGENTS = {'nine', 'ten', 'eleven', 'twelve', 'gemini', 'scholar', 'seeker
 # How long to wait polling for a free slot (seconds)
 QUEUE_WAIT_SECS = 300   # 5 minutes max wait
 POLL_INTERVAL   = 5     # check every 5 seconds
+
+# The 16 GB GPU holds several models at once; Ollama's own auto limit is 3.
+try:
+    MAX_CONCURRENT_LOCAL = max(1, int(os.environ.get('SWARM_MAX_CONCURRENT_LOCAL', '3')))
+except ValueError:
+    MAX_CONCURRENT_LOCAL = 3
 
 # ── State ─────────────────────────────────────────────────────────────────────
 
@@ -160,8 +166,8 @@ def acquire(agent, wait=True):
             # Non-Eight: block if Eight is active or running
             elif _any_exclusive_active():
                 reason = 'Eight is active — no other models may run during an Eight session'
-            elif _any_local_active():
-                reason = f'Another local model is active: {list(_active_agents - _CLOUD_AGENTS)} — queued'
+            elif len(_active_agents - _CLOUD_AGENTS) >= MAX_CONCURRENT_LOCAL:
+                reason = f'Local model slots full ({MAX_CONCURRENT_LOCAL}): {list(_active_agents - _CLOUD_AGENTS)} — queued'
             else:
                 # Also check Ollama ps for models started outside the gate
                 conflict, loaded = _check_ollama_conflicts(agent)

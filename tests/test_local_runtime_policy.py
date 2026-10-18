@@ -19,9 +19,10 @@ def test_configured_models_ignore_disabled_and_non_ollama_agents():
 
 
 def test_qwen_preferred_model_is_fast_cpu_default():
-    assert preferred_model_for_agent("qwen", "qwen2.5:latest") == "qwen2.5-coder:7b"
+    assert preferred_model_for_agent("qwen", "qwen2.5:latest") == "qwen2.5:7b-instruct"
+    assert preferred_model_for_agent("gemma", "gemma3:latest") == "qwen2.5:7b-instruct"
     assert preferred_model_for_agent("duck", "qwen2.5:latest") == "qwen:latest"
-    assert preferred_model_for_agent("gemma", "gemma3:latest") == "gemma3:latest"
+    assert preferred_model_for_agent("llama", "llama3.2:latest") == "llama3.2:latest"
 
 
 def test_unused_chat_models_excludes_embedding_and_avoided_defaults():

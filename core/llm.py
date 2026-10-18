@@ -25,7 +25,7 @@ pull(model, stream=True) -> iterator
 
 Rules enforced
 --------------
-  * keep_alive: None/negative/zero → DEFAULT_KEEP_ALIVE (300s).
+  * keep_alive: None/negative/zero → DEFAULT_KEEP_ALIVE (1800s).
     A caller CANNOT request "Forever" ("-1"). That bug class is structurally
     impossible here.
   * Stream retries on failure are disallowed. If a stream raises, we return
@@ -52,7 +52,7 @@ from typing import Any, Callable, Iterable, Optional
 logger = logging.getLogger('core.llm')
 
 # ── Policy constants ────────────────────────────────────────────────────────
-DEFAULT_KEEP_ALIVE = 300          # 5 minutes. Never pin forever.
+DEFAULT_KEEP_ALIVE = 1800         # 30 minutes: the 16 GB GPU keeps the team warm. Never pin forever.
 MAX_CONCURRENT_PER_MODEL = 1      # One active chat per model — prevents double-runner spawn.
 GATEWAY_CHAT_IDLE_TIMEOUT_S = 900
 GATEWAY_CHAT_ABSOLUTE_TIMEOUT_S = 2000

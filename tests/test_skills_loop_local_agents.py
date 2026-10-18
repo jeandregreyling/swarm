@@ -100,3 +100,23 @@ def test_trailing_skill_line_is_executed(monkeypatch):
 def test_unverified_proposal_claim_is_flagged(monkeypatch):
     out = _run(['I created the proposal, ID 12345.'], monkeypatch)
     assert out.startswith('[verification]')
+
+
+def test_relay_disabled_block_does_not_make_turn_read_only():
+    from utils.chat_prompt_profiles import relay_policy_prefix
+    msg = relay_policy_prefix(False) + 'Please create an alm_create_proposal for the README.'
+    assert sl._is_explicitly_read_only_task(_user(msg)) is False
+    assert sl._is_explicitly_read_only_task(_user(relay_policy_prefix(False) + 'Do not edit anything.')) is True
+
+
+def test_handoff_block_does_not_trip_read_only_check():
+    from frontend.services.chat_history import _build_chat_handoff_block
+    block = _build_chat_handoff_block('gemma', {})
+    assert sl._READ_ONLY_TASK_RE.search(block) is None
+
+
+def test_duplicate_proposal_in_same_thread_is_skipped():
+    sl._RECENT_PROPOSALS.clear()
+    assert sl._is_duplicate_proposal('llama', 99, '"Same title" "d1"') is False
+    assert sl._is_duplicate_proposal('llama', 99, '"Same title" "d2"') is True
+    assert sl._is_duplicate_proposal('llama', 100, '"Same title" "d1"') is False

@@ -222,13 +222,22 @@ def _extract_skill_cmds(text):
     return cmds
 
 
+_INJECTED_BLOCK_RE = re.compile(r'=== [A-Z][A-Z \-]+ ===.*?(?:=== END [A-Z \-]+ ===|\n={10,}\n)', re.DOTALL)
+
+
+def _operator_text(content):
+    # The chat layer prepends policy blocks (relay rules etc.) to the user turn;
+    # their "do not write ..." wording is not the operator asking for read-only.
+    return _INJECTED_BLOCK_RE.sub('', str(content or ''))
+
+
 def _is_explicitly_read_only_task(messages):
     # Only the latest user turn counts: earlier turns, and prose like "No write
     # occurs without a Vortex ID" in relayed peer messages, must not strip write skills.
     for message in reversed(messages or []):
         if not isinstance(message, dict) or message.get('role') != 'user':
             continue
-        return bool(_READ_ONLY_TASK_RE.search(str(message.get('content') or '')))
+        return bool(_READ_ONLY_TASK_RE.search(_operator_text(message.get('content'))))
     return False
 
 
@@ -238,8 +247,27 @@ def _is_explicitly_no_tools_task(messages):
     for message in reversed(messages or []):
         if not isinstance(message, dict) or message.get('role') != 'user':
             continue
-        if is_explicitly_no_tools_request(message.get('content')):
+        if is_explicitly_no_tools_request(_operator_text(message.get('content'))):
             return True
+    return False
+
+
+_RECENT_PROPOSALS = {}
+
+
+def _is_duplicate_proposal(agent_name, source_conv_id, skill_args):
+    # Small models re-emit the same proposal on every pass; one per thread and title is enough.
+    if not source_conv_id:
+        return False
+    import time
+    title = str(skill_args or '').strip().split('" "')[0].strip('" ').lower()
+    key = (agent_name, str(source_conv_id), title)
+    now = time.time()
+    for k in [k for k, t in _RECENT_PROPOSALS.items() if now - t > 600]:
+        _RECENT_PROPOSALS.pop(k, None)
+    if key in _RECENT_PROPOSALS:
+        return True
+    _RECENT_PROPOSALS[key] = now
     return False
 
 
@@ -287,6 +315,9 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
             pass
 
         try:
+            if skill_name == 'alm_create_proposal' and _is_duplicate_proposal(agent_name, source_conv_id, skill_args):
+                parts.append(f'[skill:{skill_name}] OK\nAlready created in this thread; not creating a duplicate.')
+                continue
             # Pass source_conv_id for proposal skills so Duck can notify the chat thread
             _conv_id = source_conv_id if skill_name == 'alm_create_proposal' else None
             ok, out = skill_call(skill_name, args=skill_args, agent=agent_name, source_conv_id=_conv_id)
@@ -347,12 +378,20 @@ def run_skill_loop(
     no_tools_requested = _is_explicitly_no_tools_task(messages)
     if no_tools_requested:
         allowed_skill_names = set()
+        logger.info(f'[{agent_name}] turn policy: no-tools request, skills disabled')
     elif allowed_skill_names is None:
-        guard_text = '\n'.join(str(m.get('content', '')) for m in messages if isinstance(m, dict))
-        if 'WATCHDOG READ-ONLY ROUTING GUARD' in guard_text:
+        latest_user = next(
+            (str(m.get('content', '')) for m in reversed(messages)
+             if isinstance(m, dict) and m.get('role') == 'user'),
+            '',
+        )
+        if 'WATCHDOG READ-ONLY ROUTING GUARD' in latest_user:
             allowed_skill_names = set(_READ_ONLY_TASK_SKILLS)
+            logger.info(f'[{agent_name}] turn policy: read-only routing guard present')
         elif _is_explicitly_read_only_task(messages):
             allowed_skill_names = set(_READ_ONLY_TASK_SKILLS)
+            m = _READ_ONLY_TASK_RE.search(_operator_text(latest_user))
+            logger.info(f'[{agent_name}] turn policy: read-only phrase {m.group(0)!r}' if m else f'[{agent_name}] turn policy: read-only')
     elif not isinstance(allowed_skill_names, set):
         allowed_skill_names = set(allowed_skill_names)
     # Track the baseline message count so we can trim accumulated turns later.

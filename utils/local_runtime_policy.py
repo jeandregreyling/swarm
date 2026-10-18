@@ -18,7 +18,8 @@ EMBEDDING_ONLY_MODELS = frozenset({"nomic-embed-text:latest", "nomic-embed-text"
 
 # CPU-safe chat assignments validated on the Dell Linux runtime.
 PREFERRED_AGENT_MODELS = {
-    "qwen": "qwen2.5-coder:7b",
+    "gemma": "qwen2.5:7b-instruct",
+    "qwen": "qwen2.5:7b-instruct",
     "duck": "qwen:latest",
 }
 
