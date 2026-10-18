@@ -1419,6 +1419,8 @@ def _should_attach_ticket_snapshot(latest_message, thread_rows):
         text = str(thread_rows[-1].get('message') or '').strip().lower()
     if not text:
         return False
+    if re.search(r'(?m)^\s*/?skill\s+[a-z0-9_-]+\b|\bskill\s+(?:shell|fs_readonly)\b', text):
+        return False
     triggers = (
         'ticket', 'tickets', 'queue', 'triage', 'open',
         'proposal', 'proposals', 'backlog', 'pending',

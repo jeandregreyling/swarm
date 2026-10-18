@@ -165,3 +165,11 @@ def test_verification_ignores_proposal_ids_read_from_skill_results():
 
     src = inspect.getsource(skills_loop.run_skill_loop)
     assert 'pid not in joined' in src
+
+
+def test_read_only_phrase_in_injected_memory_does_not_strip_skills():
+    from agents.skills_loop import _is_explicitly_read_only_task
+
+    ctx = 'Remembered rule: never patch a database as text.\n=== New user message ===\nRun SKILL shell uptime'
+    assert not _is_explicitly_read_only_task([{'role': 'user', 'content': ctx}])
+    assert _is_explicitly_read_only_task([{'role': 'user', 'content': 'Do not edit anything, just look.'}])

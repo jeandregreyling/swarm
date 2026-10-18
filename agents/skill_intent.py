@@ -36,6 +36,9 @@ _OPERATIONAL_CONTEXT_TERMS = re.compile(
 )
 
 
+_EXPLICIT_SKILL = re.compile(r"(?im)^\s*/?SKILL\s+[a-z0-9_-]+\b|\b(?:shell|fs_readonly|fs_write|fs_patch|knowledge_search|ticket_create)\s+skill\b|\bskill\s+(?:shell|fs_readonly)\b")
+
+
 def latest_user_text(prompt):
     """The operator's newest message, without injected context blocks."""
     text = str(prompt or '')
@@ -56,7 +59,7 @@ def message_likely_needs_skills(message):
     if not text:
         return False
 
-    if _STRONG_TOOL_TERMS.search(text):
+    if _EXPLICIT_SKILL.search(text) or _STRONG_TOOL_TERMS.search(text):
         return True
 
     has_creative_intent = bool(_CREATIVE_TERMS.search(text))

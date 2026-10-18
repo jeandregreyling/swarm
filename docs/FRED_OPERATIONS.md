@@ -39,3 +39,8 @@ You asked for clear instructions, procedures for proposals and priorities, and d
 ## 7. Where things are
 - `agents/` agent code (`agents/fred/` is yours). `core/` routing and workflow. `frontend/blueprints/` the HTTP routes (`chat.py`, `agents.py`). `utils/` config, prompts and DB helpers. `tests/` the test suite. `docs/` documentation. `sandpits/fred/` your playground.
 - Still thin and worth improving: `docs/ARCHITECTURE.md` and `docs/AGENTS.md` are only 6 lines each. Writing them properly, from the code, is a good first real job for you.
+
+## Reading the database
+
+Use the shell skill: `SKILL shell python3 scripts/db_query.py "select status, count(*) from project_steps group by status"`.
+One SELECT in double quotes, optional second argument `swarm` (default) or `mind`. The file is opened read-only and output is capped at 50 rows. Never open or patch a `.db` with the file skills.

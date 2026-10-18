@@ -277,11 +277,7 @@ def _asks_only_to_look(messages):
 def _is_explicitly_read_only_task(messages):
     # Only the latest user turn counts: earlier turns, and prose like "No write
     # occurs without a Vortex ID" in relayed peer messages, must not strip write skills.
-    for message in reversed(messages or []):
-        if not isinstance(message, dict) or message.get('role') != 'user':
-            continue
-        return bool(_READ_ONLY_TASK_RE.search(_operator_text(message.get('content'))))
-    return False
+    return bool(_READ_ONLY_TASK_RE.search(_latest_operator_text(messages)))
 
 
 def _is_explicitly_no_tools_task(messages):
@@ -438,7 +434,7 @@ def run_skill_loop(
             logger.info(f'[{agent_name}] turn policy: read-only routing guard present')
         elif _is_explicitly_read_only_task(messages):
             allowed_skill_names = set(_READ_ONLY_TASK_SKILLS)
-            m = _READ_ONLY_TASK_RE.search(_operator_text(latest_user))
+            m = _READ_ONLY_TASK_RE.search(_latest_operator_text(messages))
             logger.info(f'[{agent_name}] turn policy: read-only phrase {m.group(0)!r}' if m else f'[{agent_name}] turn policy: read-only')
     elif not isinstance(allowed_skill_names, set):
         allowed_skill_names = set(allowed_skill_names)

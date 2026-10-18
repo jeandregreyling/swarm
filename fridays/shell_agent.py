@@ -86,6 +86,9 @@ WHITELIST = [
     # grep: explicit flags only (-i, -n, -c, -l), no -r recursive
     (r'^grep\s+(-[incl]\s+)*.+\s+/home/seven/swarm/\S+$', 0, 'grep swarm file'),
 
+    # Read-only database query (scripts/db_query.py enforces SELECT-only, ro open)
+    (r'^(\.venv/bin/)?python3 scripts/db_query\.py "[^"`$;\\|&<>]+"( (swarm|mind))?$', 0, 'read-only db query'),
+
     # System log reads — Level 0 (read-only diagnostic)
     (r'^cat\s+/var/log/\S+$',                           0, 'read system log'),
     (r'^tail(\s+-n\s+\d+)?\s+/var/log/\S+$',           0, 'tail system log'),
