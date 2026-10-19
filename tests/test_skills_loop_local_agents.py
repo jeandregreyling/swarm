@@ -414,3 +414,54 @@ def test_appended_ticket_snapshot_does_not_make_the_turn_read_only():
     assert sl._is_explicitly_read_only_task(_user(prompt)) is False
     assert sl._latest_operator_text(_user(prompt)) == 'Please close all the proposals now.'
     assert sl._is_explicitly_read_only_task(_user('Do not use any tools.\n\n=== Live Ticket Snapshot ===\nx')) is True
+
+
+def test_alm_purge_proposals_only_deletes_closed_and_backs_up_full_rows(tmp_path, monkeypatch):
+    import json
+    import sqlite3
+    from fridays import skills
+
+    db = sqlite3.connect(tmp_path / 't.db')
+    db.executescript(
+        "CREATE TABLE work_proposals (proposal_id TEXT, status TEXT, queue_id INTEGER, title TEXT);"
+        "CREATE TABLE queue (id INTEGER, status TEXT);"
+        "CREATE TABLE proposal_projects (proposal_id TEXT, project_id TEXT);"
+        "CREATE TABLE proposal_attachments (proposal_id TEXT, name TEXT);"
+        "CREATE TABLE work_proposal_notes (id INTEGER, proposal_id TEXT, content TEXT);"
+        "INSERT INTO work_proposals VALUES ('C1','closed',1,'old one'),('R1','rejected',2,'bad'),"
+        "('A1','approved',3,'live'),('D1','done',4,'history');"
+        "INSERT INTO queue VALUES (1,'abandoned'),(2,'abandoned'),(3,'queued'),(4,'completed');"
+        "INSERT INTO proposal_projects VALUES ('C1','PRJ'),('A1','PRJ');"
+        "INSERT INTO work_proposal_notes VALUES (1,'C1','note'),(2,'A1','keep');"
+    )
+    db.commit()
+
+    class Keep:
+        def __init__(self, c):
+            self.c = c
+        def execute(self, *a, **k):
+            return self.c.execute(*a, **k)
+        def commit(self):
+            self.c.commit()
+        def close(self):
+            pass
+
+    monkeypatch.setattr('utils.db._connection.get_connection', lambda: Keep(db))
+    monkeypatch.setattr(skills, '_FS_ROOT', tmp_path)
+
+    assert not skills._skill_alm_purge_proposals('closed', 'fred')[0]
+    ok, msg = skills._skill_alm_purge_proposals('A1 try to purge a live one', 'fred')
+    assert ok and 'Nothing to purge' in msg
+    assert db.execute("SELECT COUNT(*) FROM work_proposals WHERE proposal_id='A1'").fetchone()[0] == 1
+
+    ok, msg = skills._skill_alm_purge_proposals('closed invalid backlog', 'fred')
+    assert ok and 'Purged 2 proposals' in msg
+    assert [r[0] for r in db.execute('SELECT proposal_id FROM work_proposals ORDER BY 1')] == ['A1', 'D1']
+    assert [r[0] for r in db.execute('SELECT id FROM queue ORDER BY 1')] == [3, 4]
+    assert db.execute('SELECT proposal_id FROM proposal_projects').fetchall() == [('A1',)]
+    assert db.execute('SELECT proposal_id FROM work_proposal_notes').fetchall() == [('A1',)]
+    snap = next((tmp_path / 'runtime' / 'backups' / 'proposals').glob('purged-*.json'))
+    saved = json.loads(snap.read_text())
+    assert {r['proposal_id'] for r in saved['work_proposals']} == {'C1', 'R1'}
+    assert saved['work_proposals'][0]['title'] in ('old one', 'bad')
+    assert saved['proposal_projects'] == [{'proposal_id': 'C1', 'project_id': 'PRJ'}]

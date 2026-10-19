@@ -105,6 +105,7 @@ runtime/seven/heartbeat.json
 runtime/seven/ledger.offset
 runtime/backups/log.jsonl
 runtime/backups/fs/
+runtime/backups/proposals/
 sandpits/shared/CURRENT_FOCUS.md
 sandpits/shared/STALE_PROPOSALS.md
 sandpits/shared/media_center_state.json

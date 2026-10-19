@@ -159,6 +159,12 @@ REGISTRY = {
         'usage': 'SKILL alm_close_proposals <proposal_id|all> <reason>',
         'example': 'SKILL alm_close_proposals all clean slate requested by Ghost',
     },
+    'alm_purge_proposals': {
+        'description': 'Permanently delete CLOSED or REJECTED proposals with their notes, project links and queue tickets (dirty-data cleanup). One id, or "closed" for all. Saves a full-row backup first. Only on explicit operator request.',
+        'trust_level': 2,
+        'usage': 'SKILL alm_purge_proposals <proposal_id|closed> <reason>',
+        'example': 'SKILL alm_purge_proposals closed invalid backlog, clean slate requested by Ghost',
+    },
     'alm_complete': {
         'description': 'Mark your own in_progress proposal as done (awaiting Ghost confirmation to close).',
         'trust_level': 1,
@@ -1176,6 +1182,82 @@ def _skill_alm_close_proposals(args, agent, **_):
                       f'Undo snapshot: {snap.relative_to(_FS_ROOT)}')
     except Exception as e:
         return False, f'alm_close_proposals error: {e}'
+
+
+_PURGEABLE_PROPOSAL_STATUSES = ('closed', 'rejected')
+# (table, column holding the proposal id) removed together with a purged proposal.
+_PROPOSAL_CHILD_TABLES = (
+    ('proposal_projects', 'proposal_id'),
+    ('proposal_attachments', 'proposal_id'),
+    ('work_proposal_notes', 'proposal_id'),
+)
+
+
+def _skill_alm_purge_proposals(args, agent, **_):
+    """SKILL alm_purge_proposals <proposal_id|closed> <reason> — delete closed/rejected proposals and their children."""
+    parts = (args or '').strip().split(None, 1)
+    usage = 'Usage: SKILL alm_purge_proposals <proposal_id|closed> <reason>. Example: SKILL alm_purge_proposals closed invalid backlog'
+    if len(parts) < 2 or not parts[1].strip():
+        return False, usage
+    scope, reason = parts[0].strip(), parts[1].strip()[:300]
+    marks = ','.join('?' for _ in _PURGEABLE_PROPOSAL_STATUSES)
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            sql = f'SELECT * FROM work_proposals WHERE status IN ({marks})'
+            params = list(_PURGEABLE_PROPOSAL_STATUSES)
+            if scope.lower() != 'closed':
+                sql += ' AND proposal_id = ?'
+                params.append(scope)
+            cur = conn.execute(sql, params)
+            cols = [d[0] for d in cur.description]
+            rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+            if not rows:
+                return True, (f'Nothing to purge for {scope!r}: only closed or rejected proposals can be purged '
+                              '(close live ones first with alm_close_proposals).')
+            ids = [r['proposal_id'] for r in rows]
+            queue_ids = [r['queue_id'] for r in rows if r.get('queue_id')]
+            backup = {'purged_by': agent, 'reason': reason, 'scope': scope, 'work_proposals': rows}
+
+            def _chunks(seq, n=400):
+                for i in range(0, len(seq), n):
+                    yield seq[i:i + n]
+
+            for table, col in _PROPOSAL_CHILD_TABLES:
+                found = []
+                for chunk in _chunks(ids):
+                    c = conn.execute(f'SELECT * FROM {table} WHERE {col} IN ({",".join("?" for _ in chunk)})', chunk)
+                    names = [d[0] for d in c.description]
+                    found += [dict(zip(names, r)) for r in c.fetchall()]
+                backup[table] = found
+            qrows = []
+            for chunk in _chunks(queue_ids):
+                c = conn.execute(f'SELECT * FROM queue WHERE id IN ({",".join("?" for _ in chunk)})', chunk)
+                names = [d[0] for d in c.description]
+                qrows += [dict(zip(names, r)) for r in c.fetchall()]
+            backup['queue'] = qrows
+
+            snap_dir = _FS_ROOT / 'runtime' / 'backups' / 'proposals'
+            snap_dir.mkdir(parents=True, exist_ok=True)
+            snap = snap_dir / f"purged-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.json"
+            snap.write_text(json.dumps(backup, indent=1, default=str), encoding='utf-8')
+
+            for table, col in _PROPOSAL_CHILD_TABLES:
+                for chunk in _chunks(ids):
+                    conn.execute(f'DELETE FROM {table} WHERE {col} IN ({",".join("?" for _ in chunk)})', chunk)
+            for chunk in _chunks(queue_ids):
+                conn.execute(f'DELETE FROM queue WHERE id IN ({",".join("?" for _ in chunk)})', chunk)
+            for chunk in _chunks(ids):
+                conn.execute(f'DELETE FROM work_proposals WHERE proposal_id IN ({",".join("?" for _ in chunk)})', chunk)
+            conn.commit()
+        finally:
+            conn.close()
+        kids = ', '.join(f'{len(backup[t])} {t}' for t, _ in _PROPOSAL_CHILD_TABLES)
+        return True, (f'Purged {len(ids)} proposals, {len(qrows)} queue tickets, {kids}. '
+                      f'Full-row backup: {snap.relative_to(_FS_ROOT)}')
+    except Exception as e:
+        return False, f'alm_purge_proposals error: {e}'
 
 
 def _skill_alm_complete(args, agent, **_):
@@ -2340,6 +2422,7 @@ _HANDLERS = {
     'alm_create_proposal': _skill_alm_create_proposal,
     'alm_self_approve':    _skill_alm_self_approve,
     'alm_close_proposals': _skill_alm_close_proposals,
+    'alm_purge_proposals': _skill_alm_purge_proposals,
     'alm_complete':        _skill_alm_complete,
     'alm_vortex':          _skill_alm_vortex,
     'studio_step_update':  _skill_studio_step_update,
