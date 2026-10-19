@@ -635,3 +635,19 @@ def test_fs_insert_before_puts_the_line_before_the_anchor_and_shows_it(tmp_path,
     assert not ok and 'Anchor text not found' in msg
     cmds = skills.parse_skill_command('SKILL fs_insert_before p.html')
     assert cmds[0] == 'fs_insert_before' and skills.FENCED_BODY_SKILLS['fs_insert_before'] == 2
+
+
+def test_failed_last_file_edit_is_corrected_by_the_harness():
+    from agents.skills_loop import unfinished_file_edit_note as note
+
+    refused = (
+        '[skill:fs_readonly] OK\nlines\n\n'
+        '[skill:fs_patch_lines] FAILED\nRefused, nothing changed: this patch DELETES these existing lines of a.html:\n  109: </head>'
+    )
+    text = note(refused)
+    assert text.startswith('[verification] The file was NOT changed') and 'fs_patch_lines' in text and 'DELETES' in text
+
+    assert note('[skill:fs_patch_lines] FAILED\nx\n\n[skill:fs_insert_before] OK\nInserted 1 line') == ''
+    assert note('[skill:fs_readonly] OK\nlooked only') == ''
+    assert note('[skill:fs_insert_before] OK\ndone\n\n[skill:fs_readonly] OK\nread back') == ''
+    assert 'fs_insert_before' in note('[skill:fs_patch_lines] OK\nok\n\n[skill:fs_insert_before] ERROR\nboom')

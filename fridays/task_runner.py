@@ -1572,13 +1572,14 @@ def _task_chat_smoke_probe(**kwargs):
 
     Args (all optional):
       prompt=...      override prompt (default: "ping; reply with the word OK only")
-      agent=llama     which agent to ping (default: llama)
+      agent=<name>    which agent to ping (default: the worker seat, so the probe never swaps the loaded model)
       timeout=15      seconds to wait for a reply
     """
     import time as _t
 
     prompt = kwargs.get('prompt') or 'ping; reply with the word OK only'
-    agent = (kwargs.get('agent') or 'llama').strip().lower()
+    from utils.worker import WORKER_AGENT
+    agent = (kwargs.get('agent') or WORKER_AGENT).strip().lower()
     try:
         timeout = max(2, min(int(kwargs.get('timeout', 15)), 120))
     except (TypeError, ValueError):

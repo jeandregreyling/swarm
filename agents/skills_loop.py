@@ -374,6 +374,28 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
     return '\n\n'.join(parts)
 
 
+_FILE_EDIT_SKILLS = ('fs_write', 'fs_append', 'fs_patch', 'fs_patch_lines', 'fs_insert_after', 'fs_insert_before', 'file_write')
+_FILE_EDIT_RESULT = re.compile(
+    r'\[skill:(' + '|'.join(_FILE_EDIT_SKILLS) + r')\] (OK|FAILED|ERROR)\n([^\n]*(?:\n(?!\[skill:)[^\n]*){0,3})'
+)
+
+
+def unfinished_file_edit_note(results_text):
+    """Harness-written correction when the last file edit this turn did not succeed.
+
+    The model's own closing words are not evidence; the skill results are.
+    """
+    hits = _FILE_EDIT_RESULT.findall(str(results_text or ''))
+    if not hits or hits[-1][1] == 'OK':
+        return ''
+    skill, _status, detail = hits[-1]
+    detail = ' '.join(detail.split())[:400]
+    return (
+        f'[verification] The file was NOT changed. The last edit ({skill}) did not succeed: {detail} '
+        'Ignore any claim below that the change was made.'
+    )
+
+
 def run_skill_loop(
     agent_name,
     call_fn,
@@ -788,6 +810,10 @@ def run_skill_loop(
             "return OK in this turn, so any proposal ID mentioned below is not real.\n\n"
             + str(answer or '')
         )
+
+    note = unfinished_file_edit_note(joined)
+    if note:
+        answer = note + '\n\n' + str(answer or '')
 
     _tl(source_conv_id, agent_name, 'final', str(answer or '')[:1200])
     return answer, total_tokens
