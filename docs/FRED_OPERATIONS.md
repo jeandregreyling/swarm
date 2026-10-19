@@ -80,3 +80,10 @@ Scheduled task `fred_work_cycle` (every 3 min) runs `local_agent_work_cycle work
 ## Induction course
 
 Fred's induction to the harness (Seven, Watchdog, chat, skills, Studio, KC and memory) lives in `docs/fred_course/` as eight short modules, `00-start` to `07-graduation`. Edit the files, then run `.venv/bin/python3 scripts/load_fred_course.py` to update the Knowledge Center entries `FRED-COURSE-*` (re-running updates in place). Fred reads them with `SKILL swarm_knowledge_read FRED-COURSE-00-START`, one module at a time. Module 07 is six small proofs that she reports from real skill results.
+
+## One-model chat behaviour (SWARM_ONE_MODEL on, the default)
+
+- The model stays loaded between chats. The chat watchdog's "unowned runner" cleanup is off, because it unloaded the model after every reply (cold reload, about 8 s extra) and could kill a reply mid-sentence. When it is on (`SWARM_ONE_MODEL=0`), jobs running in this process always count as owned.
+- Fred is never given the "Multi-Agent Debate Mode" prompt, and no relay-recovery cards are posted into threads for parked agents.
+- The chat UI remembers the selected agents per thread. If Seven or Gemini are ticked in the Agents panel, one message still goes to all of them. Untick them for a Fred-only thread.
+- Do not restart PROD while a chat job is running: it fails the job with "server restarted - job lost". Check `chat_jobs` for non-final rows first.
