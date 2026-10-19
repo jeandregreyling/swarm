@@ -1380,6 +1380,8 @@ def _skill_fs_write(args, agent, **_):
     if not rel:
         return False, usage
     content = _clean_fs_write_content(content)
+    if not content.strip():
+        return False, 'fs_write got an empty block, nothing was written. Put the file text between the ``` lines.\n' + usage
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'
@@ -1438,6 +1440,8 @@ def _skill_fs_append(args, agent, **_):
     if not head or len(blocks) != 1:
         return False, 'Usage: SKILL fs_append <path>  then the text to add in a ``` fenced block. Example:\n' + REGISTRY['fs_append']['example']
     rel = head.split(None, 1)[0]
+    if not _clean_fs_write_content(blocks[0][1]).strip():
+        return False, 'fs_append got an empty block, nothing was added. Put the text between the ``` lines.'
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'

@@ -932,3 +932,100 @@ def test_one_model_mode_blocks_prewarm_work_and_recovery(monkeypatch):
     assert wd._one_model_mode() is True
     monkeypatch.setenv('SWARM_ONE_MODEL', '0')
     assert wd._one_model_mode() is False
+
+
+def _steps_db(tmp_path):
+    conn = _conn(tmp_path / 'deos-steps.db')
+    conn.executescript(
+        """
+        CREATE TABLE project_steps (
+            step_id TEXT PRIMARY KEY, project_id TEXT, title TEXT, description TEXT,
+            status TEXT, owner TEXT, owner_route TEXT, residual_risk TEXT,
+            updated_at REAL, created_at REAL);
+        CREATE TABLE project_step_evidence (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT, step_id TEXT,
+            source_type TEXT, source_ref TEXT, summary TEXT, status TEXT);
+        CREATE TABLE ghost_circle (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, source TEXT, entry_type TEXT,
+            content TEXT, created_at TEXT);
+        CREATE TABLE chat_jobs (job_id TEXT, status TEXT, stage TEXT, updated_at TEXT);
+        """
+    )
+    return conn
+
+
+def _add(conn, sid, status, owner='fred'):
+    conn.execute(
+        "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, updated_at, created_at)"
+        " VALUES (?, 'P', 't', 'd', ?, ?, 1, 1)", (sid, status, owner))
+    conn.commit()
+
+
+def test_one_model_claim_skips_blocked_and_continue_carries_notes(tmp_path, monkeypatch):
+    from utils import watchdog_deos
+
+    monkeypatch.setenv('SWARM_ONE_MODEL', '1')
+    conn = _steps_db(tmp_path)
+    _add(conn, 'S-BLOCKED', 'blocked')
+    assert watchdog_deos._claim_local_agent_step(conn, owner='fred') is None
+    _add(conn, 'S-TODO', 'todo')
+    step = watchdog_deos._claim_local_agent_step(conn, owner='fred')
+    assert step['step_id'] == 'S-TODO'
+
+    out = watchdog_deos._finish_local_agent_step(
+        conn, step, True, 'part one finished\nPROGRESS: next append part two\nDEOS_STATUS: continue', 10)
+    assert out == 'continue'
+    assert conn.execute("SELECT status FROM project_steps WHERE step_id='S-TODO'").fetchone()[0] == 'todo'
+    notes = watchdog_deos._progress_notes(conn, step)
+    assert len(notes) == 1 and 'append part two' in notes[0]
+    assert 'append part two' in watchdog_deos._agent_work_prompt(step, notes)
+
+
+def test_continue_limit_blocks_and_failed_skill_refuses_done(tmp_path):
+    from utils import watchdog_deos
+
+    conn = _steps_db(tmp_path)
+    _add(conn, 'S-LOOP', 'doing')
+    step = {'step_id': 'S-LOOP', 'project_id': 'P', 'owner': 'fred', 'title': 't'}
+    for i in range(watchdog_deos.MAX_CONTINUES):
+        watchdog_deos._finish_local_agent_step(conn, step, True, 'more\nDEOS_STATUS: continue', 1)
+    assert watchdog_deos._finish_local_agent_step(conn, step, True, 'more\nDEOS_STATUS: continue', 1) == 'blocked'
+
+    _add(conn, 'S-FAIL', 'doing')
+    conn.execute("INSERT INTO ghost_circle (source, entry_type, content, created_at) VALUES "
+                 "('fred', 'skill_call', '[FAILED] fs_write(x) -> boom', datetime('now'))")
+    conn.commit()
+    step = {'step_id': 'S-FAIL', 'project_id': 'P', 'owner': 'fred', 'title': 't'}
+    status = watchdog_deos._finish_local_agent_step(
+        conn, step, True, 'I wrote and verified it, created the file.\nDEOS_STATUS: done', 5,
+        claimed_at=time.time() - 60)
+    assert status == 'blocked'
+
+
+def test_chat_job_active_guard(tmp_path):
+    from utils import watchdog_deos
+
+    conn = _steps_db(tmp_path)
+    assert watchdog_deos._chat_job_active(conn) is False
+    conn.execute("INSERT INTO chat_jobs VALUES ('j1', 'running', 'dispatching', datetime('now'))")
+    conn.execute("INSERT INTO chat_jobs VALUES ('j2', 'completed', 'completed', datetime('now'))")
+    conn.commit()
+    assert watchdog_deos._chat_job_active(conn) is True
+    conn.execute("UPDATE chat_jobs SET updated_at='2000-01-01 00:00:00'")
+    conn.commit()
+    assert watchdog_deos._chat_job_active(conn) is False
+
+
+def test_empty_fenced_write_is_an_error():
+    from fridays import skills
+
+    ok, msg = skills._skill_fs_write('sandpits/fred/x.md\n```\n```', 'fred')
+    assert not ok and 'empty block' in msg
+    ok, msg = skills._skill_fs_append('sandpits/fred/x.md\n```\n```', 'fred')
+    assert not ok and 'empty block' in msg
+
+
+def test_continue_status_tolerates_trailing_punctuation():
+    from utils import watchdog_deos
+
+    assert watchdog_deos._CONTINUE_RE.search('PROGRESS: x\n\nDEOS_STATUS: continue.')

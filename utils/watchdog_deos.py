@@ -15,6 +15,7 @@ import shlex
 import sqlite3
 import subprocess
 import time
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from utils.db._connection import get_connection
@@ -615,12 +616,14 @@ def _claim_local_agent_step(
         extra_where.append("step_id LIKE ?")
         params.append(str(step_prefix) + '%')
     extra_sql = (' AND ' + ' AND '.join(extra_where)) if extra_where else ''
+    # Blocked steps wait on a human in one-model mode; only todo steps are picked up.
+    claim_statuses = "('todo')" if _one_model_mode() else "('todo', 'blocked')"
     try:
         row = conn.execute(
             f"""
             SELECT step_id, project_id, title, description, status, owner, owner_route
             FROM project_steps
-            WHERE status IN ('todo', 'blocked')
+            WHERE status IN {claim_statuses}
               AND lower(owner) IN ({placeholders})
               {extra_sql}
             ORDER BY
@@ -642,7 +645,7 @@ def _claim_local_agent_step(
             f"""UPDATE project_steps
                 SET status='doing', updated_at=?
                 WHERE step_id=?
-                  AND status IN ('todo', 'blocked')
+                  AND status IN {claim_statuses}
                   AND NOT EXISTS (
                     SELECT 1 FROM project_steps active
                     WHERE active.status='doing'
@@ -665,7 +668,61 @@ def _claim_local_agent_step(
     return data
 
 
-def _agent_work_prompt(step: Dict[str, Any]) -> str:
+MAX_CONTINUES = 5
+_CONTINUE_RE = re.compile(r'(?im)^\s*DEOS_STATUS:\s*continue[\s.!]*$')
+
+
+def _chat_job_active(conn, max_age_seconds: int = 900) -> bool:
+    """True when a chat job is queued or running, so the single model slot is in use."""
+    try:
+        rows = conn.execute(
+            "SELECT updated_at FROM chat_jobs WHERE status NOT IN "
+            "('completed','done','failed','cancelled','error') AND stage NOT IN "
+            "('completed','failed','error','cancelled')"
+        ).fetchall()
+    except Exception:
+        return False
+    cutoff = time.time() - max_age_seconds
+    for row in rows:
+        try:
+            ts = datetime.strptime(str(row[0])[:19].replace('T', ' '), '%Y-%m-%d %H:%M:%S')
+            if ts.replace(tzinfo=timezone.utc).timestamp() >= cutoff:
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _progress_notes(conn, step: Dict[str, Any]) -> List[str]:
+    try:
+        rows = conn.execute(
+            "SELECT summary FROM project_step_evidence WHERE step_id=? AND source_ref LIKE 'progress:%' "
+            "ORDER BY rowid ASC",
+            (step.get('step_id'),),
+        ).fetchall()
+    except Exception:
+        return []
+    return [str(r[0]) for r in rows]
+
+
+def _skill_failures_since(conn, agent: str, since_epoch: float) -> Tuple[int, int, str]:
+    """Count ok/FAILED skill calls the agent logged since the claim, plus the last outcome."""
+    since = datetime.fromtimestamp(since_epoch, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        rows = conn.execute(
+            "SELECT content FROM ghost_circle WHERE source=? AND entry_type='skill_call' "
+            "AND created_at >= ? ORDER BY id ASC",
+            (agent, since),
+        ).fetchall()
+    except Exception:
+        return 0, 0, ''
+    ok = sum(1 for r in rows if str(r[0]).startswith('[ok]'))
+    failed = sum(1 for r in rows if str(r[0]).startswith('[FAILED]'))
+    last = str(rows[-1][0])[:12] if rows else ''
+    return ok, failed, last
+
+
+def _agent_work_prompt(step: Dict[str, Any], notes: Optional[List[str]] = None) -> str:
     context = _local_work_context(step)
     agent = str(step.get('owner') or '').strip().lower()
     try:
@@ -701,10 +758,22 @@ def _agent_work_prompt(step: Dict[str, Any]) -> str:
         '- Work only on this one task.\n'
         '- Use SKILL commands for file reads, patches, verification, or ALM actions when needed.\n'
         '- Prefer the smallest useful completion. Do not over-research simple recovery cards.\n'
-        '- Do not create broad rewrites or unrelated work.\n'
+        '- Keep changes narrow: no broad rewrites or unrelated work.\n'
         '- If the task is unclear, unsafe, or too large, stop and report BLOCKED with the exact blocker.\n'
-        '- End your final answer with exactly one status line: DEOS_STATUS: done | blocked | needs_human.\n'
-        '- If done, include the proof command/output summary before the status line.\n\n'
+        '- End your final answer with exactly one status line: DEOS_STATUS: done | blocked | needs_human | continue.\n'
+        '- If done, include the proof command/output summary before the status line.\n'
+        '- If the task needs more passes, write a short PROGRESS: line saying what is finished and what comes next, '
+        'then DEOS_STATUS: continue. You will be handed back this step with your notes.\n'
+        '- Do not restate the task. Start your reply with the SKILL line for your first action.\n'
+        '- Edit files with fenced blocks: fs_write/fs_append take one block of exact content, fs_patch and '
+        'fs_insert_after take two (old/anchor, then new); verify with fs_readonly afterwards. '
+        'The fence goes on its own line directly under the SKILL line, content starts on the next line:\n'
+        'SKILL fs_write sandpits/fred/example.md\n'
+        '```\n'
+        'first line\n'
+        'second line\n'
+        '```\n\n'
+        f"{_notes_block(notes)}"
         f"Project: {step.get('project_id')}\n"
         f"Step: {step.get('step_id')}\n"
         f"Title: {step.get('title')}\n"
@@ -712,6 +781,35 @@ def _agent_work_prompt(step: Dict[str, Any]) -> str:
         f"Description:\n{step.get('description') or ''}\n"
         f"{context}"
     )
+
+
+def _requeue_step(step: Dict[str, Any], reason: str) -> None:
+    """Put a claimed step back to todo after an infrastructure error so it is not stranded in doing."""
+    for _ in range(3):
+        try:
+            conn = get_connection()
+            try:
+                _execute_with_retry(
+                    conn,
+                    "UPDATE project_steps SET status='todo', updated_at=? WHERE step_id=? AND status='doing'",
+                    (_now(), step.get('step_id')),
+                )
+                _add_step_evidence(conn, str(step.get('step_id') or ''), f'requeue:{step.get("step_id")}',
+                                   f'requeued after error: {reason}'[:480], 'warn',
+                                   project_id=str(step.get('project_id') or PROJECT_ID))
+                conn.commit()
+            finally:
+                conn.close()
+            return
+        except Exception:
+            time.sleep(2)
+
+
+def _notes_block(notes: Optional[List[str]]) -> str:
+    if not notes:
+        return ''
+    recent = '\n'.join(f'- {n}' for n in notes[-3:])
+    return f'YOUR PROGRESS NOTES FROM EARLIER PASSES (pick up from here):\n{recent}\n\n'
 
 
 def _local_work_context(step: Dict[str, Any]) -> str:
@@ -1015,8 +1113,34 @@ def _compact_direct_recovery_prompt(prompt: str) -> str:
     return '\n\n'.join(parts)[:1400]
 
 
-def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, tokens: int) -> str:
+def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, tokens: int,
+                             claimed_at: float = 0.0) -> str:
     text = str(answer or '').strip()
+    sid = str(step.get('step_id') or '')
+    pid = str(step.get('project_id') or PROJECT_ID)
+    skills_ok, skills_failed, last_skill = (
+        _skill_failures_since(conn, str(step.get('owner') or '').lower(), claimed_at) if claimed_at else (0, 0, '')
+    )
+    skill_note = f' skills ok={skills_ok} failed={skills_failed}' if claimed_at else ''
+    if ok and _CONTINUE_RE.search(text):
+        notes = _progress_notes(conn, step)
+        progress = re.sub(_CONTINUE_RE, '', text).strip()[-420:]
+        if len(notes) >= MAX_CONTINUES:
+            status = 'blocked'
+            summary = f'continue limit ({MAX_CONTINUES}) reached;{skill_note} last: {progress}'
+            _add_step_evidence(conn, sid, f'agent-work:{sid}', summary, 'warn', project_id=pid)
+            residual = 'Step needed more than the continue limit; needs a human to split or decide.'
+        else:
+            status = 'todo'
+            _add_step_evidence(conn, sid, f'progress:{sid}:{len(notes) + 1}',
+                               f'{progress}{skill_note}', 'ok', project_id=pid)
+            residual = ''
+        _execute_with_retry(
+            conn,
+            "UPDATE project_steps SET status=?, residual_risk=?, updated_at=? WHERE step_id=?",
+            (status, residual, _now(), sid),
+        )
+        return 'continue' if status == 'todo' else status
     review = evaluate_local_result(text, ok=ok)
     if not ok:
         status = 'blocked'
@@ -1028,7 +1152,10 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
         status = 'blocked'
     if status == 'done' and 'refusal' in review.get('issues', []):
         status = 'blocked'
-    summary = f"{step.get('owner')} result tokens={tokens} {review.get('summary')}: {text[:420]}"
+    if status == 'done' and last_skill.startswith('[FAILED]'):
+        status = 'blocked'
+        text = f'Last skill call failed, so done was not accepted. {text}'
+    summary = f"{step.get('owner')} result tokens={tokens}{skill_note} {review.get('summary')}: {text[:420]}"
     evidence_status = 'ok' if status == 'done' else 'warn'
     _add_step_evidence(
         conn,
@@ -1109,7 +1236,9 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     one_model = _one_model_mode()
     if one_model:
         # One 14 GB model on one GPU: never swap it, restart chat recovery or reassign steps.
-        prewarm = execute_recovery = execute_work = False
+        prewarm = execute_recovery = False
+        # Work is allowed only when explicitly scoped to Fred; nothing else may use the model slot.
+        execute_work = execute_work and str(opts.get('work_owner') or '').strip().lower() == 'fred'
     work_project_id = str(opts.get('work_project_id') or '').strip()
     work_step_prefix = str(opts.get('work_step_prefix') or '').strip()
     work_owner = str(opts.get('work_owner') or '').strip().lower()
@@ -1369,34 +1498,45 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
         conn = get_connection()
         _configure_connection(conn)
         try:
-            step = _claim_local_agent_step(
-                conn,
-                project_id=work_project_id,
-                step_prefix=work_step_prefix,
-                owner=work_owner,
-            )
-            if step:
-                conn.commit()
+            step = None
+            if one_model and _chat_job_active(conn):
+                report['executes'].append('local agent work skipped: a chat job holds the model slot')
             else:
-                report['executes'].append('local agent work skipped: no claimable step')
+                step = _claim_local_agent_step(
+                    conn,
+                    project_id=work_project_id,
+                    step_prefix=work_step_prefix,
+                    owner=work_owner,
+                )
+            notes = _progress_notes(conn, step) if step else []
+            claimed_at = time.time()
+            conn.commit()
+            if not step:
+                if not any('model slot' in e for e in report['executes']):
+                    report['executes'].append('local agent work skipped: no claimable step')
                 conn.commit()
         finally:
             conn.close()
         if step:
             agent = str(step.get('owner') or '').strip().lower()
-            _close_lingering_swarm_db_fds()
-            ok, answer, tokens = _run_local_agent_work(
-                agent,
-                _agent_work_prompt(step),
-                timeout_seconds=work_timeout,
-            )
-            conn = get_connection()
-            _configure_connection(conn)
             try:
-                final_status = _finish_local_agent_step(conn, step, ok, answer, tokens)
-                conn.commit()
-            finally:
-                conn.close()
+                _close_lingering_swarm_db_fds()
+                ok, answer, tokens = _run_local_agent_work(
+                    agent,
+                    _agent_work_prompt(step, notes),
+                    timeout_seconds=work_timeout,
+                )
+                conn = get_connection()
+                _configure_connection(conn)
+                try:
+                    final_status = _finish_local_agent_step(conn, step, ok, answer, tokens, claimed_at)
+                    conn.commit()
+                finally:
+                    conn.close()
+            except Exception as exc:
+                _requeue_step(step, f'{type(exc).__name__}: {exc}')
+                report['executes'].append(f'local_agent_work requeued step={step.get("step_id")}: {exc}')
+                final_status, answer = 'requeued', str(exc)
             report['executes'].append(
                 f'local_agent_work agent={agent} step={step.get("step_id")} status={final_status}: {str(answer or "")[:240]}'
             )

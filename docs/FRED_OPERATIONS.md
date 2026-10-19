@@ -67,3 +67,12 @@ The SKILL line is plain text; content goes in ``` fenced blocks right after it. 
 | `fs_diff <a> <b>` | none (read-only) |
 
 Every change keeps the previous version in `runtime/backups/fs/` (gitignored) and names it in the result. The old OLD/NEW/END angle-bracket markers are gone. The design came from Fred's own answers. `fs_append` and `fs_insert_after` are granted to her in `user_skill_permissions` (Access tile).
+
+## Multi-step work (Watchdog/Seven DEOS cycle)
+
+Scheduled task `fred_work_cycle` (every 3 min) runs `local_agent_work_cycle work_owner=fred`. It claims one `todo` Studio step owned by `fred` (blocked steps wait for a human), skips the cycle while a chat job holds the model slot, and runs Fred with skills.
+
+- Fred ends with `DEOS_STATUS: done | blocked | needs_human | continue`. On `continue`, her `PROGRESS:` note is stored as step evidence, the step returns to `todo`, and the next pass starts with her notes (max 5 continues, then blocked).
+- `done` is refused if her last skill call in the run failed. Evidence records ok/failed skill counts.
+- If the cycle itself errors (e.g. a DB I/O error), the step is requeued to `todo` instead of stuck in `doing`.
+- Empty fenced blocks in `fs_write` / `fs_append` are errors.
