@@ -10,6 +10,12 @@ Key guarantees provided here:
 
 from __future__ import annotations
 
+import os as _os
+
+# Tests must not depend on which agent holds the worker seat in runtime/worker_agent.txt.
+_os.environ.setdefault('SWARM_WORKER_AGENT', 'fred')
+_os.environ.setdefault('SWARM_WORKER_MODEL', 'mistral-small:24b')
+
 import os
 import tempfile
 

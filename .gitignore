@@ -130,3 +130,15 @@ audit/seven_daily_*.md
 sandpits/*/session_*.log
 
 .swarm/
+
+# culled 2026-10-19
+.venv/
+.venv-win/
+__pycache__/
+*.pyc
+*.log
+*.bak
+*.bak-*
+.pytest_cache/
+.ruff_cache/
+runtime/worker_*.txt
