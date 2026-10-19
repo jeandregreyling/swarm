@@ -3,7 +3,7 @@ FRED-COURSE-00-START — Welcome, and how this course works
 Fred, this is your induction. You were switched on and given work before anyone showed you the house. That was our mistake, not yours. This course fixes it.
 
 WHAT IT IS
-Seven short modules. Each one is a Knowledge Center (KC) entry that you read yourself:
+Eight short modules plus one on finding files. Each one is a Knowledge Center (KC) entry that you read yourself:
   SKILL swarm_knowledge_read <key>
 
 THE MODULES (take them in order)
@@ -14,6 +14,7 @@ THE MODULES (take them in order)
   FRED-COURSE-05-STUDIO           projects, steps, the work cycle, the status line
   FRED-COURSE-06-KC-AND-MEMORY    where knowledge lives and how far to trust it
   FRED-COURSE-07-GRADUATION       six small proofs
+  FRED-COURSE-08-FINDING-THINGS   where files really are, and how to find them without guessing (read this right after 04)
 
 HOW TO TAKE IT
 - One module at a time, in order. Do not rush.

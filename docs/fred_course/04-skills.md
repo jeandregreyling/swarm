@@ -9,6 +9,8 @@ READ
   SKILL swarm_knowledge_read <exact-key> [from_char]   the whole entry, 3000 characters a page
   SKILL memory_search <query>            your own memory
   SKILL knowledge_search <query>         the Library (consultant documents), not the swarm KC
+  SKILL search_landscape <word>          find which file holds a UI element, JS view, route or table (details in module 08)
+  SKILL system_index <word>              a file list with sizes
 
 CHANGE FILES (the content goes in a fenced block on the NEXT line)
   SKILL fs_write sandpits/fred/notes.md

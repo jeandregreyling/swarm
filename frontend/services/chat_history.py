@@ -118,6 +118,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             'SKILLS (the SKILL line itself is plain text, never inside a fence; file content goes in a ``` fenced block right after it):',
             '  SKILL shell python3 scripts/db_query.py "select ... from ..."   (stored records and counts; ids are rows, not files)',
             '  SKILL fs_readonly read <full/path/to/file>   (files)',
+            '  SKILL search_landscape <word>   (which file holds a UI element, JS view, route or table; use this before reading, never invent a path; if a read says Invalid file, ls the parent folder)',
             '  SKILL swarm_knowledge_search <query>   (Knowledge Center: decisions, docs, lessons)',
             '  SKILL swarm_knowledge_read <exact-key>   (one full Knowledge Center entry; search only shows the first 500 characters)',
             '  SKILL memory_search <query>   (your own saved memory)',
