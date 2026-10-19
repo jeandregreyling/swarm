@@ -19,6 +19,14 @@ if _FRONTEND not in sys.path:
 
 import frontend.services.chat_jobs as cj
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _multi_model_mode(monkeypatch):
+    # These tests cover the multi-agent runner and relay-recovery machinery.
+    monkeypatch.setenv('SWARM_ONE_MODEL', '0')
+
 
 def _suppress_durable_spine_logs(monkeypatch):
     """Synthetic watchdog stalls should not pollute Terminal warning feeds."""
@@ -1644,3 +1652,40 @@ def test_skill_name_write_requests_are_not_informational():
     assert not info('Please use fs_write on sandpits/fred/hello.txt, then tell me what you see')
     assert not info('rewrite the file and tell me what you see')
     assert info('tell me what you see in the docs folder')
+
+
+def test_one_model_mode_never_kills_the_resident_runner_or_posts_recovery_cards(monkeypatch):
+    from frontend.blueprints import chat as chat_mod
+    from utils.db import chat as db_chat
+
+    monkeypatch.setenv('SWARM_ONE_MODEL', '1')
+    monkeypatch.setattr(chat_mod, '_chat_sch_council_active', lambda: False)
+    monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: set())
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['mistral-small:24b'])
+    killed = []
+    monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda a: killed.append(a) or {'ok': True})
+
+    assert chat_mod._chat_reconcile_unowned_ollama_runners(1) == []
+    assert killed == []
+    assert db_chat.ensure_chat_relay_recovery('job-1', 1, 'fred', 'stalled')['created'] is False
+    assert db_chat.ensure_silent_chat_thread_recovery(1)['created'] is False
+
+
+def test_reconcile_treats_in_memory_running_job_as_owned_even_if_db_unreadable(monkeypatch):
+    from frontend.blueprints import chat as chat_mod
+
+    monkeypatch.setenv('SWARM_ONE_MODEL', '0')
+    monkeypatch.setattr(chat_mod, '_chat_sch_council_active', lambda: False)
+    monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: set())
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['mistral-small:24b'])
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda a: 'mistral-small:24b')
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'fred'})
+    killed = []
+    monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda a: killed.append(a) or {'ok': True})
+    monkeypatch.setattr(chat_mod, '_chat_log_watchdog_ollama_event', lambda *a, **k: None)
+    monkeypatch.setitem(chat_mod._CHAT_JOBS, 'job-live', {'agent': 'fred', 'status': 'running'})
+    try:
+        assert chat_mod._chat_reconcile_unowned_ollama_runners(1) == []
+        assert killed == []
+    finally:
+        chat_mod._CHAT_JOBS.pop('job-live', None)

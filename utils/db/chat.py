@@ -2,6 +2,7 @@
 db.chat — Conversations, messages, and chat job tracking.
 """
 import json
+import os
 import sqlite3
 import time
 import uuid
@@ -406,6 +407,11 @@ def _relay_recovery_failure_label(reason):
     return 'stalled'
 
 
+def _one_model_no_relay():
+    """Recovery cards are addressed to parked agents that no longer exist; with one worker they only clutter the thread."""
+    return os.environ.get('SWARM_ONE_MODEL', '1').strip().lower() not in {'0', 'false', 'no', 'off'}
+
+
 def ensure_chat_relay_recovery(
     job_id,
     conversation_id,
@@ -422,7 +428,7 @@ def ensure_chat_relay_recovery(
     Returns {created, recovery, message}.
     """
     job_id = str(job_id or '').strip()
-    if not job_id:
+    if not job_id or _one_model_no_relay():
         return {'created': False, 'recovery': None, 'message': ''}
 
     try:
@@ -549,7 +555,7 @@ def ensure_silent_chat_thread_recovery(conversation_id, reason='chat thread has 
         conv_id = int(conversation_id or 0)
     except Exception:
         conv_id = 0
-    if conv_id <= 0:
+    if conv_id <= 0 or _one_model_no_relay():
         return {'created': False, 'recovery': None, 'message': ''}
 
     try:

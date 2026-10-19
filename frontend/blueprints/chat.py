@@ -1157,7 +1157,18 @@ def _chat_reconcile_unowned_ollama_runners(conversation_id=None):
     """
     if _chat_sch_council_active():
         return []
+    # One model stays resident on the GPU. Unloading it after each chat forces a cold reload
+    # (~15 s), and a wrong "unowned" reading kills a reply mid-sentence.
+    if os.environ.get('SWARM_ONE_MODEL', '1').strip().lower() not in {'0', 'false', 'no', 'off'}:
+        return []
     active_agents = _chat_active_local_agents_from_db()
+    # Jobs this process is running are always owned, even if the DB row could not be read.
+    with _CHAT_JOB_LOCK:
+        active_agents = set(active_agents) | {
+            _normalize_chat_participant(j.get('agent'))
+            for j in _CHAT_JOBS.values()
+            if str(j.get('status') or '') == 'running' and str(j.get('agent') or '').strip()
+        }
     running_models = _chat_running_ollama_models()
     if not running_models:
         return []
@@ -2882,8 +2893,9 @@ def api_chat():
             return _get_agent_labels().get(key, key.capitalize() or 'Agent')
 
         def _build_debate_prompt(selected_agent):
-            if len(runnable_agents) <= 1 or not parallel_mode:
-                # Single-agent or sequential: no debate context, no peer pressure
+            one_model = os.environ.get('SWARM_ONE_MODEL', '1').strip().lower() not in {'0', 'false', 'no', 'off'}
+            if len(runnable_agents) <= 1 or not parallel_mode or (one_model and selected_agent == 'fred'):
+                # Single-agent, sequential, or Fred (the only local worker, no peers to debate): no peer pressure
                 return threaded_prompt
 
             active_labels = [_agent_label(a) for a in runnable_agents]
