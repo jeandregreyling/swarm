@@ -177,11 +177,13 @@ def _chat_response_echoes_prompt(prompt_text, response_text):
         return False
     if response_norm == prompt_norm:
         return True
-    if len(response_norm) <= len(prompt_norm) + 12 and (
+    response_words = response_norm.split()
+    # Short answers may legitimately reuse a couple of prompt words; only a
+    # substantial reply can be a real echo.
+    if len(response_words) >= 5 and len(response_norm) <= len(prompt_norm) + 12 and (
         response_norm in prompt_norm or prompt_norm in response_norm
     ):
         return True
-    response_words = response_norm.split()
     prompt_words = set(prompt_norm.split())
     if 5 <= len(response_words) <= 24:
         if any(word not in prompt_words and any(c.isdigit() for c in word) for word in response_words):
