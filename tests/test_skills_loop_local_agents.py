@@ -211,3 +211,18 @@ def test_read_only_turn_allows_memory_and_knowledge_lookups():
     assert _is_level0_shell('memory_search', 'x', {'fs_readonly'})
     assert _is_level0_shell('swarm_knowledge_search', 'x', {'fs_readonly'})
     assert not _is_level0_shell('fs_write', 'x', {'fs_readonly'})
+
+
+def test_studio_step_update_guards(monkeypatch):
+    from fridays import skills
+    import core.knowledge.projects as pr
+    monkeypatch.setattr(pr, 'get_step', lambda sid: {'step_id': sid, 'owner': 'fred', 'status': 'blocked'} if sid == 'S-1' else None)
+    calls = []
+    monkeypatch.setattr(pr, 'update_step_status', lambda sid, st, **kw: calls.append((sid, st)) or True)
+    assert not skills._skill_studio_step_update('S-1 skipped short', 'fred')[0]
+    assert not skills._skill_studio_step_update('S-1 bogus a real reason here', 'fred')[0]
+    assert not skills._skill_studio_step_update('S-1 skipped a real reason here', 'gemma')[0]
+    assert not skills._skill_studio_step_update('S-9 skipped a real reason here', 'fred')[0]
+    assert not calls
+    assert skills._skill_studio_step_update('S-1 skipped a real reason here', 'fred')[0]
+    assert calls == [('S-1', 'skipped')]

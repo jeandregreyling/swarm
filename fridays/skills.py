@@ -164,6 +164,12 @@ REGISTRY = {
         'usage': 'SKILL alm_vortex <label>',
         'example': 'SKILL alm_vortex before-banner-redesign',
     },
+    'studio_step_update': {
+        'description': 'Update the status of a Studio step you own (doing, done, blocked, skipped). A reason is required and is logged.',
+        'trust_level': 1,
+        'usage': 'SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>',
+        'example': 'SKILL studio_step_update S-741355C83B skipped Standing rule, enforced by link_proposal_to_project',
+    },
     'fs_readonly': {
         'description': 'Read-only filesystem helper for workspace discovery (ls/find/read/head/tail/lines/grep). Use grep to search file contents by pattern — much faster than reading line by line.',
         'trust_level': 0,
@@ -1569,16 +1575,61 @@ def _skill_swarm_knowledge_search(args, agent, **_):
             return False, 'Usage: SKILL swarm_knowledge_search <query>'
         rows = search_knowledge(query, limit=8)
         if not rows:
+            # A long phrase rarely matches verbatim: fall back to its salient words, best hit first.
+            seen = {}
+            stop = {'the', 'and', 'for', 'what', 'about', 'does', 'say', 'with', 'from', 'that', 'this'}
+            for word in [w for w in re.findall(r'[A-Za-z0-9_-]{3,}', query) if w.lower() not in stop][:5]:
+                for r in search_knowledge(word, limit=8):
+                    hit = seen.setdefault(r['id'], [0, r])
+                    hit[0] += 1
+            rows = [r for _, r in sorted(seen.values(), key=lambda h: -h[0])][:8]
+        if not rows:
             return True, f'No knowledge found for: {query}'
         lines = []
         for r in rows:
             lines.append(
                 f'[{r["category"]}] {r["key"]} (by {r["source_agent"]}, '
-                f'importance={r["importance"]})\n  {r["content"][:200]}'
+                f'importance={r["importance"]})\n  {r["content"][:500]}'
             )
         return True, '\n---\n'.join(lines)
     except Exception as e:
         return False, f'swarm_knowledge_search error: {e}'
+
+
+def _skill_studio_step_update(args, agent, **_):
+    """SKILL studio_step_update <step_id> <status> <reason> — only for steps the caller owns."""
+    parts = (args or '').strip().split(None, 2)
+    if len(parts) < 3:
+        return False, 'Usage: SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>'
+    step_id, status, reason = parts[0].strip(), parts[1].strip().lower(), parts[2].strip()
+    if status not in {'doing', 'done', 'blocked', 'skipped'}:
+        return False, 'Status must be one of: doing, done, blocked, skipped.'
+    if len(reason) < 8:
+        return False, 'Give a real reason (at least a short sentence); it is logged.'
+    try:
+        from core.knowledge.projects import get_step, update_step_status
+        step = get_step(step_id)
+        if not step:
+            return False, f'No such step: {step_id}'
+        if str(step.get('owner') or '').lower() != str(agent or '').lower():
+            return False, f'{step_id} is owned by {step.get("owner")}, not {agent}. Only the owner updates a step.'
+        old = step.get('status')
+        if not update_step_status(step_id, status):
+            return False, f'Could not update {step_id}.'
+        try:
+            from database import get_connection as _gc
+            conn = _gc()
+            conn.execute(
+                "INSERT INTO ghost_circle (entry_type, source, content, severity) VALUES ('step_update', ?, ?, 'info')",
+                (agent, f'{step_id}: {old} -> {status}. Reason: {reason[:300]}'),
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+        return True, f'{step_id}: {old} -> {status}. Reason logged.'
+    except Exception as e:
+        return False, f'studio_step_update error: {e}'
 
 
 def _skill_search_landscape(args, agent, **_):
@@ -1984,6 +2035,7 @@ _HANDLERS = {
     'alm_self_approve':    _skill_alm_self_approve,
     'alm_complete':        _skill_alm_complete,
     'alm_vortex':          _skill_alm_vortex,
+    'studio_step_update':  _skill_studio_step_update,
     'fs_readonly':         _skill_fs_readonly,
     'fs_write':            _skill_fs_write,
     'fs_patch':            _skill_fs_patch,
