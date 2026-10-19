@@ -63,7 +63,9 @@ SEVEN_DEFAULT_DIRECT_MODEL = os.environ.get('SEVEN_MODEL', 'seven-direct:daily')
 
 def _close_lingering_swarm_db_fds() -> int:
     """Release stale SQLite fds before long local-model waits."""
-    if not os.path.isdir('/proc/self/fd'):
+    # Closing raw fds under live SQLite connections drops their POSIX locks and causes
+    # "disk I/O error" in the long-lived scheduler, so one-model mode leaves them alone.
+    if _one_model_mode() or not os.path.isdir('/proc/self/fd'):
         return 0
     root = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     db_path = os.environ.get('SWARM_DB_PATH') or os.path.join(root, 'swarm_memory.db')
