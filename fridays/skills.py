@@ -25,6 +25,7 @@ Every skill call is logged to ghost_circle.
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import json
 import os
 import sys
 import logging
@@ -151,6 +152,12 @@ REGISTRY = {
         'trust_level': 1,
         'usage': 'SKILL alm_self_approve <proposal_id> [vortex_label]',
         'example': 'SKILL alm_self_approve WP-0042 before-banner-patch',
+    },
+    'alm_close_proposals': {
+        'description': 'Close backlog proposals (pending, approved, in_progress) and abandon their queue tickets. One id, or "all". Writes an undo snapshot. Operator-requested cleanups only.',
+        'trust_level': 2,
+        'usage': 'SKILL alm_close_proposals <proposal_id|all> <reason>',
+        'example': 'SKILL alm_close_proposals all clean slate requested by Ghost',
     },
     'alm_complete': {
         'description': 'Mark your own in_progress proposal as done (awaiting Ghost confirmation to close).',
@@ -1116,6 +1123,59 @@ def _skill_alm_self_approve(args, agent, **_):
         'Proceed with SKILL fs_patch/fs_write changes. '
         'When done, run SKILL alm_complete to mark it done for Ghost review.'
     )
+
+
+_CLOSABLE_PROPOSAL_STATUSES = ('pending', 'approved', 'in_progress')
+
+
+def _skill_alm_close_proposals(args, agent, **_):
+    """SKILL alm_close_proposals <proposal_id|all> <reason> — close backlog proposals, reversibly."""
+    parts = (args or '').strip().split(None, 1)
+    usage = 'Usage: SKILL alm_close_proposals <proposal_id|all> <reason>. Example: SKILL alm_close_proposals all clean slate requested by Ghost'
+    if len(parts) < 2 or not parts[1].strip():
+        return False, usage
+    scope, reason = parts[0].strip(), parts[1].strip()[:300]
+    marks = ','.join('?' for _ in _CLOSABLE_PROPOSAL_STATUSES)
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            sql = f'SELECT proposal_id, status, queue_id FROM work_proposals WHERE status IN ({marks})'
+            params = list(_CLOSABLE_PROPOSAL_STATUSES)
+            if scope.lower() != 'all':
+                sql += ' AND proposal_id = ?'
+                params.append(scope)
+            rows = [tuple(r) for r in conn.execute(sql, params).fetchall()]
+            if not rows:
+                return True, f'Nothing to close for {scope!r}: no pending, approved or in_progress proposal matched.'
+            snapshot = {
+                'closed_by': agent, 'reason': reason, 'scope': scope,
+                'proposals': [{'proposal_id': r[0], 'status': r[1], 'queue_id': r[2]} for r in rows],
+            }
+            snap_dir = _FS_ROOT / 'runtime' / 'backups' / 'proposals'
+            snap_dir.mkdir(parents=True, exist_ok=True)
+            snap = snap_dir / f"closed-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.json"
+            snap.write_text(json.dumps(snapshot, indent=1), encoding='utf-8')
+            note = f'closed by {agent}: {reason}'
+            queue_ids = [r[2] for r in rows if r[2]]
+            for pid, _status, _qid in rows:
+                conn.execute(
+                    "UPDATE work_proposals SET status='closed', notes=COALESCE(notes||char(10),'')||?, "
+                    "updated_at=CURRENT_TIMESTAMP WHERE proposal_id=?", (note, pid))
+            if queue_ids:
+                qmarks = ','.join('?' for _ in queue_ids)
+                conn.execute(f"UPDATE queue SET status='abandoned' WHERE status='queued' AND id IN ({qmarks})", queue_ids)
+            conn.commit()
+        finally:
+            conn.close()
+        by_status = {}
+        for _pid, status, _qid in rows:
+            by_status[status] = by_status.get(status, 0) + 1
+        summary = ', '.join(f'{n} {s}' for s, n in sorted(by_status.items()))
+        return True, (f'Closed {len(rows)} proposals ({summary}); {len(queue_ids)} queue tickets abandoned. '
+                      f'Undo snapshot: {snap.relative_to(_FS_ROOT)}')
+    except Exception as e:
+        return False, f'alm_close_proposals error: {e}'
 
 
 def _skill_alm_complete(args, agent, **_):
@@ -2279,6 +2339,7 @@ _HANDLERS = {
     'ticket_create':  _skill_ticket_create,
     'alm_create_proposal': _skill_alm_create_proposal,
     'alm_self_approve':    _skill_alm_self_approve,
+    'alm_close_proposals': _skill_alm_close_proposals,
     'alm_complete':        _skill_alm_complete,
     'alm_vortex':          _skill_alm_vortex,
     'studio_step_update':  _skill_studio_step_update,

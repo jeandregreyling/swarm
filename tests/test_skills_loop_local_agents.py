@@ -359,3 +359,47 @@ def test_backtick_wrapped_skill_gets_a_specific_nudge(monkeypatch):
     assert sl._FENCED_SKILL_NUDGE in seen
     assert sl._SKILL_NUDGE not in seen
     assert 'fake' not in out
+
+
+def test_alm_close_proposals_closes_backlog_with_undo_snapshot(tmp_path, monkeypatch):
+    import json
+    import sqlite3
+    from fridays import skills
+
+    db = sqlite3.connect(tmp_path / 't.db')
+    db.executescript(
+        "CREATE TABLE work_proposals (proposal_id TEXT, status TEXT, queue_id INTEGER, notes TEXT, updated_at TEXT);"
+        "CREATE TABLE queue (id INTEGER, status TEXT);"
+        "INSERT INTO work_proposals VALUES ('P1','pending',1,NULL,NULL),('P2','approved',2,NULL,NULL),"
+        "('P3','in_progress',3,NULL,NULL),('P4','done',4,NULL,NULL),('P5','closed',5,NULL,NULL);"
+        "INSERT INTO queue VALUES (1,'queued'),(2,'queued'),(3,'completed'),(4,'queued'),(5,'queued');"
+    )
+    db.commit()
+
+    class NoClose:
+        def __init__(self, c):
+            self.c = c
+        def execute(self, *a, **k):
+            return self.c.execute(*a, **k)
+        def commit(self):
+            self.c.commit()
+        def close(self):
+            pass
+
+    monkeypatch.setattr('utils.db._connection.get_connection', lambda: NoClose(db))
+    monkeypatch.setattr(skills, '_FS_ROOT', tmp_path)
+
+    ok, msg = skills._skill_alm_close_proposals('P1', 'fred')
+    assert not ok and 'Usage' in msg
+
+    ok, msg = skills._skill_alm_close_proposals('all clean slate', 'fred')
+    assert ok and 'Closed 3 proposals' in msg
+    states = dict(db.execute('SELECT proposal_id, status FROM work_proposals').fetchall())
+    assert states == {'P1': 'closed', 'P2': 'closed', 'P3': 'closed', 'P4': 'done', 'P5': 'closed'}
+    assert dict(db.execute('SELECT id, status FROM queue').fetchall()) == {
+        1: 'abandoned', 2: 'abandoned', 3: 'completed', 4: 'queued', 5: 'queued'}
+    snap = next((tmp_path / 'runtime' / 'backups' / 'proposals').glob('closed-*.json'))
+    assert {p['proposal_id'] for p in json.loads(snap.read_text())['proposals']} == {'P1', 'P2', 'P3'}
+
+    ok, msg = skills._skill_alm_close_proposals('all again', 'fred')
+    assert ok and 'Nothing to close' in msg

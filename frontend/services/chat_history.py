@@ -131,6 +131,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             '  SKILL fs_diff <path_a> <path_b>   (read-only; every change keeps a backup in runtime/backups/fs/, named in the result)',
             '  SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>   (only steps you own; reason is logged)',
             '  SKILL alm_create_proposal "<title>" "<description>"   (changes go through a proposal)',
+            '  SKILL alm_close_proposals <proposal_id|all> <reason>   (when Ghost asks you to clear the proposal backlog: closes pending/approved/in_progress ones, keeps an undo snapshot; run it, then report the numbers it returns)',
             'A change is real only when the skill result that comes back to you shows it (for example "Written N chars ... backup: ..."). Never type a skill result yourself; if no result came back, say so.',
             'LONG JOBS (Watchdog/Seven DEOS): Watchdog owns state, timeouts and proof; you own one step at a time. If a step needs more passes, end with a PROGRESS: line (done so far, next action) and DEOS_STATUS: continue; you will be handed the step back with your notes. Finish with DEOS_STATUS: done only after a read-back proves it.',
             '',
