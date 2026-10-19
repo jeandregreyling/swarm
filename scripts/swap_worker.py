@@ -90,6 +90,12 @@ def plug_in(name, model, label):
                 'INSERT INTO user_skill_permissions (username, skill_name, allowed, created_by) VALUES (?,?,?,?) '
                 'ON CONFLICT(username, skill_name) DO UPDATE SET allowed=excluded.allowed',
                 (name, skill, allowed, 'ghost'))
+        caps = [d[0] for d in conn.execute('SELECT * FROM agent_capabilities LIMIT 0').description if d[0] not in ('id', 'agent_name')]
+        for cap_row in conn.execute(f'SELECT {",".join(caps)} FROM agent_capabilities WHERE agent_name=?', (old,)).fetchall():
+            conn.execute(
+                f'INSERT INTO agent_capabilities (agent_name,{",".join(caps)}) SELECT ?,{",".join("?" for _ in caps)} '
+                'WHERE NOT EXISTS (SELECT 1 FROM agent_capabilities WHERE agent_name=? AND capability=?)',
+                (name, *cap_row, name, cap_row[caps.index('capability')]))
         conn.execute("UPDATE scheduled_tasks SET action_data=REPLACE(action_data,'work_owner=fred','work_owner=worker') "
                      "WHERE action_data LIKE '%work_owner=fred%'")
         conn.commit()
