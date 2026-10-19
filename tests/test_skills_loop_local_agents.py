@@ -468,3 +468,42 @@ def test_alm_purge_proposals_only_deletes_closed_and_backs_up_full_rows(tmp_path
     assert {r['proposal_id'] for r in saved['work_proposals']} == {'C1', 'R1'}
     assert saved['work_proposals'][0]['title'] in ('old one', 'bad')
     assert saved['proposal_projects'] == [{'proposal_id': 'C1', 'project_id': 'PRJ'}]
+
+
+def test_fs_readonly_grep_searches_a_folder_and_hints_ls_on_bad_paths(tmp_path, monkeypatch):
+    from fridays import skills
+
+    (tmp_path / 'css').mkdir()
+    (tmp_path / 'css' / 'a.css').write_text('#shortcuts-panel { position: fixed; }\n')
+    (tmp_path / 'css' / 'b.css').write_text('.other { color: red; }\n')
+    (tmp_path / 'css' / 'c.css.bak').write_text('shortcuts old\n')
+    (tmp_path / '__pycache__').mkdir()
+    (tmp_path / '__pycache__' / 'x.py').write_text('shortcuts\n')
+    monkeypatch.setattr(skills, '_FS_ROOT', tmp_path)
+    monkeypatch.setattr(skills, '_fs_safe_path', lambda rel: (tmp_path / rel).resolve() if (tmp_path / rel).exists() else None)
+
+    ok, out = skills._skill_fs_readonly('grep css shortcuts', 'fred')
+    assert ok and 'css/a.css:1:' in out and 'b.css' not in out and '.bak' not in out and 'pycache' not in out
+    ok, out = skills._skill_fs_readonly('grep . shortcuts', 'fred')
+    assert ok and '__pycache__' not in out
+    ok, out = skills._skill_fs_readonly('grep css nothingthere', 'fred')
+    assert ok and 'No matches' in out
+    ok, out = skills._skill_fs_readonly('grep css/missing.css x', 'fred')
+    assert not ok and 'ls <folder>' in out
+    ok, out = skills._skill_fs_readonly('read docs/Freddy/Page.md', 'fred')
+    assert not ok and 'search_landscape' in out
+
+
+def test_search_landscape_falls_back_to_all_the_words(tmp_path, monkeypatch):
+    import json
+    from fridays import skills
+
+    root = tmp_path / 'swarm_docs'
+    root.mkdir()
+    (root / 'SYSTEM_LANDSCAPE.json').write_text(json.dumps({
+        'ui_elements': [{'id': 'chat-topbar-title', 'file': 'a.js'}, {'id': 'taskbar-btn', 'file': 'b.html'}]}))
+    monkeypatch.setattr(skills.os.path, 'abspath', lambda p: str(tmp_path / 'fridays' / 'skills.py'))
+    ok, out = skills._skill_search_landscape('chat bar', 'fred')
+    assert ok and 'chat-topbar-title' in out and 'taskbar-btn' not in out
+    ok, out = skills._skill_search_landscape('nothing like this', 'fred')
+    assert ok and 'No landscape matches' in out and 'one code word' in out

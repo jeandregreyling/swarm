@@ -797,6 +797,47 @@ def _fs_write_refusal(target, rel):
     return ''
 
 
+_GREP_DIR_EXTS = ('.py', '.js', '.css', '.html', '.md', '.json', '.txt', '.yml', '.yaml', '.sh')
+_GREP_DIR_SKIP = {'__pycache__', '.git', '.venv', 'node_modules', 'runtime', 'logs', 'archive', 'archives',
+                  'backups', 'models', 'attachments', 'artifacts', 'llama.cpp'}
+
+
+def _grep_directory(target, rel, pattern, pat, max_hits=40, max_files=3000):
+    """Recursive grep for 'which files mention X': file:line: text, text files only, capped."""
+    hits, scanned, files_hit = [], 0, set()
+    for root, dirs, files in os.walk(target):
+        dirs[:] = sorted(d for d in dirs if d not in _GREP_DIR_SKIP and not d.startswith('.'))
+        for name in sorted(files):
+            if not name.endswith(_GREP_DIR_EXTS) or '.bak' in name:
+                continue
+            path = Path(root) / name
+            try:
+                if path.stat().st_size > 1_500_000:
+                    continue
+                text = path.read_text(encoding='utf-8', errors='replace')
+            except Exception:
+                continue
+            scanned += 1
+            for lineno, line in enumerate(text.splitlines(), 1):
+                if pat.search(line):
+                    files_hit.add(str(path))
+                    if len(hits) < max_hits:
+                        try:
+                            shown = str(path.relative_to(_FS_ROOT))
+                        except Exception:
+                            shown = str(path)
+                        hits.append(f'{shown}:{lineno}: {line.strip()[:160]}')
+            if scanned >= max_files:
+                break
+        if scanned >= max_files:
+            break
+    if not hits:
+        return True, f'No matches for "{pattern}" in {rel} ({scanned} files searched)'
+    more = f' (showing first {max_hits})' if len(hits) >= max_hits else ''
+    return True, (f'grep "{pattern}" in {rel}/ - matches in {len(files_hit)} files{more}:\n' + '\n'.join(hits)
+                  + '\nRead one with SKILL fs_readonly grep <file> <text> or lines <file> <start> <end>.')
+
+
 def _skill_fs_readonly(args, agent, **_):
     raw = (args or '').strip()
     if not raw:
@@ -866,17 +907,20 @@ def _skill_fs_readonly(args, agent, **_):
         except Exception:
             ctx = 2
         target = _fs_safe_path(rel)
-        if not target or not target.exists() or not target.is_file():
-            return False, f'Invalid file: {rel}'
-        try:
-            file_lines = target.read_text(encoding='utf-8', errors='replace').splitlines()
-        except Exception as e:
-            return False, f'Could not read {rel}: {e}'
         import re as _re
         try:
             pat = _re.compile(pattern, _re.IGNORECASE)
         except _re.error:
             pat = _re.compile(_re.escape(pattern), _re.IGNORECASE)
+        if target and target.exists() and target.is_dir():
+            return _grep_directory(target, rel, pattern, pat)
+        if not target or not target.exists() or not target.is_file():
+            return False, (f'Invalid file: {rel}. It does not exist. Run SKILL fs_readonly ls <folder> '
+                           'or SKILL search_landscape <word> to see the real names.')
+        try:
+            file_lines = target.read_text(encoding='utf-8', errors='replace').splitlines()
+        except Exception as e:
+            return False, f'Could not read {rel}: {e}'
         hits = [i for i, l in enumerate(file_lines) if pat.search(l)]
         if not hits:
             return True, f'No matches for "{pattern}" in {rel}'
@@ -896,7 +940,8 @@ def _skill_fs_readonly(args, agent, **_):
         rel = parts[1]
         target = _fs_safe_path(rel)
         if not target or not target.exists() or not target.is_file():
-            return False, f'Invalid file: {rel}'
+            return False, (f'Invalid file: {rel}. It does not exist. Run SKILL fs_readonly ls <folder> '
+                            'or SKILL search_landscape <word> to see the real names.')
         try:
             text = target.read_text(encoding='utf-8', errors='replace')
         except Exception as e:
@@ -2047,7 +2092,23 @@ def _skill_search_landscape(args, agent, **_):
                 if query in blob:
                     matches.append(f'[{section_key}] {_json.dumps(section_items)}')
         if not matches:
-            return True, f'No landscape matches for: {query}'
+            # A phrase rarely matches verbatim: fall back to entries that contain every word, then any word.
+            words = [w for w in re.findall(r'[a-z0-9_-]{3,}', query) if w not in {'the', 'and', 'for', 'with'}]
+            if len(words) > 1:
+                for need_all in (True, False):
+                    for section_key, section_items in data.items():
+                        items = section_items if isinstance(section_items, list) else [section_items]
+                        for item in items:
+                            blob = _json.dumps(item).lower()
+                            hit = [w for w in words if w in blob]
+                            if hit and (len(hit) == len(words) if need_all else True):
+                                line = f'[{section_key}] {_json.dumps(item)}'
+                                if line not in matches:
+                                    matches.append(line)
+                    if matches:
+                        break
+        if not matches:
+            return True, f'No landscape matches for: {query}. Try one code word such as the part of a file or id name.'
         return True, '\n'.join(matches[:15])
     except Exception as e:
         return False, f'search_landscape error: {e}'
