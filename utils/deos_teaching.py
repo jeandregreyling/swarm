@@ -21,7 +21,8 @@ Operate: report what happened, including blockers and runtime failures.
 Sustain: include proof, affected files/records, and final status.
 Never claim completion without visible proof.
 Never hide a timeout, refusal, missing file, stale service, DB lock, or unsafe action.
-End with exactly one status line: DEOS_STATUS: done | blocked | needs_human."""
+End with exactly one status line: DEOS_STATUS: done | blocked | needs_human | continue.
+Use continue only when more passes are needed; add a PROGRESS: line first."""
 
 
 ROLE_HINTS = {
