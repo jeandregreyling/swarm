@@ -1154,6 +1154,21 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
         status = 'blocked'
     if status == 'done' and 'refusal' in review.get('issues', []):
         status = 'blocked'
+    if status == 'done' and claimed_at and 'missing_proof' in review.get('issues', []):
+        # Done without visible proof goes back to the agent with a note, not closed.
+        notes = _progress_notes(conn, step)
+        if len(notes) < MAX_CONTINUES:
+            _add_step_evidence(
+                conn, sid, f'progress:{sid}:{len(notes) + 1}',
+                'Watchdog rejected done: no proof shown. Do the remaining work with skills, '
+                'read the result back with fs_readonly, and quote the read-back in your answer.'
+                f'{skill_note}', 'warn', project_id=pid)
+            _execute_with_retry(
+                conn,
+                "UPDATE project_steps SET status='todo', residual_risk='', updated_at=? WHERE step_id=?",
+                (_now(), sid),
+            )
+            return 'continue'
     if status == 'done' and last_skill.startswith('[FAILED]'):
         status = 'blocked'
         text = f'Last skill call failed, so done was not accepted. {text}'

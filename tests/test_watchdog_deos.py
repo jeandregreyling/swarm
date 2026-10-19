@@ -880,7 +880,7 @@ def test_deos_cycle_filters_local_work_by_project_and_owner(monkeypatch, tmp_pat
     monkeypatch.setattr(
         watchdog_deos,
         '_run_local_agent_work',
-        lambda agent, prompt, timeout_seconds: (True, 'drill done\nDEOS_STATUS: done', 2),
+        lambda agent, prompt, timeout_seconds: (True, 'drill done, verified with read-back\nDEOS_STATUS: done', 2),
     )
 
     watchdog_deos.run_deos_cycle(
@@ -1029,3 +1029,16 @@ def test_continue_status_tolerates_trailing_punctuation():
     from utils import watchdog_deos
 
     assert watchdog_deos._CONTINUE_RE.search('PROGRESS: x\n\nDEOS_STATUS: continue.')
+
+
+def test_done_without_proof_goes_back_to_agent(tmp_path):
+    from utils import watchdog_deos
+
+    conn = _steps_db(tmp_path)
+    _add(conn, 'S-NOPROOF', 'doing')
+    step = {'step_id': 'S-NOPROOF', 'project_id': 'P', 'owner': 'fred', 'title': 't'}
+    out = watchdog_deos._finish_local_agent_step(
+        conn, step, True, 'Finished.\nDEOS_STATUS: done', 5, claimed_at=time.time() - 60)
+    assert out == 'continue'
+    assert conn.execute("SELECT status FROM project_steps WHERE step_id='S-NOPROOF'").fetchone()[0] == 'todo'
+    assert 'rejected done' in watchdog_deos._progress_notes(conn, step)[0]
