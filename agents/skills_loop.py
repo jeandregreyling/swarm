@@ -63,7 +63,9 @@ _READ_ONLY_TASK_RE = re.compile(
 )
 _READ_ONLY_TASK_SKILLS = {'fs_readonly'}
 # Pure lookups that never change anything, so read-only turns may still use them.
-_READ_ONLY_LOOKUP_SKILLS = {'memory_search', 'swarm_knowledge_search', 'swarm_knowledge_read', 'knowledge_search'}
+_READ_ONLY_LOOKUP_SKILLS = {
+    'memory_search', 'swarm_knowledge_search', 'swarm_knowledge_read', 'knowledge_search', 'search_landscape',
+}
 _SKILL_NUDGE = (
     'Your response did not contain any SKILL commands.\n'
     'Only emit a SKILL command if the operator explicitly requested an action that needs it.\n'

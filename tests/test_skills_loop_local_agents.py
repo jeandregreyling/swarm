@@ -210,7 +210,10 @@ def test_read_only_turn_allows_memory_and_knowledge_lookups():
     from agents.skills_loop import _is_level0_shell
     assert _is_level0_shell('memory_search', 'x', {'fs_readonly'})
     assert _is_level0_shell('swarm_knowledge_search', 'x', {'fs_readonly'})
+    assert _is_level0_shell('swarm_knowledge_read', 'x', {'fs_readonly'})
+    assert _is_level0_shell('search_landscape', 'x', {'fs_readonly'})
     assert not _is_level0_shell('fs_write', 'x', {'fs_readonly'})
+    assert not _is_level0_shell('system_index', 'x', {'fs_readonly'})
 
 
 def test_studio_step_update_guards(monkeypatch):
