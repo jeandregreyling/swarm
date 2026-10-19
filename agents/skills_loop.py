@@ -150,6 +150,9 @@ def _extract_skill_cmds(text):
         if not parsed or parsed[0] == 'list':
             continue
         skill_name, skill_args = parsed
+        if _PLACEHOLDER_ARG_RE.search(skill_args.split('\n', 1)[0]):
+            logger.warning(f'[skills] ignoring {skill_name}: arguments are a template placeholder')
+            continue
         if skill_name in FENCED_BODY_SKILLS:
             blocks, nxt = read_fenced_blocks(lines, i, max_blocks=FENCED_BODY_SKILLS[skill_name])
             if blocks:
@@ -160,6 +163,26 @@ def _extract_skill_cmds(text):
         cmds.append((skill_name, skill_args))
 
     return cmds
+
+
+# Template slots copied from a skill list (<query>, <full/path/to/file>) are never real arguments.
+_PLACEHOLDER_ARG_RE = re.compile(r'<[a-z_]+(?:[-/][a-z_]+)*>')
+_FENCED_SKILL_RE = re.compile(r'(?m)^\s*`{3,}\s*/?SKILL\s+[a-z_]+', re.IGNORECASE)
+_FENCED_SKILL_NUDGE = (
+    'Your reply put SKILL lines inside backticks (```SKILL ...```). Text inside backticks is not run, '
+    'so no skill ran and any results shown in your reply were not real.\n'
+    'Send the SKILL line again as plain text on its own line. For file skills, the file text goes in a '
+    'fenced block on the NEXT line:\n'
+    'SKILL fs_write sandpits/fred/example.md\n'
+    '```\n'
+    'file text\n'
+    '```\n'
+    'Send only the first step now. The real result will come back to you.'
+)
+
+
+def _fenced_skill_in_text(text):
+    return bool(_FENCED_SKILL_RE.search(str(text or '')))
 
 
 _INJECTED_BLOCK_RE = re.compile(r'=== [A-Z][A-Z \-]+ ===.*?(?:=== END [A-Z \-]+ ===|\n={10,}\n)', re.DOTALL)
@@ -531,7 +554,10 @@ def run_skill_loop(
     _tl(source_conv_id, agent_name, 'response', str(first_content or '')[:1200])
 
     # Diagnostic: log whether the first response contains SKILL commands
-    has_skill = 'SKILL ' in str(first_content or '').upper()
+    # A SKILL line inside backticks is text, not a command, so it must not count here.
+    has_skill = bool(_extract_skill_cmds(first_content)) or (
+        'SKILL ' in str(first_content or '').upper() and not _fenced_skill_in_text(first_content)
+    )
     logger.info(
         f'[{agent_name}] pass 0 response: has_skill={has_skill} '
         f'len={len(str(first_content or ""))} '
@@ -548,7 +574,7 @@ def run_skill_loop(
         emit_fn('nudging for skill commands')
         nudge_messages = working_messages + [
             {'role': 'assistant', 'content': answer},
-            {'role': 'user', 'content': _SKILL_NUDGE},
+            {'role': 'user', 'content': _FENCED_SKILL_NUDGE if _fenced_skill_in_text(answer) else _SKILL_NUDGE},
         ]
         try:
             nudge_content, nudge_tokens = call_fn(nudge_messages)

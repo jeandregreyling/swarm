@@ -337,3 +337,25 @@ def test_mid_loop_nudge_can_be_switched_off_for_prose_finishers(monkeypatch):
     assert 'file text' in out
     _, prompts = run(2)
     assert any(p == sl._SKILL_NUDGE for p in prompts)
+
+
+def test_placeholder_arguments_are_not_executed():
+    assert sl._extract_skill_cmds('SKILL fs_readonly read <full/path/to/file>   (files)') == []
+    assert sl._extract_skill_cmds('SKILL memory_search <query>   (your own saved memory)') == []
+    assert sl._extract_skill_cmds('SKILL shell python3 scripts/db_query.py "select 1 where a<b and c>d"')
+
+
+def test_backtick_wrapped_skill_gets_a_specific_nudge(monkeypatch):
+    seen = []
+    replies = iter(['```SKILL fs_readonly read sandpits/fred/x.md```\nResult: fake', 'SKILL fs_readonly read sandpits/fred/x.md', 'The file says hi.'])
+    monkeypatch.setattr(sl, '_execute_skill_cmds', lambda cmds, *a, **k: '[skill:fs_readonly] OK\nhi')
+
+    def call(msgs):
+        seen.append(msgs[-1]['content'])
+        return next(replies, 'done'), 1
+
+    out, _ = sl.run_skill_loop('fred', call, _user('read sandpits/fred/x.md with the skill'), lambda t: None,
+                               nudge_if_no_skills=True, mid_loop_nudges=0)
+    assert sl._FENCED_SKILL_NUDGE in seen
+    assert sl._SKILL_NUDGE not in seen
+    assert 'fake' not in out
