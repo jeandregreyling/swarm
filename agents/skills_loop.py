@@ -188,10 +188,14 @@ def _fenced_skill_in_text(text):
 _INJECTED_BLOCK_RE = re.compile(r'=== [A-Z][A-Z \-]+ ===.*?(?:=== END [A-Z \-]+ ===|\n={10,}\n)', re.DOTALL)
 
 
+# The chat layer appends the live ticket list after the user's message; its proposal titles are data.
+_TICKET_SNAPSHOT_RE = re.compile(r'\n*=== Live Ticket Snapshot ===.*\Z', re.DOTALL)
+
+
 def _operator_text(content):
     # The chat layer prepends policy blocks (relay rules etc.) to the user turn;
     # their "do not write ..." wording is not the operator asking for read-only.
-    return _INJECTED_BLOCK_RE.sub('', str(content or ''))
+    return _INJECTED_BLOCK_RE.sub('', _TICKET_SNAPSHOT_RE.sub('', str(content or '')))
 
 
 _ACTION_WORDS_RE = re.compile(

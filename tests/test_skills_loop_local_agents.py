@@ -403,3 +403,14 @@ def test_alm_close_proposals_closes_backlog_with_undo_snapshot(tmp_path, monkeyp
 
     ok, msg = skills._skill_alm_close_proposals('all again', 'fred')
     assert ok and 'Nothing to close' in msg
+
+
+def test_appended_ticket_snapshot_does_not_make_the_turn_read_only():
+    prompt = (
+        '=== Shared conversation thread (latest) ===\nNo previous messages.\n\n'
+        '=== New user message ===\nPlease close all the proposals now.'
+        '\n\n=== Live Ticket Snapshot ===\nQueue: 10\n- INTERNAL-X-1 | gemma | approved/queued | Probe: do not use the old path\n'
+    )
+    assert sl._is_explicitly_read_only_task(_user(prompt)) is False
+    assert sl._latest_operator_text(_user(prompt)) == 'Please close all the proposals now.'
+    assert sl._is_explicitly_read_only_task(_user('Do not use any tools.\n\n=== Live Ticket Snapshot ===\nx')) is True
