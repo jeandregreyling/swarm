@@ -44,3 +44,12 @@ You asked for clear instructions, procedures for proposals and priorities, and d
 
 Use the shell skill: `SKILL shell python3 scripts/db_query.py "select status, count(*) from project_steps group by status"`.
 One SELECT in double quotes, optional second argument `swarm` (default) or `mind`. The file is opened read-only and output is capped at 50 rows. Never open or patch a `.db` with the file skills.
+
+## Memory, Knowledge Center and Studio steps
+
+- Fred's context is small on purpose. She looks things up instead of carrying them: `SKILL memory_search <query>` covers her own memory, `mind.db` notes and the shared pool; `SKILL swarm_knowledge_search <query>` covers the Knowledge Center (falls back to single words).
+- Both lookups are allowed on read-only turns.
+- `SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>` changes a Studio step she owns. The reason is required and logged to `ghost_circle` (`entry_type='step_update'`).
+- Verify her reports from `ghost_circle` (`source='fred'`) and the DB, not from her reply.
+- `fs_write` overwrites the whole file with plain content (no markers); tell her to send the full file in one call.
+- Prompts containing close/skip/mark/claim are treated as actions, not read-only questions.
