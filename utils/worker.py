@@ -32,6 +32,18 @@ WORKER_AGENT = _worker_name()
 WORKER_MODEL = _setting('SWARM_WORKER_MODEL', 'worker_model.txt') if WORKER_AGENT != DEFAULT_WORKER else ''
 
 
+def _num_ctx() -> int:
+    raw = _setting('SWARM_WORKER_NUM_CTX', 'worker_num_ctx.txt')
+    try:
+        return max(2048, min(int(raw), 32768)) if raw else 8192
+    except ValueError:
+        return 8192
+
+
+# The worker's prompt alone is about 3,800 tokens, so the old 4096 window left no room for history or skill output.
+WORKER_NUM_CTX = _num_ctx()
+
+
 def is_worker_agent(name) -> bool:
     return str(name or '').strip().lower() == WORKER_AGENT
 

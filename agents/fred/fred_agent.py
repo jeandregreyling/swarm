@@ -27,6 +27,9 @@ GATEWAY_IDLE_TIMEOUT_S = 180
 GATEWAY_ABSOLUTE_TIMEOUT_S = 600
 
 
+from utils.worker import WORKER_NUM_CTX
+
+
 def _build_context(message, agent_name=AGENT_NAME):
     """Build swarm context snapshot for Fred."""
     lines = []
@@ -108,6 +111,7 @@ def chat(message, conversation_history=None, stage_cb=None, agent_name=None):
             stage_cb=stage_cb,
             on_chunk=_cb,
             temperature=0.6,
+            options={'num_ctx': WORKER_NUM_CTX},
             idle_timeout_s=GATEWAY_IDLE_TIMEOUT_S,
             absolute_timeout_s=GATEWAY_ABSOLUTE_TIMEOUT_S,
         )

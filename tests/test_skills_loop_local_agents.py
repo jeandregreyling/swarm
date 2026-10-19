@@ -568,3 +568,17 @@ def test_single_space_line_numbers_are_stripped_only_when_they_count_up():
     assert strip('21 <body>\n22 <!-- c -->') == '<body>\n<!-- c -->'
     assert strip('10 apples\n12 pears') == '10 apples\n12 pears'
     assert strip('3 only one line') == '3 only one line'
+
+
+def test_worker_context_window_defaults_to_8192_and_is_overridable(monkeypatch):
+    import importlib
+    import utils.worker as worker
+
+    monkeypatch.delenv('SWARM_WORKER_NUM_CTX', raising=False)
+    assert importlib.reload(worker).WORKER_NUM_CTX == 8192
+    monkeypatch.setenv('SWARM_WORKER_NUM_CTX', '16384')
+    assert importlib.reload(worker).WORKER_NUM_CTX == 16384
+    monkeypatch.setenv('SWARM_WORKER_NUM_CTX', 'junk')
+    assert importlib.reload(worker).WORKER_NUM_CTX == 8192
+    monkeypatch.delenv('SWARM_WORKER_NUM_CTX', raising=False)
+    importlib.reload(worker)
