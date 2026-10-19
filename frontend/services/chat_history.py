@@ -120,6 +120,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             '  SKILL fs_readonly read <full/path/to/file>   (files)',
             '  SKILL swarm_knowledge_search <query>   (Knowledge Center: decisions, docs, lessons)',
             '  SKILL memory_search <query>   (your own saved memory)',
+            '  SKILL fs_write <path>  then a line <<<NEW>>>, the FULL file (blank lines ok), then a line <<<END>>>   (overwrites the whole file; read it back with fs_readonly)',
             '  SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>   (only steps you own; reason is logged)',
             '  SKILL alm_create_proposal "<title>" "<description>"   (changes go through a proposal)',
             'Only state a change happened after you see [skill:...] OK in the output.',

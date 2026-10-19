@@ -179,8 +179,8 @@ REGISTRY = {
     'fs_write': {
         'description': 'Write (overwrite) any file within the swarm repo. Creates parent dirs as needed.',
         'trust_level': 2,
-        'usage': 'SKILL fs_write <path> <content>',
-        'example': 'SKILL fs_write sandpits/ten/draft.py print("hello")',
+        'usage': 'SKILL fs_write <path> <content>   (multi-line: put <<<NEW>>> on the next line, the full file, then <<<END>>> on its own line)',
+        'example': 'SKILL fs_write sandpits/fred/notes.md\n<<<NEW>>>\n# Notes\n\nline two\n<<<END>>>',
     },
     'fs_patch': {
         'description': 'Replace an exact string in a file (first occurrence). Use fs_patch_lines instead when you have line numbers.',

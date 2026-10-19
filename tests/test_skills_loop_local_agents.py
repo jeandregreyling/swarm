@@ -226,3 +226,18 @@ def test_studio_step_update_guards(monkeypatch):
     assert not calls
     assert skills._skill_studio_step_update('S-1 skipped a real reason here', 'fred')[0]
     assert calls == [('S-1', 'skipped')]
+
+
+def test_fs_write_multiline_block_with_markers_and_blank_lines():
+    from agents.skills_loop import _extract_skill_cmds
+    text = (
+        "SKILL fs_write sandpits/fred/x.md\n<<<NEW>>>\n# Title\n\nFred is the worker.\nSeven is the companion.\n<<<END>>>\n"
+        "Done."
+    )
+    cmds = _extract_skill_cmds(text)
+    assert len(cmds) == 1 and cmds[0][0] == 'fs_write'
+    from fridays.skills import _clean_fs_write_content
+    path, body = cmds[0][1].split(None, 1)
+    cleaned = _clean_fs_write_content(body)
+    assert cleaned.splitlines() == ['# Title', '', 'Fred is the worker.', 'Seven is the companion.']
+    assert 'Done.' not in cleaned

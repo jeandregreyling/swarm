@@ -165,6 +165,9 @@ def _extract_skill_cmds(text):
             continue
         in_patch_block = False  # True once we've seen <<<OLD>>> or <<<NEW>>>
         in_new_block = False    # True once we've seen <<<NEW>>> (enables prose guard)
+        is_fs_write = line.split(None, 2)[1:2] == ['fs_write'] or line.lower().startswith('/skill fs_write')
+        if is_fs_write and '<<<NEW>>>' in line.upper():
+            in_patch_block = True
 
         while i < len(lines):
             nxt = lines[i]
@@ -172,6 +175,15 @@ def _extract_skill_cmds(text):
 
             # Detect entry into patch block delimiters
             nxt_up = nxt_stripped.upper()
+            if is_fs_write and nxt_up == '<<<END>>>':
+                collected.append(nxt)
+                i += 1
+                break
+            if is_fs_write and nxt_up == '<<<NEW>>>':
+                in_patch_block = True
+                collected.append(nxt)
+                i += 1
+                continue
             if '<<<OLD>>>' in nxt_up:
                 in_patch_block = True
             if '<<<NEW>>>' in nxt_up:
