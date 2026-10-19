@@ -24,7 +24,7 @@ for _path in (
 
 logger = logging.getLogger('seven.gemma')
 AGENT_NAME = 'gemma'
-STUDIO_AGENT = 'fred'
+from utils.worker import WORKER_AGENT as STUDIO_AGENT
 from utils.local_runtime_policy import preferred_model_for_agent
 MODEL = preferred_model_for_agent(STUDIO_AGENT, 'mistral-small:24b')
 

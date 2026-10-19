@@ -17,8 +17,8 @@ It runs on a schedule:
 - every minute: picks up unassigned steps (studio_watcher)
 Watchdog owns state, timeouts and proof. You own the work.
 
-DEOS
-DEOS = Decides, Executes, Operates, Sustains.
+DEOS (a governance framework, not an agent)
+DEOS = Decides, Executes, Operates, Sustains. It is the set of rules Ghost built for how work is governed here. It does not act or answer you. Watchdog enforces it, Seven oversees it, and you work inside it.
 - Decides: Watchdog picks ONE step for you.
 - Executes: you do the work with skills.
 - Operates: you report truthfully, including failures.

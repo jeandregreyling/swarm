@@ -278,6 +278,8 @@ def test_file_skills_end_to_end(tmp_path, monkeypatch):
     assert run("SKILL fs_insert_after sandpits/n.md\n```\nalpha\n```\n```\nalpha2\n```")[0]
     assert f.read_text() == '# T\n\nalpha\nalpha2\nbeta\ngamma\n'
     assert run("SKILL fs_patch sandpits/n.md\n```old\nbeta\n```\n```new\nBETA\n```")[0]
+    assert not run("SKILL fs_patch_lines sandpits/n.md 1 1\n```\n# Title\n```")[0]  # not read yet: refused
+    assert run("SKILL fs_readonly lines sandpits/n.md 1 6")[0]
     assert run("SKILL fs_patch_lines sandpits/n.md 1 1\n```\n# Title\n```")[0]
     assert f.read_text().splitlines() == ['# Title', '', 'alpha', 'alpha2', 'BETA', 'gamma']
     assert not run("SKILL fs_insert_after sandpits/n.md\n```\nmissing\n```\n```\nx\n```")[0]
@@ -512,3 +514,57 @@ def test_search_landscape_falls_back_to_all_the_words(tmp_path, monkeypatch):
     assert ok and 'chat-topbar-title' in out and 'taskbar-btn' not in out
     ok, out = skills._skill_search_landscape('nothing like this', 'fred')
     assert ok and 'No landscape matches' in out and 'one code word' in out
+
+
+def test_write_skills_show_the_real_lines_they_changed(tmp_path, monkeypatch):
+    from fridays import skills
+
+    monkeypatch.setattr(skills, '_FS_ROOT', tmp_path)
+    monkeypatch.setattr(skills, '_fs_safe_path', lambda rel: (tmp_path / rel).resolve())
+    monkeypatch.setattr(skills, '_fs_write_refusal', lambda *a, **k: None)
+    monkeypatch.setattr(skills, '_fs_backup', lambda *a, **k: '')
+    page = tmp_path / 'p.html'
+    page.write_text('<style>\n  --accent: #2f6bff;\n</style>\n<body>\n<div></div>\n')
+
+    assert skills._skill_fs_readonly('lines p.html 1 5', 'fred')[0]
+    ok, msg = skills._skill_fs_patch_lines('p.html 2 2\n```\n<!-- wrong place -->\n```', 'fred')
+    assert ok and '"  --accent: #2f6bff;"' in msg and '2 >>> <!-- wrong place -->' in msg
+
+    page.write_text('<style>\n  --accent: #2f6bff;\n</style>\n<body>\n<div></div>\n')
+    ok, msg = skills._skill_fs_insert_after('p.html\n```\n<body>\n```\n```\n<!-- right place -->\n```', 'fred')
+    assert ok and '5 >>> <!-- right place -->' in msg and '4     <body>' in msg
+    assert page.read_text().splitlines()[4] == '<!-- right place -->'
+
+    ok, msg = skills._skill_fs_append('p.html\n```\nlast line\n```', 'fred')
+    assert ok and '>>> last line' in msg
+
+
+def test_line_patch_needs_the_lines_to_have_been_read(tmp_path, monkeypatch):
+    from fridays import skills
+
+    monkeypatch.setattr(skills, '_FS_ROOT', tmp_path)
+    monkeypatch.setattr(skills, '_fs_safe_path', lambda rel: (tmp_path / rel).resolve())
+    monkeypatch.setattr(skills, '_fs_write_refusal', lambda *a, **k: None)
+    monkeypatch.setattr(skills, '_fs_backup', lambda *a, **k: '')
+    skills._SEEN_LINES.clear()
+    page = tmp_path / 'p.html'
+    page.write_text('\n'.join(f'line {n}' for n in range(1, 61)) + '\n')
+
+    ok, msg = skills._skill_fs_patch_lines('p.html 52 52\n```\nX\n```', 'apex')
+    assert not ok and 'have not read lines 52-52' in msg and 'fs_insert_after' in msg
+    assert 'line 52' in page.read_text()
+
+    skills._skill_fs_readonly('lines p.html 1 50', 'apex')
+    assert not skills._skill_fs_patch_lines('p.html 52 52\n```\nX\n```', 'apex')[0]
+    assert not skills._skill_fs_patch_lines('p.html 52 52\n```\nX\n```', 'other')[0]
+    skills._skill_fs_readonly('grep p.html 52 1', 'apex')
+    ok, msg = skills._skill_fs_patch_lines('p.html 52 52\n```\nX\n```', 'apex')
+    assert ok and 'It replaced these original lines: "line 52"' in msg
+
+
+def test_single_space_line_numbers_are_stripped_only_when_they_count_up():
+    from fridays.skills import _strip_fs_readonly_line_numbers as strip
+
+    assert strip('21 <body>\n22 <!-- c -->') == '<body>\n<!-- c -->'
+    assert strip('10 apples\n12 pears') == '10 apples\n12 pears'
+    assert strip('3 only one line') == '3 only one line'

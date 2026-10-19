@@ -10,6 +10,7 @@ LINKED TO:
   database.get_connection     — only DB touch is `_fetch_chat_thread_rows`.
 """
 from database import get_connection
+from utils.worker import is_worker_agent
 
 from .chat_jobs import _normalize_chat_participant
 
@@ -109,10 +110,10 @@ def _build_chat_handoff_block(selected_agent, reply_context):
     prior_agent = reply_context.get('prior_agent') or ''
     default_target = _display_chat_participant_local(reply_context.get('default_reply_target') or 'user')
 
-    if str(selected_agent or '').lower() == 'fred':
+    if is_worker_agent(selected_agent):
         return '\n'.join([
             '=== Thread routing ===',
-            'You are FRED, the only local agent. Answer the latest message yourself; no relay is needed.',
+            f'You are {str(selected_agent).upper()}, the only local agent. Answer the latest message yourself; no relay is needed.',
             f'Latest visible sender: {latest_sender}',
             f'Default reply target: {default_target}',
             'SKILLS (the SKILL line itself is plain text, never inside a fence; file content goes in a ``` fenced block right after it):',

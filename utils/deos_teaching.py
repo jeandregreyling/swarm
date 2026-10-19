@@ -33,6 +33,9 @@ ROLE_HINTS = {
     'llama': 'Prefer simple relay continuations and plain-language summaries; avoid inventing file paths.',
 }
 
+from utils.worker import WORKER_AGENT  # noqa: E402
+ROLE_HINTS.setdefault(WORKER_AGENT, ROLE_HINTS['fred'])
+
 DRILL_AGENT_ORDER = ['qwen', 'gemma', 'llama', 'mistral']
 
 

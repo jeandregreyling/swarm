@@ -27,6 +27,7 @@ Every skill call is logged to ghost_circle.
 
 import json
 import os
+import time
 import sys
 import logging
 import fnmatch
@@ -730,7 +731,8 @@ def _skill_memory_search(args, agent, **_):
                 lines.append(f'[own memory] {str(r.get("subject", ""))[:80]}: {str(r.get("content", ""))[:160]}')
         except Exception:
             pass
-        if str(agent or '').lower() == 'fred':
+        from utils.worker import is_worker_agent
+        if is_worker_agent(agent):
             try:
                 from utils.thread_memory import _conn as _mind_conn
                 conn = _mind_conn()
@@ -930,6 +932,7 @@ def _skill_fs_readonly(args, agent, **_):
             for j in range(max(0, i - ctx), min(len(file_lines), i + ctx + 1)):
                 if j not in shown:
                     shown.add(j)
+                    _note_seen(agent, target, j + 1, j + 1)
                     marker = '>>>' if j == i else '   '
                     result_lines.append(f'{j + 1:5d} {marker} {file_lines[j]}')
         return True, f'grep "{pattern}" in {rel} — {len(hits)} match(es):\n' + '\n'.join(result_lines[:200])
@@ -956,6 +959,9 @@ def _skill_fs_readonly(args, agent, **_):
                     max_chars = 8000
             if len(text) > max_chars:
                 text = text[:max_chars] + '\n\n[... truncated ...]'
+                _note_seen(agent, target, 1, text.count('\n') + 1)
+            else:
+                _note_seen(agent, target, 1, max(1, len(text.splitlines())))
             return True, text
 
         if action == 'lines':
@@ -973,6 +979,7 @@ def _skill_fs_readonly(args, agent, **_):
                 end = min(total, start + 79)
             end = min(end, start + 299)  # hard cap: max 300 lines per call
             picked = file_lines[start - 1:end]
+            _note_seen(agent, target, start, end)
             header = f'[{rel} lines {start}–{end} of {total}]\n'
             return True, header + '\n'.join(f'{start + i:5d}  {l}' for i, l in enumerate(picked))
 
@@ -984,6 +991,10 @@ def _skill_fs_readonly(args, agent, **_):
             except Exception:
                 n = 40
         picked = file_lines[:n] if action == 'head' else file_lines[-n:]
+        if action == 'head':
+            _note_seen(agent, target, 1, len(picked))
+        else:
+            _note_seen(agent, target, max(1, len(file_lines) - len(picked) + 1), len(file_lines))
         return True, '\n'.join(picked)
 
     return False, 'Unknown fs_readonly action. Use: ls, find, read, head, tail, lines'
@@ -1622,6 +1633,29 @@ def _skill_fs_write(args, agent, **_):
 
 
 _FS_PATCH_LINENO_RE = re.compile(r'^[ ]{0,4}\d{1,5}  ')
+_FS_LOOSE_LINENO_RE = re.compile(r'^[ ]{0,4}(\d{1,5})(?:[ ]{1,2}|\t)')
+
+
+_SEEN_LINES = {}
+_SEEN_TTL_SECONDS = 900
+
+
+def _note_seen(agent, target, first, last):
+    """Remember which lines of a file this agent has actually been shown."""
+    if last < first:
+        return
+    now = time.time()
+    key = (str(agent or '').lower(), str(target))
+    kept = [r for r in _SEEN_LINES.get(key, []) if now - r[2] < _SEEN_TTL_SECONDS]
+    kept.append((int(first), int(last), now))
+    _SEEN_LINES[key] = kept[-60:]
+
+
+def _lines_seen(agent, target, start, end):
+    now = time.time()
+    ranges = [r for r in _SEEN_LINES.get((str(agent or '').lower(), str(target)), [])
+              if now - r[2] < _SEEN_TTL_SECONDS]
+    return all(any(a <= n <= b for a, b, _ in ranges) for n in range(start, end + 1))
 
 
 def _strip_fs_readonly_line_numbers(text):
@@ -1638,6 +1672,13 @@ def _strip_fs_readonly_line_numbers(text):
         return text
     if all(_FS_PATCH_LINENO_RE.match(l) for l in non_empty):
         return '\n'.join(_FS_PATCH_LINENO_RE.sub('', l) for l in lines)
+    # Models also copy a single space after the number ("21 <body>"). Strip only when every line is
+    # numbered AND the numbers count up one by one, so real content like "10 apples" survives.
+    loose = [_FS_LOOSE_LINENO_RE.match(l) for l in non_empty]
+    if len(non_empty) >= 2 and all(loose):
+        nums = [int(m.group(1)) for m in loose]
+        if all(b == a + 1 for a, b in zip(nums, nums[1:])):
+            return '\n'.join(_FS_LOOSE_LINENO_RE.sub('', l) for l in lines)
     return text
 
 
@@ -1679,7 +1720,10 @@ def _skill_fs_append(args, agent, **_):
         sep = '' if not existing or existing.endswith('\n') else '\n'
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(existing + sep + add + '\n', encoding='utf-8')
-        return True, f'Appended {len(add)} chars to {rel}' + (f' (backup: {backup})' if backup else '')
+        appended = existing + sep + add + '\n'
+        first = max(1, appended.count('\n') - max(1, add.count('\n') + 1) + 1)
+        return True, (f'Appended {len(add)} chars to {rel}' + (f' (backup: {backup})' if backup else '')
+                      + '\n' + _change_view(appended, first, max(1, add.count('\n') + 1)))
     except Exception as e:
         return False, f'fs_append failed: {e}'
 
@@ -1711,8 +1755,11 @@ def _skill_fs_insert_after(args, agent, **_):
         else:
             add = '\n' + add
         backup = _fs_backup(target, rel)
-        target.write_text(original[:end] + add + original[end:], encoding='utf-8')
-        return True, f'Inserted {len(add)} chars after the anchor in {rel}' + (f' (backup: {backup})' if backup else '')
+        result = original[:end] + add + original[end:]
+        target.write_text(result, encoding='utf-8')
+        first = original.count('\n', 0, end) + 1
+        return True, (f'Inserted {len(add)} chars after the anchor in {rel}' + (f' (backup: {backup})' if backup else '')
+                      + '\n' + _change_view(result, first, max(1, add.count('\n'))))
     except Exception as e:
         return False, f'fs_insert_after failed: {e}'
 
@@ -1766,9 +1813,35 @@ def _skill_fs_patch(args, agent, **_):
         patched = original.replace(old_text, effective_new, 1)
         backup = _fs_backup(target, rel)
         target.write_text(patched, encoding='utf-8')
-        return True, f'Patched {rel}: replaced {len(old_text)} chars with {len(effective_new)} chars' + (f' (backup: {backup})' if backup else '')
+        at = original.find(old_text)
+        first = original.count('\n', 0, at) + 1
+        return True, (f'Patched {rel}: replaced {len(old_text)} chars with {len(effective_new)} chars'
+                      + (f' (backup: {backup})' if backup else '')
+                      + '\n' + _change_view(patched, first, max(1, len(effective_new.splitlines())),
+                                            old_lines=old_text.splitlines(keepends=True)))
     except Exception as e:
         return False, f'fs_patch failed: {e}'
+
+
+def _change_view(new_text, first_line, count, old_lines=None, context=3):
+    """Real "now reads" excerpt for a write result, so models copy it instead of inventing a read-back.
+
+    first_line is 1-based; count is how many lines the change occupies. old_lines, when given, are the
+    lines that were overwritten, shown so a wrong target is obvious at once.
+    """
+    lines = new_text.splitlines()
+    lo = max(1, first_line - context)
+    hi = min(len(lines), first_line + max(count, 1) - 1 + context)
+    out = []
+    if old_lines:
+        shown = [l.rstrip('\n')[:140] for l in old_lines[:6]]
+        out.append('It replaced these original lines: ' + ' | '.join(f'"{l}"' for l in shown)
+                   + (' ...' if len(old_lines) > 6 else ''))
+    out.append(f'The file now reads (lines {lo}-{hi}, change at line {first_line}):')
+    for n in range(lo, hi + 1):
+        marker = '>>>' if first_line <= n < first_line + max(count, 1) else '   '
+        out.append(f'{n:5d} {marker} {lines[n - 1][:160]}')
+    return '\n'.join(out)
 
 
 def _skill_fs_patch_lines(args, agent, **_):
@@ -1816,6 +1889,14 @@ def _skill_fs_patch_lines(args, agent, **_):
         if start > total:
             return False, f'start_line {start} beyond end of file ({total} lines)'
         end = min(end, total)
+        if os.environ.get('SWARM_PATCH_REQUIRES_READ', '1').strip().lower() not in {'0', 'false', 'no', 'off'} \
+                and not _lines_seen(agent, target, start, end):
+            return False, (
+                f'Refused, nothing changed: you have not read lines {start}-{end} of {rel} in this session, so you '
+                f'could overwrite the wrong text. Read them first: SKILL fs_readonly lines {rel} {max(1, start - 5)} {end + 5}. '
+                f'To add text after a line you know, use SKILL fs_insert_after with that exact line as the anchor; '
+                f'to find a line, use SKILL fs_readonly grep {rel} <text>.'
+            )
 
         # Strip line-number prefixes if agent copied fs_readonly lines output into the block
         new_text = _strip_fs_readonly_line_numbers(new_text)
@@ -1836,6 +1917,7 @@ def _skill_fs_patch_lines(args, agent, **_):
             f'Patched {rel}: replaced lines {start}–{end} '
             f'({old_count} lines → {new_count} lines)'
             + (f' (backup: {backup})' if backup else '')
+            + '\n' + _change_view(patched, start, new_count, old_lines=file_lines[start - 1:end])
         )
     except Exception as e:
         return False, f'fs_patch_lines failed: {e}'

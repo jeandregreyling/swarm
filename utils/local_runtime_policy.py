@@ -13,6 +13,10 @@ from typing import Any, Iterable
 
 
 logger = logging.getLogger(__name__)
+try:
+    from utils.worker import WORKER_AGENT, WORKER_MODEL, is_worker_agent
+except ImportError:  # modules started with utils/ on sys.path
+    from worker import WORKER_AGENT, WORKER_MODEL, is_worker_agent
 
 NON_OLLAMA_MODELS = frozenset({"", "external", "local-algorithm"})
 EMBEDDING_ONLY_MODELS = frozenset({"nomic-embed-text:latest", "nomic-embed-text"})
@@ -20,8 +24,8 @@ EMBEDDING_ONLY_MODELS = frozenset({"nomic-embed-text:latest", "nomic-embed-text"
 # CPU-safe chat assignments validated on the Dell Linux runtime.
 # One model wears every local hat. Override with SWARM_ONE_MODEL; set it to an
 # empty string to fall back to the per-agent models below.
-ONE_MODEL = os.environ.get("SWARM_ONE_MODEL", "mistral-small:24b").strip()
-_HAT_AGENTS = ("fred", "gemma", "mistral", "llama", "qwen", "duck")
+ONE_MODEL = os.environ.get("SWARM_ONE_MODEL", WORKER_MODEL or "mistral-small:24b").strip()
+_HAT_AGENTS = tuple(dict.fromkeys(("fred", "gemma", "mistral", "llama", "qwen", "duck", WORKER_AGENT)))
 if ONE_MODEL:
     PREFERRED_AGENT_MODELS = {name: ONE_MODEL for name in _HAT_AGENTS}
 else:
@@ -47,7 +51,7 @@ QWEN_CHAT_SYSTEM_PROMPT = (
 )
 
 READ_ONLY_AGENT_PROFILES = frozenset({"seven"})
-MEMORY_WRITE_AGENT_PROFILES = frozenset({"fred", "gemma", "qwen", "llama"})
+MEMORY_WRITE_AGENT_PROFILES = frozenset({"fred", "gemma", "qwen", "llama", WORKER_AGENT})
 READ_ONLY_AGENT_CAPABILITIES = frozenset({
     "coordinate",
     "git_execute",

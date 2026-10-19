@@ -52,6 +52,9 @@ _AGENT_MODEL_MAP = {
     'deepseek_local': 'deepseek-r1:7b',
 }
 
+from utils.worker import WORKER_AGENT  # noqa: E402
+_AGENT_MODEL_MAP.setdefault(WORKER_AGENT, preferred_model_for_agent(WORKER_AGENT, 'mistral-small:24b'))
+
 # Eight must run exclusively — nothing else while it is active
 _EXCLUSIVE_AGENTS = {'eight'}
 

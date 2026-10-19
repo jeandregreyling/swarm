@@ -1541,6 +1541,17 @@ FRED_SYSTEM_PROMPT = (
     + _LOCAL_WORKER_BODY
 )
 
+def worker_system_prompt(name='fred'):
+    """The one-worker prompt for whichever agent holds the worker seat (Fred is the default)."""
+    name = str(name or 'fred').strip().lower()
+    if name == 'fred':
+        return FRED_SYSTEM_PROMPT
+    display = name.replace('_', ' ').title()
+    text = FRED_SYSTEM_PROMPT.replace('Gemma, Qwen, LLaMA, Mistral and Duck were your predecessors',
+                                      'Fred, Gemma, Qwen, LLaMA, Mistral and Duck were your predecessors')
+    return text.replace('Fred', display)
+
+
 for _name in (
     'GEMMA_SYSTEM_PROMPT',
     'LLAMA_SYSTEM_PROMPT',

@@ -44,6 +44,8 @@ AGENT_POOL_MAP = {
     'phi3': 'memory', 'deepseek_local': 'memory', 'lmstudio': 'memory',
     'nineteen': 'memory',
 }
+from utils.worker import WORKER_AGENT  # noqa: E402
+AGENT_POOL_MAP.setdefault(WORKER_AGENT, f'memory_{WORKER_AGENT}')
 
 
 def _make_connection(db_path):

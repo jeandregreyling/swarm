@@ -32,6 +32,7 @@ from utils.db.chat import (
     update_chat_relay_recovery_status,
 )
 from utils.db.timeline import timeline_append as _trace
+from utils.worker import is_worker_agent
 from utils.thread_memory import (
     _HAT_AGENTS as _THREAD_HATS,
     carry_over_block as _carry_over_block,
@@ -1395,8 +1396,8 @@ def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, r
     knowledge_block = _build_knowledge_broadcast_block(selected_agent, latest_message)
     handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
     project_block = _build_project_context_block(f'{latest_message}\n{threaded_prompt[-4000:]}')
-    if str(selected_agent or '').lower() == 'fred':
-        # Fred runs on a 4096-token context: only carry project context when asked about it.
+    if is_worker_agent(selected_agent):
+        # The worker runs on a 4096-token context: only carry project context when asked about it.
         if re.search(r'(?i)\b(projects?|studio|steps?|scenes?|P-[0-9A-F]{10})\b', str(latest_message or '')):
             project_block = project_block[:900]
         else:
@@ -2187,7 +2188,7 @@ def api_chat():
 
         try:
             _trace(conv_id, selected_agent, 'dispatch', f'route={selected_agent} prompt_len={len(effective_prompt)}')
-            if selected_agent in {'gemma', 'qwen', 'eight', 'seven', 'twenty', 'fred'}:
+            if selected_agent in {'gemma', 'qwen', 'eight', 'seven', 'twenty', 'fred'} or is_worker_agent(selected_agent):
                 # Route through agent .chat() directly — enables skills_loop
                 if selected_agent == 'seven':
                     _stage('dispatching to Seven Runtime · seven', est_eta)
@@ -2894,7 +2895,7 @@ def api_chat():
 
         def _build_debate_prompt(selected_agent):
             one_model = os.environ.get('SWARM_ONE_MODEL', '1').strip().lower() not in {'0', 'false', 'no', 'off'}
-            if len(runnable_agents) <= 1 or not parallel_mode or (one_model and selected_agent == 'fred'):
+            if len(runnable_agents) <= 1 or not parallel_mode or (one_model and is_worker_agent(selected_agent)):
                 # Single-agent, sequential, or Fred (the only local worker, no peers to debate): no peer pressure
                 return threaded_prompt
 

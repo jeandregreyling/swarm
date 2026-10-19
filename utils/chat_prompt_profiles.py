@@ -2,11 +2,13 @@
 
 
 AUDIT_AGENTS = {'duck', 'sniffles'}
+from utils.worker import WORKER_AGENT, is_worker_agent
+
 READ_ONLY_GUARD_MARKER = 'WATCHDOG READ-ONLY ROUTING GUARD'
 
 
 def chat_handoff_contract(agent_name, deadline_seconds):
-    if str(agent_name or '').lower() == 'fred':
+    if is_worker_agent(agent_name):
         return (
             "\n\n=== FRIDAYS STUDIO HANDOFF TIMER ===\n"
             f"Deadline {int(deadline_seconds)}s. Answer with what you have; if unfinished, end with a short SELF-HANDOFF (finding, next action).\n"
@@ -81,6 +83,8 @@ _HAT_ROLES = {
     'mistral': 'coder and analyst: reads code, writes proposals',
     'duck': 'reviewer: checks proposals, finds flaws',
 }
+
+_HAT_ROLES.setdefault(WORKER_AGENT, _HAT_ROLES['fred'])
 
 
 def self_awareness_block(agent_name):

@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS thread_state (
 )
 """
 _MAX_BLOCK_CHARS = 1400
-_HAT_AGENTS = frozenset({'fred', 'gemma', 'mistral', 'duck'})
+from utils.worker import WORKER_AGENT  # noqa: E402
+_HAT_AGENTS = frozenset({'fred', 'gemma', 'mistral', 'duck', WORKER_AGENT})
 
 
 def _clip(text, limit):

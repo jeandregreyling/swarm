@@ -46,6 +46,10 @@ WORK_AGENT_MODULES = {
 }
 
 WORK_AGENT_ORDER = ['fred', 'qwen', 'gemma', 'llama', 'mistral']
+from utils.worker import WORKER_AGENT, WORKER_MODEL  # noqa: E402
+WORK_AGENT_MODULES.setdefault(WORKER_AGENT, (f'agents.{WORKER_AGENT}.{WORKER_AGENT}_agent', 'chat'))
+if WORKER_AGENT not in WORK_AGENT_ORDER:
+    WORK_AGENT_ORDER.insert(0, WORKER_AGENT)
 
 WORK_AGENT_MODELS = {
     'fred': 'mistral-small:24b',
@@ -54,6 +58,7 @@ WORK_AGENT_MODELS = {
     'gemma': 'gemma3:latest',
     'llama': 'llama3.2:latest',
 }
+WORK_AGENT_MODELS.setdefault(WORKER_AGENT, WORKER_MODEL or 'mistral-small:24b')
 
 DIRECT_RUNTIME_PROJECT_ID = 'P-SEVEN-DIRECT-GGUF'
 DIRECT_RUNTIME_STEP_ID = 'S-DGGUF-08'
@@ -1255,10 +1260,13 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
         # One 14 GB model on one GPU: never swap it, restart chat recovery or reassign steps.
         prewarm = execute_recovery = False
         # Work is allowed only when explicitly scoped to Fred; nothing else may use the model slot.
-        execute_work = execute_work and str(opts.get('work_owner') or '').strip().lower() == 'fred'
+        _owner = str(opts.get('work_owner') or '').strip().lower()
+        execute_work = execute_work and (_owner == 'worker' or _owner == WORKER_AGENT)
     work_project_id = str(opts.get('work_project_id') or '').strip()
     work_step_prefix = str(opts.get('work_step_prefix') or '').strip()
     work_owner = str(opts.get('work_owner') or '').strip().lower()
+    if work_owner == 'worker':
+        work_owner = WORKER_AGENT
     model_roll_call = str(opts.get('model_roll_call') or '').strip()
     try:
         warm_timeout = max(10, min(int(opts.get('warm_timeout_seconds') or 45), 300))
