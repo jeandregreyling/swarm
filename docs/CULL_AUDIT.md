@@ -50,3 +50,7 @@ About 26 files mention ports 5051/5053 or DEV/UAT: the proposal promotion pipeli
 
 - Apex's capability grants were missing after the swap script ran; fixed in the script and the database.
 - Tests are now pinned to the Fred seat via `tests/conftest.py`, so the live switch file does not change test results.
+
+## Tests removed with Seven
+
+Three test files that covered only Seven (`test_seven_model_runtime_questions`, `test_seven_training`, `test_daily_brief`) were deleted, plus 52 individual tests/classes in seven other files that imported her removed code (every one failed with `ModuleNotFoundError`). Nothing was skipped or weakened: the remaining tests in those files pass. `agents/seven/companion_contract.py` was kept as `utils/handoff_contract.py`, because Watchdog's work packets use its context-handoff block.

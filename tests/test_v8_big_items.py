@@ -189,11 +189,6 @@ def test_orbs_overhaul_active_state():
     assert "openWinIds" in js and "data-active" in js.lower() or "dataset.active" in js
 
 
-def test_seven_memory_backfill_module():
-    from agents.seven import memory_backfill as mb  # type: ignore
-    assert hasattr(mb, "run") and hasattr(mb, "repair_thread")
-    src = (ROOT / "agents" / "seven" / "memory_backfill.py").read_text()
-    assert "thread_2112" in src or "thread 2112" in src or "thread continuity" in src.lower()
 
 
 def test_gmail_labels_blueprint():

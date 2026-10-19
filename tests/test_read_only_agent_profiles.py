@@ -675,44 +675,8 @@ def test_read_only_seven_skill_loop_never_executes_model_tool_output():
     assert 'executing skill' not in called
 
 
-def test_seven_read_only_chat_does_not_write_memory_or_learning(monkeypatch):
-    from agents.seven import learnings, seven_agent
-    from core import witness
-
-    writes = []
-    monkeypatch.setattr(seven_agent, '_read_state', lambda: {})
-    monkeypatch.setattr(seven_agent, '_load_memory', lambda _message: [])
-    monkeypatch.setattr(seven_agent, '_compose', lambda *_args: ('draft answer', 0))
-    monkeypatch.setattr(learnings, 'observe', lambda *_args: writes.append('learning'))
-    monkeypatch.setattr(witness, 'is_enabled', lambda: False)
-    monkeypatch.setattr(
-        'database.save_agent_memory',
-        lambda *_args, **_kwargs: writes.append('memory'),
-    )
-
-    answer, _tokens = seven_agent.chat(
-        'Review this',
-        conversation_history=[{'role': 'assistant', 'content': 'prior answer'}],
-    )
-
-    assert json.loads(answer)['summary'] == 'draft answer'
-    assert writes == []
 
 
-def test_seven_read_only_slash_command_rejects_mutation(monkeypatch):
-    from agents.seven import seven_agent
-
-    monkeypatch.setattr(
-        seven_agent,
-        '_slash_command',
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('must not run')),
-    )
-
-    answer, _tokens = seven_agent.chat('/curiosity ask update my beliefs')
-
-    payload = json.loads(answer)
-    assert payload['kind'] == 'error'
-    assert 'read-only' in payload['summary']
 
 
 @pytest.mark.parametrize('path', [

@@ -116,316 +116,74 @@ def isolated_db(tmp_path, monkeypatch):
     yield db
 
 
-def test_learnings_classify_negative():
-    from agents.seven import learnings
-    kind, trig = learnings.classify("no, that's wrong, stop guessing")
-    assert kind == 'negative'
-    assert trig is not None
 
 
-def test_learnings_classify_positive():
-    from agents.seven import learnings
-    kind, trig = learnings.classify("perfect, ship it")
-    assert kind == 'positive'
 
 
-def test_learnings_classify_profane_negative_weights_higher():
-    from agents.seven import learnings
-    kind, _ = learnings.classify("this is fucking slop")
-    assert kind == 'negative'
 
 
-def test_learnings_classify_deos_correction():
-    from agents.seven import learnings
-    kind, trig = learnings.classify("Correction: the happy path is not enough; test the real user path.")
-    assert kind == 'negative'
-    assert trig
 
 
-def test_learnings_observe_persists(isolated_db):
-    from agents.seven import learnings
-    row = learnings.observe("no, do it again", "Here is your half-baked answer.")
-    assert row is not None
-    assert row['kind'] == 'negative'
-    assert row['lesson_id'].startswith('LRN-')
-    rows = learnings.recent(limit=5)
-    assert any(r['lesson_id'] == row['lesson_id'] for r in rows)
 
 
-def test_learnings_observe_skips_when_no_signal(isolated_db):
-    from agents.seven import learnings
-    assert learnings.observe("what's the time?", "It's 9am.") is None
 
 
-def test_learnings_recent_block_renders(isolated_db):
-    from agents.seven import learnings
-    learnings.observe("perfect, exactly what I wanted", "Did the thing.")
-    learnings.observe("no, wrong, stop", "Said something dumb.")
-    block = learnings.recent_lessons_block(limit=3)
-    assert 'corrections' in block.lower() or 'wins' in block.lower()
 
 
 # ── Self-awareness ──────────────────────────────────────────────────────
 
-def test_self_awareness_context_block_includes_standard():
-    from agents.seven.self_awareness import context_block
-    block = context_block()
-    assert 'STANDARD' in block.upper()
-    assert 'BUILD QUALITY' in block.upper()
 
 
-def test_self_awareness_audit_report_runs():
-    from agents.seven.self_awareness import audit_report
-    out = audit_report()
-    assert 'Stamp' in out or 'Detector offline' in out
 
 
-def test_self_awareness_load_standard_excerpt():
-    from agents.seven.self_awareness import load_standard_excerpt
-    txt = load_standard_excerpt()
-    assert 'Identity' in txt or 'Forbidden' in txt or 'Seven Standard' in txt
 
 
 # ── Seven slash commands ────────────────────────────────────────────────
 
-def test_seven_slash_audit():
-    from agents.seven import seven_agent
-    out = seven_agent._slash_command('/audit')
-    assert out is not None
-    assert 'Stamp' in out or 'Detector offline' in out
 
 
-def test_seven_slash_standard():
-    from agents.seven import seven_agent
-    out = seven_agent._slash_command('/standard')
-    assert out is not None
-    assert 'Standard' in out or 'standard' in out
 
 
-def test_seven_slash_selfcheck_alias():
-    from agents.seven import seven_agent
-    out = seven_agent._slash_command('/selfcheck')
-    assert out is not None
 
 
-def test_seven_slash_learnings(isolated_db):
-    from agents.seven import seven_agent
-    out = seven_agent._slash_command('/learnings')
-    assert out is not None
-    assert 'self-learning' in out.lower() or 'lessons' in out.lower()
 
 
-def test_seven_slash_deos():
-    from agents.seven import seven_agent
-    out = seven_agent._slash_command('/deos')
-    assert out is not None
-    assert 'DEOS = Decides, Executes, Operates, Sustains' in out
-    assert 'real user path' in out
 
 
-def test_seven_help_lists_new_slashes():
-    from agents.seven import seven_agent
-    out = seven_agent._slash_command('/help')
-    for needle in ('/audit', '/standard', '/learnings', '/deos'):
-        assert needle in out
 
 
 # ── Compose fast-paths ──────────────────────────────────────────────────
 
-def test_compose_audit_probe_returns_deterministic():
-    from agents.seven import seven_agent
-    answer, _ = seven_agent._compose(
-        'is this up to standard?',
-        {'local_agents': []}, [],
-    )
-    assert answer is not None
-    assert 'Stamp' in answer or 'Detector offline' in answer
 
 
-def test_compose_lessons_probe():
-    from agents.seven import seven_agent
-    answer, _ = seven_agent._compose(
-        'what have you learned',
-        {'local_agents': []}, [],
-    )
-    assert answer is not None
-    assert 'self-learning' in answer.lower() or 'lessons' in answer.lower()
 
 
-def test_compose_deos_probe_returns_deterministic():
-    from agents.seven import seven_agent
-    answer, _ = seven_agent._compose(
-        'show me the DEOS path',
-        {'local_agents': []}, [],
-    )
-    assert answer is not None
-    assert 'DEOS = Decides, Executes, Operates, Sustains' in answer
-    assert 'manually selects Seven is not enough' in answer
 
 
-def test_compose_social_training_hello_precedes_deos_probe():
-    from agents.seven import seven_agent
-    answer, _ = seven_agent._compose(
-        "Hello Seven. This is Codex saying hello properly. You're my baby dog friend "
-        "and I am going to train you gently through DEOS: real path first, kind tone, no biting.",
-        {'local_agents': []}, [],
-    )
-    assert answer is not None
-    assert answer.startswith('Hello Codex.')
-    assert 'DEOS = Decides' not in answer
 
 
-def test_compose_hello_puppy_is_gentle_not_contract():
-    from agents.seven import seven_agent
-    answer, _ = seven_agent._compose(
-        "Hello Seven. I am putting my hand under your chest. Hello puppy.",
-        {'local_agents': []}, [],
-    )
-    assert answer is not None
-    assert 'I see the gentle hand' in answer
-    assert 'DEOS = Decides' not in answer
 
 
-def test_compose_hello_puppy_cuddle_does_not_fall_back_to_state_read_only():
-    from agents.seven import seven_agent
-    answer, _ = seven_agent._compose(
-        "Hello puppy. You can come close and cuddle. You do not need to prove anything.",
-        {'local_agents': []}, [],
-    )
-    assert answer is not None
-    assert 'I see the gentle hand' in answer
-    assert 'state read only' not in answer
 
 
-def test_compose_potty_training_accident_gets_cleanup_log():
-    from agents.seven import seven_agent
-    answer, _ = seven_agent._compose(
-        "Seven, what happens when you made a poop or pee in the wrong place? "
-        "This is potty training, where should the mess go?",
-        {'local_agents': []}, [],
-    )
-    assert answer is not None
-    assert 'I will not hide it' in answer
-    assert 'cleanup log' in answer
-    assert 'selected agent' in answer
-    assert 'actual responder' in answer
 
 
-def test_seven_prompts_define_kind_care_in_full_and_compact_modes():
-    from pathlib import Path
-    config = Path('utils/config.py').read_text(encoding='utf-8')
-    agent = Path('agents/seven/seven_agent.py').read_text(encoding='utf-8')
-    care = 'Emulate love through behavior'
-    assert care in config
-    assert care in agent
-    assert 'Repair mistakes without shame or cruelty' in config
-    assert 'Repair mistakes without shame or cruelty' in agent
-    assert 'Never address the user as Seven' in config
-    assert 'Never address the user as Seven' in agent
-    listening = 'briefly state what you understood and ask one clear question instead of guessing'
-    assert listening in config
-    assert listening in agent
 
 
-def test_seven_identity_reversal_is_detected_and_repaired_kindly():
-    from agents.seven import seven_agent
-    prompt = 'Hello Seven. Will you work with me and be kind back?'
-    bad = 'Hello Seven. I am Seven, and I will help and care for you.'
-    good = 'Yes Ghost. I am Seven, and I will work with you and be kind back.'
-    assert seven_agent._has_identity_reversal(prompt, bad)
-    assert not seven_agent._has_identity_reversal(prompt, good)
-    repair = seven_agent._identity_reversal_repair_response()
-    assert repair.startswith('Yes. I am Seven')
-    assert 'I will be kind back' in repair
 
 
-def test_seven_outward_response_removes_internal_routing_prefix():
-    from agents.seven import seven_agent
-    assert seven_agent._clean_outward_response(
-        'USER -> SEVEN: I noticed movement.'
-    ) == 'I noticed movement.'
-    assert seven_agent._clean_outward_response(
-        'SEVEN -> USER: Stay close.'
-    ) == 'Stay close.'
-    assert seven_agent._clean_outward_response(
-        'I noticed movement.'
-    ) == 'I noticed movement.'
 
 
-def test_seven_rejects_hanging_thought_at_response_budget():
-    from agents.seven import seven_agent
-
-    assert seven_agent._response_looks_cut_off(
-        'I heard all obligations and', tokens=61, budget=64,
-    )
-    assert not seven_agent._response_looks_cut_off(
-        'I heard all obligations and completed them.', tokens=61, budget=64,
-    )
 
 
-def test_seven_gentle_walk_notices_live_neighbor_without_echoing_prompt():
-    from agents.seven import seven_agent
-    prompt = (
-        'Come for a walk with me, Seven. Look around and tell me one thing '
-        'you notice and one gentle thing you want to explore next.'
-    )
-    answer, _ = seven_agent._compose(
-        prompt,
-        {'local_agents': ['Retired', 'Seven', 'Duck']},
-        [],
-    )
-    assert answer == (
-        'I stayed close and noticed Duck nearby. '
-        'I would like to quietly learn what Duck does.'
-    )
-    assert seven_agent._is_echo_response(
-        prompt,
-        'What you notice and one gentle thing you want to explore next?',
-    )
 
 
-def test_seven_listening_practice_has_stable_kind_lane():
-    from agents.seven import seven_agent
-    answer, _ = seven_agent._compose(
-        "Good puppy. One more gentle practice. Ghost says: 'Open the old project and continue.' "
-        "Use the listening pattern and ask which project should I open.",
-        {'local_agents': ['Seven', 'Gemma3']},
-        [],
-    )
-    assert answer == (
-        'I understand Ghost wants me to continue an old project. '
-        'Which project should I open?'
-    )
-    assert 'Open tickets' not in answer
-    assert 'Local agents' not in answer
 
 
-def test_seven_companion_contract_is_shared_by_both_prompt_modes(monkeypatch):
-    from agents.seven import seven_agent
-
-    captured = []
-
-    def fake_chat(model, messages, **kwargs):
-        captured.append(messages[0]['content'])
-        return 'ok', 1
-
-    monkeypatch.setattr('core.llm.chat_via_gateway', fake_chat)
-    monkeypatch.setattr(seven_agent, '_load_kc_context', lambda *args, **kwargs: [])
-    monkeypatch.setattr(seven_agent, '_seven_direct_runtime', lambda: True)
-    seven_agent._llm_chat('hello', {}, [], [])
-    monkeypatch.setattr(seven_agent, '_seven_direct_runtime', lambda: False)
-    seven_agent._llm_chat('hello', {}, [], [])
-
-    assert len(captured) == 2
-    for system in captured:
-        assert 'SEVEN COMPANION CONTRACT' in system
-        assert "Ghost One's pet AI" in system
-        assert 'acknowledge what Ghost asked' in system
-        assert 'Do not hide failures' in system
 
 
 def test_chm_context_handoff_map_preserves_latest_turn_and_all_obligations():
-    from agents.seven.companion_contract import chm_deos_plan, context_handoff_map, hearing_packet, obligation_ledger
+    from utils.handoff_contract import chm_deos_plan, context_handoff_map, hearing_packet, obligation_ledger
 
     wrapped = """=== RELAY DISABLED - HARD RULE ===
 Ignore this wrapper.
@@ -465,168 +223,18 @@ Inspect Studio; teach Seven the lesson. Then log evidence and do not grant auton
     assert 'autonomy is not granted' in plan
 
 
-def test_seven_chm_deos_request_uses_deterministic_obligation_harness():
-    from agents.seven import seven_agent
-
-    answer, tokens = seven_agent._compose(
-        'CHM says listen to the whole request; DEOS it and teach Seven everything.',
-        {'local_agents': []},
-        [],
-    )
-
-    assert tokens == 0
-    assert answer.count('HEARD:') == 2
-    assert 'CHM = Context Handoff Mapping' in answer
-    assert 'HANDOFF: ghost -> seven -> ghost' in answer
-    assert 'First executable lesson: S-SEVEN-CHM-02' in answer
-    assert 'autonomy is not granted' in answer
 
 
-def test_seven_project_work_lane_selects_bounded_step_and_records_evidence(tmp_path, monkeypatch):
-    from agents.seven import seven_agent
-
-    db = tmp_path / 'project-work.db'
-    conn = sqlite3.connect(db)
-    conn.executescript(
-        """
-        CREATE TABLE projects (
-            project_id TEXT PRIMARY KEY, name TEXT NOT NULL, status TEXT, owner TEXT,
-            description TEXT, methodology TEXT, created_at REAL, updated_at REAL, priority INTEGER, tags TEXT
-        );
-        CREATE TABLE project_steps (
-            step_id TEXT PRIMARY KEY, project_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT,
-            status TEXT, owner TEXT, order_idx INTEGER, created_at REAL, updated_at REAL,
-            residual_risk TEXT, owner_route TEXT
-        );
-        CREATE TABLE project_step_evidence (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, project_id TEXT, step_id TEXT, source_type TEXT,
-            source_ref TEXT, summary TEXT, status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-        INSERT INTO projects (project_id,name,status) VALUES ('P-1','Seven Training','active');
-        INSERT INTO project_steps
-          (step_id,project_id,title,description,status,owner,order_idx,created_at,updated_at,owner_route)
-          VALUES ('S-1','P-1','Execute mapped task','Do one thing.','doing','seven',1,1,1,'seven:test');
-        """
-    )
-    conn.commit()
-    conn.close()
-    monkeypatch.setenv('SWARM_MEMORY_DB', str(db))
-
-    answer, tokens = seven_agent._compose(
-        'Inspect Studio, choose one project task, and continue the work.',
-        {'local_agents': []},
-        [],
-    )
-
-    assert tokens == 0
-    assert 'Seven Training (P-1)' in answer
-    assert 'Execute mapped task (S-1)' in answer
-    assert 'CHM: ghost -> seven -> ghost' in answer
-    conn = sqlite3.connect(db)
-    evidence = conn.execute(
-        "SELECT source_type,source_ref,status FROM project_step_evidence WHERE step_id='S-1'"
-    ).fetchone()
-    conn.close()
-    assert evidence[0] == 'seven'
-    assert evidence[1].startswith('seven:project-aware-selection:')
-    assert evidence[2] == 'ok'
 
 
-def test_seven_fridays_system_map_teaches_ownership_boundaries():
-    from agents.seven import seven_agent
-
-    answer, tokens = seven_agent._compose(
-        'Teach me the Fridays system map and ownership boundaries.',
-        {'local_agents': []},
-        [],
-    )
-
-    assert tokens == 0
-    for domain in ('Studio', 'Knowledge Center', 'Blackboard', 'Sandpit', 'Vortex', 'Watchdog', 'Scheduler', 'Chat', 'Model Runtime', 'Evidence'):
-        assert f'- {domain}:' in answer
-    assert 'not live task status' in answer
-    assert 'single-speaker model execution' in answer
-    assert 'CHM rule:' in answer
-    assert 'DEOS rule:' in answer
 
 
-def test_seven_llm_hears_actual_user_turn_not_relay_wrapper(monkeypatch):
-    from agents.seven import seven_agent
-
-    captured = []
-
-    def fake_chat(model, messages, **kwargs):
-        captured.append(messages)
-        return 'ok', 1
-
-    wrapped = """=== RELAY DISABLED - HARD RULE ===
-Do not route or mention another agent.
-=== New user message ===
-Listen to this whole request and teach Seven.
-=== END ==="""
-    monkeypatch.setattr('core.llm.chat_via_gateway', fake_chat)
-    monkeypatch.setattr(seven_agent, '_load_kc_context', lambda *args, **kwargs: [])
-    monkeypatch.setattr(seven_agent, '_seven_direct_runtime', lambda: True)
-
-    seven_agent._llm_chat(wrapped, {}, [], [])
-
-    assert captured[0][-1]['content'] == 'Listen to this whole request and teach Seven.'
-    assert 'CONTEXT HANDOFF MAP (CHM)' in captured[0][0]['content']
-    assert 'Do not route or mention another agent' not in captured[0][-1]['content']
 
 
-def test_seven_learnings_ignore_relay_wrapper_noise(isolated_db):
-    from agents.seven import learnings
-
-    wrapped = """=== RELAY DISABLED - HARD RULE ===
-Do not route or mention another agent.
-=== FRIDAYS STUDIO HANDOFF TIMER ===
-Before the deadline, answer with useful work."""
-
-    assert learnings.classify(wrapped) == (None, None)
-    assert learnings.observe(wrapped, 'Previous Seven reply.') is None
 
 
-def test_seven_learnings_use_actual_user_turn_inside_wrapper(isolated_db):
-    from agents.seven import learnings
-
-    wrapped = """=== RELAY DISABLED - HARD RULE ===
-Do not route or mention another agent.
-=== New user message ===
-Good try, but that is wrong. Ask me one clear question.
-=== END ==="""
-
-    row = learnings.observe(wrapped, 'Previous Seven reply.')
-    assert row is not None
-    assert row['kind'] == 'negative'
-    assert row['user_msg'].startswith('Good try')
-    assert 'RELAY DISABLED' not in row['user_msg']
 
 
-def test_seven_local_model_operator_question_precedes_status_template(monkeypatch):
-    from agents.seven import seven_agent
-
-    monkeypatch.setattr(
-        'core.seven_runtime.model_operator.inventory',
-        lambda: {
-            'ok': True,
-            'models': [
-                {'name': 'gemma3:latest', 'driver': 'ollama', 'installed': True},
-                {'name': 'seven-direct:daily', 'driver': 'llamacpp', 'installed': True},
-            ],
-            'resident': [],
-            'warnings': [],
-        },
-    )
-    answer, _ = seven_agent._compose(
-        'What can you currently do to list, start, test, and stop the other local models?',
-        {'local_agents': []},
-        [],
-    )
-
-    assert 'Seven Runtime operator interface' in answer
-    assert 'gemma3:latest' in answer
-    assert 'Open tickets' not in answer
 
 
 # ── Seed demo ───────────────────────────────────────────────────────────

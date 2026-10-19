@@ -210,24 +210,8 @@ def test_wishlist_pillars_listing_status_active(isolated_db):
 # Seven integration
 # ──────────────────────────────────────────────────────────────────────
 
-def test_seven_loads_pillars_context(isolated_db, monkeypatch):
-    # Reload seven_agent so our env-var-isolated DB applies.
-    sys.modules.pop('agents.seven.seven_agent', None)
-    seven = importlib.import_module('agents.seven.seven_agent')
-    pillars = seven._load_pillars_context()
-    assert set(pillars.keys()) == {'cyber-security', 'financial', 'trading', 'business'}
-    block = seven._format_pillars_block(pillars)
-    assert 'Cyber Security' in block
-    assert 'Trading' in block
 
 
-def test_seven_pillars_slash_command(isolated_db):
-    sys.modules.pop('agents.seven.seven_agent', None)
-    seven = importlib.import_module('agents.seven.seven_agent')
-    out = seven._slash_command('/pillars')
-    assert out is not None
-    assert 'Wishlist pillars' in out
-    assert '/api/wishlist/summary' in out
 
 
 # ──────────────────────────────────────────────────────────────────────

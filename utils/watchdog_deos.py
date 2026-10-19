@@ -733,7 +733,7 @@ def _agent_work_prompt(step: Dict[str, Any], notes: Optional[List[str]] = None) 
     context = _local_work_context(step)
     agent = str(step.get('owner') or '').strip().lower()
     try:
-        from agents.seven.companion_contract import context_handoff_map
+        from utils.handoff_contract import context_handoff_map
         chm = context_handoff_map(
             str(step.get('description') or step.get('title') or ''),
             source=str(step.get('owner_route') or 'watchdog'),
