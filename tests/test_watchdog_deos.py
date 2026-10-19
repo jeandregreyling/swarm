@@ -17,6 +17,14 @@ def _conn(path):
     return conn
 
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _multi_model_mode(monkeypatch):
+    monkeypatch.setenv('SWARM_ONE_MODEL', '0')
+
+
 def test_resident_policy_marks_direct_seven_model_as_not_ollama(tmp_path):
     from utils import watchdog_deos
 
@@ -916,3 +924,11 @@ def test_direct_local_agent_guard_times_out_hung_micro_call(monkeypatch):
     assert tokens == 0
     assert 'guarded timeout 1s' in answer
     assert resets == [('mistral', 'micro')]
+
+
+def test_one_model_mode_blocks_prewarm_work_and_recovery(monkeypatch):
+    from utils import watchdog_deos as wd
+    monkeypatch.setenv('SWARM_ONE_MODEL', '1')
+    assert wd._one_model_mode() is True
+    monkeypatch.setenv('SWARM_ONE_MODEL', '0')
+    assert wd._one_model_mode() is False

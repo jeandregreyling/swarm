@@ -610,6 +610,15 @@ def _task_watchdog_deos_cycle(**kwargs):
     return run_deos_cycle_summary(kwargs.get('args') or '')
 
 
+@register('chat_job_sweep', 'Poke the chat server so its own stall watchdog fails and kills hung chat jobs even when no browser tab is polling.', 'monitoring')
+def _task_chat_job_sweep(**kwargs):
+    import urllib.request
+    port = {'dev': 5051, 'uat': 5053}.get(os.environ.get('SWARM_ENV', 'prod').lower(), 5050)
+    url = f'http://127.0.0.1:{port}/api/chat/jobs/status?job_ids=sweep'
+    with urllib.request.urlopen(url, timeout=20) as resp:
+        return f'chat job sweep ok (HTTP {resp.status}, port {port})'
+
+
 @register('local_agent_work_cycle', 'Let one local agent claim and execute one Studio step with bounded runtime.', 'agents')
 def _task_local_agent_work_cycle(**kwargs):
     from utils.watchdog_deos import run_deos_cycle_summary

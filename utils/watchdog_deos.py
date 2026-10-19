@@ -25,6 +25,11 @@ PROJECT_ID = 'P-CHAT-RELAY-RECOVERY'
 STEP_ID = 'S-DEOS-CONTROL-PLANE'
 WORK_STEP_ID = 'S-DEOS-LOCAL-AGENT-WORK'
 
+
+def _one_model_mode() -> bool:
+    return os.environ.get('SWARM_ONE_MODEL', '1').strip().lower() not in {'0', 'false', 'no', 'off'}
+
+
 SUPPORT_POLICY = {
     'librarian': 'context, thread-tail, Studio/KC lookup, and recovery handoff',
     'duck': 'QA, contradiction checks, and completion judgment',
@@ -1101,6 +1106,10 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     direct_check = _bool_opt(opts.get('direct_check'), default=True)
     direct_smoke = _bool_opt(opts.get('direct_smoke'), default=False)
     seven_service_check = _bool_opt(opts.get('seven_service_check'), default=True)
+    one_model = _one_model_mode()
+    if one_model:
+        # One 14 GB model on one GPU: never swap it, restart chat recovery or reassign steps.
+        prewarm = execute_recovery = execute_work = False
     work_project_id = str(opts.get('work_project_id') or '').strip()
     work_step_prefix = str(opts.get('work_step_prefix') or '').strip()
     work_owner = str(opts.get('work_owner') or '').strip().lower()
@@ -1204,7 +1213,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
 
         cleared = _clear_expired_recovery_leases(conn)
         stale_work_claims = _clear_stale_local_work_claims(conn, local_work_stale)
-        rerouted_work = _reroute_blocked_failed_local_steps(conn)
+        rerouted_work = 0 if one_model else _reroute_blocked_failed_local_steps(conn)
         counts = _recovery_counts(conn)
         report['operates'] = {
             'diamond_sch': sch_health,
