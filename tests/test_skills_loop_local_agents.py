@@ -305,3 +305,13 @@ def test_swarm_knowledge_read_returns_full_entry_and_pages(monkeypatch):
     assert ok and 'chars 3000-3500' in out and 'more:' not in out
     ok, _ = skills._skill_swarm_knowledge_read('', 'fred')
     assert not ok
+
+
+def test_fence_with_text_on_the_opening_line_is_accepted():
+    from fridays.skills import read_fenced_blocks
+
+    assert read_fenced_blocks(['```one line```'], 0, 1)[0] == [('', 'one line')]
+    assert read_fenced_blocks(['```first line', 'second', '```'], 0, 1)[0] == [('', 'first line\nsecond')]
+    assert read_fenced_blocks(['```done```'], 0, 1)[0] == [('', 'done')]
+    assert read_fenced_blocks(['```python', 'x = 1', '```'], 0, 1)[0] == [('python', 'x = 1')]
+    assert read_fenced_blocks(['```never closed'], 0, 1)[0] == []

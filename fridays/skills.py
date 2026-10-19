@@ -1302,6 +1302,32 @@ def _skill_fs_verify(args, agent, **_):
 
 
 _FENCE_OPEN_RE = re.compile(r'^\s{0,3}(`{3,})([\w+.-]*)\s*$')
+_GLUED_FENCE_RE = re.compile(r'^\s{0,3}(`{3,})(\S.*)$')
+
+
+def _read_glued_fence(lines, j):
+    """Accept a fence whose text sits on the same line (```text, or ```text```).
+
+    The text after the opening backticks is the first line of the block; the block closes on a bare
+    fence line or on backticks ending a line. Returns (text, next_index) or None.
+    """
+    m = _GLUED_FENCE_RE.match(lines[j])
+    if not m:
+        return None
+    ticks, first = m.group(1), m.group(2)
+    closer = '`' * len(ticks)
+    body = []
+    k = j
+    while k < len(lines):
+        ln = first if k == j else lines[k]
+        if k != j and re.match(r'^\s{0,3}`{%d,}\s*$' % len(ticks), ln):
+            return '\n'.join(body), k + 1
+        if ln.rstrip().endswith(closer):
+            body.append(ln.rstrip()[:-len(closer)].rstrip('`').rstrip())
+            return '\n'.join(body), k + 1
+        body.append(ln)
+        k += 1
+    return None
 
 
 def read_fenced_blocks(lines, start, max_blocks=2):
@@ -1320,7 +1346,12 @@ def read_fenced_blocks(lines, start, max_blocks=2):
             j += 1
         m = _FENCE_OPEN_RE.match(lines[j]) if j < n else None
         if not m:
-            break
+            glued = _read_glued_fence(lines, j) if j < n else None
+            if not glued:
+                break
+            blocks.append(('', glued[0]))
+            i = glued[1]
+            continue
         ticks, label = len(m.group(1)), m.group(2).lower()
         body, depth, k = [], 0, j + 1
         closed = False
