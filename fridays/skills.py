@@ -1366,7 +1366,7 @@ def _clean_fs_write_content(content):
 def _skill_fs_write(args, agent, **_):
     """Write (overwrite) a file. Content is a fenced block after the path line, or inline after the path."""
     raw = (args or '').strip()
-    usage = 'Usage: SKILL fs_write <path>  then the full file in a ``` fenced block'
+    usage = 'Usage: SKILL fs_write <path>  then the full file in a ``` fenced block. Example:\n' + REGISTRY['fs_write']['example']
     if not raw:
         return False, usage
     head, blocks = split_head_and_blocks(raw, 1)
@@ -1436,7 +1436,7 @@ def _skill_fs_append(args, agent, **_):
     """Add fenced content to the end of a file."""
     head, blocks = split_head_and_blocks(args, 1)
     if not head or len(blocks) != 1:
-        return False, 'Usage: SKILL fs_append <path>  then the text to add in a ``` fenced block'
+        return False, 'Usage: SKILL fs_append <path>  then the text to add in a ``` fenced block. Example:\n' + REGISTRY['fs_append']['example']
     rel = head.split(None, 1)[0]
     target = _fs_safe_path(rel)
     if not target:
@@ -1460,7 +1460,7 @@ def _skill_fs_insert_after(args, agent, **_):
     """Insert fenced text right after the first occurrence of fenced anchor text."""
     head, blocks = split_head_and_blocks(args, 2)
     if not head or len(blocks) != 2:
-        return False, 'Usage: SKILL fs_insert_after <path>  then two ``` blocks: the exact anchor text, then the text to insert after it'
+        return False, 'Usage: SKILL fs_insert_after <path>  then two ``` blocks: the exact anchor text, then the text to insert after it. Example:\n' + REGISTRY['fs_insert_after']['example']
     rel = head.split(None, 1)[0]
     target = _fs_safe_path(rel)
     if not target:
@@ -1510,7 +1510,7 @@ def _skill_fs_diff(args, agent, **_):
 
 def _skill_fs_patch(args, agent, **_):
     """Replace first occurrence of an exact string in a file."""
-    usage = 'Usage: SKILL fs_patch <path>  then two ``` blocks: the exact old text, then the new text'
+    usage = 'Usage: SKILL fs_patch <path>  then two ``` blocks: the exact old text, then the new text. Example:\n' + REGISTRY['fs_patch']['example']
     head, blocks = split_head_and_blocks(args, 2)
     if not head or len(blocks) != 2:
         return False, usage

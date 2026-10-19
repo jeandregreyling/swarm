@@ -155,6 +155,8 @@ def _extract_skill_cmds(text):
             if blocks:
                 skill_args = skill_args.strip() + '\n' + '\n'.join(lines[i:nxt]).strip('\n')
                 i = nxt
+            else:
+                logger.warning(f'[skills] {skill_name}: no fenced block found; next lines: {lines[i:i + 4]!r}')
         cmds.append((skill_name, skill_args))
 
     return cmds
@@ -704,9 +706,25 @@ def run_skill_loop(
                 source_conv_id=source_conv_id,
                 allowed_skill_names=allowed_skill_names,
             ))
-            answer = (
-                'Ran the final skill lines:\n' + _all_results[-1]
-            )
+            raw_results = _all_results[-1]
+            answer = 'Ran the final skill lines:\n' + raw_results
+            # Let the model see those results and write its own closing message.
+            try:
+                summary, tokens = call_fn(
+                    list(messages[:baseline_len])
+                    + [
+                        {'role': 'assistant', 'content': 'Running the last skill lines.'},
+                        {'role': 'user', 'content': (
+                            'Those skill lines ran. Outputs below. Write your final message now: plain words, '
+                            'no SKILL lines. Give what was done, the paths, and anything that failed.\n\n' + raw_results
+                        )},
+                    ]
+                )
+                total_tokens += tokens
+                if summary and not _extract_skill_cmds(summary):
+                    answer = summary
+            except Exception as exc:
+                logger.warning(f'[{agent_name}] closing summary failed: {exc}')
         except Exception as exc:
             logger.warning(f'[{agent_name}] trailing skill run failed: {exc}')
 
