@@ -621,7 +621,7 @@ def _watchdog_restart_ollama_service(model_name: str) -> dict:
     result = {'ok': False, 'detail': '', 'action': 'systemctl-restart-ollama'}
     try:
         proc = subprocess.run(
-            ['systemctl', 'restart', 'ollama'],
+            ['systemctl', '--no-ask-password', 'restart', 'ollama'],
             capture_output=True,
             text=True,
             timeout=20,

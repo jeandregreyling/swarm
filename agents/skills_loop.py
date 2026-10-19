@@ -384,12 +384,18 @@ def unfinished_file_edit_note(results_text):
     """Harness-written correction when the last file edit this turn did not succeed.
 
     The model's own closing words are not evidence; the skill results are.
+    A failed retry after an edit that did succeed must not claim the file is untouched.
     """
     hits = _FILE_EDIT_RESULT.findall(str(results_text or ''))
     if not hits or hits[-1][1] == 'OK':
         return ''
     skill, _status, detail = hits[-1]
     detail = ' '.join(detail.split())[:400]
+    if any(status == 'OK' for _skill, status, _detail in hits):
+        return (
+            f'[verification] The last edit ({skill}) did not succeed: {detail} '
+            'An earlier edit this turn did succeed, so read the file back before trusting either claim.'
+        )
     return (
         f'[verification] The file was NOT changed. The last edit ({skill}) did not succeed: {detail} '
         'Ignore any claim below that the change was made.'

@@ -349,8 +349,8 @@ def force_unload(
                 return 1, str(exc)
 
     cmds = restart_cmds or [
-        ["systemctl", "--user", "restart", "ollama"],
-        ["systemctl", "restart", "ollama"],
+        ["systemctl", "--user", "--no-ask-password", "restart", "ollama"],
+        ["systemctl", "--no-ask-password", "restart", "ollama"],
     ]
     restart_ok = False
     for cmd in cmds:

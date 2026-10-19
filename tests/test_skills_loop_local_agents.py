@@ -648,6 +648,9 @@ def test_failed_last_file_edit_is_corrected_by_the_harness():
     assert text.startswith('[verification] The file was NOT changed') and 'fs_patch_lines' in text and 'DELETES' in text
 
     assert note('[skill:fs_patch_lines] FAILED\nx\n\n[skill:fs_insert_before] OK\nInserted 1 line') == ''
+    retry = note('[skill:fs_insert_before] OK\nInserted 1 line\n\n[skill:fs_patch_lines] FAILED\nRefused, nothing changed')
+    assert retry.startswith('[verification] The last edit (fs_patch_lines) did not succeed')
+    assert 'NOT changed' not in retry and 'earlier edit this turn did succeed' in retry
     assert note('[skill:fs_readonly] OK\nlooked only') == ''
     assert note('[skill:fs_insert_before] OK\ndone\n\n[skill:fs_readonly] OK\nread back') == ''
     assert 'fs_insert_before' in note('[skill:fs_patch_lines] OK\nok\n\n[skill:fs_insert_before] ERROR\nboom')
