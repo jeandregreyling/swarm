@@ -168,7 +168,12 @@ def _extract_skill_cmds(text):
 
 
 # Template slots copied from a skill list (<query>, <full/path/to/file>) are never real arguments.
-_PLACEHOLDER_ARG_RE = re.compile(r'<[a-z_]+(?:[-/][a-z_]+)*>')
+# Only the slots copied from a skill list: a known slot name, or <slot> followed by its "(description)".
+# Real arguments such as <body> or <title> (HTML tags) must still run.
+_PLACEHOLDER_ARG_RE = re.compile(
+    r'^\s*(?:(?:\S+\s+)*?)(?:<(?:query|full/path/to/file|exact-key|path|file|proposal_id|step_id)>'
+    r'|<[A-Za-z_/-]+>\s{2,}\()'
+)
 _FENCED_SKILL_RE = re.compile(r'(?m)^\s*`{3,}\s*/?SKILL\s+[a-z_]+', re.IGNORECASE)
 _FENCED_SKILL_NUDGE = (
     'Your reply put SKILL lines inside backticks (```SKILL ...```). Text inside backticks is not run, '

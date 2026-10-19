@@ -346,6 +346,11 @@ def test_placeholder_arguments_are_not_executed():
     assert sl._extract_skill_cmds('SKILL fs_readonly read <full/path/to/file>   (files)') == []
     assert sl._extract_skill_cmds('SKILL memory_search <query>   (your own saved memory)') == []
     assert sl._extract_skill_cmds('SKILL shell python3 scripts/db_query.py "select 1 where a<b and c>d"')
+    # Real arguments that merely look like tags must still run.
+    assert sl._extract_skill_cmds('SKILL search_landscape <body>') == [('search_landscape', '<body>')]
+    assert sl._extract_skill_cmds('SKILL fs_readonly grep frontend/templates/terminal_base.html <title>')
+    assert sl._extract_skill_cmds('SKILL fs_readonly read <full/path/to/file>') == []
+    assert sl._extract_skill_cmds('SKILL swarm_knowledge_search <topic>   (Knowledge Center: decisions)') == []
 
 
 def test_backtick_wrapped_skill_gets_a_specific_nudge(monkeypatch):
