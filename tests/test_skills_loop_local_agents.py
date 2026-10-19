@@ -282,3 +282,26 @@ def test_file_skills_end_to_end(tmp_path, monkeypatch):
     assert len(backups) == 4
     ok, diff = skills._skill_fs_diff(f'runtime/backups/fs/{backups[0].name} sandpits/n.md', 'fred')
     assert ok and '+gamma' in diff
+
+
+def test_swarm_knowledge_read_returns_full_entry_and_pages(monkeypatch):
+    from fridays import skills
+
+    big = 'x' * 3500
+    class Row(dict):
+        pass
+    class Conn:
+        def execute(self, *_a, **_k):
+            class C:
+                def fetchone(_s):
+                    return Row(key='K', category='lesson', content=big)
+            return C()
+        def close(self):
+            pass
+    monkeypatch.setattr('utils.db._connection.get_connection', lambda: Conn())
+    ok, out = skills._skill_swarm_knowledge_read('K', 'fred')
+    assert ok and 'of 3500' in out and 'swarm_knowledge_read K 3000' in out
+    ok, out = skills._skill_swarm_knowledge_read('K 3000', 'fred')
+    assert ok and 'chars 3000-3500' in out and 'more:' not in out
+    ok, _ = skills._skill_swarm_knowledge_read('', 'fred')
+    assert not ok

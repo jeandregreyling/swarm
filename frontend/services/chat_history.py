@@ -119,6 +119,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             '  SKILL shell python3 scripts/db_query.py "select ... from ..."   (stored records and counts; ids are rows, not files)',
             '  SKILL fs_readonly read <full/path/to/file>   (files)',
             '  SKILL swarm_knowledge_search <query>   (Knowledge Center: decisions, docs, lessons)',
+            '  SKILL swarm_knowledge_read <exact-key>   (one full Knowledge Center entry; search only shows the first 500 characters)',
             '  SKILL memory_search <query>   (your own saved memory)',
             'FILE EDITING (the SKILL line is plain text; the file content goes in ``` fenced blocks right after it, no other markers):',
             '  SKILL fs_write <path>   + 1 block: the FULL file (overwrites)',
@@ -130,7 +131,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             '  SKILL fs_diff <path_a> <path_b>   (read-only; every change keeps a backup in runtime/backups/fs/, named in the result)',
             '  SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>   (only steps you own; reason is logged)',
             '  SKILL alm_create_proposal "<title>" "<description>"   (changes go through a proposal)',
-            'Only state a change happened after you see [skill:...] OK in the output.',
+            'A change is real only when the skill result that comes back to you shows it (for example "Written N chars ... backup: ..."). Never type a skill result yourself; if no result came back, say so.',
             'LONG JOBS (Watchdog/Seven DEOS): Watchdog owns state, timeouts and proof; you own one step at a time. If a step needs more passes, end with a PROGRESS: line (done so far, next action) and DEOS_STATUS: continue; you will be handed the step back with your notes. Finish with DEOS_STATUS: done only after a read-back proves it.',
             '',
         ])

@@ -255,6 +255,12 @@ REGISTRY = {
         'usage': 'SKILL swarm_knowledge_search <query>',
         'example': 'SKILL swarm_knowledge_search circuit breaker threshold',
     },
+    'swarm_knowledge_read': {
+        'description': 'Read ONE Knowledge Center entry in full by its exact key (search shows only the first 500 characters).',
+        'trust_level': 0,
+        'usage': 'SKILL swarm_knowledge_read <key> [from_char]',
+        'example': 'SKILL swarm_knowledge_read FRED-ORIENTATION',
+    },
     'search_landscape': {
         'description': 'Search the living system landscape JSON index (files, blueprints, tables, agents, skills).',
         'trust_level': 0,
@@ -1773,6 +1779,38 @@ def _skill_swarm_knowledge_search(args, agent, **_):
         return False, f'swarm_knowledge_search error: {e}'
 
 
+def _skill_swarm_knowledge_read(args, agent, **_):
+    """SKILL swarm_knowledge_read <key> [from_char] - one full entry, paged at 3000 chars."""
+    parts = (args or '').split()
+    if not parts:
+        return False, 'Usage: SKILL swarm_knowledge_read <key> [from_char]. Example: SKILL swarm_knowledge_read FRED-ORIENTATION'
+    key = parts[0]
+    try:
+        start = max(0, int(parts[1])) if len(parts) > 1 else 0
+    except ValueError:
+        start = 0
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            row = conn.execute(
+                'SELECT key, category, content FROM swarm_knowledge WHERE key=? ORDER BY updated_at DESC LIMIT 1',
+                (key,),
+            ).fetchone()
+        finally:
+            conn.close()
+        if not row:
+            return False, f'No entry with key {key!r}. Use SKILL swarm_knowledge_search to find the exact key.'
+        content = row['content'] if hasattr(row, 'keys') else row[2]
+        chunk = content[start:start + 3000]
+        more = ''
+        if start + 3000 < len(content):
+            more = f'\n[more: SKILL swarm_knowledge_read {key} {start + 3000}]'
+        return True, f'{key} (chars {start}-{start + len(chunk)} of {len(content)})\n{chunk}{more}'
+    except Exception as e:
+        return False, f'swarm_knowledge_read error: {e}'
+
+
 def _skill_studio_step_update(args, agent, **_):
     """SKILL studio_step_update <step_id> <status> <reason> — only for steps the caller owns."""
     parts = (args or '').strip().split(None, 2)
@@ -2228,6 +2266,7 @@ _HANDLERS = {
     # A.3 — Shared Knowledge + Living Landscape
     'knowledge_write':         _skill_knowledge_write,
     'swarm_knowledge_search':  _skill_swarm_knowledge_search,
+    'swarm_knowledge_read':  _skill_swarm_knowledge_read,
     'search_landscape':        _skill_search_landscape,
     'update_landscape':        _skill_update_landscape,
     # B.3 — Research
