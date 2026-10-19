@@ -250,6 +250,7 @@ def _chat_user_prompt_is_informational(text):
         r'\badd\b',
         r'\bremove\b',
         r'\bteach\b',
+        r'\b(?:close|skip|skipped|mark|claim|studio_step_update)\b',
         r'\bmake changes?\b',
         r'\bupdate (the )?(file|code|function|system|watchdog|duck|agent|agents)\b',
     )
