@@ -232,6 +232,12 @@ REGISTRY = {
         'usage': 'SKILL fs_insert_after <path>   then two ``` blocks: the exact anchor text, then the text to insert after it',
         'example': 'SKILL fs_insert_after sandpits/fred/notes.md\n```\n## Roles\n```\n```\n- Fred: the one working agent\n```',
     },
+    'fs_insert_before': {
+        'description': 'Insert text on the line(s) right before an exact anchor text (first occurrence) in a file.',
+        'trust_level': 2,
+        'usage': 'SKILL fs_insert_before <path>   then two ``` blocks: the exact anchor text, then the text to insert before it',
+        'example': 'SKILL fs_insert_before sandpits/fred/page.html\n```\n</head>\n```\n```\n<!-- note -->\n```',
+    },
     'fs_diff': {
         'description': 'Show what differs between two files (read-only unified diff). Every write also keeps a backup of the old file, shown in the result.',
         'trust_level': 0,
@@ -385,9 +391,9 @@ REGISTRY = {
 
 # Skills that should create a work_proposal entry when they succeed
 # Skills whose content follows the skill line in ``` fenced blocks, and how many blocks each takes.
-FENCED_BODY_SKILLS = {'fs_write': 1, 'fs_append': 1, 'fs_patch_lines': 1, 'fs_patch': 2, 'fs_insert_after': 2}
+FENCED_BODY_SKILLS = {'fs_write': 1, 'fs_append': 1, 'fs_patch_lines': 1, 'fs_patch': 2, 'fs_insert_after': 2, 'fs_insert_before': 2}
 _FENCE_BODY_SKILLS = FENCED_BODY_SKILLS
-_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_append', 'fs_insert_after', 'fs_patch', 'fs_patch_lines'}
+_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_append', 'fs_insert_after', 'fs_insert_before', 'fs_patch', 'fs_patch_lines'}
 
 # Shell commands at this trust level or below are pure read-only inspections
 # (pwd, ls, ps, df, free, cat, grep, etc.). Logging every one of them as a
@@ -1764,6 +1770,38 @@ def _skill_fs_insert_after(args, agent, **_):
         return False, f'fs_insert_after failed: {e}'
 
 
+def _skill_fs_insert_before(args, agent, **_):
+    """Insert fenced text on its own line right before the first occurrence of fenced anchor text."""
+    head, blocks = split_head_and_blocks(args, 2)
+    if not head or len(blocks) != 2:
+        return False, 'Usage: SKILL fs_insert_before <path>  then two ``` blocks: the exact anchor text, then the text to insert before it. Example:\n' + REGISTRY['fs_insert_before']['example']
+    rel = head.split(None, 1)[0]
+    target = _fs_safe_path(rel)
+    if not target:
+        return False, f'Path outside swarm root or invalid: {rel}'
+    refusal = _fs_write_refusal(target, rel)
+    if refusal:
+        return False, refusal
+    if not target.exists() or not target.is_file():
+        return False, f'File not found: {rel}'
+    anchor, add = blocks[0][1], blocks[1][1]
+    try:
+        original = target.read_text(encoding='utf-8', errors='replace')
+        pos = original.find(anchor)
+        if not anchor or pos < 0:
+            return False, f'Anchor text not found in {rel}. No changes made.'
+        line_start = original.rfind('\n', 0, pos) + 1
+        text = add if add.endswith('\n') else add + '\n'
+        backup = _fs_backup(target, rel)
+        result = original[:line_start] + text + original[line_start:]
+        target.write_text(result, encoding='utf-8')
+        first = original.count('\n', 0, line_start) + 1
+        return True, (f'Inserted {len(text)} chars before the anchor in {rel}' + (f' (backup: {backup})' if backup else '')
+                      + '\n' + _change_view(result, first, max(1, text.count('\n'))))
+    except Exception as e:
+        return False, f'fs_insert_before failed: {e}'
+
+
 def _skill_fs_diff(args, agent, **_):
     """Read-only unified diff of two files inside the repo."""
     parts = (args or '').split()
@@ -2575,6 +2613,7 @@ _HANDLERS = {
     'fs_patch_lines':      _skill_fs_patch_lines,
     'fs_append':           _skill_fs_append,
     'fs_insert_after':     _skill_fs_insert_after,
+    'fs_insert_before':    _skill_fs_insert_before,
     'fs_diff':             _skill_fs_diff,
     'fs_verify':           _skill_fs_verify,
     'knowledge_search': _skill_knowledge_search,
@@ -2799,7 +2838,7 @@ def call(skill_name, args='', agent='ghost', source_conv_id=None):
             return success, output
         # Tracer: capture git diff for file-changing skills
         diff = ''
-        _PATCH_SKILLS = {'fs_patch', 'fs_patch_lines', 'fs_write', 'fs_append', 'fs_insert_after', 'file_write'}
+        _PATCH_SKILLS = {'fs_patch', 'fs_patch_lines', 'fs_write', 'fs_append', 'fs_insert_after', 'fs_insert_before', 'file_write'}
         if skill_name in _PATCH_SKILLS:
             rel = _extract_changed_path(skill_name, args)
             if rel:

@@ -582,3 +582,22 @@ def test_worker_context_window_defaults_to_8192_and_is_overridable(monkeypatch):
     assert importlib.reload(worker).WORKER_NUM_CTX == 8192
     monkeypatch.delenv('SWARM_WORKER_NUM_CTX', raising=False)
     importlib.reload(worker)
+
+
+def test_fs_insert_before_puts_the_line_before_the_anchor_and_shows_it(tmp_path, monkeypatch):
+    from fridays import skills
+
+    monkeypatch.setattr(skills, '_FS_ROOT', tmp_path)
+    monkeypatch.setattr(skills, '_fs_safe_path', lambda rel: (tmp_path / rel).resolve())
+    monkeypatch.setattr(skills, '_fs_write_refusal', lambda *a, **k: None)
+    monkeypatch.setattr(skills, '_fs_backup', lambda *a, **k: '')
+    page = tmp_path / 'p.html'
+    page.write_text('<head>\n<script></script>\n</head>\n<body>\n')
+
+    ok, msg = skills._skill_fs_insert_before('p.html\n```\n</head>\n```\n```\n<!-- note -->\n```', 'apex')
+    assert ok and '3 >>> <!-- note -->' in msg
+    assert page.read_text().splitlines() == ['<head>', '<script></script>', '<!-- note -->', '</head>', '<body>']
+    ok, msg = skills._skill_fs_insert_before('p.html\n```\nnot there\n```\n```\nx\n```', 'apex')
+    assert not ok and 'Anchor text not found' in msg
+    cmds = skills.parse_skill_command('SKILL fs_insert_before p.html')
+    assert cmds[0] == 'fs_insert_before' and skills.FENCED_BODY_SKILLS['fs_insert_before'] == 2

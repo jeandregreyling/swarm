@@ -128,6 +128,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             '  SKILL fs_append <path>   + 1 block: text added to the end',
             '  SKILL fs_patch <path>   + 2 blocks: exact old text, then new text',
             '  SKILL fs_insert_after <path>   + 2 blocks: exact anchor text, then the text to insert after it',
+            '  SKILL fs_insert_before <path>   + 2 blocks: exact anchor text, then the text to put on the line BEFORE it (use this for "before X"; fs_insert_after is only for "after X")',
             '  SKILL fs_patch_lines <path> <start> <end>   + 1 block: replacement lines',
             '  fs_insert_after puts the text after the WHOLE anchor, so make the anchor the one line you mean. When you report file content, copy it from the fs_readonly output; never retype it from memory.',
             '  SKILL fs_diff <path_a> <path_b>   (read-only; every change keeps a backup in runtime/backups/fs/, named in the result)',
