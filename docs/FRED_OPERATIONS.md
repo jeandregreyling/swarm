@@ -76,3 +76,7 @@ Scheduled task `fred_work_cycle` (every 3 min) runs `local_agent_work_cycle work
 - `done` is refused if her last skill call in the run failed. Evidence records ok/failed skill counts.
 - If the cycle itself errors (e.g. a DB I/O error), the step is requeued to `todo` instead of stuck in `doing`.
 - Empty fenced blocks in `fs_write` / `fs_append` are errors.
+
+## Induction course
+
+Fred's induction to the harness (Seven, Watchdog, chat, skills, Studio, KC and memory) lives in `docs/fred_course/` as eight short modules, `00-start` to `07-graduation`. Edit the files, then run `.venv/bin/python3 scripts/load_fred_course.py` to update the Knowledge Center entries `FRED-COURSE-*` (re-running updates in place). Fred reads them with `SKILL swarm_knowledge_read FRED-COURSE-00-START`, one module at a time. Module 07 is six small proofs that she reports from real skill results.
