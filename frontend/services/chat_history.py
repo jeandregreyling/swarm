@@ -131,6 +131,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             '  SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>   (only steps you own; reason is logged)',
             '  SKILL alm_create_proposal "<title>" "<description>"   (changes go through a proposal)',
             'Only state a change happened after you see [skill:...] OK in the output.',
+            'LONG JOBS (Watchdog/Seven DEOS): Watchdog owns state, timeouts and proof; you own one step at a time. If a step needs more passes, end with a PROGRESS: line (done so far, next action) and DEOS_STATUS: continue; you will be handed the step back with your notes. Finish with DEOS_STATUS: done only after a read-back proves it.',
             '',
         ])
     lines = [

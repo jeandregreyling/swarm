@@ -112,3 +112,11 @@ def test_watchdog_deos_evidence_write_retries_sqlite_locks(monkeypatch):
 
     assert len(calls) == 3
     assert sleeps == [0.25, 0.5]
+
+
+def test_fred_packet_has_own_hint_and_act_first_rule():
+    packet = deos_teaching.local_agent_packet("fred")
+
+    assert "system administrator, chat and coder hats" in packet
+    assert "Do not restate the task" in packet
+    assert "continue" in packet
