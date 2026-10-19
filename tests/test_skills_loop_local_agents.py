@@ -280,6 +280,9 @@ def test_file_skills_end_to_end(tmp_path, monkeypatch):
     assert run("SKILL fs_patch sandpits/n.md\n```old\nbeta\n```\n```new\nBETA\n```")[0]
     assert not run("SKILL fs_patch_lines sandpits/n.md 1 1\n```\n# Title\n```")[0]  # not read yet: refused
     assert run("SKILL fs_readonly lines sandpits/n.md 1 6")[0]
+    skills._PENDING_DELETES.clear()
+    assert not run("SKILL fs_patch_lines sandpits/n.md 1 1\n```\n# Title\n```")[0]  # deletes "# T": say it twice
+    assert f.read_text().startswith('# T\n')
     assert run("SKILL fs_patch_lines sandpits/n.md 1 1\n```\n# Title\n```")[0]
     assert f.read_text().splitlines() == ['# Title', '', 'alpha', 'alpha2', 'BETA', 'gamma']
     assert not run("SKILL fs_insert_after sandpits/n.md\n```\nmissing\n```\n```\nx\n```")[0]
@@ -523,6 +526,7 @@ def test_write_skills_show_the_real_lines_they_changed(tmp_path, monkeypatch):
     monkeypatch.setattr(skills, '_fs_safe_path', lambda rel: (tmp_path / rel).resolve())
     monkeypatch.setattr(skills, '_fs_write_refusal', lambda *a, **k: None)
     monkeypatch.setattr(skills, '_fs_backup', lambda *a, **k: '')
+    monkeypatch.setenv('SWARM_PATCH_CONFIRM_DELETE', '0')
     page = tmp_path / 'p.html'
     page.write_text('<style>\n  --accent: #2f6bff;\n</style>\n<body>\n<div></div>\n')
 
@@ -546,6 +550,7 @@ def test_line_patch_needs_the_lines_to_have_been_read(tmp_path, monkeypatch):
     monkeypatch.setattr(skills, '_fs_safe_path', lambda rel: (tmp_path / rel).resolve())
     monkeypatch.setattr(skills, '_fs_write_refusal', lambda *a, **k: None)
     monkeypatch.setattr(skills, '_fs_backup', lambda *a, **k: '')
+    monkeypatch.setenv('SWARM_PATCH_CONFIRM_DELETE', '0')
     skills._SEEN_LINES.clear()
     page = tmp_path / 'p.html'
     page.write_text('\n'.join(f'line {n}' for n in range(1, 61)) + '\n')
@@ -560,6 +565,35 @@ def test_line_patch_needs_the_lines_to_have_been_read(tmp_path, monkeypatch):
     skills._skill_fs_readonly('grep p.html 52 1', 'apex')
     ok, msg = skills._skill_fs_patch_lines('p.html 52 52\n```\nX\n```', 'apex')
     assert ok and 'It replaced these original lines: "line 52"' in msg
+
+
+def test_line_patch_that_deletes_unmentioned_lines_must_be_repeated(tmp_path, monkeypatch):
+    from fridays import skills
+
+    monkeypatch.setattr(skills, '_FS_ROOT', tmp_path)
+    monkeypatch.setattr(skills, '_fs_safe_path', lambda rel: (tmp_path / rel).resolve())
+    monkeypatch.setattr(skills, '_fs_write_refusal', lambda *a, **k: None)
+    monkeypatch.setattr(skills, '_fs_backup', lambda *a, **k: '')
+    monkeypatch.delenv('SWARM_PATCH_CONFIRM_DELETE', raising=False)
+    skills._SEEN_LINES.clear()
+    skills._PENDING_DELETES.clear()
+    page = tmp_path / 'p.html'
+    original = '<head>\n<script src="hive-parallax.js"></script>\n</head>\n'
+    page.write_text(original)
+    skills._skill_fs_readonly('lines p.html 1 3', 'apex')
+
+    call = 'p.html 2 2\n```\n<!-- new -->\n```'
+    ok, msg = skills._skill_fs_patch_lines(call, 'apex')
+    assert not ok and 'DELETES' in msg and 'hive-parallax.js' in msg and 'fs_insert_before' in msg
+    assert page.read_text() == original
+
+    ok, msg = skills._skill_fs_patch_lines(call, 'apex')
+    assert ok and page.read_text() == '<head>\n<!-- new -->\n</head>\n'
+
+    page.write_text(original)
+    skills._skill_fs_readonly('lines p.html 1 3', 'apex')
+    ok, _ = skills._skill_fs_patch_lines('p.html 2 2\n```\n<script src="hive-parallax.js"></script>\n<!-- kept -->\n```', 'apex')
+    assert ok  # nothing was deleted, so no confirmation step
 
 
 def test_single_space_line_numbers_are_stripped_only_when_they_count_up():

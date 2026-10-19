@@ -1882,6 +1882,41 @@ def _change_view(new_text, first_line, count, old_lines=None, context=3):
     return '\n'.join(out)
 
 
+_PENDING_DELETES = {}
+_PENDING_DELETE_TTL_SECONDS = 600
+
+
+def _confirm_line_deletion(agent, target, rel, start, end, old_lines, new_text):
+    """Refuse once when a line patch would delete text the replacement does not contain.
+
+    The same call repeated unchanged is accepted, so intended deletions cost one extra step
+    and accidental overwrites (patching a line meant to be added next to) are caught.
+    """
+    if os.environ.get('SWARM_PATCH_CONFIRM_DELETE', '1').strip().lower() in {'0', 'false', 'no', 'off'}:
+        return None
+    kept = {ln.strip() for ln in new_text.splitlines() if ln.strip()}
+    dropped = [(start + i, ln.rstrip('\n')) for i, ln in enumerate(old_lines)
+               if ln.strip() and ln.strip() not in kept]
+    if not dropped:
+        return None
+    key = (str(agent or '').lower(), str(target), start, end, hash(new_text))
+    now = time.time()
+    for k, ts in list(_PENDING_DELETES.items()):
+        if now - ts > _PENDING_DELETE_TTL_SECONDS:
+            _PENDING_DELETES.pop(k, None)
+    if _PENDING_DELETES.pop(key, None) is not None:
+        return None
+    _PENDING_DELETES[key] = now
+    shown = '\n'.join(f'  {n}: {ln[:160]}' for n, ln in dropped[:8])
+    more = f'\n  ...and {len(dropped) - 8} more' if len(dropped) > 8 else ''
+    return (
+        f'Refused, nothing changed: this patch DELETES these existing lines of {rel}, and your replacement does not contain them:\n'
+        f'{shown}{more}\n'
+        f'If you wanted to ADD text next to a line, use SKILL fs_insert_after or SKILL fs_insert_before with that line as the anchor. '
+        f'If you really mean to replace them, send the exact same fs_patch_lines call again.'
+    )
+
+
 def _skill_fs_patch_lines(args, agent, **_):
     """Replace a line range in a file by line numbers.
 
@@ -1942,6 +1977,10 @@ def _skill_fs_patch_lines(args, agent, **_):
         # Ensure replacement ends with newline (preserves file structure)
         if new_text and not new_text.endswith('\n'):
             new_text += '\n'
+
+        refusal = _confirm_line_deletion(agent, target, rel, start, end, file_lines[start - 1:end], new_text)
+        if refusal:
+            return False, refusal
 
         before = ''.join(file_lines[:start - 1])
         after  = ''.join(file_lines[end:])
