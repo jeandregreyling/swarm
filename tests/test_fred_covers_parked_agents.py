@@ -4,11 +4,10 @@ import types
 sys.path[:0] = ['.', 'utils', 'lib/system']
 
 
-def test_fs_write_strips_pasted_markers_and_line_numbers():
+def test_fs_write_strips_pasted_line_numbers():
     from fridays.skills import _clean_fs_write_content as clean
 
-    assert clean("    1  # Title\n    2\n    3  Body\n```") == "# Title\n\nBody"
-    assert clean("<<<NEW>>>\nHello\n<<<END>>>") == "Hello"
+    assert clean("    1  # Title\n    2\n    3  Body") == "# Title\n\nBody"
     assert clean("1984 was a year\nplain") == "1984 was a year\nplain"
     assert clean("a\n2  b\nc") == "a\n2  b\nc"
 

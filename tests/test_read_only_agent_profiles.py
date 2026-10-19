@@ -416,7 +416,7 @@ def test_read_only_task_blocks_model_generated_mutation_after_inspection(monkeyp
     executed = []
     responses = iter([
         'SKILL fs_readonly read .github/skills/swarm-teamwork/SKILL.md',
-        'SKILL fs_patch utils/config.py <<<OLD>>>x<<<NEW>>>y',
+        'SKILL fs_patch utils/config.py\n```\nx\n```\n```\ny\n```',
         json.dumps({
             'kind': 'analysis',
             'summary': 'The requested inspection completed without changes.',

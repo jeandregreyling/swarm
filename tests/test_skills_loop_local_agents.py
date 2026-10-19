@@ -228,16 +228,57 @@ def test_studio_step_update_guards(monkeypatch):
     assert calls == [('S-1', 'skipped')]
 
 
-def test_fs_write_multiline_block_with_markers_and_blank_lines():
+def _run_fenced(text):
     from agents.skills_loop import _extract_skill_cmds
-    text = (
-        "SKILL fs_write sandpits/fred/x.md\n<<<NEW>>>\n# Title\n\nFred is the worker.\nSeven is the companion.\n<<<END>>>\n"
-        "Done."
-    )
-    cmds = _extract_skill_cmds(text)
-    assert len(cmds) == 1 and cmds[0][0] == 'fs_write'
+    return _extract_skill_cmds(text)
+
+
+def test_fenced_fs_write_plain_block():
     from fridays.skills import _clean_fs_write_content
-    path, body = cmds[0][1].split(None, 1)
-    cleaned = _clean_fs_write_content(body)
-    assert cleaned.splitlines() == ['# Title', '', 'Fred is the worker.', 'Seven is the companion.']
-    assert 'Done.' not in cleaned
+    cmds = _run_fenced("SKILL fs_write sandpits/fred/x.md\n```\n# Title\n\nFred works.\nSeven helps.\n```\nDone, thanks.")
+    assert len(cmds) == 1 and cmds[0][0] == 'fs_write'
+    assert cmds[0][1].split('\n', 1)[0] == 'sandpits/fred/x.md'
+    from fridays.skills import split_head_and_blocks
+    head, blocks = split_head_and_blocks(cmds[0][1], 1)
+    assert head == 'sandpits/fred/x.md'
+    assert _clean_fs_write_content(blocks[0][1]).splitlines() == ['# Title', '', 'Fred works.', 'Seven helps.']
+
+
+def test_fenced_fs_write_nested_markdown_fence():
+    text = "SKILL fs_write docs/a.md\n```\nIntro\n```python\nprint(1)\n```\nOutro\n```\nok"
+    cmds = _run_fenced(text)
+    assert len(cmds) == 1
+    assert 'print(1)' in cmds[0][1] and 'Outro' in cmds[0][1]
+
+
+def test_fenced_patch_skills_keep_the_blocks_raw():
+    cmds = _run_fenced("SKILL fs_patch a/b.py\n```old\nx = 1\n```\n```new\nx = 2\n```")
+    assert cmds == [('fs_patch', 'a/b.py\n```old\nx = 1\n```\n```new\nx = 2\n```')]
+    cmds = _run_fenced("SKILL fs_patch_lines a/b.py 3 4\n```\nline a\nline b\n```")
+    assert cmds == [('fs_patch_lines', 'a/b.py 3 4\n```\nline a\nline b\n```')]
+
+
+def test_file_skills_end_to_end(tmp_path, monkeypatch):
+    from agents.skills_loop import _extract_skill_cmds
+    from fridays import skills
+    monkeypatch.setattr(skills, '_FS_ROOT', tmp_path)
+
+    def run(text):
+        cmd = _extract_skill_cmds(text)[0]
+        return skills._HANDLERS[cmd[0]](cmd[1], 'fred')
+
+    f = tmp_path / 'sandpits' / 'n.md'
+    assert run("SKILL fs_write sandpits/n.md\n```\n# T\n\nalpha\nbeta\n```")[0]
+    assert f.read_text() == '# T\n\nalpha\nbeta'
+    ok, msg = run("SKILL fs_append sandpits/n.md\n```\ngamma\n```")
+    assert ok and 'backup' in msg and f.read_text() == '# T\n\nalpha\nbeta\ngamma\n'
+    assert run("SKILL fs_insert_after sandpits/n.md\n```\nalpha\n```\n```\nalpha2\n```")[0]
+    assert f.read_text() == '# T\n\nalpha\nalpha2\nbeta\ngamma\n'
+    assert run("SKILL fs_patch sandpits/n.md\n```old\nbeta\n```\n```new\nBETA\n```")[0]
+    assert run("SKILL fs_patch_lines sandpits/n.md 1 1\n```\n# Title\n```")[0]
+    assert f.read_text().splitlines() == ['# Title', '', 'alpha', 'alpha2', 'BETA', 'gamma']
+    assert not run("SKILL fs_insert_after sandpits/n.md\n```\nmissing\n```\n```\nx\n```")[0]
+    backups = sorted((tmp_path / 'runtime' / 'backups' / 'fs').iterdir())
+    assert len(backups) == 4
+    ok, diff = skills._skill_fs_diff(f'runtime/backups/fs/{backups[0].name} sandpits/n.md', 'fred')
+    assert ok and '+gamma' in diff

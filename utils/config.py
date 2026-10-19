@@ -1501,7 +1501,7 @@ SKILLS (one per line):
 SKILL fs_readonly ls <directory>
 SKILL fs_readonly lines <file> <first line> <last line>
 SKILL fs_readonly grep <file> <text>
-SKILL fs_patch_lines <file> <first line> <last line>   (then <<<NEW>>> and the replacement lines)
+SKILL fs_patch_lines <file> <first line> <last line>   (then the replacement lines in a ``` fenced block)
 SKILL alm_create_proposal "<title>" "<what you saw and what you suggest>"
 SKILL alm_self_approve <proposal_id>
 SKILL alm_complete <proposal_id>

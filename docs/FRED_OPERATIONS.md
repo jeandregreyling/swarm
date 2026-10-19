@@ -51,5 +51,19 @@ One SELECT in double quotes, optional second argument `swarm` (default) or `mind
 - Both lookups are allowed on read-only turns.
 - `SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>` changes a Studio step she owns. The reason is required and logged to `ghost_circle` (`entry_type='step_update'`).
 - Verify her reports from `ghost_circle` (`source='fred'`) and the DB, not from her reply.
-- `fs_write` overwrites the whole file with plain content (no markers); tell her to send the full file in one call.
 - Prompts containing close/skip/mark/claim are treated as actions, not read-only questions.
+
+## Editing files (no markers)
+
+The SKILL line is plain text; content goes in ``` fenced blocks right after it. Block content is exactly what lands in the file (no diff markers, no line numbers).
+
+| Skill | Blocks |
+|---|---|
+| `fs_write <path>` | 1: the full file (overwrites) |
+| `fs_append <path>` | 1: text added to the end |
+| `fs_patch <path>` | 2: exact old text, new text |
+| `fs_insert_after <path>` | 2: exact anchor text, text to insert |
+| `fs_patch_lines <path> <start> <end>` | 1: replacement lines |
+| `fs_diff <a> <b>` | none (read-only) |
+
+Every change keeps the previous version in `runtime/backups/fs/` (gitignored) and names it in the result. The old OLD/NEW/END angle-bracket markers are gone. The design came from Fred's own answers. `fs_append` and `fs_insert_after` are granted to her in `user_skill_permissions` (Access tile).

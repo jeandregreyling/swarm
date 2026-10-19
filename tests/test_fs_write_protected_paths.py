@@ -7,8 +7,10 @@ from fridays import skills
 def test_write_skills_refuse_protected_paths(rel):
     for fn, args in (
         (skills._skill_fs_write, f'{rel} hello'),
-        (skills._skill_fs_patch, f'{rel} <<<OLD>>>a<<<NEW>>>b'),
-        (skills._skill_fs_patch_lines, f'{rel} 1 1\n<<<NEW>>>\nx'),
+        (skills._skill_fs_append, f'{rel}\n```\nx\n```'),
+        (skills._skill_fs_insert_after, f'{rel}\n```\na\n```\n```\nb\n```'),
+        (skills._skill_fs_patch, f'{rel}\n```\na\n```\n```\nb\n```'),
+        (skills._skill_fs_patch_lines, f'{rel} 1 1\n```\nx\n```'),
     ):
         ok, msg = fn(args, 'fred')
         assert ok is False and msg.startswith('Refused'), (fn.__name__, rel, msg)

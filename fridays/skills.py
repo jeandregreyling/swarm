@@ -177,22 +177,22 @@ REGISTRY = {
         'example': 'SKILL fs_readonly grep frontend/blueprints/chat.py 900',
     },
     'fs_write': {
-        'description': 'Write (overwrite) any file within the swarm repo. Creates parent dirs as needed.',
+        'description': 'Write (overwrite) a whole file within the swarm repo. Creates parent dirs as needed; the old version is backed up automatically.',
         'trust_level': 2,
-        'usage': 'SKILL fs_write <path> <content>   (multi-line: put <<<NEW>>> on the next line, the full file, then <<<END>>> on its own line)',
-        'example': 'SKILL fs_write sandpits/fred/notes.md\n<<<NEW>>>\n# Notes\n\nline two\n<<<END>>>',
+        'usage': 'SKILL fs_write <path>   then the FULL file in a ``` fenced block on the next lines',
+        'example': 'SKILL fs_write sandpits/fred/notes.md\n```\n# Notes\n\nline two\n```',
     },
     'fs_patch': {
         'description': 'Replace an exact string in a file (first occurrence). Use fs_patch_lines instead when you have line numbers.',
         'trust_level': 2,
-        'usage': 'SKILL fs_patch <path> <<<OLD>>>exact old text<<<NEW>>>replacement text',
-        'example': 'SKILL fs_patch utils/config.py <<<OLD>>>TEN_MODEL = \'gpt-4.1\'<<<NEW>>>TEN_MODEL = \'gpt-4.1-mini\'',
+        'usage': 'SKILL fs_patch <path>   then two ``` fenced blocks: the exact old text, then the replacement (labels ```old and ```new are optional)',
+        'example': 'SKILL fs_patch utils/config.py\n```old\nTEN_MODEL = \'gpt-4.1\'\n```\n```new\nTEN_MODEL = \'gpt-4.1-mini\'\n```',
     },
     'fs_patch_lines': {
         'description': 'Replace a line range in a file by line numbers. PREFERRED over fs_patch — no exact-match fragility. Read with fs_readonly lines first to get line numbers, then replace that range.',
         'trust_level': 2,
-        'usage': 'SKILL fs_patch_lines <path> <start_line> <end_line>\n<<<NEW>>>\nreplacement content',
-        'example': 'SKILL fs_patch_lines frontend/static/js/views/fridays.js 9 41\n<<<NEW>>>\n  function _fetchAndRenderTemp() {\n    // new body\n  }',
+        'usage': 'SKILL fs_patch_lines <path> <start_line> <end_line>   then the replacement lines in a ``` fenced block',
+        'example': 'SKILL fs_patch_lines frontend/static/js/views/fridays.js 9 41\n```\n  function _fetchAndRenderTemp() {\n    // new body\n  }\n```',
     },
     'knowledge_search': {
         'description': 'Search the consultant knowledge library (SAP HCM, ABAP, emails, PDFs, SAP notes).',
@@ -206,6 +206,24 @@ REGISTRY = {
             'usage': 'SKILL ui_css_edit_checklist',
             'example': 'SKILL ui_css_edit_checklist',
         },
+    'fs_append': {
+        'description': 'Add content to the END of a file without touching the rest. Creates the file if missing.',
+        'trust_level': 2,
+        'usage': 'SKILL fs_append <path>   then the text to add in a ``` fenced block',
+        'example': 'SKILL fs_append sandpits/fred/notes.md\n```\n- another line\n```',
+    },
+    'fs_insert_after': {
+        'description': 'Insert text right after an exact anchor text (first occurrence) in a file.',
+        'trust_level': 2,
+        'usage': 'SKILL fs_insert_after <path>   then two ``` blocks: the exact anchor text, then the text to insert after it',
+        'example': 'SKILL fs_insert_after sandpits/fred/notes.md\n```\n## Roles\n```\n```\n- Fred: the one working agent\n```',
+    },
+    'fs_diff': {
+        'description': 'Show what differs between two files (read-only unified diff). Every write also keeps a backup of the old file, shown in the result.',
+        'trust_level': 0,
+        'usage': 'SKILL fs_diff <path_a> <path_b>',
+        'example': 'SKILL fs_diff runtime/backups/fs/20261019-120000__sandpits_fred_notes.md sandpits/fred/notes.md',
+    },
     'fs_verify': {
         'description': 'Syntax-check a Python or JavaScript file after patching. ALWAYS run this after every fs_patch or fs_patch_lines call.',
         'trust_level': 0,
@@ -346,7 +364,10 @@ REGISTRY = {
 # ── Logging ───────────────────────────────────────────────────────────────────
 
 # Skills that should create a work_proposal entry when they succeed
-_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_patch', 'fs_patch_lines'}
+# Skills whose content follows the skill line in ``` fenced blocks, and how many blocks each takes.
+FENCED_BODY_SKILLS = {'fs_write': 1, 'fs_append': 1, 'fs_patch_lines': 1, 'fs_patch': 2, 'fs_insert_after': 2}
+_FENCE_BODY_SKILLS = FENCED_BODY_SKILLS
+_PROPOSAL_SKILLS = {'file_write', 'shell', 'schedule', 'fs_write', 'fs_append', 'fs_insert_after', 'fs_patch', 'fs_patch_lines'}
 
 # Shell commands at this trust level or below are pure read-only inspections
 # (pwd, ls, ps, df, free, cat, grep, etc.). Logging every one of them as a
@@ -417,8 +438,8 @@ def _extract_changed_path(skill_name, args):
     """Extract the file path from a write-type skill's args string."""
     try:
         raw = (args or '').strip()
-        if skill_name in ('fs_patch', 'fs_patch_lines', 'fs_write'):
-            # Path is always the first token before any space or <<<
+        if skill_name in _FENCE_BODY_SKILLS:
+            # Path is always the first token before any space
             first = re.split(r'[\s<]', raw)[0].strip()
             return first if first else None
         if skill_name in ('file_write',):
@@ -1274,29 +1295,91 @@ def _skill_fs_verify(args, agent, **_):
         return False, f'No syntax checker for {suffix} files (supported: .py, .js)'
 
 
-_FS_WRITE_WRAPPER_RE = re.compile(r'^\s*(?:<<<(?:NEW|OLD|END)>>>|```[\w-]*)\s*$')
+_FENCE_OPEN_RE = re.compile(r'^\s{0,3}(`{3,})([\w+.-]*)\s*$')
+
+
+def read_fenced_blocks(lines, start, max_blocks=2):
+    """Read consecutive ``` fenced blocks beginning at lines[start] (blank lines between are skipped).
+
+    A fence closes on a bare line of backticks at least as long as the opener. Inside a block, a
+    fence with a language tag (```python) opens a nested block, so markdown files can be written as-is.
+    Returns (blocks, next_index) where blocks is a list of (label, text).
+    """
+    blocks = []
+    i = start
+    n = len(lines)
+    while len(blocks) < max_blocks:
+        j = i
+        while j < n and not lines[j].strip():
+            j += 1
+        m = _FENCE_OPEN_RE.match(lines[j]) if j < n else None
+        if not m:
+            break
+        ticks, label = len(m.group(1)), m.group(2).lower()
+        body, depth, k = [], 0, j + 1
+        closed = False
+        while k < n:
+            ln = lines[k]
+            bare = re.match(r'^\s{0,3}(`{3,})\s*$', ln)
+            tagged = _FENCE_OPEN_RE.match(ln)
+            if bare and len(bare.group(1)) >= ticks:
+                if depth == 0:
+                    closed = True
+                    k += 1
+                    break
+                depth -= 1
+            elif tagged and tagged.group(2) and len(tagged.group(1)) == ticks:
+                depth += 1
+            body.append(ln)
+            k += 1
+        if not closed:
+            break
+        blocks.append((label, '\n'.join(body)))
+        i = k
+    return blocks, i
+
+
+def split_head_and_blocks(args, max_blocks):
+    """Split skill args into (head line, fenced blocks, inline remainder).
+
+    Args look like: '<head>\n```\n<content>\n```'. The remainder is whatever follows the head
+    on the same line when no fence is used, so one-line writes still work.
+    """
+    raw = str(args or '')
+    head, _, rest = raw.partition('\n')
+    blocks, _ = read_fenced_blocks(rest.split('\n'), 0, max_blocks=max_blocks)
+    return head.strip(), blocks
+
+
 _FS_WRITE_LINENO_RE = re.compile(r'^[ ]{0,4}\d{1,5}(?:  |$)')
 
 
 def _clean_fs_write_content(content):
-    """Drop patch markers, code fences and fs_readonly line numbers pasted into fs_write content."""
-    lines = str(content).split('\n')
-    body = [l for l in lines if not _FS_WRITE_WRAPPER_RE.match(l)]
-    non_empty = [l for l in body if l.strip()]
+    """Strip fs_readonly line-number prefixes if the model pasted them into the content."""
+    text = str(content)
+    non_empty = [l for l in text.split('\n') if l.strip()]
     if non_empty and all(_FS_WRITE_LINENO_RE.match(l) for l in non_empty):
-        body = [_FS_WRITE_LINENO_RE.sub('', l, count=1) for l in body]
-    return '\n'.join(body).strip('\n') + ('\n' if str(content).endswith('\n') else '')
+        text = '\n'.join(_FS_WRITE_LINENO_RE.sub('', l, count=1) for l in text.split('\n'))
+    return text
 
 
 def _skill_fs_write(args, agent, **_):
-    """Write (overwrite) any file within the swarm repo."""
+    """Write (overwrite) a file. Content is a fenced block after the path line, or inline after the path."""
     raw = (args or '').strip()
+    usage = 'Usage: SKILL fs_write <path>  then the full file in a ``` fenced block'
     if not raw:
-        return False, 'Usage: SKILL fs_write <path> <content>'
-    parts = raw.split(None, 1)
-    if len(parts) < 2:
-        return False, 'Usage: SKILL fs_write <path> <content>'
-    rel, content = parts[0], _clean_fs_write_content(parts[1])
+        return False, usage
+    head, blocks = split_head_and_blocks(raw, 1)
+    if blocks:
+        rel, content = head.split(None, 1)[0] if head else '', blocks[0][1]
+    else:
+        parts = raw.split(None, 1)
+        if len(parts) < 2:
+            return False, usage
+        rel, content = parts[0], parts[1]
+    if not rel:
+        return False, usage
+    content = _clean_fs_write_content(content)
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'
@@ -1304,9 +1387,10 @@ def _skill_fs_write(args, agent, **_):
     if refusal:
         return False, refusal
     try:
+        backup = _fs_backup(target, rel)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding='utf-8')
-        return True, f'Written {len(content)} chars to {rel}'
+        return True, f'Written {len(content)} chars to {rel}' + (f' (backup: {backup})' if backup else '')
     except Exception as e:
         return False, f'fs_write failed: {e}'
 
@@ -1318,7 +1402,7 @@ def _strip_fs_readonly_line_numbers(text):
     """Strip line-number prefixes produced by 'SKILL fs_readonly lines'.
 
     fs_readonly lines formats output as '{lineno:5d}  {content}'.
-    Agents sometimes copy that output directly into <<<OLD>>>/<<<<NEW>>> blocks.
+    Agents sometimes copy that output directly into their replacement blocks.
     Strip the prefix only when ALL non-empty lines match the pattern so we
     don't corrupt content that legitimately starts with a number.
     """
@@ -1331,16 +1415,108 @@ def _strip_fs_readonly_line_numbers(text):
     return text
 
 
+def _fs_backup(target, rel):
+    """Keep a copy of a file before it is changed. Returns the backup path (repo-relative) or ''."""
+    try:
+        if not target.exists() or not target.is_file():
+            return ''
+        import shutil
+        from datetime import datetime
+        dest_dir = _fs_safe_path('runtime/backups/fs')
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        flat = str(rel).strip('/').replace('/', '_')
+        dest = dest_dir / f'{datetime.now().strftime("%Y%m%d-%H%M%S-%f")}__{flat}'
+        shutil.copy2(target, dest)
+        return f'runtime/backups/fs/{dest.name}'
+    except Exception:
+        return ''
+
+
+def _skill_fs_append(args, agent, **_):
+    """Add fenced content to the end of a file."""
+    head, blocks = split_head_and_blocks(args, 1)
+    if not head or len(blocks) != 1:
+        return False, 'Usage: SKILL fs_append <path>  then the text to add in a ``` fenced block'
+    rel = head.split(None, 1)[0]
+    target = _fs_safe_path(rel)
+    if not target:
+        return False, f'Path outside swarm root or invalid: {rel}'
+    refusal = _fs_write_refusal(target, rel)
+    if refusal:
+        return False, refusal
+    try:
+        backup = _fs_backup(target, rel)
+        existing = target.read_text(encoding='utf-8', errors='replace') if target.exists() else ''
+        add = _clean_fs_write_content(blocks[0][1])
+        sep = '' if not existing or existing.endswith('\n') else '\n'
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(existing + sep + add + '\n', encoding='utf-8')
+        return True, f'Appended {len(add)} chars to {rel}' + (f' (backup: {backup})' if backup else '')
+    except Exception as e:
+        return False, f'fs_append failed: {e}'
+
+
+def _skill_fs_insert_after(args, agent, **_):
+    """Insert fenced text right after the first occurrence of fenced anchor text."""
+    head, blocks = split_head_and_blocks(args, 2)
+    if not head or len(blocks) != 2:
+        return False, 'Usage: SKILL fs_insert_after <path>  then two ``` blocks: the exact anchor text, then the text to insert after it'
+    rel = head.split(None, 1)[0]
+    target = _fs_safe_path(rel)
+    if not target:
+        return False, f'Path outside swarm root or invalid: {rel}'
+    refusal = _fs_write_refusal(target, rel)
+    if refusal:
+        return False, refusal
+    if not target.exists() or not target.is_file():
+        return False, f'File not found: {rel}'
+    anchor, add = blocks[0][1], blocks[1][1]
+    try:
+        original = target.read_text(encoding='utf-8', errors='replace')
+        pos = original.find(anchor)
+        if not anchor or pos < 0:
+            return False, f'Anchor text not found in {rel}. No changes made.'
+        end = pos + len(anchor)
+        if original[end:end + 1] == '\n':
+            end += 1
+            add = add + '\n'
+        else:
+            add = '\n' + add
+        backup = _fs_backup(target, rel)
+        target.write_text(original[:end] + add + original[end:], encoding='utf-8')
+        return True, f'Inserted {len(add)} chars after the anchor in {rel}' + (f' (backup: {backup})' if backup else '')
+    except Exception as e:
+        return False, f'fs_insert_after failed: {e}'
+
+
+def _skill_fs_diff(args, agent, **_):
+    """Read-only unified diff of two files inside the repo."""
+    parts = (args or '').split()
+    if len(parts) != 2:
+        return False, 'Usage: SKILL fs_diff <path_a> <path_b>'
+    paths = [_fs_safe_path(x) for x in parts]
+    if not all(paths):
+        return False, 'Path outside swarm root or invalid.'
+    for rel, pth in zip(parts, paths):
+        if not pth.exists() or not pth.is_file():
+            return False, f'File not found: {rel}'
+    import difflib
+    a, b = (p.read_text(encoding='utf-8', errors='replace').splitlines() for p in paths)
+    out = '\n'.join(difflib.unified_diff(a, b, parts[0], parts[1], lineterm='', n=2))
+    if not out:
+        return True, 'Files are identical.'
+    return True, out[:4000] + ('\n... (truncated)' if len(out) > 4000 else '')
+
+
 def _skill_fs_patch(args, agent, **_):
     """Replace first occurrence of an exact string in a file."""
-    raw = (args or '').strip()
-    if not raw or '<<<NEW>>>' not in raw:
-        return False, 'Usage: SKILL fs_patch <path> <<<OLD>>>old text<<<NEW>>>new text'
-    path_and_rest, new_text = raw.split('<<<NEW>>>', 1)
-    if '<<<OLD>>>' not in path_and_rest:
-        return False, 'Missing <<<OLD>>> marker'
-    path_part, old_text = path_and_rest.split('<<<OLD>>>', 1)
-    rel = path_part.strip()
+    usage = 'Usage: SKILL fs_patch <path>  then two ``` blocks: the exact old text, then the new text'
+    head, blocks = split_head_and_blocks(args, 2)
+    if not head or len(blocks) != 2:
+        return False, usage
+    rel = head.split(None, 1)[0]
+    by_label = {lab: txt for lab, txt in blocks if lab in ('old', 'new')}
+    old_text, new_text = (by_label['old'], by_label['new']) if len(by_label) == 2 else (blocks[0][1], blocks[1][1])
     target = _fs_safe_path(rel)
     if not target:
         return False, f'Path outside swarm root or invalid: {rel}'
@@ -1360,8 +1536,9 @@ def _skill_fs_patch(args, agent, **_):
         if old_text not in original:
             return False, f'Old text not found in {rel}. No changes made.'
         patched = original.replace(old_text, effective_new, 1)
+        backup = _fs_backup(target, rel)
         target.write_text(patched, encoding='utf-8')
-        return True, f'Patched {rel}: replaced {len(old_text)} chars with {len(effective_new)} chars'
+        return True, f'Patched {rel}: replaced {len(old_text)} chars with {len(effective_new)} chars' + (f' (backup: {backup})' if backup else '')
     except Exception as e:
         return False, f'fs_patch failed: {e}'
 
@@ -1375,21 +1552,18 @@ def _skill_fs_patch_lines(args, agent, **_):
 
     Usage:
         SKILL fs_patch_lines <path> <start_line> <end_line>
-        <<<NEW>>>
+        ```
         replacement content here
+        ```
     """
-    raw = (args or '').strip()
-    # Split on <<<NEW>>> (case-insensitive)
-    split = re.split(r'<<<NEW>>>', raw, maxsplit=1, flags=re.IGNORECASE)
-    if len(split) != 2:
+    head, blocks = split_head_and_blocks(args, 1)
+    parts = head.split()
+    if len(parts) < 3 or len(blocks) != 1:
         return False, (
             'Usage: SKILL fs_patch_lines <path> <start_line> <end_line>\n'
-            '<<<NEW>>>\nreplacement content'
+            'then the replacement lines in a ``` fenced block'
         )
-    head, new_text = split
-    parts = head.strip().split()
-    if len(parts) < 3:
-        return False, 'Expected: SKILL fs_patch_lines <path> <start_line> <end_line>'
+    new_text = blocks[0][1]
     rel = parts[0]
     try:
         start = int(parts[1])
@@ -1415,11 +1589,8 @@ def _skill_fs_patch_lines(args, agent, **_):
             return False, f'start_line {start} beyond end of file ({total} lines)'
         end = min(end, total)
 
-        # Strip line-number prefixes if agent copied fs_readonly lines output into <<<NEW>>>
+        # Strip line-number prefixes if agent copied fs_readonly lines output into the block
         new_text = _strip_fs_readonly_line_numbers(new_text)
-
-        # Strip the leading newline that follows <<<NEW>>> on the same or next line
-        new_text = new_text.lstrip('\n')
 
         # Ensure replacement ends with newline (preserves file structure)
         if new_text and not new_text.endswith('\n'):
@@ -1429,12 +1600,14 @@ def _skill_fs_patch_lines(args, agent, **_):
         after  = ''.join(file_lines[end:])
         patched = before + new_text + after
 
+        backup = _fs_backup(target, rel)
         target.write_text(patched, encoding='utf-8')
         old_count = end - start + 1
         new_count = len(new_text.splitlines())
         return True, (
             f'Patched {rel}: replaced lines {start}–{end} '
             f'({old_count} lines → {new_count} lines)'
+            + (f' (backup: {backup})' if backup else '')
         )
     except Exception as e:
         return False, f'fs_patch_lines failed: {e}'
@@ -2040,6 +2213,9 @@ _HANDLERS = {
     'fs_write':            _skill_fs_write,
     'fs_patch':            _skill_fs_patch,
     'fs_patch_lines':      _skill_fs_patch_lines,
+    'fs_append':           _skill_fs_append,
+    'fs_insert_after':     _skill_fs_insert_after,
+    'fs_diff':             _skill_fs_diff,
     'fs_verify':           _skill_fs_verify,
     'knowledge_search': _skill_knowledge_search,
     'ui_css_edit_checklist': _skill_ui_css_edit_checklist,
@@ -2262,7 +2438,7 @@ def call(skill_name, args='', agent='ghost', source_conv_id=None):
             return success, output
         # Tracer: capture git diff for file-changing skills
         diff = ''
-        _PATCH_SKILLS = {'fs_patch', 'fs_patch_lines', 'fs_write', 'file_write'}
+        _PATCH_SKILLS = {'fs_patch', 'fs_patch_lines', 'fs_write', 'fs_append', 'fs_insert_after', 'file_write'}
         if skill_name in _PATCH_SKILLS:
             rel = _extract_changed_path(skill_name, args)
             if rel:

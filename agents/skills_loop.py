@@ -124,12 +124,14 @@ def _extract_read_only_skill_cmds(text):
 def _extract_skill_cmds(text):
     """
     Parse SKILL / /SKILL commands from model output.
-    Handles multi-line skill blocks so that fs_patch with multi-line
-    <<<OLD>>>...<<<NEW>>>... delimiters is captured as a single command.
+
+    A skill is one line. File skills (fs_write, fs_append, fs_patch, fs_insert_after, fs_patch_lines) are followed by
+    ``` fenced blocks holding the content; the args handed to the skill are the head line
+    plus those fenced lines, which the skill itself parses.
     Returns list of (skill_name, skill_args) tuples, capped at _MAX_SKILL_CMDS_PER_PASS.
     """
     try:
-        from fridays.skills import parse_skill_command
+        from fridays.skills import parse_skill_command, read_fenced_blocks, FENCED_BODY_SKILLS
     except Exception:
         return []
 
@@ -139,105 +141,20 @@ def _extract_skill_cmds(text):
 
     while i < len(lines) and len(cmds) < _MAX_SKILL_CMDS_PER_PASS:
         line = lines[i].strip()
-        is_skill = line.upper().startswith('SKILL ') or line.upper().startswith('/SKILL ')
-        if not is_skill:
+        if not (line.upper().startswith('SKILL ') or line.upper().startswith('/SKILL ')):
             i += 1
             continue
-
-        # Collect continuation lines for multi-line skills (e.g. fs_patch blocks).
-        # Rules:
-        # - Inside <<<OLD>>> content: blank lines are legitimate code and must NOT
-        #   terminate collection.
-        # - Inside <<<NEW>>> content: same for blank lines, BUT stop if we hit an
-        #   unindented line that starts with an uppercase letter followed by a space
-        #   — that pattern is prose commentary the model writes between skill calls,
-        #   never valid code at column 0 (JS is always indented; CSS selectors start
-        #   with '.', '#', '@', or lowercase).
-        # - The next SKILL command always terminates unconditionally.
-        collected = [line]
         i += 1
-        # Read-only skills are always one line; never absorb echoed prompt text after them.
-        if line.split(None, 2)[1:2] and line.split(None, 2)[1].lower() == 'fs_readonly':
-            full = line[7:].strip() if line.upper().startswith('/SKILL ') else line
-            parsed = parse_skill_command(full if full.upper().startswith('SKILL ') else 'SKILL ' + full)
-            if parsed and parsed[0] != 'list':
-                cmds.append(parsed)
-            continue
-        in_patch_block = False  # True once we've seen <<<OLD>>> or <<<NEW>>>
-        in_new_block = False    # True once we've seen <<<NEW>>> (enables prose guard)
-        is_fs_write = line.split(None, 2)[1:2] == ['fs_write'] or line.lower().startswith('/skill fs_write')
-        if is_fs_write and '<<<NEW>>>' in line.upper():
-            in_patch_block = True
-
-        while i < len(lines):
-            nxt = lines[i]
-            nxt_stripped = nxt.strip()
-
-            # Detect entry into patch block delimiters
-            nxt_up = nxt_stripped.upper()
-            if is_fs_write and nxt_up == '<<<END>>>':
-                collected.append(nxt)
-                i += 1
-                break
-            if is_fs_write and nxt_up == '<<<NEW>>>':
-                in_patch_block = True
-                collected.append(nxt)
-                i += 1
-                continue
-            if '<<<OLD>>>' in nxt_up:
-                in_patch_block = True
-            if '<<<NEW>>>' in nxt_up:
-                in_patch_block = True
-                in_new_block = True
-
-            # A following SKILL command always ends the current block
-            if nxt_up.startswith('SKILL ') or nxt_up.startswith('/SKILL '):
-                break
-
-            # After <<<NEW>>>: stop on unindented prose commentary.
-            # Rules — break if the line at column 0 looks like prose, not code:
-            #   • Uppercase letter + space  ("Now I'll update...")
-            #   • Numbered list item        ("2. **Verifying the Patch**:")
-            #   • Bold markdown             ("**Note:**")
-            #   • Markdown header           ("### Summary")
-            # Valid code is never unindented prose: Python/JS is always indented;
-            # CSS selectors start with '.', '#', '@', or lowercase.
-            if in_new_block and nxt and not nxt[0].isspace():
-                c = nxt[0]
-                # Uppercase start + space
-                if c.isupper() and len(nxt) > 1 and nxt[1] == ' ':
-                    break
-                # Numbered list: "1. " / "2. " etc.
-                if c.isdigit() and len(nxt) > 2 and nxt[1] == '.' and nxt[2] == ' ':
-                    break
-                # Bold / italic markdown: "**" or "*word"
-                if nxt.startswith('**') or (c == '*' and len(nxt) > 1 and nxt[1] != ' '):
-                    break
-                # Markdown header: "# " / "## "
-                if c == '#' and len(nxt) > 1 and nxt[1] in ('# ', ' '):
-                    break
-
-            # Blank lines end the block only when we're NOT inside a patch block
-            if not in_patch_block and not nxt_stripped:
-                break
-
-            # A closing code fence is never part of a skill's arguments
-            if not in_patch_block and nxt_stripped.startswith('```'):
-                break
-
-            collected.append(nxt)
-            i += 1
-
-        full = '\n'.join(collected)
-        if full.strip().upper().startswith('/SKILL '):
-            full = 'SKILL ' + full.strip()[7:]
-
-        parsed = parse_skill_command(full.strip())
-        if not parsed:
+        full = 'SKILL ' + line[7:].strip() if line.upper().startswith('/SKILL ') else line
+        parsed = parse_skill_command(full)
+        if not parsed or parsed[0] == 'list':
             continue
         skill_name, skill_args = parsed
-        if skill_name == 'list':
-            continue
+        if skill_name in FENCED_BODY_SKILLS:
+            blocks, nxt = read_fenced_blocks(lines, i, max_blocks=FENCED_BODY_SKILLS[skill_name])
+            if blocks:
+                skill_args = skill_args.strip() + '\n' + '\n'.join(lines[i:nxt]).strip('\n')
+                i = nxt
         cmds.append((skill_name, skill_args))
 
     return cmds
@@ -750,9 +667,8 @@ def run_skill_loop(
                 'Skill outputs below.\n'
                 'IMPORTANT: If the original request was a code/file change and you now have '
                 'enough information, emit SKILL fs_patch NOW to apply it. '
-                'The <<<OLD>>> text MUST be copied EXACTLY character-for-character from the '
-                'skill output — every line in the block including background, border, etc. '
-                'Do NOT abbreviate or reconstruct OLD text — copy it verbatim.\n'
+                'The old-text block MUST be copied EXACTLY character-for-character from the '
+                'skill output. Do NOT abbreviate or reconstruct it — copy it verbatim.\n'
                 'If you just applied a patch, confirm with SKILL fs_readonly lines.\n'
                 'Only produce a final text answer when all changes are done and verified.\n\n'
                 + skill_results
