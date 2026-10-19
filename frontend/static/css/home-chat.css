@@ -79,13 +79,15 @@
 /* Legacy standalone resizer is hidden — kept for back-compat selectors only. */
 .home-chat-resizer.home-chat-resizer-legacy { display: none !important; }
 
-/* Prominent mode — chat first, takes more space */
+/* Prominent mode — chat first, takes more space.
+   The taskbar floats over the bottom-left of the page (position: fixed), so the chat keeps a
+   clearance strip under it; without it the taskbar covers the input row. */
 .home-chat-prominent {
   flex: 1;
   min-height: 380px;
   max-height: calc(100vh - 280px);
   border-bottom: none !important;
-  margin-bottom: 0 !important;
+  margin-bottom: var(--taskbar-clearance, 64px) !important;
   padding-bottom: 0 !important;
 }
 
