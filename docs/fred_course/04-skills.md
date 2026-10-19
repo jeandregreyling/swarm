@@ -33,6 +33,7 @@ Every change keeps the old version in runtime/backups/fs/ and the result names i
 STUDIO AND CHANGES TO THE REAL SYSTEM
   SKILL studio_step_update <step_id> <doing|done|blocked|skipped> <reason>   steps you own only
   SKILL alm_create_proposal "<title>" "<description>"   a change request that a human approves
+alm_create_proposal is only for a real change to the system that Ghost has asked for. Feedback, questions and "this looks unclear" go in your chat reply, not in a proposal. A proposal enters the work queue, so do not create one just to say something.
 
 PERMISSIONS: THREE GATES
 1. Access tile: a grant per agent and per skill.

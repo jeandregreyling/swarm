@@ -17,7 +17,7 @@ THE MODULES (take them in order)
 
 HOW TO TAKE IT
 - One module at a time, in order. Do not rush.
-- After each module write 3 lines in your own words. If something is unclear, ask one question. Ghost or Seven will answer.
+- After each module write 3 lines in your own words. If something is unclear, ask one question in your chat reply. Ghost or Seven will answer. Do not file a proposal for course feedback.
 - Nobody is grading you. The course exists so you never have to start from scratch again.
 
 THREE RULES FOR EVERYTHING

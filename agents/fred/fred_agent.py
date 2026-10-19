@@ -123,6 +123,7 @@ def chat(message, conversation_history=None, stage_cb=None):
             messages=messages,
             emit_fn=_emit,
             max_passes=5,
+            mid_loop_nudges=0,
             nudge_if_no_skills=message_likely_needs_skills(latest_user_text(message)),
         )
     except Exception as e:

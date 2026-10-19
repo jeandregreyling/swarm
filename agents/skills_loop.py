@@ -350,6 +350,7 @@ def run_skill_loop(
     nudge_if_no_skills=False,
     source_conv_id=None,
     allowed_skill_names=None,
+    mid_loop_nudges=2,
 ):
     """
     Execute `call_fn(messages)` with SKILL command interception and re-prompting.
@@ -565,7 +566,8 @@ def run_skill_loop(
     pass_num = 0
     _all_results = []
     _look_only = _asks_only_to_look(messages)
-    _mid_loop_nudges_remaining = 0 if _look_only else 2  # allow up to 2 mid-loop nudges per request
+    # Agents that finish in prose after reading (Fred) pass 0: the nudge leaves out skill results and invites stray greps.
+    _mid_loop_nudges_remaining = 0 if _look_only else max(0, int(mid_loop_nudges))
 
     for _pass in range(max_passes):
         skill_cmds = _extract_skill_cmds(answer)

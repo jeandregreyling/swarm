@@ -315,3 +315,25 @@ def test_fence_with_text_on_the_opening_line_is_accepted():
     assert read_fenced_blocks(['```done```'], 0, 1)[0] == [('', 'done')]
     assert read_fenced_blocks(['```python', 'x = 1', '```'], 0, 1)[0] == [('python', 'x = 1')]
     assert read_fenced_blocks(['```never closed'], 0, 1)[0] == []
+
+
+def test_mid_loop_nudge_can_be_switched_off_for_prose_finishers(monkeypatch):
+    monkeypatch.setattr(sl, '_execute_skill_cmds', lambda cmds, *a, **k: '[skill:fs_readonly] OK\nfile text')
+
+    def run(nudges):
+        prompts = []
+        replies = iter(['SKILL fs_readonly read sandpits/fred/x.md', 'The file says: file text.', 'SKILL fs_readonly grep x y', 'done'])
+
+        def call(msgs):
+            prompts.append(msgs[-1]['content'])
+            return next(replies, 'done'), 1
+
+        out, _ = sl.run_skill_loop('fred', call, _user('fix the typo in sandpits/fred/x.md'), lambda t: None,
+                                   mid_loop_nudges=nudges)
+        return out, prompts
+
+    out, prompts = run(0)
+    assert not any(p == sl._SKILL_NUDGE for p in prompts)
+    assert 'file text' in out
+    _, prompts = run(2)
+    assert any(p == sl._SKILL_NUDGE for p in prompts)
