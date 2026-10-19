@@ -675,16 +675,40 @@ def _skill_memory_search(args, agent, **_):
         return False, 'Usage: SKILL memory_search <query>'
     try:
         from database import search_memory
-        results = search_memory(query=query, min_importance=3)
-        if not results:
-            return True, 'No matching memories found.'
         lines = []
-        for row in results[:8]:
+        # The caller's own memory first, then their mind.db notes, then the shared pool.
+        try:
+            from database import get_agent_memory
+            for row in (get_agent_memory(agent, query=query, limit=4) or []):
+                r = dict(row)
+                lines.append(f'[own memory] {str(r.get("subject", ""))[:80]}: {str(r.get("content", ""))[:160]}')
+        except Exception:
+            pass
+        if str(agent or '').lower() == 'fred':
+            try:
+                from utils.thread_memory import _conn as _mind_conn
+                conn = _mind_conn()
+                try:
+                    words = [w for w in query.lower().split() if len(w) >= 3][:4] or [query.lower()]
+                    clause = ' OR '.join('LOWER(text) LIKE ?' for _ in words)
+                    rows = conn.execute(
+                        f'SELECT kind, text FROM notes WHERE {clause} ORDER BY id DESC LIMIT 4',
+                        [f'%{w}%' for w in words],
+                    ).fetchall()
+                finally:
+                    conn.close()
+                for row in rows:
+                    lines.append(f'[note:{row["kind"]}] {str(row["text"])[:240]}')
+            except Exception:
+                pass
+        for row in (search_memory(query=query, min_importance=3) or [])[:6]:
             r = dict(row)
             lines.append(
                 f'[{r.get("agent", "?")} imp:{r.get("importance", "?")}] '
                 f'{r.get("subject", "")}: {str(r.get("content", ""))[:120]}'
             )
+        if not lines:
+            return True, 'No matching memories found. Try SKILL swarm_knowledge_search <query> for the Knowledge Center.'
         return True, '\n'.join(lines)
     except Exception as e:
         return False, f'Memory search error: {e}'

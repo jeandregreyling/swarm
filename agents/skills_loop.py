@@ -62,6 +62,8 @@ _READ_ONLY_TASK_RE = re.compile(
     re.IGNORECASE,
 )
 _READ_ONLY_TASK_SKILLS = {'fs_readonly'}
+# Pure lookups that never change anything, so read-only turns may still use them.
+_READ_ONLY_LOOKUP_SKILLS = {'memory_search', 'swarm_knowledge_search', 'knowledge_search'}
 _SKILL_NUDGE = (
     'Your response did not contain any SKILL commands.\n'
     'Only emit a SKILL command if the operator explicitly requested an action that needs it.\n'
@@ -319,7 +321,11 @@ def _is_duplicate_proposal(agent_name, source_conv_id, skill_args):
 
 def _is_level0_shell(skill_name, skill_args, allowed_skill_names):
     """Read-only turns may still run whitelisted level-0 shell commands (not when tools are off)."""
-    if skill_name != 'shell' or not allowed_skill_names:
+    if not allowed_skill_names:
+        return False
+    if skill_name in _READ_ONLY_LOOKUP_SKILLS:
+        return True
+    if skill_name != 'shell':
         return False
     try:
         from fridays.shell_agent import _match_whitelist

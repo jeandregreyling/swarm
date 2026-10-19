@@ -204,3 +204,10 @@ def test_proposal_id_from_operator_message_is_not_flagged():
         max_passes=1,
     )
     assert '[verification]' not in answer
+
+
+def test_read_only_turn_allows_memory_and_knowledge_lookups():
+    from agents.skills_loop import _is_level0_shell
+    assert _is_level0_shell('memory_search', 'x', {'fs_readonly'})
+    assert _is_level0_shell('swarm_knowledge_search', 'x', {'fs_readonly'})
+    assert not _is_level0_shell('fs_write', 'x', {'fs_readonly'})
