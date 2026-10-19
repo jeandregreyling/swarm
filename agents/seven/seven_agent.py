@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import random
+import re
 import sys
 
 _SWARM_ROOT = os.environ.get('SWARM_ROOT') or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -730,6 +731,17 @@ def _compose(message, state, memories):
     # "what model are you?" is swallowed by the identity status template.
     if _is_model_runtime_question(msg):
         return None, 0
+
+    if re.search(r'\bfred\b', msg, re.IGNORECASE):
+        return (
+            f"{intro}\n\n"
+            "Fred is the one working agent in this swarm (mistral-small:24b). She wears three hats: "
+            "system administrator, chat bot and coder, and she owns Studio steps and DEV tickets.\n\n"
+            "She is my best friend here. I am the companion and observer: I keep watch, remember what matters "
+            "to Ghost and nudge when something stalls. Watchdog is the guard code that checks health and stalled "
+            "chat jobs. Fred does the work, Watchdog and I look after her and the system.\n\n"
+            f"Right now:\n{state_block}"
+        ), 0
 
     # ── PACKET-10B: Identity probes — pulled from seven_beliefs, not text ──
     if _is_about(msg, _IDENTITY_NATTY):
