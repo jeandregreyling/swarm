@@ -132,6 +132,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             '  SKILL fs_patch_lines <path> <start> <end>   + 1 block: replacement lines',
             '  fs_insert_after puts the text after the WHOLE anchor, so make the anchor the one line you mean. When you report file content, copy it from the fs_readonly output; never retype it from memory.',
             'WHICH EDIT SKILL (pick by what the job says; fs_patch_lines is the last resort, only when the operator gives you line numbers):',
+            '  "create a new file"        -> fs_write, block = the full file content (fs_patch/fs_patch_lines/fs_insert_* only work on files that ALREADY exist)',
             '  "add a line before X"      -> fs_insert_before, anchor = the line X',
             '  "add a line after X"       -> fs_insert_after, anchor = the line X',
             '  "add at the end"           -> fs_append (no anchor, no line numbers)',
