@@ -1501,7 +1501,10 @@ SKILLS (one per line):
 SKILL fs_readonly ls <directory>
 SKILL fs_readonly lines <file> <first line> <last line>
 SKILL fs_readonly grep <file> <text>
+SKILL fs_write <file>   (create a NEW file or overwrite one; the full content goes in a ``` fenced block after it)
+SKILL fs_append <file>   (add lines to the end of an existing file; content in a ``` fenced block)
 SKILL fs_patch_lines <file> <first line> <last line>   (then the replacement lines in a ``` fenced block)
+To create a file, always use fs_write — fs_patch_lines and fs_append fail on files that do not exist yet.
 SKILL alm_create_proposal "<title>" "<what you saw and what you suggest>"
 SKILL alm_self_approve <proposal_id>
 SKILL alm_complete <proposal_id>
