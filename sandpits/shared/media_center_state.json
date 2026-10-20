@@ -130,7 +130,16 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-1238017A74"
+      "studio_project_id": "P-D56D73B77E",
+      "synth_runs": [],
+      "media_refs": [],
+      "artifacts": [],
+      "routing": {
+        "music_agent": "",
+        "video_agent": "",
+        "swarm_node_id": "",
+        "handoff_mode": "local-first"
+      }
     },
     {
       "id": "media-5ab7b465",
@@ -261,7 +270,7 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-D764927F2B",
+      "studio_project_id": "P-33B1525AE5",
       "synth_runs": [],
       "media_refs": [],
       "artifacts": [],
@@ -410,7 +419,7 @@
         "swarm_node_id": "",
         "handoff_mode": "local-first"
       },
-      "studio_project_id": "P-2789D13AEE"
+      "studio_project_id": "P-5A3B926226"
     }
   ],
   "jobs": [
@@ -634,6 +643,6 @@
       ]
     }
   ],
-  "tracking_project_id": "P-6473326719",
-  "updated_at": "2026-10-19T22:50:13+00:00"
+  "tracking_project_id": "P-D32920017E",
+  "updated_at": "2026-10-20T15:13:25+00:00"
 }
