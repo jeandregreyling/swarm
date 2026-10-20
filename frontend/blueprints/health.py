@@ -5,7 +5,6 @@ GET /api/health returns a single JSON document combining:
   - blueprint load failures (from app config)
   - wishlist pillar summaries (cyber/financial/trading/business)
   - bullshit detector stamp + score
-  - learnings stats
   - composite stamp: GREEN if everything green, AMBER if pillars OK but
     detector amber, RED if detector red or any pillar errored.
 
@@ -26,14 +25,6 @@ def _detector_summary():
         return bullshit_detector.summary_for_seven()
     except Exception as exc:  # noqa: BLE001
         return {'ok': False, 'error': str(exc), 'stamp': 'UNKNOWN', 'score': 0}
-
-
-def _learnings_summary():
-    try:
-        from agents.seven import learnings
-        return learnings.stats()
-    except Exception as exc:  # noqa: BLE001
-        return {'ok': False, 'error': str(exc)}
 
 
 def _witness_summary():
@@ -98,7 +89,6 @@ def health_check():
     """Aggregated green/amber/red across the whole system."""
     detector = _detector_summary()
     pillars = _pillar_summaries()
-    learnings_block = _learnings_summary()
     witness_block = _witness_summary()
     failed_bps = current_app.config.get('FAILED_BLUEPRINTS') or []
     composite = _composite_stamp(
@@ -120,7 +110,6 @@ def health_check():
             'files_scanned': detector.get('files_scanned', 0),
         },
         'pillars': pillars,
-        'learnings': learnings_block,
         'witness': witness_block,
         'blueprints_failed': [{'name': n, 'error': e} for n, e in failed_bps],
     })

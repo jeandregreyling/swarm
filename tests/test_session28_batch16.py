@@ -65,7 +65,7 @@ def test_health_endpoint_response_shape(monkeypatch):
         assert 'build' in data and 'detector_stamp' in data['build']
         assert 'pillars' in data
         assert isinstance(data['pillars'], dict)
-        assert 'learnings' in data
+        assert 'witness' in data
         assert 'uptime_s' in data
 
 
