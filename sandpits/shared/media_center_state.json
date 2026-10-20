@@ -2,6 +2,137 @@
   "created_at": "2026-10-19T09:27:27+00:00",
   "projects": [
     {
+      "id": "media-6761cb37",
+      "name": "12345",
+      "medium": "audio-video",
+      "status": "draft",
+      "prompt": "12345",
+      "style": "",
+      "engine_mode": "local-first",
+      "duration_sec": 30,
+      "updated_at": "2026-10-20T15:10:20+00:00",
+      "timeline": {
+        "tempo_bpm": 120,
+        "time_signature": "4/4",
+        "lanes": [
+          {
+            "id": "lane-scenes",
+            "name": "Scenes / Sections",
+            "kind": "marker",
+            "role": "scene"
+          },
+          {
+            "id": "lane-music",
+            "name": "Music Stems",
+            "kind": "audio",
+            "role": "stem"
+          },
+          {
+            "id": "lane-synth",
+            "name": "Synth Takes",
+            "kind": "audio",
+            "role": "generated"
+          },
+          {
+            "id": "lane-references",
+            "name": "Reference Markers",
+            "kind": "marker",
+            "role": "reference"
+          },
+          {
+            "id": "lane-video",
+            "name": "Video / Cut Markers",
+            "kind": "video",
+            "role": "cut"
+          },
+          {
+            "id": "lane-captions",
+            "name": "Captions",
+            "kind": "caption",
+            "role": "text"
+          }
+        ],
+        "clips": [
+          {
+            "id": "clip-intro-scene",
+            "lane_id": "lane-scenes",
+            "name": "Intro section",
+            "kind": "marker",
+            "start_sec": 0,
+            "duration_sec": 8,
+            "source": "planned",
+            "prompt": "Set the emotional and visual premise.",
+            "status": "planned"
+          },
+          {
+            "id": "clip-intro-bed",
+            "lane_id": "lane-music",
+            "name": "Intro score bed",
+            "kind": "audio",
+            "start_sec": 0,
+            "duration_sec": 8,
+            "source": "planned",
+            "prompt": "Percussive pulse with luminous pads.",
+            "status": "planned"
+          },
+          {
+            "id": "clip-intro-visual",
+            "lane_id": "lane-video",
+            "name": "Intro visual pass",
+            "kind": "video",
+            "start_sec": 0,
+            "duration_sec": 8,
+            "source": "planned",
+            "prompt": "Fast-cut system visuals with bright UI motion.",
+            "status": "planned"
+          }
+        ]
+      },
+      "tracks": [
+        {
+          "id": "trk-score",
+          "name": "Score Bed",
+          "role": "music",
+          "model_hint": "musicgen-small"
+        },
+        {
+          "id": "trk-fx",
+          "name": "Texture / FX",
+          "role": "audio-design",
+          "model_hint": "stable-audio-open"
+        }
+      ],
+      "scenes": [
+        {
+          "id": "scn-1",
+          "name": "Intro",
+          "duration_sec": 8,
+          "goal": "Establish the mood and pulse."
+        },
+        {
+          "id": "scn-2",
+          "name": "Lift",
+          "duration_sec": 12,
+          "goal": "Build momentum for the main hook."
+        }
+      ],
+      "deliverables": [
+        {
+          "id": "dlv-1",
+          "type": "audio",
+          "format": "wav",
+          "target": "master stem"
+        },
+        {
+          "id": "dlv-2",
+          "type": "video",
+          "format": "mp4",
+          "target": "preview reel"
+        }
+      ],
+      "studio_project_id": "P-1238017A74"
+    },
+    {
       "id": "media-5ab7b465",
       "name": "12345",
       "medium": "audio-video",
@@ -130,7 +261,16 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-D764927F2B"
+      "studio_project_id": "P-D764927F2B",
+      "synth_runs": [],
+      "media_refs": [],
+      "artifacts": [],
+      "routing": {
+        "music_agent": "",
+        "video_agent": "",
+        "swarm_node_id": "",
+        "handoff_mode": "local-first"
+      }
     },
     {
       "id": "media-demo",
