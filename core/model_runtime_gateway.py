@@ -455,7 +455,18 @@ def chat(
         }
         if response_format is not None:
             payload["format"] = response_format
-        if system_prompt:
+        if model.startswith("gpt-oss"):
+            # gpt-oss + /api/generate returns EMPTY for both the system param
+            # and plain concatenated prompts (measured 2026-10-21). Harmony
+            # markup in the prompt body is the only form that answers.
+            hp = []
+            if system_prompt:
+                hp.append(f"<|start|>system<|message|>{system_prompt}<|end|>")
+            for turn in user_turns:
+                hp.append(f"<|start|>user<|message|>{turn}<|end|>")
+            hp.append("<|start|>assistant")
+            payload["prompt"] = "".join(hp)
+        elif system_prompt:
             payload["system"] = system_prompt
 
         fallback_timeout_s = max(1, min(int(idle_timeout_s), FALLBACK_GENERATE_TIMEOUT_S))
@@ -504,14 +515,15 @@ def chat(
         }
         if response_format is not None:
             payload["format"] = response_format
-        # gpt-oss thinks in a separate harmony channel; tokens land in
-        # message.thinking instead of message.content, which this loop does
-        # not read — an all-thinking turn returns an empty answer and the
-        # chat layer reports "[agent unavailable]". Worker turns need visible
-        # content (SKILL lines), so request think:false. SWARM_LLM_THINK=1
-        # re-enables the reasoning channel.
-        if model.startswith("gpt-oss") and os.environ.get("SWARM_LLM_THINK", "0") != "1":
-            payload["think"] = False
+        # gpt-oss harmony channels: at default/medium effort an action turn's
+        # whole reply (SKILL lines included) can land in message.thinking and
+        # leave message.content empty, which upstream reports as "[agent
+        # unavailable]". Measured: think="low" puts the reply (incl. SKILL
+        # lines) in content; medium/true/false do not. SWARM_LLM_THINK
+        # overrides ("low"/"medium"/"high"/true/false).
+        if model.startswith("gpt-oss"):
+            _think = os.environ.get("SWARM_LLM_THINK", "low").strip().lower()
+            payload["think"] = {"1": True, "true": True, "0": False, "false": False}.get(_think, _think)
         events.append(RuntimeEvent("dispatch", _now(), f"absolute={absolute_timeout_s}s idle={idle_timeout_s}s"))
         if on_event is not None:
             try:
