@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-06-01T05:21:15+00:00",
+  "created_at": "2026-10-19T09:27:27+00:00",
   "projects": [
     {
       "id": "media-demo",
@@ -10,7 +10,7 @@
       "style": "future pulse / high-energy",
       "engine_mode": "local-first",
       "duration_sec": 45,
-      "updated_at": "2026-06-01T05:21:15+00:00",
+      "updated_at": "2026-10-19T09:27:27+00:00",
       "timeline": {
         "tempo_bpm": 120,
         "time_signature": "4/4",
@@ -139,7 +139,7 @@
         "swarm_node_id": "",
         "handoff_mode": "local-first"
       },
-      "studio_project_id": "P-4F7F0479CD"
+      "studio_project_id": "P-BBA4CDE174"
     }
   ],
   "jobs": [
@@ -152,8 +152,8 @@
       "status": "ready",
       "engine": "local-ffmpeg-placeholder",
       "notes": "Framework stub ready for model wiring.",
-      "created_at": "2026-06-01T05:21:15+00:00",
-      "updated_at": "2026-06-01T05:21:15+00:00",
+      "created_at": "2026-10-19T09:27:27+00:00",
+      "updated_at": "2026-10-19T09:27:27+00:00",
       "artifacts": [
         {
           "label": "Storyboard",
@@ -363,6 +363,6 @@
       ]
     }
   ],
-  "tracking_project_id": "P-FDF1C3EB28",
-  "updated_at": "2026-10-18T00:15:29+00:00"
+  "tracking_project_id": "P-6473326719",
+  "updated_at": "2026-10-19T22:50:13+00:00"
 }

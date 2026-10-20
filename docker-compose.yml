@@ -5,8 +5,6 @@
 #   docker compose logs -f swarm  # tail logs
 #   docker compose down           # stop
 # ═══════════════════════════════════════════════════════════════════════════════
-version: "3.9"
-
 services:
   swarm:
     build: .
@@ -15,14 +13,19 @@ services:
     restart: unless-stopped
     ports:
       - "5050:5050"
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.agents
+        required: false
     volumes:
       - swarm-data:/app/data
-      - ./swarm_memory.db:/app/swarm_memory.db
-      - ./.env:/app/.env:ro
     environment:
-      - SWARM_ROOT=/app
-      - SWARM_ENV=prod
-      - PORT=5050
+      SWARM_ROOT: /app
+      SWARM_ENV: prod
+      PORT: "5050"
+      SWARM_DB_PATH: /app/data/swarm_memory.db
+      SWARM_MEMORY_DB: /app/data/swarm_memory.db
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5050/api/health"]
       interval: 30s

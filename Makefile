@@ -87,7 +87,11 @@ excellent: bullshit  ## Bullshit detector + per-batch tests = the standard
 	@for f in tests/test_session28_batch*.py tests/test_tasker_dry_run.py tests/test_slash_commands.py ; do \
 		[ -f "$$f" ] || continue ; \
 		printf '%-50s ' "$$f" ; \
-		timeout 30 $(PYTHON) -m pytest "$$f" -q 2>&1 | tail -1 ; \
+		if timeout 30 $(PYTHON) -m pytest "$$f" -q --tb=short ; then \
+			echo "PASS"; \
+		else \
+			status=$$?; echo "FAIL (exit $$status)"; exit "$$status"; \
+		fi; \
 	done
 	@echo
 	@echo "If every line above is green and the bullshit stamp is GREEN/AMBER, the build is up to standard."

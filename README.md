@@ -67,6 +67,17 @@ pip install -r requirements.txt
 # open http://localhost:5050
 ```
 
+### Docker
+
+Docker Compose stores the database in a named volume under `/app/data`.
+Optional `.env` and `.env.agents` files provide provider credentials; neither
+file is required to start the stack.
+
+```bash
+docker compose up --build -d
+docker compose logs -f swarm
+```
+
 Useful checks:
 
 ```bash

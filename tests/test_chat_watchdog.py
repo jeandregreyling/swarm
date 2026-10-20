@@ -1266,6 +1266,7 @@ def test_watchdog_kill9_resolves_runner_by_model_digest(monkeypatch):
     from frontend.blueprints import chat as chat_mod
 
     cmds = []
+    monkeypatch.setattr(chat_mod.os.path, 'exists', lambda _path: False)
     monkeypatch.setattr(chat_mod, '_chat_model_aliases', lambda model: {str(model).lower()})
     monkeypatch.setattr(chat_mod, '_chat_running_ollama_model_info', lambda: [{
         'model': 'Qwen2.5:latest',

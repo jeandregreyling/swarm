@@ -10,6 +10,8 @@ ENV PYTHONUNBUFFERED=1
 ENV SWARM_ROOT=/app
 ENV SWARM_ENV=prod
 ENV PORT=5050
+ENV SWARM_DB_PATH=/app/data/swarm_memory.db
+ENV SWARM_MEMORY_DB=/app/data/swarm_memory.db
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -32,12 +34,9 @@ COPY . .
 RUN chmod +x bootstrap.sh killswitch.sh
 
 # Create non-root user
-RUN useradd -m -u 1000 swarm && chown -R swarm:swarm /app
-USER swarm
+RUN mkdir -p /app/data && useradd -m -u 1000 swarm && chown -R swarm:swarm /app
 
-# Initialise DB on first run if missing
-RUN test -f swarm_memory.db || \
-    SWARM_ROOT=/app python -c "import sys; sys.path.insert(0,'/app'); from utils.db._schema import init_db; init_db()" || true
+USER swarm
 
 EXPOSE 5050
 
