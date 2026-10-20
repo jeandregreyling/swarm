@@ -8,8 +8,8 @@ from typing import Iterable
 
 DEFAULT_SCAN_ROOTS = (
     "/mnt/llm",
-    "/home/seven/swarm/agents/seven/models",
-    "/home/seven/.lmstudio/.internal/bundled-models",
+    os.path.join(os.path.expanduser("~"), ".lmstudio", ".internal", "bundled-models"),
+    "/mnt/archive/models",
 )
 
 
