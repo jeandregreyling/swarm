@@ -3906,13 +3906,13 @@ function _remapThinkingBubbleJobId(oldJobId, newJobId, agent) {
 function _friendlyThinkingStage(stage, status = 'running') {
   const raw = String(stage || '').trim();
   const lower = raw.toLowerCase();
-  if (!raw) return status === 'running' ? 'Warming up Seven' : String(status || 'finished');
-  if (lower.includes('queued')) return 'Queued for Seven';
+  if (!raw) return status === 'running' ? 'Warming up the worker' : String(status || 'finished');
+  if (lower.includes('queued')) return 'Queued for the worker';
   if (lower.includes('dispatching')) return 'Opening the local line';
   if (lower.includes('reading swarm')) return 'Checking the live thread';
   if (lower.includes('loading memory')) return 'Gathering useful memory';
   if (lower.includes('synthes')) return 'Shaping the answer';
-  if (lower.includes('thinking')) return 'Seven is writing';
+  if (lower.includes('thinking')) return 'The worker is writing';
   if (lower.includes('direct_dispatch') || lower.includes('gateway: dispatch')) return 'Starting the local model';
   if (lower.includes('first token')) return 'First words arrived';
   if (lower.includes('heartbeat')) return 'Still writing';
