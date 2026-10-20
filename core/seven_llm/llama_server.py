@@ -133,6 +133,11 @@ def _admit(model: str) -> None:
         raise RuntimeError(f"no direct GGUF model registered for '{model}'")
     mem = _meminfo_gb()
     need = float(entry.ram_gb or 4.0)
+    # GPU-offloaded entries (options.ngl > 0, e.g. the Vulkan llama-server on
+    # the RX 6800) load weights into VRAM, not system RAM; the mmap'd GGUF only
+    # pressures reclaimable page cache. Charge host-side cost only.
+    if int((entry.options or {}).get("ngl") or 0) > 0:
+        need = min(need, 4.0)
     total = float(mem.get("total_gb") or 0.0)
     available = float(mem.get("available_gb") or 0.0)
     reserve = float(mem.get("reserve_gb") or 0.0)
