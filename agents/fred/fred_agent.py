@@ -22,7 +22,9 @@ logger = logging.getLogger('seven.fred')
 AGENT_NAME = 'fred'
 from utils.local_runtime_policy import preferred_model_for_agent
 MODEL      = preferred_model_for_agent('fred', 'mistral-small:24b')
-SANDPIT    = 'sandpits/fred/'
+# NOTE: no hardcoded sandpit path here — the worker seat resolves its own
+# sandpit from its agent name (sandpits/<name>/). Apex inherits this engine;
+# a fixed 'sandpits/fred/' constant leaked Fred's drawer into Apex's turns.
 GATEWAY_IDLE_TIMEOUT_S = 180
 GATEWAY_ABSOLUTE_TIMEOUT_S = 600
 
