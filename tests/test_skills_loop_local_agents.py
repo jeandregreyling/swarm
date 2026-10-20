@@ -40,6 +40,43 @@ def test_plain_skill_line_still_parses():
     assert cmds == [('fs_readonly', 'lines fridays/task_runner.py 1 40')]
 
 
+def test_explicit_one_line_sandpit_create_recovers_missing_skill_call(monkeypatch):
+    message = (
+        'Create sandpits/apex/maintenance-regression.txt with exactly one line: '
+        'proof passed. Then read it back and report the path and exact line.'
+    )
+    executed = []
+    replies = iter([
+        'Need to create file. Use fs_write.',
+        'Created sandpits/apex/maintenance-regression.txt and read it back: proof passed.',
+    ])
+
+    def execute(cmds, *args, **kwargs):
+        executed.extend(cmds)
+        return '[skill:fs_write] OK\nWritten 12 chars\n[skill:fs_readonly] OK\nproof passed.'
+
+    monkeypatch.setattr(sl, '_execute_skill_cmds', execute)
+    answer, _ = sl.run_skill_loop(
+        agent_name='apex',
+        call_fn=lambda _messages: (next(replies), 1),
+        messages=_user(message),
+        emit_fn=lambda *_: None,
+        max_passes=1,
+        nudge_if_no_skills=False,
+    )
+
+    assert [name for name, _ in executed] == ['fs_write', 'fs_readonly']
+    assert executed[0][1].splitlines()[0] == 'sandpits/apex/maintenance-regression.txt'
+    assert 'proof passed.' in executed[0][1]
+    assert executed[1][1] == 'lines sandpits/apex/maintenance-regression.txt 1 1'
+    assert 'read it back' in answer
+
+
+def test_explicit_one_line_create_fallback_rejects_paths_outside_own_sandpit():
+    message = _user('Create README.txt with exactly one line: proof passed.')
+    assert sl._explicit_one_line_sandpit_write(message, 'apex') is None
+
+
 def test_fenced_skill_has_no_trailing_fence_in_args():
     text = '1. Read it.\n```bash\nSKILL fs_readonly lines fridays/task_runner.py 1 60\n```\nDone.'
     assert sl._extract_skill_cmds(text) == [

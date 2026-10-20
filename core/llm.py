@@ -357,12 +357,11 @@ def chat_via_gateway(
     error: Optional[str] = None
     result = None
     try:
-        # gpt-oss harmony channels make /api/chat unreliable for action turns:
-        # replies (SKILL lines included) can land entirely in message.thinking
-        # while message.content stays empty. /api/generate returns raw text
-        # with SKILL lines intact (measured 2026-10-21). Route gpt-oss worker
-        # turns through generate unless SWARM_GPT_OSS_GENERATE=0.
-        if model.startswith('gpt-oss') and os.environ.get('SWARM_GPT_OSS_GENERATE', '1') != '0':
+        # Keep gpt-oss on Ollama's /api/chat path. The attempted /api/generate
+        # Harmony workaround returns HTTP 500 on the installed Ollama version
+        # (parser has no reverse mapping for the assistant function name).
+        # Opt into generate only for an explicit operator override.
+        if model.startswith('gpt-oss') and os.environ.get('SWARM_GPT_OSS_GENERATE', '0') == '1':
             prefer_generate = True
 
         result = _gw.chat(

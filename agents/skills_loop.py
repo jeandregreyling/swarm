@@ -36,6 +36,7 @@ skill results.
 import json
 import logging
 import re
+from pathlib import Path
 
 logger = logging.getLogger('seven.skills_loop')
 
@@ -83,6 +84,7 @@ _SKILL_NUDGE = (
     'Example workflow:\n'
     '  SKILL fs_readonly lines docs/sample.md 1 20              ← read a line range\n'
     '  SKILL fs_readonly grep docs/sample.md install         ← find text in a file\n'
+    'For an explicit request to create a file, emit `SKILL fs_write <workspace-relative-path>` on its own line, then a fenced block with the exact requested content. Do not narrate the plan. Example request: create notes/example.txt containing hello; emit the SKILL line and a block containing only `hello`.\n'
     'These two lines only show the format. Replace the file, range and text with what the request asks for.\n'
     'Never read a whole file from line 1 when you can grep for the value.\n'
     'Never guess paths that do not appear in ls output (backend/, config/, src/ do not exist).\n'
@@ -221,6 +223,43 @@ def _latest_operator_text(messages):
             text = text.rsplit(marker, 1)[1]
         return text.strip()
     return ''
+
+
+def _explicit_one_line_sandpit_write(messages, agent_name):
+    """Recover a simple, explicit create-file request when a model narrates instead of emitting SKILL."""
+    text = _latest_operator_text(messages)
+    path_match = re.search(
+        r'\b(?:create|write)\s+(?:a\s+)?(?:new\s+)?(?:file\s+)?'
+        r'(?:(?:called|named|at)\s+)?[`"\']?'
+        r'((?:[\w.-]+/)*[\w.-]+\.[A-Za-z0-9]+)[`"\']?',
+        text,
+        re.IGNORECASE,
+    )
+    content_match = re.search(
+        r'\b(?:with|containing)\s+(?:exactly\s+)?(?:one\s+)?line:\s*'
+        r'(.+?)(?=\s+(?:then|after(?:wards)?|and then)\s+(?:read|show|tell|report|verify)\b|$)',
+        text,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not path_match or not content_match:
+        return None
+
+    agent = str(agent_name or '').strip().lower()
+    rel_path = path_match.group(1).strip().strip('`"\'')
+    if not agent or not rel_path.startswith(f'sandpits/{agent}/') or '..' in Path(rel_path).parts:
+        return None
+    content = content_match.group(1).strip()
+    if not content or '\n' in content or len(content) > 500:
+        return None
+
+    root = Path(__file__).resolve().parents[1]
+    target = (root / rel_path).resolve()
+    sandpit = (root / 'sandpits' / agent).resolve()
+    if not target.is_relative_to(sandpit) or target.exists():
+        return None
+    command = f'SKILL fs_write {rel_path}\n```text\n{content}\n```'
+    parsed = _extract_skill_cmds(command)
+    return parsed[0] if len(parsed) == 1 and parsed[0][0] == 'fs_write' else None
 
 
 def _all_asks_reminder(messages):
@@ -636,6 +675,16 @@ def run_skill_loop(
 
     for _pass in range(max_passes):
         skill_cmds = _extract_skill_cmds(answer)
+        if not skill_cmds and pass_num == 0 and (
+            allowed_skill_names is None or 'fs_write' in allowed_skill_names
+        ):
+            explicit_write = _explicit_one_line_sandpit_write(messages, agent_name)
+            if explicit_write:
+                skill_cmds = [explicit_write]
+                if re.search(r'\b(?:read|verify|check)\s+(?:it|the file)\s+back\b', _latest_operator_text(messages), re.IGNORECASE):
+                    target_path = explicit_write[1].splitlines()[0]
+                    skill_cmds.append(('fs_readonly', f'lines {target_path} 1 1'))
+                answer = f'SKILL fs_write {explicit_write[1].splitlines()[0]}\n[explicit one-line create request]'
         if not skill_cmds:
             # If we've already run skills and the model returned prose without a new
             # SKILL command, nudge it inline — it may be mid-exploration and forgot
