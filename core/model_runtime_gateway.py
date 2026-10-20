@@ -492,6 +492,7 @@ def chat(
             return RuntimeResult(False, model, "", 0, _now() - started, error=str(exc), events=events)
 
     content_parts: list[str] = []
+    thinking_parts: list[str] = []
     tokens = 0
     try:
         payload = {
@@ -503,6 +504,14 @@ def chat(
         }
         if response_format is not None:
             payload["format"] = response_format
+        # gpt-oss thinks in a separate harmony channel; tokens land in
+        # message.thinking instead of message.content, which this loop does
+        # not read — an all-thinking turn returns an empty answer and the
+        # chat layer reports "[agent unavailable]". Worker turns need visible
+        # content (SKILL lines), so request think:false. SWARM_LLM_THINK=1
+        # re-enables the reasoning channel.
+        if model.startswith("gpt-oss") and os.environ.get("SWARM_LLM_THINK", "0") != "1":
+            payload["think"] = False
         events.append(RuntimeEvent("dispatch", _now(), f"absolute={absolute_timeout_s}s idle={idle_timeout_s}s"))
         if on_event is not None:
             try:
@@ -550,6 +559,12 @@ def chat(
                     continue
                 data = json.loads(line)
                 piece = ((data.get("message") or {}).get("content") or "")
+                think_piece = ((data.get("message") or {}).get("thinking") or "")
+                if think_piece:
+                    # Reasoning-channel tokens: not the answer, but they prove
+                    # the runner is alive, so they still reset the idle clock.
+                    thinking_parts.append(think_piece)
+                    last_token_at = _now()
                 if piece:
                     content_parts.append(piece)
                     last_token_at = _now()
@@ -567,7 +582,15 @@ def chat(
                     tokens = int(data.get("eval_count") or tokens)
                     _record(RuntimeEvent("completed", _now(), tokens=tokens))
                     break
-        return RuntimeResult(True, model, "".join(content_parts), tokens, _now() - started, events=events)
+        content = "".join(content_parts)
+        if not content.strip() and thinking_parts:
+            # gpt-oss sometimes puts the whole turn (SKILL lines included) in
+            # the thinking channel and leaves content empty — an empty answer
+            # here surfaces as "[agent unavailable]" upstream. Fall back to
+            # the thinking channel so the skills loop can still parse it.
+            _record(RuntimeEvent("thinking_only", _now(), "empty content; falling back to thinking channel"))
+            content = "".join(thinking_parts)
+        return RuntimeResult(True, model, content, tokens, _now() - started, events=events)
     except requests.ReadTimeout as exc:
         _record(RuntimeEvent("fallback", _now(), f"chat read-timeout ({exc}); trying generate"))
         try:
