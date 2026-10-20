@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import socket
 import subprocess
 import threading
@@ -193,6 +194,12 @@ def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
         ]
         if "threads" in opts:
             cmd.extend(["--threads", str(int(opts["threads"]))])
+        if "ngl" in opts:
+            cmd.extend(["--n-gpu-layers", str(int(opts["ngl"]))])
+        if opts.get("chat_template_file"):
+            # e.g. gpt-oss blobs from an Ollama store carry a ChatML template;
+            # harmony models need their own jinja or channels leak into content.
+            cmd.extend(["--chat-template-file", str(opts["chat_template_file"])])
         if bool(opts.get("embedding")):
             cmd.append("--embedding")
 
@@ -234,6 +241,44 @@ def _chat_payload(model: str, messages: list[dict], *, temperature: float | None
     return payload
 
 
+def _raw_completion_chat(handle, messages, *, temperature, opts):
+    """gpt-oss via /completion: hand-built harmony prompt, raw text back.
+
+    The OpenAI chat endpoint splits harmony channels and can return empty
+    content on action turns; /completion returns the raw continuation with
+    SKILL lines intact (measured 2026-10-21, llama.cpp b11756).
+    """
+    hp = []
+    for m in messages or []:
+        role = str((m or {}).get("role") or "user")
+        content = str((m or {}).get("content") or "")
+        if content:
+            hp.append(f"<|start|>{role}<|message|>{content}<|end|>")
+    hp.append("<|start|>assistant")
+    payload = {
+        "prompt": "".join(hp),
+        "n_predict": int(opts.get("n_predict") or 1024),
+        "temperature": float(temperature if temperature is not None else 0.6),
+        "stop": ["<|return|>", "<|call|>"],
+        "cache_prompt": True,
+    }
+    resp = requests.post(
+        handle.endpoint.rstrip("/") + "/completion",
+        json=payload,
+        timeout=int(opts.get("timeout") or 180),
+    )
+    resp.raise_for_status()
+    data = resp.json() or {}
+    text = str(data.get("content") or "")
+    # strip harmony channel tags, keep the bodies (SKILL lines live in there)
+    text = re.sub(r"<\|channel\|>[a-z]+<\|message\|>", "\n", text)
+    for tag in ("<|start|>", "<|end|>", "<|return|>", "<|call|>"):
+        text = text.replace(tag, "")
+    text = text.strip()
+    tokens = int(data.get("tokens_predicted") or len(text.split()) or 0)
+    return text, tokens
+
+
 def chat(
     model: str,
     messages: list[dict],
@@ -244,6 +289,9 @@ def chat(
 ) -> tuple[str, int]:
     opts = dict(options or {})
     handle = ensure(model, timeout_s=int(opts.get("startup_timeout") or STARTUP_TIMEOUT_S))
+    entry = registry.get(model)
+    if entry and (entry.options or {}).get("raw_completion"):
+        return _raw_completion_chat(handle, messages, temperature=temperature, opts=opts)
     payload = _chat_payload(model, messages, temperature=temperature, options=opts)
     if callable(on_token) or opts.get("stream"):
         return _chat_stream(handle, payload, timeout=int(opts.get("timeout") or 180), on_token=on_token)
@@ -259,7 +307,12 @@ def chat(
             response=resp,
         )
     data = resp.json()
-    text = str((((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "")).strip()
+    msg = ((data.get("choices") or [{}])[0].get("message") or {})
+    text = str(msg.get("content") or "").strip()
+    if not text:
+        # gpt-oss/harmony can put the entire reply (SKILL lines included) in
+        # the analysis channel, which llama-server exposes as reasoning_content.
+        text = str(msg.get("reasoning_content") or "").strip()
     tokens = int((data.get("usage") or {}).get("completion_tokens") or len(text.split()) or 0)
     return text, tokens
 
@@ -289,6 +342,7 @@ def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int,
     payload = dict(payload)
     payload["stream"] = True
     content_parts: list[str] = []
+    thinking_parts: list[str] = []
     tokens = 0
     with requests.post(
         handle.endpoint.rstrip("/") + "/v1/chat/completions",
@@ -317,6 +371,9 @@ def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int,
             choice = (data.get("choices") or [{}])[0]
             delta = choice.get("delta") or {}
             piece = str(delta.get("content") or "")
+            think_piece = str(delta.get("reasoning_content") or "")
+            if think_piece:
+                thinking_parts.append(think_piece)
             if piece:
                 content_parts.append(piece)
                 tokens += 1
@@ -332,6 +389,9 @@ def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int,
                 except Exception:
                     pass
     text = "".join(content_parts).strip()
+    if not text and thinking_parts:
+        # harmony analysis channel carried the whole reply; use it
+        text = "".join(thinking_parts).strip()
     return text, tokens or len(text.split())
 
 

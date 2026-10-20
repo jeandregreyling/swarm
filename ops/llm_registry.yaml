@@ -1,4 +1,22 @@
 models:
+  # Apex's brain, served straight from the Ollama-store GGUF blob by our own
+  # Vulkan llama-server (RX 6800 via RADV) — no Ollama middleware in the loop.
+  - name: apex-direct:20b
+    driver: llamacpp
+    role: general
+    path: /mnt/archive/models/blobs/sha256-8ecb5d4ad6172c63f9cbf1a07a04e525985a8a11a6e516da02b674c4010de716
+    ctx: 8192
+    quant: MXFP4
+    ram_gb: 13
+    ttl_seconds: 600
+    options:
+      mode: server
+      server: /home/jd/llama.cpp/llama-b11756/llama-server
+      ngl: 999
+      slots: 1
+      chat_template_file: /home/jd/llama.cpp/harmony-gptoss.jinja
+      raw_completion: true
+
   - name: gemma-direct:3
     driver: llamacpp
     role: general
