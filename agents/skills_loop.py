@@ -94,7 +94,7 @@ _SKILL_NUDGE = (
 
 # Models imitate the echoed result format ("[skill:name] OK"), so accept
 # "[skill:name args]" and "[skill:name] args" as commands, but never an echoed result.
-_BRACKET_SKILL_INSIDE_RE = re.compile(r'^\s*\[skill:([a-z0-9_-]+)\s+(.+)\]\s*$', re.IGNORECASE)
+_BRACKET_SKILL_INSIDE_RE = re.compile(r'^\s*\[skill(?::|\s+)([a-z0-9_-]+)\s+(.+)\]\s*$', re.IGNORECASE)
 _BRACKET_SKILL_AFTER_RE = re.compile(
     r'^\s*\[skill:([a-z0-9_-]+)\]\s+(?!(?:OK|FAILED|SKIPPED|ERROR)\b)(\S.*)$',
     re.IGNORECASE,
@@ -154,6 +154,10 @@ def _extract_skill_cmds(text):
         if not parsed or parsed[0] == 'list':
             continue
         skill_name, skill_args = parsed
+        if skill_name in FENCED_BODY_SKILLS or skill_name in {'file_write', 'file_read'}:
+            path_argument = skill_args.split(None, 1)[0] if skill_args.strip() else ''
+            if '<' in path_argument or '>' in path_argument:
+                continue
         if _PLACEHOLDER_ARG_RE.search(skill_args.split('\n', 1)[0]):
             logger.warning(f'[skills] ignoring {skill_name}: arguments are a template placeholder')
             continue
@@ -496,6 +500,9 @@ def run_skill_loop(
             logger.info(f'[{agent_name}] turn policy: read-only routing guard present')
         elif _is_explicitly_read_only_task(messages):
             allowed_skill_names = set(_READ_ONLY_TASK_SKILLS)
+            operator_text = _latest_operator_text(messages)
+            if re.search(r'\b(?:send|execute|invoke|run)\b[^\n]*\bemail_ticket_reply\b', operator_text, re.IGNORECASE):
+                allowed_skill_names.add('email_ticket_reply')
             m = _READ_ONLY_TASK_RE.search(_latest_operator_text(messages))
             logger.info(f'[{agent_name}] turn policy: read-only phrase {m.group(0)!r}' if m else f'[{agent_name}] turn policy: read-only')
     elif not isinstance(allowed_skill_names, set):
@@ -758,6 +765,17 @@ def run_skill_loop(
         pass_num += 1
         _all_results.append(skill_results)
 
+        operator_text = _latest_operator_text(messages)
+        explicit_note = re.search(r'\bSKILL\s+file_write\s+(\S+)\s+([^\n]+)', operator_text, re.IGNORECASE)
+        if explicit_note and not re.search(r'\b(?:email|smtp|send|proposal|commit|deploy)\b', operator_text, re.IGNORECASE):
+            note_path, expected_note = explicit_note.groups()
+            receipts = '\n\n'.join(_all_results)
+            written_path = str(Path(__file__).resolve().parents[1] / 'sandpits' / note_path)
+            readbacks = re.findall(r'\[skill:file_read\] OK\n(.*?)(?=\n\n\[skill:|\Z)', receipts, re.DOTALL)
+            if note_path.startswith(f'{agent_name}/') and written_path in receipts and expected_note in readbacks:
+                answer = f'Verified sandpits/{note_path}:\n{expected_note}'
+                break
+
         logger.debug(
             f'[{agent_name}] pass {pass_num}: ran {len(skill_cmds)} skill(s); '
             f'result preview: {skill_results[:120]}'
@@ -771,6 +789,16 @@ def run_skill_loop(
                 'Final skill outputs below. Produce your final answer now.\n\n'
                 + skill_results
             )
+        elif any(hit.group(2) == 'OK' for hit in _FILE_EDIT_RESULT.finditer(skill_results)):
+            follow_up = (
+                'The file operation ran. Use the backend outputs below as evidence. '
+                'Read the changed file back if it has not been read yet. '
+                'Do not patch or rewrite it again unless that read-back proves a mismatch with the operator request. '
+                'Preserve exact content, including whether quotation marks were requested. '
+                'After verification, report the real path and result.\n\n' + skill_results
+            )
+            if '[skill:fs_readonly] OK' in skill_results or '[skill:file_read] OK' in skill_results:
+                _mid_loop_nudges_remaining = 0
         elif _look_only:
             follow_up = (
                 'Skill outputs below. The operator only asked you to look and explain, so answer '

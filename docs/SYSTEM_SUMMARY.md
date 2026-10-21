@@ -26,6 +26,17 @@ This section supersedes the single-worker state described below.
 - Receipts and paths: `runtime/local_write_access_report.json`. Proof files: `write_access_probe_66df20c97b2a.txt` in each writing agent's sandpit. Permission/trust regression coverage: 84 tests passed.
 - This proves execution/authorization, not autonomous command selection by every model. Apex's separate browser round-trip proof is chat 2683.
 
+## Live Model and Email Acceptance (2026-10-21)
+
+- `runtime/local_team_end_to_end_report.json` records the latest verified result for every enabled local role, with original run IDs. All 14 models returned fresh nonce responses. Thirteen writing roles created exact own-sandpit notes through Chat; Seven passed the observer/no-write task. This is a bounded live check, not a reliability guarantee for arbitrary tasks.
+- Failed runs are preserved as `runtime/local_model_acceptance.*_run.json`. Earlier permission-only probes are not substituted for model-driven results.
+- Repairs included missing skills loops in Eight/Twenty and utility chat, keyword forwarding in the frontend compatibility shim, obsolete tool instructions, inadequate default context, placeholder paths and repeated rewrites after verified completion.
+- Mistral now uses the installed Mistral Small 24B model, Nineteen uses installed Qwen 2.5 14B, and Thirteen retains Llama 3.2 with a compact developer contract. Other agent roles remain separate.
+- Ticket `TICKET-LOCAL-MAIL-20261021-012900` passed Librarian intake, Gemma triage, operator assignment, local Apex file creation/read-back, Duck model review, an approved Apex mail-skill invocation, SMTP acceptance and Librarian closure.
+- The sender's Gmail Sent-folder copy was fetched by its exact Message-ID. Its text attachment bytes matched the local SHA256. Recipient inbox delivery was not independently verified.
+- The existing mail route now accepts small own-sandpit text attachments. The `email_ticket_reply` skill binds the recipient to the ticket, requires the caller's approved proposal, and suppresses repeat sends once a matching SMTP receipt exists. Only Apex received this explicit mail-skill grant for the acceptance task.
+- This was a controlled live pipeline exercise. It does not establish unattended inbox processing by an inactive listener service. Online model providers remain disabled.
+
 ## Intent
 Fridays is a local-first swarm that **does** things rather than reports them (`docs/the-standard.md`). The founding design (Studio doc "What We Are Building" and "Constraints That Must Never Be Broken") sets the rules agents work under:
 

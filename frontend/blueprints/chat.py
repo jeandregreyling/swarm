@@ -2219,7 +2219,7 @@ def api_chat():
                     _stage(f'building audit context · {_model_name}', est_eta)
                 else:
                     _stage(f'preparing prompt · {_model_name}', est_eta)
-                future = executor.submit(orchestrator.ask_agent, selected_agent, effective_prompt)
+                future = executor.submit(orchestrator.ask_agent, selected_agent, effective_prompt, allow_skills=True)
                 _stage(f'generating · {_model_name}', est_eta)
                 response_text = _await_agent_future(future, text_only=True)
                 tokens_used = orchestrator._LAST_EVAL_COUNT.get(selected_agent, 0)

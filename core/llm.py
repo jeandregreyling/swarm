@@ -158,6 +158,7 @@ def chat(
     keep_alive = _sanitize_keep_alive(keep_alive if keep_alive is not None else DEFAULT_KEEP_ALIVE)
 
     opts: dict = dict(options or {})
+    opts.setdefault('num_ctx', 8192)
     if temperature is not None and 'temperature' not in opts:
         opts['temperature'] = temperature
 

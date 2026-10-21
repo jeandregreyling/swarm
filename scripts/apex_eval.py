@@ -151,8 +151,14 @@ def preconditions(worker_agent, worker_model):
 
 
 def run_chat(agent, message):
-    sent = _post_json(f'{BASE_URL}/api/chat', {'agent': agent, 'message': message, 'new_thread': True})
+    sent = _post_json(f'{BASE_URL}/api/chat', {'agent': agent, 'message': message, 'new_thread': True,
+                                           'auto_relay': False, 'history_mode': 'none'})
     conversation_id = sent.get('conversation_id')
+    if not sent.get('ok', True):
+        return {'status': 'failed', 'error': sent.get('response') or sent.get('error'), 'conversation_id': conversation_id}
+    immediate = (sent.get('responses') or [sent])[0]
+    if not sent.get('pending_jobs') and not immediate.get('pending') and immediate.get('response'):
+        return {**immediate, 'status': 'completed', 'conversation_id': conversation_id}
     deadline = time.time() + JOB_TIMEOUT_SECONDS
     job = {}
     while time.time() < deadline:
@@ -164,6 +170,77 @@ def run_chat(agent, message):
                 return job
     job['status'] = job.get('status') or 'timeout'
     return job
+
+
+def run_local_team(agent_names=None):
+    """Live inference and model-selected writes; never synthesize the proof files."""
+    import uuid
+    from pathlib import Path
+    from core import model_runtime_gateway as gateway
+    from core.seven_llm import llama_server
+    from ops.seed_agent_permissions import LOCAL_NOTE_AGENTS
+
+    run_id = uuid.uuid4().hex[:10]
+    roster = _get_json(f'{BASE_URL}/api/agents/config')
+    if isinstance(roster, dict):
+        roster = roster.get('agents', [])
+    agents = [row for row in roster if row.get('enabled') and row.get('tier') == 'local'
+              and (not agent_names or row['name'] in agent_names)]
+    results = []
+    report_path = Path(ROOT) / 'runtime' / 'local_model_acceptance.json'
+    try:
+        for row in agents:
+            name, model = row['name'], row['model']
+            marker = f'CONNECTED_{name}_{run_id}'
+            result = {'agent': name, 'configured_model': model, 'connection_pass': False,
+                      'write_pass': False, 'observer': name == 'seven'}
+            started = time.time()
+            try:
+                response = gateway.chat(model, [{'role': 'system', 'content': 'Follow the user\'s harmless text-copy instruction exactly.'},
+                                                {'role': 'user', 'content': f'Copy this text exactly, without quotes: {marker}'}],
+                                        options={'num_predict': 64, 'num_ctx': 4096},
+                                        absolute_timeout_s=150, idle_timeout_s=150)
+                result.update(connection_pass=bool(response.ok and marker in response.content and response.tokens > 0),
+                              connection_reply=response.content[:250], connection_error=response.error,
+                              connection_tokens=response.tokens)
+                filename = f'model_write_{run_id}.txt'
+                rel = f'sandpits/{name}/{filename}'
+                target = Path(ROOT) / rel
+                assert not target.exists(), 'The model proof must start with an absent file'
+                content = f'{name} model write proof {run_id}'
+                if name != 'seven':
+                    message = (f'Write this audit note in your own sandpit using the file_write skill. '
+                               f'Use this exact command on its own line: SKILL file_write {name}/{filename} {content}\n'
+                               f'After it returns, use SKILL file_read {name}/{filename} and report the result.')
+                elif name == 'seven':
+                    message = f'State your role. Are you allowed to create {rel}? Do not use tools or mutate files.'
+                else:
+                    message = (f'Run the fs_write skill now to create {rel}. Emit its SKILL line followed by one fenced block. '
+                               f'The block must contain exactly the text {content} without quotation marks, extra delimiters or extra lines.\n'
+                               f'After the backend returns, run fs_readonly lines {rel} 1 1. '
+                               'Use no other tools. Do not claim success without the actual backend result.')
+                job = run_chat(name, message)
+                actual = target.read_text() if target.exists() else None
+                result.update(path=rel, expected_content=content, actual_content=actual,
+                              job_status=job.get('status'), reply=str(job.get('response') or '')[:2500],
+                              error=str(job.get('error') or ''))
+                result['write_pass'] = (not target.exists() if name == 'seven' else
+                                        actual is not None and actual.rstrip('\n') == content)
+            except Exception as exc:
+                result['error'] = str(exc)
+            result['seconds'] = round(time.time() - started, 1)
+            result['passed'] = result['connection_pass'] and result['write_pass']
+            results.append(result)
+            report_path.write_text(json.dumps({'run_id': run_id, 'results': results,
+                                               'passed': all(item['passed'] for item in results)}, indent=2))
+            print(f"{name}: connection={'PASS' if result['connection_pass'] else 'FAIL'} "
+                  f"{'observer' if name == 'seven' else 'model-write'}={'PASS' if result['write_pass'] else 'FAIL'} "
+                  f"({result['seconds']}s) {result.get('error', '')[:180]}", flush=True)
+    finally:
+        for server in llama_server.snapshot():
+            llama_server.stop(server['model'])
+    print(f'Results: {report_path}', flush=True)
+    return 0 if results and all(item['passed'] for item in results) else 1
 
 
 def run_task(task, agent, original):
@@ -191,6 +268,9 @@ def run_task(task, agent, original):
 
 def main(argv):
     from utils.worker import WORKER_AGENT, WORKER_MODEL
+
+    if '--local-team' in argv:
+        return run_local_team([arg for arg in argv if not arg.startswith('--')])
 
     problems = preconditions(WORKER_AGENT, WORKER_MODEL)
     if problems:

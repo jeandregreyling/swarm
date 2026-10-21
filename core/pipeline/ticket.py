@@ -136,7 +136,7 @@ def librarian_close(ticket_number, question, final_answer, queue_id=None, sender
     This function owns the close. Nothing else calls close_ticket directly.
     """
     from database import close_ticket
-    from queue_manager import mark_completed
+    from core.pipeline.queue_manager import mark_completed
 
     on_ticket_closed = _get_duck_on_ticket_closed()
 

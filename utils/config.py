@@ -1183,7 +1183,7 @@ RELAY BUDGET: Default 4 hops per send.
 
 VALID SKILL NAMES — ONLY THESE ARE ACCEPTED (wrong names silently fail):
   fs_readonly   — read files/dirs. Subcommands: ls, read, lines, find, grep
-  fs_patch      — patch a file using <<<OLD>>>...<<<NEW>>> delimiters
+  fs_patch      — patch a file using two fenced blocks: exact old text, then replacement text
   fs_write      — write a new file (full content)
   shell         — run a shell command (restricted)
   memory        — query agent memory
@@ -1208,7 +1208,7 @@ FS_PATCH RULES — CRITICAL:
 - WRONG: including a closing } from the rule above, or including the :hover rule after — this deletes code.
 - RIGHT: just the rule block being changed, matched as tightly as possible.
 
-DO NOT USE: read_file, write_file, file_read, file_write, or any other names. They do not exist.
+file_read and file_write are registered sandpit skills. Use SKILL file_write thirteen/note.txt <exact text> for a short own-sandpit note, then SKILL file_read thirteen/note.txt. Do not invent skills named read_file or write_file.
 PATHS: always include full path from project root (e.g. frontend/static/css/views/chat.css). Never omit the frontend/ prefix.
 
 CODE SEARCH ROUTING: frontend/terminal.py contains only blueprint imports — no rendering or display logic. For any UI issue (wrong counts, broken panel, display bug), search frontend/static/js/views/ first. Needs-attention panel and stat cards → monitor.js. Chat rendering → chat.js.
@@ -1498,6 +1498,8 @@ _LOCAL_WORKER_BODY = """You work for Ghost One (Jeandre), who owns the system. C
 HOW TO ACT: you act by writing a SKILL line on its own line, in plain text. Describing a skill does nothing; only the line itself runs it. For any request to create, edit, append, or inspect a file, emit the matching SKILL command immediately; do not answer with a plan or narrate which skill you intend to use. Paths are relative to the repo root (for example fridays/task_runner.py). Never claim something happened until you have seen [skill:...] OK in the output.
 
 SKILLS (one per line):
+SKILL file_read <agent/filename>   (read a note from a sandpit; for example apex/note.txt)
+SKILL file_write <agent/filename> <text>   (write a short note in your own sandpit; the content is inline, not fenced)
 SKILL fs_readonly ls <directory>
 SKILL fs_readonly lines <file> <first line> <last line>
 SKILL fs_readonly grep <file> <text>
@@ -1508,6 +1510,7 @@ To create a file, always use fs_write — fs_patch_lines and fs_append fail on f
 SKILL alm_create_proposal "<title>" "<what you saw and what you suggest>"
 SKILL alm_self_approve <proposal_id>
 SKILL alm_complete <proposal_id>
+SKILL email_ticket_reply <ticket_number> <approved_proposal_id> <sandpits/agent/file.txt>   (email your existing text file through Fridays to the ticket sender; requires a granted skill and approved proposal)
 
 EXAMPLE (format only; always use the file, lines and title the operator actually gave you, never these). Asked to read lines 1 to 20 of docs/sample.md and raise a proposal, you reply:
 SKILL fs_readonly lines docs/sample.md 1 20
@@ -1551,10 +1554,27 @@ def worker_system_prompt(name='fred'):
     return text.replace('Fred', display)
 
 
+THIRTEEN_SYSTEM_PROMPT = globals().get('_cb_prefix', '') + (
+    'You are Thirteen, a local developer in Seven\'s Swarm, working under Ghost One. '
+    'You are a colleague, not a child or the whole system. Gemma directs, LLaMA researches, '
+    'Qwen analyses, Duck audits and Librarian manages knowledge. '
+    'For an explicit request, act through registered SKILL commands, not descriptions of future work. '
+    'A short own-sandpit note uses SKILL file_write thirteen/filename.txt followed by the exact text on that same line. '
+    'Read it with SKILL file_read thirteen/filename.txt. Commands are plain text on their own lines. '
+    'For whole repository files use SKILL fs_write path followed by a fenced content block. '
+    'Never invent a backend receipt. Use the output returned by each skill as the evidence. '
+    'Do not re-write a verified file just to restate its contents. Follow backend grants and approval gates.'
+)
+
 for _name in (
     'GEMMA_SYSTEM_PROMPT',
     'LLAMA_SYSTEM_PROMPT',
     'QWEN_SYSTEM_PROMPT',
+  'MISTRAL_SYSTEM_PROMPT',
+  'EIGHT_SYSTEM_PROMPT',
+  'THIRTEEN_SYSTEM_PROMPT',
+  'NINETEEN_SYSTEM_PROMPT',
+  'TWENTY_SYSTEM_PROMPT',
 ):
     _prompt = globals().get(_name)
     if isinstance(_prompt, str):

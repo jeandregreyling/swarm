@@ -52,6 +52,12 @@ logger = logging.getLogger('seven.skills')
 # trust_level: 0=read-only, 1=write-own-sandpit, 2=write-shared, 4=system
 
 REGISTRY = {
+    'email_ticket_reply': {
+        'description': 'Email an own-sandpit text attachment to the sender of an open ticket through Fridays, using an approved proposal.',
+        'trust_level': 2,
+        'usage': 'SKILL email_ticket_reply <ticket_number> <approved_proposal_id> <sandpits/agent/file.txt>',
+        'example': 'SKILL email_ticket_reply TICKET-123 INTERNAL-APEX-123 sandpits/apex/proof.txt',
+    },
     'shell': {
         'description': 'Run a whitelisted shell command. Output returned and emailed to Ghost.',
         'trust_level': 0,
@@ -561,6 +567,54 @@ def _skill_browse(args, agent, **_):
     content = browse(url, agent=agent)
     success = not content.startswith('[Browser] Could not') and not content.startswith('[Browser] Page timed out')
     return success, content
+
+
+def _skill_email_ticket_reply(args, agent, **_):
+    import shlex
+    import requests
+    from utils.db._connection import get_connection
+
+    parts = shlex.split(args)
+    if len(parts) != 3:
+        return False, REGISTRY['email_ticket_reply']['usage']
+    ticket_number, proposal_id, rel = parts
+    name = str(agent or '').strip().lower()
+    target = _fs_safe_path(rel)
+    own_sandpit = (_FS_ROOT / 'sandpits' / name).resolve()
+    if not rel.startswith(f'sandpits/{name}/') or not target or not target.resolve().is_relative_to(own_sandpit) or not target.is_file() or target.suffix.lower() != '.txt':
+        return False, 'Only an existing text file in the calling agent\'s own sandpit can be emailed.'
+    conn = get_connection()
+    try:
+        ticket = conn.execute('SELECT sender_email, status FROM tickets WHERE ticket_number=?', (ticket_number,)).fetchone()
+        proposal = conn.execute('SELECT status, agent FROM work_proposals WHERE proposal_id=?', (proposal_id,)).fetchone()
+        prior = conn.execute(
+            "SELECT n.content FROM ticket_notes n JOIN tickets t ON t.id=n.ticket_id "
+            "WHERE t.ticket_number=? AND n.agent=? AND n.note_type='email_reply' ORDER BY n.id DESC LIMIT 1",
+            (ticket_number, name),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not ticket or ticket['status'] == 'closed':
+        return False, 'An open ticket is required.'
+    if not proposal or proposal['status'] not in {'approved', 'in_progress'} or proposal['agent'] != name:
+        return False, 'An approved proposal owned by the calling agent is required.'
+    if prior:
+        previous = json.loads(prior['content'])
+        if previous.get('proposal_id') == proposal_id and previous.get('path') == rel and previous.get('smtp_accepted'):
+            return True, f'Already accepted by SMTP for ticket {ticket_number}; message_id={previous.get("message_id")}'
+    response = requests.post('http://127.0.0.1:5050/api/email/send', json={
+        'to': ticket['sender_email'], 'subject': f'{ticket_number}: Fridays local-agent proof',
+        'body': f'Ticket {ticket_number}: the local agent created and verified the attached text file through Fridays.',
+        'attachments': [rel], 'proposal_id': proposal_id,
+    }, timeout=35)
+    data = response.json()
+    if not response.ok or not data.get('smtp_accepted'):
+        return False, f'Email not accepted: {data.get("error") or response.status_code}'
+    from core.pipeline.ticket import add_agent_note
+    receipt = json.dumps({'smtp_accepted': True, 'message_id': data.get('message_id'),
+                          'attachments': data.get('attachments'), 'proposal_id': proposal_id, 'path': rel})
+    add_agent_note(ticket_number, name, 'email_reply', receipt)
+    return True, f'SMTP accepted ticket {ticket_number}; message_id={data.get("message_id")}; attachment={rel}'
 
 
 def _skill_file_read(args, agent, **_):
@@ -2626,6 +2680,7 @@ def _skill_check_models(args, agent, **_):
 
 
 _HANDLERS = {
+    'email_ticket_reply': _skill_email_ticket_reply,
     'shell':          _skill_shell,
     'browse':         _skill_browse,
     'file_read':      _skill_file_read,

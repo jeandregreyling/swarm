@@ -1,0 +1,72 @@
+{
+  "ticket": "TICKET-LOCAL-MAIL-20261021-012900",
+  "queue_id": 2335,
+  "proposal_id": "INTERNAL-APEX-2336",
+  "proposal_queue_id": 2336,
+  "recipient": "jeandre.greyling@gmail.com",
+  "subject": "TICKET-LOCAL-MAIL-20261021-012900: local-agent file and email proof",
+  "routing": {
+    "needs_web": false,
+    "needs_browser": false,
+    "needs_shell": true,
+    "agents": "llama",
+    "mode": "consult",
+    "is_identity": false,
+    "is_sap": false,
+    "is_system": false,
+    "search_engines": []
+  },
+  "status": "closed",
+  "path": "sandpits/apex/cherry-20261021-012900.txt",
+  "sha256": "e02ca6ca5ed8551beb739dcd4273865c9fa6c00c8873904e176fbc0bab44133d",
+  "file_bytes": 137,
+  "apex_tokens": 156,
+  "duck_review": " YES, this is a harmless short text-file attachment matching the request. The file contents confirm that it was created by the local Apex agent as requested, and includes the ticket number in the filename as specified. The size and SHA256 hash also match the expected values for the given content.",
+  "mail_agent_reply": "The email_ticket_reply skill has been executed for the approved ticket. The SMTP server has accepted the message with the message ID: <179254675621.104168.3525223808226371886@jd-B550M-DS3H-AC-R2>, and it includes the attachment from sandpits/apex/cherry-20261021-012900.txt.",
+  "smtp_receipt": {
+    "smtp_accepted": true,
+    "message_id": "<179254675621.104168.3525223808226371886@jd-B550M-DS3H-AC-R2>",
+    "attachments": [
+      "cherry-20261021-012900.txt"
+    ],
+    "proposal_id": "INTERNAL-APEX-2336",
+    "path": "sandpits/apex/cherry-20261021-012900.txt"
+  },
+  "sent_copy_verified": true,
+  "recipient_header": "jeandre.greyling@gmail.com",
+  "sent_attachment_sha256": "e02ca6ca5ed8551beb739dcd4273865c9fa6c00c8873904e176fbc0bab44133d",
+  "ticket_notes": [
+    [
+      "librarian",
+      "intake"
+    ],
+    [
+      "gemma",
+      "triage"
+    ],
+    [
+      "ghost",
+      "assignment"
+    ],
+    [
+      "apex",
+      "file_created"
+    ],
+    [
+      "apex",
+      "file_readback"
+    ],
+    [
+      "duck",
+      "model_review"
+    ],
+    [
+      "apex",
+      "workspace_readback"
+    ],
+    [
+      "apex",
+      "email_reply"
+    ]
+  ]
+}

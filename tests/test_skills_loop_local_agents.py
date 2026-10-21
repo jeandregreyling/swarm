@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from agents import skills_loop as sl
 
 
@@ -12,6 +14,24 @@ def test_prose_no_write_does_not_make_turn_read_only():
 
 def test_explicit_do_not_edit_is_still_read_only():
     assert sl._is_explicitly_read_only_task(_user('Please do not edit any files.')) is True
+
+
+def test_explicit_mail_command_survives_no_file_edits_policy(monkeypatch):
+    replies = iter(['SKILL email_ticket_reply TICKET-1 PROPOSAL-1 sandpits/apex/proof.txt', 'SMTP accepted'])
+    permissions = []
+
+    def execute(cmds, *args, **kwargs):
+        permissions.append(kwargs['allowed_skill_names'])
+        return '[skill:email_ticket_reply] OK\nSMTP accepted'
+
+    monkeypatch.setattr(sl, '_execute_skill_cmds', execute)
+    sl.run_skill_loop(
+        'apex', lambda _messages: (next(replies), 1),
+        _user('Execute email_ticket_reply for this ticket. Do not edit any files.'),
+        lambda *_: None, max_passes=1, nudge_if_no_skills=False,
+    )
+    assert 'email_ticket_reply' in permissions[0]
+    assert 'fs_write' not in permissions[0]
 
 
 def test_only_latest_user_turn_counts():
@@ -38,6 +58,29 @@ def test_echoed_skill_result_is_not_a_command():
 def test_plain_skill_line_still_parses():
     cmds = sl._extract_skill_cmds('SKILL fs_readonly lines fridays/task_runner.py 1 40')
     assert cmds == [('fs_readonly', 'lines fridays/task_runner.py 1 40')]
+
+
+def test_bracketed_plain_skill_command_is_parsed():
+    assert sl._extract_skill_cmds('[SKILL file_write mistral/proof.txt proof]') == [('file_write', 'mistral/proof.txt proof')]
+
+
+def test_placeholder_paths_are_not_executable():
+    assert sl._extract_skill_cmds('SKILL fs_write <sandpits/your-agent/file.txt>\n```\nproof\n```') == []
+
+
+def test_verified_explicit_note_stops_before_another_rewrite(monkeypatch):
+    written = str(Path(sl.__file__).resolve().parents[1] / 'sandpits/apex/proof.txt')
+    monkeypatch.setattr(sl, '_execute_skill_cmds', lambda *_args, **_kwargs: f'[skill:file_write] OK\n{written}\n\n[skill:file_read] OK\nproof')
+    calls = []
+
+    def model(_messages):
+        calls.append(True)
+        assert len(calls) == 1
+        return 'SKILL file_write apex/proof.txt proof\nSKILL file_read apex/proof.txt', 5
+
+    answer, _ = sl.run_skill_loop('apex', model, _user('Run SKILL file_write apex/proof.txt proof\nThen read it back.'), lambda *_: None)
+    assert 'Verified sandpits/apex/proof.txt' in answer
+    assert len(calls) == 1
 
 
 def test_sandpit_write_uses_caller_identity(monkeypatch):

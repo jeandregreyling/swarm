@@ -203,11 +203,11 @@ from .queue_wrappers import intake_internal, update_proposal_status, get_queue_e
 
 
 
-def _patched_ask_agent(agent_name, prompt):
+def _patched_ask_agent(agent_name, prompt, *args, **kwargs):
     if agent_name in DISABLED_AGENTS:
         print(f'[Terminal] {agent_name} offline — kill switch active')
         return f'[{agent_name} is currently offline]'
-    return _original_ask_agent(agent_name, prompt)
+    return _original_ask_agent(agent_name, prompt, *args, **kwargs)
 
 
 

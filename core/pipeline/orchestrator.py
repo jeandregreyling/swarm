@@ -304,7 +304,7 @@ def _select_keep_alive(agent_name):
     ka = _get_keep_alive()
     return ka.get(agent_name, 300)
 
-def ask_agent(agent_name, prompt, retries=2):
+def ask_agent(agent_name, prompt, retries=2, *, allow_skills=False):
     agent_name = agent_name.lower()  # normalize — AGENTS dict uses lowercase keys
     agents_live = _get_agents()
     prompts_live = _get_system_prompts()
@@ -340,12 +340,23 @@ def ask_agent(agent_name, prompt, retries=2):
     from core import llm as _llm
     for attempt in range(retries + 1):
         try:
-            answer, ec = _llm.chat_via_gateway(
-                model,
-                messages,
-                temperature=temp,
-                keep_alive=keep_alive,
-            )
+            if allow_skills and role_name in {'duck', 'librarian', 'sniffles'}:
+                from agents.skills_loop import run_skill_loop
+                from agents.skill_intent import message_likely_needs_skills
+
+                def call_model(turns):
+                    return _llm.chat_via_gateway(model, turns, temperature=temp, keep_alive=keep_alive)
+
+                answer, ec = run_skill_loop(
+                    agent_name=role_name, call_fn=call_model, messages=messages,
+                    emit_fn=lambda stage: logger.info('[%s] %s', role_name, stage),
+                    max_passes=3, nudge_if_no_skills=message_likely_needs_skills(prompt),
+                    allowed_skill_names={'file_read', 'file_write', 'fs_readonly', 'memory_search', 'knowledge_search'},
+                )
+            else:
+                answer, ec = _llm.chat_via_gateway(
+                    model, messages, temperature=temp, keep_alive=keep_alive,
+                )
             _LAST_EVAL_COUNT[agent_name] = ec
             elapsed_ms = int((time.time() - start_time) * 1000)
             log_agent_thinking(agent_name, f'responded to prompt', elapsed_ms)

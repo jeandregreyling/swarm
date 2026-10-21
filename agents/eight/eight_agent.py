@@ -68,12 +68,15 @@ def chat(message, conversation_history=None, stage_cb=None):
             buf.append(piece)
             if len(buf) == 1 or len(buf) % 15 == 0:
                 _emit(f'generating · {("".join(buf))[-300:]}')
-        answer, tokens = _llm.chat_via_gateway(
-            model_name,
-            messages,
-            stage_cb=stage_cb,
-            on_chunk=_cb,
-            temperature=0.4,
+        def _api_call(turns):
+            return _llm.chat_via_gateway(model_name, turns, stage_cb=stage_cb, on_chunk=_cb, temperature=0.4)
+
+        from agents.skills_loop import run_skill_loop
+        from agents.skill_intent import message_likely_needs_skills
+        answer, tokens = run_skill_loop(
+            agent_name=AGENT_NAME, call_fn=_api_call, messages=messages,
+            emit_fn=_emit, max_passes=5,
+            nudge_if_no_skills=message_likely_needs_skills(message),
         )
         _emit('persisting memory')
         try:

@@ -18,7 +18,8 @@ sys.path.insert(0, os.path.join(_SWARM_ROOT, "utils"))
 logger = logging.getLogger('seven.nineteen')
 
 AGENT_NAME = 'nineteen'
-LOCAL_MODEL = 'qwen:latest'
+from utils.local_runtime_policy import preferred_model_for_agent
+LOCAL_MODEL = preferred_model_for_agent(AGENT_NAME, 'qwen2.5:14b-instruct')
 
 
 def _build_context(message):

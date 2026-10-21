@@ -1903,7 +1903,7 @@ def _seed_agents():
         "WHERE name='ten' AND api_key_var='GITHUB_TOKEN'"
     )
     conn.execute(
-        "UPDATE agents SET model='qwen:latest', "
+        "UPDATE agents SET model=CASE WHEN model='qwen:latest' THEN 'qwen2.5:14b-instruct' ELSE model END, "
         "role='Local reasoning agent — fast analysis and structured problem solving', "
         "tier='local' WHERE name='nineteen'"
     )

@@ -113,7 +113,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
     if is_worker_agent(selected_agent):
         return '\n'.join([
             '=== Thread routing ===',
-            f'You are {str(selected_agent).upper()}, the only local agent. Answer the latest message yourself; no relay is needed.',
+            f'You are {str(selected_agent).upper()}, a member of the local team. Answer the latest message addressed to you.',
             f'Latest visible sender: {latest_sender}',
             f'Default reply target: {default_target}',
             'SKILLS (the SKILL line itself is plain text, never inside a fence; file content goes in a ``` fenced block right after it):',
@@ -176,6 +176,9 @@ def _build_chat_handoff_block(selected_agent, reply_context):
         '  If a peer is already handling a task, do not repeat their acknowledgement or restate their plan. Add only what is new, or say nothing.',
         '  Relay only to a real agent, only with a real question, and never to an agent that just spoke to you unless you need their answer.',
         'SKILLS (one command per line, plain text, never inside a code fence or brackets):',
+        '  SKILL file_write <your-agent/filename.txt> <exact text>   (write a short own-sandpit note; text is inline without added quotation marks)',
+        '  SKILL file_read <agent/filename.txt>   (read back a sandpit note)',
+        '  SKILL fs_write <sandpits/your-agent/file.txt>   followed by a fenced block containing only the exact file text',
         '  SKILL fs_readonly lines docs/sample.md 1 20      (format example: use the file and lines you were asked about)',
         '  SKILL alm_create_proposal "<title>" "<description>"',
         '  SKILL fs_patch_lines <path> <start> <end>   then the replacement lines in a ``` fenced block',

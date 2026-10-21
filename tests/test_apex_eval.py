@@ -72,3 +72,15 @@ def test_unmet_conditions_stop_the_run_before_any_chat(monkeypatch):
     problems = ev.preconditions('apex', 'qwen2.5:14b-instruct')
     assert any('PROD is not answering' in p for p in problems)
     assert any('Ollama is not answering' in p for p in problems)
+
+
+def test_live_chat_accepts_synchronous_responses_without_polling(monkeypatch):
+    monkeypatch.setattr(ev, '_post_json', lambda *_args: {
+        'ok': True, 'conversation_id': 42, 'pending_jobs': [],
+        'responses': [{'agent': 'seven', 'response': 'ready', 'tokens': 7, 'pending': False}],
+    })
+    monkeypatch.setattr(ev, '_get_json', lambda *_args: (_ for _ in ()).throw(AssertionError('must not poll a synchronous answer')))
+    result = ev.run_chat('seven', 'hello')
+    assert result['status'] == 'completed'
+    assert result['response'] == 'ready'
+    assert result['conversation_id'] == 42

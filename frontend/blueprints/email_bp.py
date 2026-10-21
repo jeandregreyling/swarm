@@ -10,11 +10,34 @@ import email.utils
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone
+import os
+from pathlib import Path
 from flask import Blueprint, jsonify, request
 
 from database import get_connection, log_activity
 
 email_bp = Blueprint('email', __name__)
+
+
+def _attach_sandpit_text_files(message, paths):
+    if not isinstance(paths, list) or len(paths) > 5:
+        raise ValueError('attachments must be a list of at most five sandpit text-file paths')
+    root = Path(os.environ.get('SWARM_ROOT') or Path(__file__).resolve().parents[2]).resolve()
+    allowed = (root / 'sandpits').resolve()
+    names = []
+    for value in paths:
+        if not isinstance(value, str):
+            raise ValueError('Each attachment path must be a string')
+        path = (root / value).resolve()
+        if not path.is_relative_to(allowed) or path.suffix.lower() != '.txt' or not path.is_file():
+            raise ValueError('Attachments must be existing .txt files inside sandpits')
+        if path.stat().st_size > 1024 * 1024:
+            raise ValueError('Text attachments must be no larger than 1 MiB')
+        part = MIMEText(path.read_text(encoding='utf-8'), 'plain', 'utf-8')
+        part.add_header('Content-Disposition', 'attachment', filename=path.name)
+        message.attach(part)
+        names.append(path.name)
+    return names
 
 _ACCOUNTS = {
     'sevenpotato9@gmail.com': 'seven',
@@ -246,15 +269,22 @@ def send_email():
     msg['From'] = sender
     msg['To'] = to_addr
     msg['Subject'] = subject
+    msg['Message-ID'] = email.utils.make_msgid()
     if internal_test:
         msg['X-Swarm-Internal-Test'] = '1'
         msg['Auto-Submitted'] = 'auto-generated'
     msg.attach(MIMEText(message, 'plain', 'utf-8'))
+    try:
+        attachments = _attach_sandpit_text_files(msg, body.get('attachments', []))
+    except (ValueError, OSError, UnicodeError) as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
 
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15) as smtp:
             smtp.login(sender, password)
-            smtp.send_message(msg)
+            refused = smtp.send_message(msg)
+            if refused:
+                raise smtplib.SMTPRecipientsRefused(refused)
     except Exception as exc:
         log_activity('email', 'send_error', f'to={to_addr} err={exc}')
         return jsonify({'ok': False, 'error': f'SMTP error: {exc}'}), 502
@@ -264,4 +294,7 @@ def send_email():
         'send_internal_test' if internal_test else 'send',
         f'from={sender} to={to_addr} subj={subject[:60]}',
     )
-    return jsonify({'ok': True, 'message': 'Email sent', 'internal_test': internal_test})
+    from lib.email.email_handler import _record_delivery
+    _record_delivery(to_addr, [], subject, '', 'ok', 1, '')
+    return jsonify({'ok': True, 'message': 'Accepted by SMTP server', 'smtp_accepted': True,
+                    'message_id': msg['Message-ID'], 'attachments': attachments, 'internal_test': internal_test})

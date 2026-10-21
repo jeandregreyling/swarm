@@ -88,11 +88,13 @@ def chat(message, conversation_history=None, stage_cb=None):
             )
 
         from agents.skills_loop import run_skill_loop
+        from agents.skill_intent import message_likely_needs_skills
         answer, tokens = run_skill_loop(
             agent_name=AGENT_NAME,
             call_fn=_api_call,
             messages=messages,
             emit_fn=_emit,
+            nudge_if_no_skills=message_likely_needs_skills(message),
         )
 
         _emit('persisting response memory')

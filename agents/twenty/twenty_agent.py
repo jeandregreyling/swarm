@@ -101,7 +101,13 @@ def chat(message, conversation_history=None, stage_cb=None):
 
     try:
         _emit('sending model request')
-        answer, tokens = _api_call(messages)
+        from agents.skills_loop import run_skill_loop
+        from agents.skill_intent import message_likely_needs_skills
+        answer, tokens = run_skill_loop(
+            agent_name=AGENT_NAME, call_fn=_api_call, messages=messages,
+            emit_fn=_emit, max_passes=5,
+            nudge_if_no_skills=message_likely_needs_skills(message),
+        )
     except Exception as e:
         logger.error(f'[Twenty] chat error: {e}')
         return f'[twenty] error: {e}', 0

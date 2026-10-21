@@ -9,6 +9,37 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "utils"))
 
 
+@pytest.mark.parametrize('agent', ['duck', 'librarian', 'sniffles'])
+def test_utility_agents_use_skills_loop_on_their_own_models(monkeypatch, agent):
+    from core.pipeline import orchestrator
+
+    monkeypatch.setattr(orchestrator, '_get_agents', lambda: {agent: 'utility-model'})
+    monkeypatch.setattr(orchestrator, '_get_system_prompts', lambda: {agent: 'own role'})
+    monkeypatch.setattr(orchestrator, '_get_temps', lambda: {agent: 0})
+    monkeypatch.setattr(orchestrator, '_select_keep_alive', lambda _name: 0)
+    monkeypatch.setattr(orchestrator, 'log_action', lambda *_args: None)
+    monkeypatch.setattr(orchestrator, 'log_agent_thinking', lambda *_args: None)
+    monkeypatch.setattr(orchestrator, 'batch_commit', lambda *_args: None)
+    called = {}
+
+    def gateway(model, messages, **kwargs):
+        called['model'] = model
+        return 'model output', 8
+
+    def skill_loop(**kwargs):
+        called['agent'] = kwargs['agent_name']
+        called['skills'] = kwargs['allowed_skill_names']
+        return kwargs['call_fn'](kwargs['messages'])
+
+    monkeypatch.setattr('core.llm.chat_via_gateway', gateway)
+    monkeypatch.setattr('agents.skills_loop.run_skill_loop', skill_loop)
+    assert orchestrator.ask_agent(agent, 'Write an audit note', retries=0, allow_skills=True) == 'model output'
+    assert called['model'] == 'utility-model'
+    assert called['agent'] == agent
+    assert 'file_write' in called['skills']
+    assert 'fs_write' not in called['skills']
+
+
 def test_twenty_repairs_legacy_qwen_alias(monkeypatch):
     from agents.twenty import twenty_agent
 
@@ -350,4 +381,4 @@ def test_nineteen_uses_local_ollama_gateway(monkeypatch):
 
     answer, tokens = nineteen_agent.chat("hello")
     assert (answer, tokens) == ("nineteen local", 9)
-    assert called["model"] == "qwen:latest"
+    assert called["model"] == "qwen2.5:14b-instruct"
