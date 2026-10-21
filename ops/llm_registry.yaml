@@ -1,4 +1,35 @@
 models:
+  - name: apex-direct:7b
+    driver: llamacpp
+    role: coder
+    path: /mnt/archive/models/blobs/sha256-60e05f2100071479f596b964f89f510f057ce397ea22f2833a0cfe029bfc2463
+    ctx: 8192
+    quant: Q4_K_M
+    ram_gb: 6
+    ttl_seconds: 600
+    options:
+      mode: server
+      server: /home/jd/llama.cpp/llama-b11756/llama-server
+      profile: qwen
+      ngl: 999
+      slots: 1
+
+  - name: seven-direct:daily
+    driver: llamacpp
+    role: general
+    path: /mnt/archive/models/blobs/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff
+    ctx: 4096
+    quant: Q4_K_M
+    ram_gb: 3
+    ttl_seconds: 600
+    options:
+      mode: server
+      server: /home/jd/llama.cpp/llama-b11756/llama-server
+      profile: llama3
+      ngl: 0
+      threads: 4
+      slots: 1
+
   # Apex's brain, served straight from the Ollama-store GGUF blob by our own
   # Vulkan llama-server (RX 6800 via RADV) — no Ollama middleware in the loop.
   - name: apex-direct:20b
@@ -15,7 +46,7 @@ models:
       ngl: 999
       slots: 1
       chat_template_file: /home/jd/llama.cpp/harmony-gptoss.jinja
-      raw_completion: true
+      raw_completion: false
 
   - name: gemma-direct:3
     driver: llamacpp

@@ -55,7 +55,7 @@ def test_watch_studio_processes_step_and_writes_quintum_notes(isolated_db, monke
     assert results == [{"step_id": sid, "status": "done", "retries": 0}]
     step = pj.get_step(sid)
     assert step["status"] == "done"
-    assert step["owner"] == "fred"
+    assert step["owner"] == "gemma"
 
     notes = pj.list_blackboard_notes(pid, status=None)
     assert any(note["kind"] == "quintum-chunk" for note in notes)

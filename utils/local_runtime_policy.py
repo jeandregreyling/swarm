@@ -24,16 +24,12 @@ EMBEDDING_ONLY_MODELS = frozenset({"nomic-embed-text:latest", "nomic-embed-text"
 # CPU-safe chat assignments validated on the Dell Linux runtime.
 # One model wears every local hat. Override with SWARM_ONE_MODEL; set it to an
 # empty string to fall back to the per-agent models below.
-ONE_MODEL = os.environ.get("SWARM_ONE_MODEL", WORKER_MODEL or "mistral-small:24b").strip()
+ONE_MODEL = os.environ.get("SWARM_ONE_MODEL", "").strip()
 _HAT_AGENTS = tuple(dict.fromkeys(("fred", "gemma", "mistral", "llama", "qwen", "duck", WORKER_AGENT)))
 if ONE_MODEL:
     PREFERRED_AGENT_MODELS = {name: ONE_MODEL for name in _HAT_AGENTS}
 else:
-    PREFERRED_AGENT_MODELS = {
-        "gemma": "qwen2.5:7b-instruct",
-        "qwen": "qwen2.5:7b-instruct",
-        "duck": "qwen:latest",
-    }
+    PREFERRED_AGENT_MODELS = {WORKER_AGENT: WORKER_MODEL} if WORKER_MODEL else {}
 
 # Models that exist but are not suitable as interactive chat defaults on this
 # machine profile. They remain available for explicit jobs/tests.
@@ -365,11 +361,19 @@ def normalize_agent_name(value: Any) -> str:
 
 def is_non_ollama_model(model: Any) -> bool:
     model_name = normalize_model_name(model)
-    return model_name in NON_OLLAMA_MODELS or model_name.startswith("seven-direct:")
+    return model_name in NON_OLLAMA_MODELS or is_direct_runtime_model(model_name)
 
 
 def is_direct_runtime_model(model: Any) -> bool:
-    return normalize_model_name(model).startswith("seven-direct:")
+    model_name = normalize_model_name(model)
+    if model_name.startswith("seven-direct:"):
+        return True
+    try:
+        from core.seven_llm import registry
+        entry = registry.get(model_name)
+        return bool(entry and entry.driver == 'llamacpp')
+    except Exception:
+        return False
 
 
 def agent_enabled(agent: dict[str, Any]) -> bool:
@@ -398,6 +402,13 @@ def preferred_model_for_agent(agent_name: Any, current_model: Any = "") -> str:
     preferred = PREFERRED_AGENT_MODELS.get(name)
     if preferred:
         return preferred
+    try:
+        from utils.db.registry import get_agent_models
+        configured = (get_agent_models() or {}).get(name)
+        if configured:
+            return str(configured).strip()
+    except Exception:
+        pass
     return str(current_model or "").strip()
 
 

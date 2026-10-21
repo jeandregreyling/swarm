@@ -1440,6 +1440,13 @@ def _task_curiosity_digest(**kwargs):
     )
 
 
+@register('seven_daily_brief', "Seven's daily narrative from memory, callouts and learning", 'memory')
+def _task_seven_daily_brief(**kwargs):
+    from agents.seven import daily_brief
+    out = daily_brief.compose_daily()
+    return f"seven_daily_brief ok · {out['date']} · {out['summary']} · path={out['path']}"
+
+
 @register('money_hub_daily_newsletter', 'Money Hub daily newsletter into Knowledge Center', 'finance')
 def _task_money_hub_daily_newsletter(**kwargs):
     from core import market_watch

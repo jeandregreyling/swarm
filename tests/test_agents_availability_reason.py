@@ -42,3 +42,20 @@ def test_agent_availability_reason_uses_seven_runtime_for_direct_model(monkeypat
 
     monkeypatch.setattr(identity, '_seven_runtime_running', lambda: False, raising=False)
     assert identity._agent_availability_reason('seven') == 'Seven Runtime offline'
+
+
+def test_apex_direct_availability_does_not_require_ollama(monkeypatch, tmp_path):
+    from core.seven_llm import registry
+    from core.seven_llm.registry import ModelEntry
+
+    model_file = tmp_path / 'model.gguf'
+    server_file = tmp_path / 'llama-server'
+    model_file.touch()
+    server_file.touch()
+    entry = ModelEntry(name='apex-direct:7b', driver='llamacpp', path=str(model_file), options={'server': str(server_file)})
+    monkeypatch.setattr(registry, 'get', lambda _name: entry)
+    monkeypatch.setattr(identity, '_reg_models', lambda: {'apex': 'apex-direct:7b'})
+    monkeypatch.setattr(identity, '_ollama_runtime_running', lambda: False)
+    assert identity._local_agent_runtime_state('apex')[0] is True
+    model_file.unlink()
+    assert identity._local_agent_runtime_state('apex') == (False, 'Direct GGUF missing')

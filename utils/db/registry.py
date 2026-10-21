@@ -85,7 +85,8 @@ _NON_OLLAMA_MODELS = frozenset({'', 'external', 'local-algorithm'})
 
 def _is_non_ollama_model(model: str) -> bool:
     model = str(model or '').strip().lower()
-    return model in _NON_OLLAMA_MODELS or model.startswith('seven-direct:')
+    from utils.local_runtime_policy import is_direct_runtime_model
+    return model in _NON_OLLAMA_MODELS or is_direct_runtime_model(model)
 _API_PING_TIMEOUT_S = 6
 _PROVIDER_META = {
     'GROQ_API_KEY': {

@@ -107,6 +107,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.enrollment',     'enrollment_bp'),
     ('blueprints.gmail_labels',   'gmail_labels_bp'),
     ('blueprints.feeds_bp',       'feeds_bp'),
+    ('blueprints.seven_bp',       'seven_bp'),
     ('blueprints.wishlist_bp',    'wishlist_bp'),
     ('blueprints.cybersecurity_bp', 'cybersecurity_bp'),
     ('blueprints.financial_bp',     'financial_bp'),
@@ -260,6 +261,15 @@ def create_app():
             _a20_start(app)
         except Exception as _a20_err:
             print(f'[Terminal] Agent 20 scheduler start warning: {_a20_err}')
+        try:
+            from core.seven import boot as _seven_boot
+            _seven_info = _seven_boot()
+            print(f'[Terminal] Seven brain online: {_seven_info}')
+            from blueprints.localai import _start_seven_runtime
+            _seven_runtime = _start_seven_runtime()
+            print(f'[Terminal] Seven runtime running: {_seven_runtime.get("running", False)}')
+        except Exception as _seven_err:
+            print(f'[Terminal] Seven brain start warning: {_seven_err}')
     else:
         print(f'[Terminal] STAGE={_STAGE} — background daemons disabled (manual mode)')
 

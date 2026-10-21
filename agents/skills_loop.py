@@ -869,6 +869,8 @@ def run_skill_loop(
     note = unfinished_file_edit_note(joined)
     if note:
         answer = note + '\n\n' + str(answer or '')
+    if any(result.group(2) == 'OK' for result in _FILE_EDIT_RESULT.finditer(joined)):
+        answer = str(answer or '') + '\n\nExecution evidence:\n' + joined
 
     _tl(source_conv_id, agent_name, 'final', str(answer or '')[:1200])
     return answer, total_tokens

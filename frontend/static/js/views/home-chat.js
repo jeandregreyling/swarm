@@ -927,7 +927,7 @@
 
     const body = {
       message: text,
-      agents: enabled,
+      agents: isManual ? enabled : [],
       conversation_id: _hcConvId || null,
       new_thread: !_hcConvId,
       history_mode: 'recent',

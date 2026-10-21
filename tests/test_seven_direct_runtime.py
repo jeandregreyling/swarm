@@ -11,6 +11,33 @@ from core.seven_llm.inventory import scan_gguf
 from core.seven_llm.prompt_profiles import get_profile
 
 
+def test_direct_chat_reserves_tokens_for_a_final_answer():
+    payload = llama_server._chat_payload('apex-direct:7b', [], temperature=0, options={})
+    assert payload['max_tokens'] == 2048
+
+
+def test_direct_chat_uses_registry_profile_and_rejects_reasoning_only(monkeypatch):
+    import pytest
+    from types import SimpleNamespace
+
+    entry = ModelEntry(name='test-direct', driver='llamacpp', options={'profile': 'llama3'})
+    monkeypatch.setattr(registry, 'get', lambda _model: entry)
+    monkeypatch.setattr(llama_server, 'ensure', lambda *_args, **_kwargs: SimpleNamespace(endpoint='http://direct-test'))
+    posted = {}
+
+    def fake_post(url, json, timeout):
+        posted.update(json)
+        return SimpleNamespace(status_code=200, json=lambda: {
+            'choices': [{'message': {'content': '', 'reasoning_content': 'SKILL fs_write do-not-execute'}}],
+            'usage': {'completion_tokens': 10},
+        })
+
+    monkeypatch.setattr(llama_server.requests, 'post', fake_post)
+    with pytest.raises(RuntimeError, match='no final answer'):
+        llama_server.chat('test-direct', [{'role': 'user', 'content': 'hello'}])
+    assert posted['stop'] == get_profile('llama3').stops or posted['stop'] == list(get_profile('llama3').stops)
+
+
 def test_direct_registry_discovers_repo_local_seven_model():
     names = {m.name for m in registry.list_models()}
     assert "seven-direct:daily" in names

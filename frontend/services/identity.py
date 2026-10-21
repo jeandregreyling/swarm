@@ -136,6 +136,14 @@ def _local_agent_runtime_state(agent_name):
     model = _local_agent_model(agent_name)
     if model.startswith('seven-direct:'):
         return _seven_runtime_running(), 'Seven Runtime offline'
+    from core.seven_llm import registry
+    entry = registry.get(model)
+    if entry and entry.driver == 'llamacpp':
+        from core.seven_llm.llama_server import default_binary
+        if not entry.path or not os.path.isfile(entry.path):
+            return False, 'Direct GGUF missing'
+        binary = (entry.options or {}).get('server') or default_binary()
+        return os.path.isfile(binary), 'Direct llama-server missing'
     if model in {'', 'external', 'local-algorithm'}:
         return True, ''
     return _ollama_runtime_running(), 'Ollama offline'

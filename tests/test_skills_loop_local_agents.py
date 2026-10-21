@@ -40,6 +40,18 @@ def test_plain_skill_line_still_parses():
     assert cmds == [('fs_readonly', 'lines fridays/task_runner.py 1 40')]
 
 
+def test_successful_write_includes_backend_receipt(monkeypatch):
+    replies = iter(['SKILL fs_write sandpits/apex/evidence.txt\n```\nproof\n```', 'sandpits/apex/evidence.txt\n```\nproof\n```'])
+    monkeypatch.setattr(sl, '_execute_skill_cmds', lambda *_args, **_kwargs: '[skill:fs_write] OK\nWritten 5 chars to sandpits/apex/evidence.txt')
+    answer, _ = sl.run_skill_loop(
+        agent_name='apex', call_fn=lambda _messages: (next(replies), 1),
+        messages=_user('Create sandpits/apex/evidence.txt with proof'),
+        emit_fn=lambda *_: None, max_passes=1, nudge_if_no_skills=False,
+    )
+    assert 'Execution evidence:' in answer
+    assert '[skill:fs_write] OK\nWritten 5 chars' in answer
+
+
 def test_explicit_one_line_sandpit_create_recovers_missing_skill_call(monkeypatch):
     message = (
         'Create sandpits/apex/maintenance-regression.txt with exactly one line: '

@@ -1126,6 +1126,15 @@ def test_chat_routes_explicit_agent_mentions_before_defaulting_to_nine(monkeypat
     ) == ['gemma']
 
 
+def test_chat_explicit_apex_mention_is_not_seven(monkeypatch):
+    from frontend.blueprints import chat as chat_mod
+
+    monkeypatch.setattr(chat_mod, '_get_agent_labels', lambda: {'apex': 'Apex', 'seven': 'Seven'})
+    assert chat_mod._chat_extract_explicit_agent_mentions(
+        '@apex create a file in your sandpit', {'apex', 'seven'},
+    ) == ['apex']
+
+
 def test_watchdog_marks_status_prompts_read_only():
     from frontend.blueprints import chat as chat_mod
 

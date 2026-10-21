@@ -235,7 +235,7 @@ def _chat_payload(model: str, messages: list[dict], *, temperature: float | None
         "model": model,
         "messages": messages,
         "stream": False,
-        "max_tokens": int(options.get("num_predict") or options.get("max_tokens") or 256),
+        "max_tokens": int(options.get("num_predict") or options.get("max_tokens") or 2048),
         "temperature": float(0.7 if temperature is None else temperature),
     }
     stops = options.get("stop") or default_stops(model, explicit=str(options.get("profile") or ""))
@@ -295,6 +295,7 @@ def chat(
     opts = dict(options or {})
     handle = ensure(model, timeout_s=int(opts.get("startup_timeout") or STARTUP_TIMEOUT_S))
     entry = registry.get(model)
+    opts = {**dict(entry.options or {}), **opts} if entry else opts
     if entry and (entry.options or {}).get("raw_completion"):
         return _raw_completion_chat(handle, messages, temperature=temperature, opts=opts)
     payload = _chat_payload(model, messages, temperature=temperature, options=opts)
@@ -315,9 +316,7 @@ def chat(
     msg = ((data.get("choices") or [{}])[0].get("message") or {})
     text = str(msg.get("content") or "").strip()
     if not text:
-        # gpt-oss/harmony can put the entire reply (SKILL lines included) in
-        # the analysis channel, which llama-server exposes as reasoning_content.
-        text = str(msg.get("reasoning_content") or "").strip()
+        raise RuntimeError('Direct model produced no final answer; reasoning is not an executable reply')
     tokens = int((data.get("usage") or {}).get("completion_tokens") or len(text.split()) or 0)
     return text, tokens
 
@@ -394,9 +393,8 @@ def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int,
                 except Exception:
                     pass
     text = "".join(content_parts).strip()
-    if not text and thinking_parts:
-        # harmony analysis channel carried the whole reply; use it
-        text = "".join(thinking_parts).strip()
+    if not text:
+        raise RuntimeError('Direct model produced no final answer; reasoning is not an executable reply')
     return text, tokens or len(text.split())
 
 

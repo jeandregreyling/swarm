@@ -47,6 +47,9 @@ _AGENT_MODEL_MAP = {
     'qwen':           preferred_model_for_agent('qwen', 'qwen:latest'),
     'mistral':        preferred_model_for_agent('mistral', 'mistral:latest'),
     'fred':           preferred_model_for_agent('fred', 'mistral-small:24b'),
+    'duck':           preferred_model_for_agent('duck', 'mistral:latest'),
+    'librarian':      preferred_model_for_agent('librarian', 'qwen2.5:7b-instruct'),
+    'sniffles':       preferred_model_for_agent('sniffles', 'qwen2.5:7b-instruct'),
     'eight':          'gemma3:latest',
     'phi3':           'phi3:mini',
     'deepseek_local': 'deepseek-r1:7b',
@@ -59,8 +62,7 @@ _AGENT_MODEL_MAP.setdefault(WORKER_AGENT, preferred_model_for_agent(WORKER_AGENT
 _EXCLUSIVE_AGENTS = {'eight'}
 
 # Agents that are NOT local Ollama models — skip the gate entirely
-_CLOUD_AGENTS = {'nine', 'ten', 'eleven', 'twelve', 'gemini', 'scholar', 'seeker',
-                 'duck', 'sniffles', 'librarian'}
+_CLOUD_AGENTS = {'nine', 'ten', 'eleven', 'twelve', 'gemini', 'scholar', 'seeker'}
 
 # How long to wait polling for a free slot (seconds)
 QUEUE_WAIT_SECS = 300   # 5 minutes max wait

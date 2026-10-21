@@ -1590,8 +1590,7 @@ def api_chat():
     data = request.get_json() or {}
     message = (data.get('message') or '').strip()
     explicit_agent_field = str(data.get('agent') or '').strip().lower()
-    # Legacy fallback is still Nine, but only after mention/clarification checks.
-    agent = (explicit_agent_field or 'nine').strip().lower()
+    agent = (explicit_agent_field or 'seven').strip().lower()
     requested_agents = data.get('agents')
     requested_conv_id = data.get('conversation_id')
     force_new_thread = bool(data.get('new_thread'))

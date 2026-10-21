@@ -24,9 +24,9 @@ for _path in (
 
 logger = logging.getLogger('seven.gemma')
 AGENT_NAME = 'gemma'
-from utils.worker import WORKER_AGENT as STUDIO_AGENT
+STUDIO_AGENT = AGENT_NAME
 from utils.local_runtime_policy import preferred_model_for_agent
-MODEL = preferred_model_for_agent(STUDIO_AGENT, 'mistral-small:24b')
+MODEL = preferred_model_for_agent(AGENT_NAME, 'gemma3:latest')
 
 _MAX_INPUT_TOKENS = 12_000
 _MAX_RETRIES = 3

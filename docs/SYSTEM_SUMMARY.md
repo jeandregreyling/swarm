@@ -1,5 +1,22 @@
 # System summary (written after reading the repo, 2026-10-19)
 
+## Local Team Restored (2026-10-21)
+
+This section supersedes the single-worker state described below.
+
+- Fourteen local agents are enabled. Paid agents and online service agents remain disabled.
+- Seven's perception, memory, reasoning, continuous learner, HTTP blueprint and standalone runtime are restored from the source before commit d57095557.
+- Seven starts with PROD and uses `seven-direct:daily`, a surviving Llama 3.2 GGUF on CPU through Fridays' llama-server manager.
+- Apex is a developer peer, not the whole team. It uses `apex-direct:7b`, the surviving Qwen 2.5 Coder GGUF on Vulkan through Fridays, without Ollama in its inference path.
+- Gemma directs and owns her Studio steps; LLaMA researches; Qwen analyses; Duck audits; Librarian manages knowledge and Vortex. Their restored model assignments still use the local Ollama service.
+- The implicit shared-model override is disabled. Agent wrappers consult the canonical registry, except an explicitly configured worker model or shared-model override.
+- Home-chat auto mode no longer forces the default selected pill over explicit mentions. Unaddressed messages default to Seven; manual mode still honors selected agents.
+- Successful file edits include backend execution receipts in the visible reply. Reasoning-only direct responses are rejected rather than treated as answers or commands.
+- A verified direct Apex write/read artifact is `sandpits/apex/restored_team_acceptance.md`. The runtime emitted both skill calls and the file matched both requested lines.
+- Browser chat 2683 also passed through PROD: Apex created `sandpits/apex/local_ui_proof.txt`, read it back and returned the backend execution receipts. Its exact content is `Local model writes through Fridays.` Natural-language task reliability is not implied by this bounded acceptance check.
+- Focused restoration checks passed: 59 role/runtime/coordination tests, 108 skill-loop/watchdog tests, and two direct-response regression checks. These are not a full-suite pass claim.
+- Before roster changes the live database was backed up to `/mnt/archive/backups/swarm-before-local-team-20261021-101346.sqlite3`. Registry enablement and runtime selector files are local state, not transported by a code-only checkout.
+
 ## Intent
 Fridays is a local-first swarm that **does** things rather than reports them (`docs/the-standard.md`). The founding design (Studio doc "What We Are Building" and "Constraints That Must Never Be Broken") sets the rules agents work under:
 

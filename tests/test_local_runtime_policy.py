@@ -18,13 +18,23 @@ def test_configured_models_ignore_disabled_and_non_ollama_agents():
     assert configured_ollama_models(agents) == {"qwen:latest"}
 
 
-def test_one_model_wears_every_hat():
-    from utils.local_runtime_policy import ONE_MODEL
+def test_agents_keep_their_own_registry_models(monkeypatch):
+    from utils import local_runtime_policy as policy
 
-    assert ONE_MODEL
+    monkeypatch.setattr(policy, 'PREFERRED_AGENT_MODELS', {'apex': 'apex-direct:20b'})
+    monkeypatch.setattr('utils.db.registry.get_agent_models', lambda: {})
     for name in ("qwen", "gemma", "duck", "llama", "mistral"):
-        assert preferred_model_for_agent(name, "other:latest") == ONE_MODEL
+        assert preferred_model_for_agent(name, "other:latest") == "other:latest"
+    assert preferred_model_for_agent('apex', 'other:latest') == 'apex-direct:20b'
     assert preferred_model_for_agent("eight", "gemma3:latest") == "gemma3:latest"
+
+
+def test_agent_registry_model_is_used_without_a_global_override(monkeypatch):
+    from utils import local_runtime_policy as policy
+
+    monkeypatch.setattr(policy, 'PREFERRED_AGENT_MODELS', {})
+    monkeypatch.setattr('utils.db.registry.get_agent_models', lambda: {'qwen': 'qwen2.5:14b-instruct'})
+    assert preferred_model_for_agent('qwen', 'qwen:latest') == 'qwen2.5:14b-instruct'
 
 
 def test_unused_chat_models_excludes_embedding_and_avoided_defaults():
@@ -41,3 +51,13 @@ def test_direct_gguf_is_chat_capable_but_not_ollama():
     assert is_local_ollama_agent(agent) is False
     assert configured_ollama_models([agent]) == set()
     assert is_chat_capable_model("seven-direct:daily") is True
+
+
+def test_registered_apex_direct_model_is_not_ollama(monkeypatch):
+    from core.seven_llm import registry
+    from core.seven_llm.registry import ModelEntry
+
+    monkeypatch.setattr(registry, 'get', lambda name: ModelEntry(name=name, driver='llamacpp'))
+    agent = {'name': 'apex', 'tier': 'local', 'model': 'apex-direct:7b', 'enabled': 1}
+    assert is_local_ollama_agent(agent) is False
+    assert configured_ollama_models([agent]) == set()
