@@ -1,0 +1,149 @@
+{
+  "run_id": "66df20c97b2a",
+  "backup": "/mnt/archive/projects/swarm-permission-backups/local-writes-66df20c97b2a.sqlite3",
+  "verification": "real dispatcher and disk bytes; no model inference",
+  "passed": true,
+  "results": [
+    {
+      "agent": "apex",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/apex/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 31 chars to sandpits/apex/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/apex/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  apex: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/apex/write_access_probe_66df20c97b2a.txt: replaced 31 chars with 43 chars (backup: runtime/backups/fs/20261021-113113-821625__sandpits_apex_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"apex: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> apex: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/apex/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  apex: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/apex/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  apex: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/apex/write_access_probe_66df20c97b2a.txt: replaced 43 chars with 57 chars (backup: runtime/backups/fs/20261021-113548-340854__sandpits_apex_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"apex: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> apex: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/apex/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  apex: write permission verified and updated after restart"
+    },
+    {
+      "agent": "duck",
+      "role": "own_sandpit",
+      "pass": true,
+      "path": "sandpits/duck/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/duck/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nduck: write permission verified\n\n[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/duck/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nduck: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/duck/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nduck: write permission verified and updated after restart"
+    },
+    {
+      "agent": "eight",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/eight/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 32 chars to sandpits/eight/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/eight/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  eight: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/eight/write_access_probe_66df20c97b2a.txt: replaced 32 chars with 44 chars (backup: runtime/backups/fs/20261021-113117-448043__sandpits_eight_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"eight: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> eight: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/eight/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  eight: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/eight/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  eight: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/eight/write_access_probe_66df20c97b2a.txt: replaced 44 chars with 58 chars (backup: runtime/backups/fs/20261021-113550-179622__sandpits_eight_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"eight: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> eight: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/eight/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  eight: write permission verified and updated after restart"
+    },
+    {
+      "agent": "fred",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/fred/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 31 chars to sandpits/fred/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/fred/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  fred: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/fred/write_access_probe_66df20c97b2a.txt: replaced 31 chars with 43 chars (backup: runtime/backups/fs/20261021-113119-185131__sandpits_fred_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"fred: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> fred: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/fred/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  fred: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/fred/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  fred: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/fred/write_access_probe_66df20c97b2a.txt: replaced 43 chars with 57 chars (backup: runtime/backups/fs/20261021-113551-072747__sandpits_fred_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"fred: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> fred: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/fred/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  fred: write permission verified and updated after restart"
+    },
+    {
+      "agent": "gemma",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/gemma/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 32 chars to sandpits/gemma/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/gemma/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  gemma: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/gemma/write_access_probe_66df20c97b2a.txt: replaced 32 chars with 44 chars (backup: runtime/backups/fs/20261021-113120-903174__sandpits_gemma_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"gemma: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> gemma: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/gemma/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  gemma: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/gemma/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  gemma: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/gemma/write_access_probe_66df20c97b2a.txt: replaced 44 chars with 58 chars (backup: runtime/backups/fs/20261021-113551-976739__sandpits_gemma_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"gemma: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> gemma: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/gemma/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  gemma: write permission verified and updated after restart"
+    },
+    {
+      "agent": "librarian",
+      "role": "own_sandpit",
+      "pass": true,
+      "path": "sandpits/librarian/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/librarian/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nlibrarian: write permission verified\n\n[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/librarian/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nlibrarian: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/librarian/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nlibrarian: write permission verified and updated after restart"
+    },
+    {
+      "agent": "llama",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/llama/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 32 chars to sandpits/llama/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/llama/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  llama: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/llama/write_access_probe_66df20c97b2a.txt: replaced 32 chars with 44 chars (backup: runtime/backups/fs/20261021-113124-452751__sandpits_llama_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"llama: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> llama: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/llama/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  llama: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/llama/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  llama: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/llama/write_access_probe_66df20c97b2a.txt: replaced 44 chars with 58 chars (backup: runtime/backups/fs/20261021-113554-055596__sandpits_llama_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"llama: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> llama: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/llama/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  llama: write permission verified and updated after restart"
+    },
+    {
+      "agent": "mistral",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/mistral/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 34 chars to sandpits/mistral/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/mistral/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  mistral: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/mistral/write_access_probe_66df20c97b2a.txt: replaced 34 chars with 46 chars (backup: runtime/backups/fs/20261021-113126-060681__sandpits_mistral_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"mistral: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> mistral: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/mistral/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  mistral: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/mistral/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  mistral: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/mistral/write_access_probe_66df20c97b2a.txt: replaced 46 chars with 60 chars (backup: runtime/backups/fs/20261021-113554-910591__sandpits_mistral_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"mistral: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> mistral: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/mistral/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  mistral: write permission verified and updated after restart"
+    },
+    {
+      "agent": "nineteen",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/nineteen/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 35 chars to sandpits/nineteen/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/nineteen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  nineteen: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/nineteen/write_access_probe_66df20c97b2a.txt: replaced 35 chars with 47 chars (backup: runtime/backups/fs/20261021-113127-728742__sandpits_nineteen_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"nineteen: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> nineteen: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/nineteen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  nineteen: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/nineteen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  nineteen: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/nineteen/write_access_probe_66df20c97b2a.txt: replaced 47 chars with 61 chars (backup: runtime/backups/fs/20261021-113555-724652__sandpits_nineteen_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"nineteen: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> nineteen: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/nineteen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  nineteen: write permission verified and updated after restart"
+    },
+    {
+      "agent": "qwen",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/qwen/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 31 chars to sandpits/qwen/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/qwen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  qwen: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/qwen/write_access_probe_66df20c97b2a.txt: replaced 31 chars with 43 chars (backup: runtime/backups/fs/20261021-113129-517593__sandpits_qwen_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"qwen: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> qwen: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/qwen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  qwen: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/qwen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  qwen: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/qwen/write_access_probe_66df20c97b2a.txt: replaced 43 chars with 57 chars (backup: runtime/backups/fs/20261021-113556-548106__sandpits_qwen_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"qwen: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> qwen: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/qwen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  qwen: write permission verified and updated after restart"
+    },
+    {
+      "agent": "seven",
+      "role": "observer",
+      "pass": true,
+      "path": "sandpits/seven/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:file_write] SKIPPED\nRead-only agent profile: tool execution is disabled.",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:file_write] SKIPPED\nRead-only agent profile: tool execution is disabled."
+    },
+    {
+      "agent": "sniffles",
+      "role": "own_sandpit",
+      "pass": true,
+      "path": "sandpits/sniffles/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/sniffles/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nsniffles: write permission verified\n\n[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/sniffles/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nsniffles: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/sniffles/write_access_probe_66df20c97b2a.txt\n\n[skill:file_read] OK\nsniffles: write permission verified and updated after restart"
+    },
+    {
+      "agent": "thirteen",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/thirteen/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 35 chars to sandpits/thirteen/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/thirteen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  thirteen: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/thirteen/write_access_probe_66df20c97b2a.txt: replaced 35 chars with 47 chars (backup: runtime/backups/fs/20261021-113133-295153__sandpits_thirteen_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"thirteen: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> thirteen: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/thirteen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  thirteen: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/thirteen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  thirteen: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/thirteen/write_access_probe_66df20c97b2a.txt: replaced 47 chars with 61 chars (backup: runtime/backups/fs/20261021-113558-426485__sandpits_thirteen_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"thirteen: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> thirteen: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/thirteen/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  thirteen: write permission verified and updated after restart"
+    },
+    {
+      "agent": "twenty",
+      "role": "local_worker",
+      "pass": true,
+      "path": "sandpits/twenty/write_access_probe_66df20c97b2a.txt",
+      "receipt": "[skill:fs_write] OK\nWritten 33 chars to sandpits/twenty/write_access_probe_66df20c97b2a.txt\n\n[skill:fs_readonly] OK\n[sandpits/twenty/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  twenty: write permission verified\n\n[skill:fs_patch] OK\nPatched sandpits/twenty/write_access_probe_66df20c97b2a.txt: replaced 33 chars with 45 chars (backup: runtime/backups/fs/20261021-113134-942190__sandpits_twenty_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"twenty: write permission verified\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> twenty: write permission verified and updated\n\n[skill:fs_readonly] OK\n[sandpits/twenty/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  twenty: write permission verified and updated",
+      "other_sandpit_denied": true,
+      "post_restart_pass": true,
+      "post_restart_receipt": "[skill:fs_readonly] OK\n[sandpits/twenty/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  twenty: write permission verified and updated\n\n[skill:fs_patch] OK\nPatched sandpits/twenty/write_access_probe_66df20c97b2a.txt: replaced 45 chars with 59 chars (backup: runtime/backups/fs/20261021-113559-310614__sandpits_twenty_write_access_probe_66df20c97b2a.txt)\nIt replaced these original lines: \"twenty: write permission verified and updated\"\nThe file now reads (lines 1-1, change at line 1):\n    1 >>> twenty: write permission verified and updated after restart\n\n[skill:fs_readonly] OK\n[sandpits/twenty/write_access_probe_66df20c97b2a.txt lines 1\u20131 of 1]\n    1  twenty: write permission verified and updated after restart"
+    }
+  ],
+  "post_restart_passed": true
+}

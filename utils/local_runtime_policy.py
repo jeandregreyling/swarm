@@ -260,6 +260,11 @@ def persist_explicit_shared_memory_note(agent_name: Any, note_json: Any) -> bool
 
 
 def agent_skill_allowed(agent_name: Any, skill_name: Any) -> bool:
+    if normalize_agent_name(agent_name) == 'sniffles':
+        return str(skill_name or '').strip().lower() in {
+            'file_read', 'file_write', 'fs_readonly', 'fs_diff', 'fs_verify',
+            'memory_search', 'knowledge_search', 'swarm_knowledge_search', 'swarm_knowledge_read',
+        }
     if not is_read_only_agent(agent_name):
         return True
     return str(skill_name or "").strip().lower() in READ_ONLY_AGENT_SKILLS

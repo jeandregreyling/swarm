@@ -17,6 +17,15 @@ This section supersedes the single-worker state described below.
 - Focused restoration checks passed: 59 role/runtime/coordination tests, 108 skill-loop/watchdog tests, and two direct-response regression checks. These are not a full-suite pass claim.
 - Before roster changes the live database was backed up to `/mnt/archive/backups/swarm-before-local-team-20261021-101346.sqlite3`. Registry enablement and runtime selector files are local state, not transported by a code-only checkout.
 
+## Local Write Access Verification (2026-10-21)
+
+- The initial restore did not grant filesystem skills consistently: capability names and executable skill names had been conflated in the schema seeder. These now have separate maps.
+- Run `.venv/bin/python3 ops/seed_agent_permissions.py --verify-local-writes` to back up the DB outside the repo, grant file skills only to enabled local agents, and exercise the real dispatcher.
+- Working agents have file-write and edit grants. Duck, Librarian and Sniffles have own-sandpit note writes. Seven remains read-only. No shell permissions or online-agent enablement is added.
+- Run `66df20c97b2a` passed for all 14 roles: 13 actual create/read/update/read operations, one expected Seven write denial, and cross-sandpit `file_write` denials. All 14 were rechecked after a PROD restart without re-granting permissions.
+- Receipts and paths: `runtime/local_write_access_report.json`. Proof files: `write_access_probe_66df20c97b2a.txt` in each writing agent's sandpit. Permission/trust regression coverage: 84 tests passed.
+- This proves execution/authorization, not autonomous command selection by every model. Apex's separate browser round-trip proof is chat 2683.
+
 ## Intent
 Fridays is a local-first swarm that **does** things rather than reports them (`docs/the-standard.md`). The founding design (Studio doc "What We Are Building" and "Constraints That Must Never Be Broken") sets the rules agents work under:
 

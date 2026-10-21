@@ -109,6 +109,116 @@ AGENT_ROLE_MAP = {
     'ghost_coder': ('developer_agent', BASELINE + ANALYST_EXTRA + SPECIALIST_EXTRA + ['skill_schedule']),
 }
 
+LOCAL_EDIT_AGENTS = frozenset({
+    'gemma', 'llama', 'qwen', 'mistral', 'eight', 'fred',
+    'thirteen', 'nineteen', 'twenty', 'apex',
+})
+LOCAL_NOTE_AGENTS = frozenset({'duck', 'librarian', 'sniffles'})
+LOCAL_FILE_SKILLS = ('file_read', 'file_write', 'fs_readonly', 'fs_verify')
+LOCAL_EDIT_SKILLS = LOCAL_FILE_SKILLS + (
+    'fs_write', 'fs_append', 'fs_patch', 'fs_patch_lines',
+    'fs_insert_before', 'fs_insert_after', 'fs_diff',
+)
+AGENT_SKILL_MAP = {
+    name: ('local_worker', LOCAL_EDIT_SKILLS) for name in LOCAL_EDIT_AGENTS
+}
+AGENT_SKILL_MAP.update({name: ('own_sandpit', LOCAL_FILE_SKILLS) for name in LOCAL_NOTE_AGENTS})
+AGENT_SKILL_MAP['seven'] = ('observer', ())
+
+
+def grant_local_write_access(conn):
+    """Grant file skills to enabled local identities without enabling any agent."""
+    skill_ids = {row['name']: row['id'] for row in conn.execute('SELECT id, name FROM skills')}
+    rows = conn.execute("SELECT id, name FROM agents WHERE tier='local' AND enabled=1 ORDER BY name").fetchall()
+    result = []
+    with conn:
+        for row in rows:
+            name = row['name']
+            if name not in AGENT_SKILL_MAP:
+                raise ValueError(f'No local write role defined for {name}')
+            role, skills = AGENT_SKILL_MAP[name]
+            if not skills:
+                result.append({'agent': name, 'role': role, 'skills': []})
+                continue
+            conn.execute(
+                "INSERT INTO user_profiles (username, display_name, user_type, linked_agent, is_active, created_by) "
+                "VALUES (?, ?, 'agent', ?, 1, 'ghost') ON CONFLICT(username) DO UPDATE SET is_active=1",
+                (name, name, name),
+            )
+            for skill in skills:
+                conn.execute('INSERT OR IGNORE INTO agent_skills (agent_id, skill_id) VALUES (?, ?)', (row['id'], skill_ids[skill]))
+                conn.execute(
+                    "INSERT INTO user_skill_permissions (username, skill_name, allowed, created_by) VALUES (?, ?, 1, 'ghost') "
+                    "ON CONFLICT(username, skill_name) DO UPDATE SET allowed=1, created_by='ghost', updated_at=datetime('now')",
+                    (name, skill),
+                )
+            conn.execute(
+                "INSERT INTO agent_capabilities (agent_name, capability, granted, trust_level, granted_by, notes) "
+                "VALUES (?, 'sandpit_write', 1, 1, 'ghost', 'Operator-authorized local write verification') "
+                "ON CONFLICT(agent_name, capability) DO UPDATE SET granted=1, granted_by='ghost', notes=excluded.notes",
+                (name,),
+            )
+            result.append({'agent': name, 'role': role, 'skills': list(skills)})
+    return result
+
+
+def run_local_write_verification():
+    """Grant local write access and exercise the real dispatcher, not an LLM simulation."""
+    import json
+    import sqlite3
+    import uuid
+    from agents.skills_loop import _execute_skill_cmds
+
+    run_id = uuid.uuid4().hex[:12]
+    report_dir = SWARM_ROOT / 'runtime'
+    backup_dir = SWARM_ROOT.parent / 'swarm-permission-backups'
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    backup = backup_dir / f'local-writes-{run_id}.sqlite3'
+    conn = get_connection()
+    try:
+        with sqlite3.connect(backup) as destination:
+            conn.backup(destination)
+        grants = grant_local_write_access(conn)
+    finally:
+        conn.close()
+
+    results = []
+    for grant in grants:
+        name, role = grant['agent'], grant['role']
+        filename = f'write_access_probe_{run_id}.txt'
+        rel = f'sandpits/{name}/{filename}'
+        target = SWARM_ROOT / rel
+        initial = f'{name}: write permission verified'
+        updated = initial + ' and updated'
+        if role == 'observer':
+            receipt = _execute_skill_cmds([('file_write', f'{name}/{filename} {initial}')], name, lambda *_: None)
+            passed = 'SKIPPED' in receipt and not target.exists()
+        else:
+            if role == 'own_sandpit':
+                commands = [('file_write', f'{name}/{filename} {initial}'), ('file_read', f'{name}/{filename}'),
+                            ('file_write', f'{name}/{filename} {updated}'), ('file_read', f'{name}/{filename}')]
+            else:
+                commands = [('fs_write', f'{rel}\n```text\n{initial}\n```'), ('fs_readonly', f'lines {rel} 1 1'),
+                            ('fs_patch', f'{rel}\n```old\n{initial}\n```\n```new\n{updated}\n```'), ('fs_readonly', f'lines {rel} 1 1')]
+            receipt = _execute_skill_cmds(commands, name, lambda *_: None)
+            passed = target.is_file() and target.read_text() == updated and not any(
+                marker in receipt for marker in (' FAILED', ' ERROR', ' SKIPPED')
+            ) and updated in receipt
+        denied_path = SWARM_ROOT / 'sandpits' / 'ghost' / filename
+        denied = _execute_skill_cmds([('file_write', f'ghost/{filename} denied')], name, lambda *_: None)
+        boundary_passed = not denied_path.exists() and ('FAILED' in denied or 'SKIPPED' in denied)
+        result = {'agent': name, 'role': role, 'pass': passed and boundary_passed,
+                  'path': rel, 'receipt': receipt, 'other_sandpit_denied': boundary_passed}
+        results.append(result)
+        print(f"{name}: {'PASS' if result['pass'] else 'FAIL'} ({role}; {rel})", flush=True)
+
+    report = {'run_id': run_id, 'backup': str(backup), 'verification': 'real dispatcher and disk bytes; no model inference',
+              'passed': all(row['pass'] for row in results), 'results': results}
+    report_path = report_dir / 'local_write_access_report.json'
+    report_path.write_text(json.dumps(report, indent=2))
+    print(f'Report: {report_path}')
+    return report
+
 # ── Identity Card Template ─────────────────────────────────────────────────────
 IDENTITY_TEMPLATES = {
     'gemma': {
@@ -498,4 +608,6 @@ and stops. The proposal stays `pending` until Ghost or a paid agent picks it up.
 
 
 if __name__ == '__main__':
+    if '--verify-local-writes' in sys.argv:
+        raise SystemExit(0 if run_local_write_verification()['passed'] else 1)
     run()

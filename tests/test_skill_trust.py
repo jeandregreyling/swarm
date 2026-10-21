@@ -7,9 +7,11 @@ import sqlite3
 import sys
 import types
 import pytest
+from pathlib import Path
 
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
+_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_ROOT))
+sys.path.insert(0, str(_ROOT / 'utils'))
 
 
 # ── Shared DB fixture ──────────────────────────────────────────────────────
@@ -97,6 +99,29 @@ def mock_db(monkeypatch, tmp_path):
 
 
 # ── A.2.1: Trust Level Enforcement ────────────────────────────────────────
+
+def test_local_write_grants_are_idempotent_and_do_not_touch_online_agents(mock_db):
+    from ops.seed_agent_permissions import grant_local_write_access, LOCAL_EDIT_SKILLS
+
+    conn = mock_db()
+    conn.execute('CREATE TABLE skills (id INTEGER PRIMARY KEY, name TEXT UNIQUE)')
+    conn.execute('CREATE TABLE agent_skills (agent_id INTEGER, skill_id INTEGER, UNIQUE(agent_id,skill_id))')
+    conn.execute('CREATE TABLE agent_capabilities (agent_name TEXT, capability TEXT, granted INTEGER, trust_level INTEGER, granted_by TEXT, notes TEXT, UNIQUE(agent_name,capability))')
+    for skill in LOCAL_EDIT_SKILLS:
+        conn.execute('INSERT INTO skills(name) VALUES (?)', (skill,))
+    conn.execute("INSERT INTO user_skill_permissions(username,skill_name,allowed) VALUES ('gemma','fs_write',0)")
+    conn.commit()
+    first = grant_local_write_access(conn)
+    count = conn.execute('SELECT count(*) FROM agent_skills').fetchone()[0]
+    second = grant_local_write_access(conn)
+    assert first == second
+    assert conn.execute('SELECT count(*) FROM agent_skills').fetchone()[0] == count
+    assert {row['agent'] for row in first} == {'gemma', 'llama', 'duck'}
+    assert conn.execute("SELECT allowed FROM user_skill_permissions WHERE username='gemma' AND skill_name='fs_write'").fetchone()[0] == 1
+    assert conn.execute("SELECT count(*) FROM user_skill_permissions WHERE username IN ('nine','ten','scholar','eight')").fetchone()[0] == 0
+    assert conn.execute("SELECT count(*) FROM agent_skills x JOIN agents a ON a.id=x.agent_id WHERE a.name IN ('nine','ten','scholar','eight')").fetchone()[0] == 0
+    conn.close()
+
 
 class TestTrustEnforcement:
     def test_local_agent_blocked_from_trust2_skill(self, mock_db):

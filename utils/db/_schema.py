@@ -804,7 +804,7 @@ def _seed_agent_skills():
     spec = importlib.util.spec_from_file_location('ops.seed_agent_permissions', perm_py)
     perm_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(perm_mod)
-    AGENT_ROLE_MAP = perm_mod.AGENT_ROLE_MAP
+    AGENT_ROLE_MAP = perm_mod.AGENT_SKILL_MAP
     conn = get_connection()
     # Build skill name to id map
     skill_rows = conn.execute('SELECT id, name FROM skills').fetchall()

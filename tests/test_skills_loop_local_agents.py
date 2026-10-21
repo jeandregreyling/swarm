@@ -40,6 +40,32 @@ def test_plain_skill_line_still_parses():
     assert cmds == [('fs_readonly', 'lines fridays/task_runner.py 1 40')]
 
 
+def test_sandpit_write_uses_caller_identity(monkeypatch):
+    from fridays import skills, file_agent
+
+    writes = []
+    monkeypatch.setattr(file_agent, 'write_sandpit', lambda agent, filename, content: (writes.append((agent, filename, content)) or True, 'written'))
+    assert skills._skill_file_write('gemma/proof.txt hello', 'gemma')[0] is True
+    assert writes == [('gemma', 'proof.txt', 'hello')]
+    assert skills._skill_file_write('qwen/proof.txt hello', 'gemma')[0] is False
+    assert len(writes) == 1
+
+
+def test_restored_sandpits_include_both_developers():
+    from fridays.file_agent import AGENT_SANDPITS
+
+    assert {'apex', 'nineteen'}.issubset(AGENT_SANDPITS)
+
+
+def test_system_observers_cannot_execute_write_skills():
+    from utils.local_runtime_policy import agent_skill_allowed
+
+    assert agent_skill_allowed('seven', 'file_write') is False
+    assert agent_skill_allowed('sniffles', 'file_write') is True
+    for agent in ('seven', 'sniffles'):
+        assert agent_skill_allowed(agent, 'fs_write') is False
+
+
 def test_successful_write_includes_backend_receipt(monkeypatch):
     replies = iter(['SKILL fs_write sandpits/apex/evidence.txt\n```\nproof\n```', 'sandpits/apex/evidence.txt\n```\nproof\n```'])
     monkeypatch.setattr(sl, '_execute_skill_cmds', lambda *_args, **_kwargs: '[skill:fs_write] OK\nWritten 5 chars to sandpits/apex/evidence.txt')

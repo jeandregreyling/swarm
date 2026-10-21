@@ -585,6 +585,8 @@ def _skill_file_write(args, agent, **_):
         sandpit_agent, filename = path_parts
     else:
         sandpit_agent, filename = agent, path_part
+    if str(agent).strip().lower() not in {'ghost', 'user'} and sandpit_agent.strip().lower() != str(agent).strip().lower():
+        return False, 'file_write is limited to the calling agent\'s own sandpit.'
     return write_sandpit(sandpit_agent, filename, content)
 
 
