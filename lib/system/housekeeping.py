@@ -80,10 +80,10 @@ def curate_agent_memories(batch_size=40, model='gemma3:latest'):
     Exact duplicates and near-dupes are collapsed. High-importance (>=8) memories
     are never touched.
     """
-    import requests, json as _json
+    import json as _json
+    from core import llm
     from utils.db._connection import AGENT_POOL_MAP
 
-    OLLAMA_URL = 'http://localhost:11434/api/generate'
 
     # Build set of tables to curate — skip shared 'memory' (too broad, handled by archive)
     tables_done = set()
@@ -130,11 +130,11 @@ def curate_agent_memories(batch_size=40, model='gemma3:latest'):
         )
 
         try:
-            resp = requests.post(OLLAMA_URL, json={
-                'model': model, 'prompt': prompt, 'stream': False,
-                'options': {'temperature': 0.1, 'num_predict': 2048}
-            }, timeout=120)
-            raw = resp.json().get('response', '')
+            raw, _tokens = llm.chat(
+                model, [{'role': 'user', 'content': prompt}], temperature=0.1,
+                options={'num_predict': 2048, 'timeout': 120},
+            )
+            raw = raw or ''
             # Extract JSON from response
             start = raw.find('{')
             end   = raw.rfind('}') + 1

@@ -107,10 +107,10 @@ def test_native_wrapper_reports_queue_and_loaded_model_placement(monkeypatch):
     def get(url,**kwargs):
         if url.endswith('/state'):
             return SimpleNamespace(ok=True,json=lambda:native)
-        if url.endswith('/api/ps'):
-            return SimpleNamespace(raise_for_status=lambda:None,json=lambda:{'models':[{'name':'gemma3:latest','size_vram':4096,'details':{'parameter_size':'3.9B'},'runner':'llamacpp'}]})
         raise AssertionError(url)
     monkeypatch.setattr(mondcraft.requests,'get',get)
+    loaded=SimpleNamespace(name='gemma3:latest',model='gemma3:latest',size_vram=4096,details=SimpleNamespace(parameter_size='3.9B'),runtime='llamacpp')
+    monkeypatch.setattr('core.llm.ps',lambda:SimpleNamespace(models=[loaded]))
     mondcraft._RUNTIME_CACHE.update(expires=0,value=None)
     app=Flask(__name__);app.register_blueprint(mondcraft.mondcraft_bp)
     response=app.test_client().get('/api/mondcraft/state')

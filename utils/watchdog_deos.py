@@ -328,9 +328,10 @@ def _resident_targets(conn) -> List[Dict[str, Any]]:
 
 
 def _ollama_loaded() -> List[str]:
+    """Models currently resident in any local runtime (llama-server first, then Ollama)."""
     try:
-        import ollama  # type: ignore
-        result = ollama.ps()
+        from core import llm
+        result = llm.ps()
         models = getattr(result, 'models', None)
         if models is None and isinstance(result, dict):
             models = result.get('models', [])
@@ -344,7 +345,33 @@ def _ollama_loaded() -> List[str]:
         return []
 
 
+def _direct_model(model: str) -> str:
+    try:
+        from core import llm
+        return llm._direct_model(model) or ''
+    except Exception:
+        return ''
+
+
+def _local_chat(model: str, messages: List[Dict[str, Any]], *, num_predict: int, timeout: int) -> Dict[str, Any]:
+    """Ollama-shaped chat result from whichever local runtime serves `model`."""
+    from core import llm
+    content, tokens = llm.chat(
+        model, messages, temperature=0.1, keep_alive=300,
+        options={'num_predict': num_predict, 'timeout': timeout},
+    )
+    return {'message': {'content': content or ''}, 'eval_count': int(tokens or 0)}
+
+
 def _warm_model(model: str, keep_alive: int, timeout_seconds: int) -> Tuple[bool, str]:
+    direct = _direct_model(model)
+    if direct:
+        try:
+            from core.seven_llm import llama_server
+            llama_server.ensure(direct)
+            return True, f'{model} warm ok (llama-server)'
+        except Exception as exc:
+            return False, f'{model} warm failed: {type(exc).__name__}: {exc}'
     try:
         import requests
         resp = requests.post(
@@ -964,6 +991,14 @@ def _run_local_agent_direct_guarded(agent: str, mode: str, prompt: str, timeout_
 
 
 def _hard_reset_ollama_after_timeout(agent: str, mode: str) -> str:
+    direct = _direct_model(WORK_AGENT_MODELS.get(str(agent or '').strip().lower()) or '')
+    if direct:
+        try:
+            from core.seven_llm import llama_server
+            llama_server.stop(direct)
+            return f'llama-server {direct} stopped after {agent} {mode} timeout'
+        except Exception as exc:
+            return f'llama-server reset failed: {type(exc).__name__}: {exc}'
     try:
         kill = subprocess.run(
             ['systemctl', 'kill', '-s', 'SIGKILL', 'ollama.service'],
@@ -987,17 +1022,14 @@ def _hard_reset_ollama_after_timeout(agent: str, mode: str) -> str:
 
 def _run_local_agent_micro_direct(agent: str, prompt: str, timeout_seconds: int) -> Tuple[bool, str, int]:
     """Use a short local-model call for tiny bounded Studio tasks."""
-    import requests
     model = WORK_AGENT_MODELS.get(str(agent or '').strip().lower())
     if not model:
         return False, f'{agent} has no direct local model mapping', 0
     task = _compact_micro_task_prompt(prompt)
     try:
-        resp = requests.post(
-            'http://127.0.0.1:11434/api/chat',
-            json={
-                'model': model,
-                'messages': [
+        data = _local_chat(
+            model,
+            [
                     {
                         'role': 'system',
                         'content': (
@@ -1007,16 +1039,10 @@ def _run_local_agent_micro_direct(agent: str, prompt: str, timeout_seconds: int)
                         ),
                     },
                     {'role': 'user', 'content': task},
-                ],
-                'stream': False,
-                'keep_alive': 300,
-                'options': {'temperature': 0.1, 'num_predict': 80},
-            },
+            ],
+            num_predict=80,
             timeout=max(15, int(timeout_seconds or 90)),
         )
-        if resp.status_code >= 400:
-            return False, f'{agent} micro task failed http={resp.status_code}', 0
-        data = resp.json()
         msg = data.get('message') or {}
         content = str(msg.get('content') or data.get('response') or '').strip()
         visible = re.sub(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', '', content).strip()
@@ -1050,7 +1076,6 @@ def _compact_micro_task_prompt(prompt: str) -> str:
 
 def _run_local_agent_direct(agent: str, prompt: str, timeout_seconds: int) -> Tuple[bool, str, int]:
     """Use a short local-model call for simple relay recovery packets."""
-    import requests
     model = WORK_AGENT_MODELS.get(str(agent or '').strip().lower())
     if not model:
         return False, f'{agent} has no direct local model mapping', 0
@@ -1065,23 +1090,15 @@ def _run_local_agent_direct(agent: str, prompt: str, timeout_seconds: int) -> Tu
         + direct_prompt
     )
     try:
-        resp = requests.post(
-            'http://127.0.0.1:11434/api/chat',
-            json={
-                'model': model,
-                'messages': [
-                    {'role': 'system', 'content': 'Be brief. Do not use tools. Do not expose private reasoning.'},
-                    {'role': 'user', 'content': direct_prompt},
-                ],
-                'stream': False,
-                'keep_alive': 300,
-                'options': {'temperature': 0.1, 'num_predict': 80},
-            },
+        data = _local_chat(
+            model,
+            [
+                {'role': 'system', 'content': 'Be brief. Do not use tools. Do not expose private reasoning.'},
+                {'role': 'user', 'content': direct_prompt},
+            ],
+            num_predict=80,
             timeout=max(15, int(timeout_seconds or 120)),
         )
-        if resp.status_code >= 400:
-            return False, f'{agent} direct recovery failed http={resp.status_code}', 0
-        data = resp.json()
         msg = data.get('message') or {}
         content = str(msg.get('content') or data.get('response') or '').strip()
         visible = re.sub(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', '', content).strip()

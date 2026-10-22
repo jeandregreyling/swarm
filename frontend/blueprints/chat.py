@@ -513,6 +513,26 @@ def _chat_ollama_model_blob_patterns(model_name):
     return sorted(set(re.findall(r'sha256-[0-9a-f]{32,}', modelfile, flags=re.IGNORECASE)))
 
 
+def _watchdog_stop_direct_model(model_name: str, action: str) -> dict | None:
+    """Stop a llama-server-backed model; None when the model is not direct."""
+    try:
+        from core import llm as _core_llm
+        direct = _core_llm._direct_model(model_name)
+    except Exception:
+        direct = None
+    if not direct:
+        return None
+    result = {'model': str(model_name or '').strip(), 'ok': False, 'detail': '', 'action': action}
+    try:
+        from core.seven_llm import llama_server
+        stopped = llama_server.stop(direct)
+        result['ok'] = True
+        result['detail'] = f'llama-server stop {direct} stopped={bool(stopped)}'
+    except Exception as exc:
+        result['detail'] = f'llama-server stop failed: {exc}'
+    return result
+
+
 def _watchdog_api_unload_model(model_name: str, *, timeout_s: float = 8.0) -> dict:
     """Ask Ollama via HTTP /api/generate with keep_alive=0 to unload a model.
 
@@ -523,6 +543,9 @@ def _watchdog_api_unload_model(model_name: str, *, timeout_s: float = 8.0) -> di
     /api/ps to confirm the model actually left memory.
     """
     name = str(model_name or '').strip()
+    direct_result = _watchdog_stop_direct_model(name, 'direct-stop')
+    if direct_result is not None:
+        return direct_result
     result = {'model': name, 'ok': False, 'detail': '', 'action': 'api-unload'}
     if not name:
         result['detail'] = 'no model name'
@@ -547,6 +570,9 @@ def _watchdog_api_unload_model(model_name: str, *, timeout_s: float = 8.0) -> di
 
 def _watchdog_kill_ollama_runner_pid(model_name: str) -> dict:
     """Find the actual ollama runner process for this model and kill -9 it."""
+    direct_result = _watchdog_stop_direct_model(model_name, 'direct-stop')
+    if direct_result is not None:
+        return {'ok': direct_result['ok'], 'detail': direct_result['detail'], 'pid': None}
     result = {'ok': False, 'detail': '', 'pid': None}
     try:
         patterns = [str(model_name or '').strip()]

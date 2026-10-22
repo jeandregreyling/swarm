@@ -296,6 +296,7 @@ def test_llama_server_single_resident_stops_previous_model(monkeypatch):
 
     old = OldProc()
     llama_server.stop()
+    monkeypatch.setattr(llama_server, "SINGLE_RESIDENT", True)
     llama_server._PROCS["seven-direct:q8"] = old
     monkeypatch.setattr(llama_server, "_server_alive", lambda endpoint: True)
     monkeypatch.setattr(llama_server, "_port_for", lambda model: 18125)
@@ -312,3 +313,320 @@ def test_llama_server_single_resident_stops_previous_model(monkeypatch):
     assert "seven-direct:q8" not in llama_server._PROCS
     assert "seven-direct:fp16" in llama_server._PROCS
     llama_server.stop()
+
+
+def _register_direct(tmp_path, name, **kwargs):
+    model_path = tmp_path / f"{name.replace(':', '_')}.gguf"
+    model_path.write_bytes(b"GGUF")
+    registry.register(ModelEntry(name=name, driver="llamacpp", role="general", path=str(model_path), **kwargs))
+
+
+def test_llama_server_reuses_same_model_started_by_another_process(monkeypatch, tmp_path):
+    _register_direct(tmp_path, "pytest-shared-direct", ram_gb=2.0)
+    llama_server.stop()
+    monkeypatch.setattr(llama_server, "_foreign_servers", lambda: [
+        {"pid": 4242, "model": "pytest-shared-direct", "port": 18999},
+    ])
+    monkeypatch.setattr(llama_server, "_server_alive", lambda endpoint: endpoint.endswith(":18999"))
+
+    def no_spawn(*_a, **_k):
+        raise AssertionError("must reuse the existing server, not spawn a duplicate")
+
+    monkeypatch.setattr(llama_server.subprocess, "Popen", no_spawn)
+    handle = llama_server.ensure("pytest-shared-direct", timeout_s=1)
+    assert (handle.pid, handle.port) == (4242, 18999)
+    assert "pytest-shared-direct" not in llama_server._PROCS
+
+
+def test_llama_server_single_resident_stops_other_processes_servers(monkeypatch, tmp_path):
+    _register_direct(tmp_path, "pytest-new-direct", ram_gb=2.0)
+
+    class NewProc:
+        pid = 333
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            return None
+
+        def wait(self, timeout=None):
+            return 0
+
+    killed = []
+    llama_server.stop()
+    monkeypatch.setattr(llama_server, "SINGLE_RESIDENT", True)
+    monkeypatch.setattr(llama_server, "_foreign_servers", lambda: [
+        {"pid": 5151, "model": "pytest-old-direct", "port": 18998},
+    ])
+    monkeypatch.setattr(llama_server, "_kill_pid", lambda pid, **_k: killed.append(pid))
+    monkeypatch.setattr(llama_server, "_server_alive", lambda endpoint: True)
+    monkeypatch.setattr(llama_server, "_port_for", lambda model: 18126)
+    monkeypatch.setattr(llama_server, "_meminfo_gb", lambda: {
+        "total_gb": 32.0, "available_gb": 24.0, "reserve_gb": 3.0, "single_resident": True,
+    })
+    monkeypatch.setattr(llama_server, "default_binary", lambda: __file__)
+    monkeypatch.setattr(llama_server.subprocess, "Popen", lambda *a, **k: NewProc())
+    handle = llama_server.ensure("pytest-new-direct", timeout_s=1)
+    assert handle.pid == 333
+    assert killed == [5151]
+    llama_server.stop()
+
+
+def test_llama_server_guard_charges_vram_overflow_to_system_ram(monkeypatch, tmp_path):
+    _register_direct(tmp_path, "pytest-gpu-direct", ram_gb=12.0, options={"ngl": 999})
+    llama_server.stop()
+    monkeypatch.setattr(llama_server, "_vram_free_gb", lambda: 2.0)
+    monkeypatch.setattr(llama_server, "_meminfo_gb", lambda: {
+        "total_gb": 64.0, "available_gb": 8.0, "reserve_gb": 3.0, "single_resident": True,
+    })
+    try:
+        llama_server.ensure("pytest-gpu-direct", timeout_s=1)
+    except RuntimeError as exc:
+        assert "requires 10.0GB" in str(exc)
+    else:
+        raise AssertionError("VRAM overflow into GTT must be charged against system RAM")
+
+
+class _LiveProc:
+    def __init__(self, pid):
+        self.pid = pid
+        self.terminated = False
+
+    def poll(self):
+        return 0 if self.terminated else None
+
+    def terminate(self):
+        self.terminated = True
+
+    def wait(self, timeout=None):
+        return 0
+
+
+def _budget_env(monkeypatch, *, available_gb, vram_free=None, budget=60.0):
+    llama_server.stop()
+    monkeypatch.setattr(llama_server, "SINGLE_RESIDENT", False)
+    monkeypatch.setattr(llama_server, "RAM_BUDGET_GB", budget)
+    monkeypatch.setattr(llama_server, "_vram_free_gb", lambda: vram_free)
+    monkeypatch.setattr(llama_server, "_server_alive", lambda endpoint: True)
+    monkeypatch.setattr(llama_server, "default_binary", lambda: __file__)
+    mem = {"available_gb": available_gb}
+    monkeypatch.setattr(llama_server, "_meminfo_gb", lambda: {
+        "total_gb": 62.0, "available_gb": mem["available_gb"], "reserve_gb": 3.0,
+    })
+    return mem
+
+
+def test_llama_server_budget_keeps_models_resident_while_they_fit(monkeypatch, tmp_path):
+    _register_direct(tmp_path, "pytest-a", ram_gb=4.0, options={"ngl": 0})
+    _register_direct(tmp_path, "pytest-b", ram_gb=4.0, options={"ngl": 0})
+    _budget_env(monkeypatch, available_gb=40.0)
+    procs = iter([_LiveProc(401), _LiveProc(402)])
+    monkeypatch.setattr(llama_server.subprocess, "Popen", lambda *a, **k: next(procs))
+    llama_server.ensure("pytest-a", timeout_s=1)
+    llama_server.ensure("pytest-b", timeout_s=1)
+    assert {"pytest-a", "pytest-b"} <= set(llama_server._PROCS)
+    llama_server.stop()
+
+
+def test_llama_server_budget_evicts_least_recently_used(monkeypatch, tmp_path):
+    for name in ("pytest-old", "pytest-recent", "pytest-next"):
+        _register_direct(tmp_path, name, ram_gb=10.0, options={"ngl": 0})
+    mem = _budget_env(monkeypatch, available_gb=40.0, budget=25.0)
+    procs = {401: _LiveProc(401), 402: _LiveProc(402), 403: _LiveProc(403)}
+    order = iter(procs.values())
+    monkeypatch.setattr(llama_server.subprocess, "Popen", lambda *a, **k: next(order))
+    llama_server.ensure("pytest-old", timeout_s=1)
+    llama_server.ensure("pytest-recent", timeout_s=1)
+    llama_server.ensure("pytest-old", timeout_s=1)  # reuse refreshes its LRU stamp
+    mem["available_gb"] = 20.0
+    llama_server.ensure("pytest-next", timeout_s=1)
+    assert procs[402].terminated is True
+    assert procs[401].terminated is False
+    assert set(llama_server._PROCS) == {"pytest-old", "pytest-next"}
+    llama_server.stop()
+
+
+def test_llama_server_gpu_spill_prefers_evicting_gpu_residents(monkeypatch, tmp_path):
+    _register_direct(tmp_path, "pytest-cpu", ram_gb=5.0, options={"ngl": 0})
+    _register_direct(tmp_path, "pytest-gpu-old", ram_gb=9.0)
+    _register_direct(tmp_path, "pytest-gpu-new", ram_gb=9.0)
+    mem = _budget_env(monkeypatch, available_gb=10.0, vram_free=15.0)
+    procs = {501: _LiveProc(501), 502: _LiveProc(502), 503: _LiveProc(503)}
+    order = iter(procs.values())
+    monkeypatch.setattr(llama_server.subprocess, "Popen", lambda *a, **k: next(order))
+    llama_server.ensure("pytest-gpu-old", timeout_s=1)
+    llama_server.ensure("pytest-cpu", timeout_s=1)
+    vram = {"free": 6.0}
+    monkeypatch.setattr(llama_server, "_vram_free_gb", lambda: vram["free"])
+    real_stop = llama_server._stop_locked
+
+    def stop_and_free(name, **kw):
+        if name == "pytest-gpu-old":
+            vram["free"] = 15.0
+        return real_stop(name, **kw)
+
+    monkeypatch.setattr(llama_server, "_stop_locked", stop_and_free)
+    mem["available_gb"] = 6.0
+    llama_server.ensure("pytest-gpu-new", timeout_s=1)
+    assert procs[501].terminated is True  # older GPU model made room in VRAM
+    assert procs[502].terminated is False  # the more recent CPU model is untouched
+    llama_server.stop()
+
+
+def test_llama_server_reaps_servers_idle_past_ttl(monkeypatch, tmp_path):
+    _register_direct(tmp_path, "pytest-idle", ram_gb=2.0, ttl_seconds=60, options={"ngl": 0})
+    _register_direct(tmp_path, "pytest-fresh", ram_gb=2.0, options={"ngl": 0})
+    _budget_env(monkeypatch, available_gb=40.0)
+    procs = iter([_LiveProc(601), _LiveProc(602)])
+    monkeypatch.setattr(llama_server.subprocess, "Popen", lambda *a, **k: next(procs))
+    llama_server.ensure("pytest-idle", timeout_s=1)
+    state = llama_server._load_state()
+    state["pytest-idle"]["last_used"] -= 120
+    llama_server._save_state(state)
+    llama_server.ensure("pytest-fresh", timeout_s=1)
+    assert set(llama_server._PROCS) == {"pytest-fresh"}
+    llama_server.stop()
+
+
+def test_llama_server_launch_flags_avoid_hidden_host_memory(monkeypatch, tmp_path):
+    _register_direct(tmp_path, "pytest-flags", ram_gb=2.0)
+    _budget_env(monkeypatch, available_gb=40.0, vram_free=15.0)
+    seen = {}
+
+    def fake_popen(cmd, **kwargs):
+        seen["cmd"], seen["kwargs"] = cmd, kwargs
+        return _LiveProc(701)
+
+    monkeypatch.setattr(llama_server.subprocess, "Popen", fake_popen)
+    llama_server.ensure("pytest-flags", timeout_s=1)
+    cmd = seen["cmd"]
+    assert cmd[cmd.index("--load-mode") + 1] == "none"
+    assert cmd[cmd.index("--cache-ram") + 1] == str(llama_server.CACHE_RAM_MIB)
+    assert "--n-gpu-layers" not in cmd  # llama-server auto-fit decides the split
+    assert seen["kwargs"]["start_new_session"] is True
+    llama_server.stop()
+
+
+def test_llama_server_chat_applies_modelfile_defaults_and_retries_evicted(monkeypatch):
+    from types import SimpleNamespace
+
+    import requests
+
+    entry = ModelEntry(name="pytest-mf:latest", driver="llamacpp",
+                       options={"default_system": "You are Fred.", "temperature": 0.15})
+    monkeypatch.setattr(registry, "get", lambda name: entry if name in {"pytest-mf", "pytest-mf:latest"} else None)
+    ensured = []
+    monkeypatch.setattr(llama_server, "ensure", lambda model, **_k: ensured.append(model) or SimpleNamespace(
+        endpoint=f"http://direct-{len(ensured)}"))
+    posted = []
+
+    def fake_post(url, json, timeout):
+        posted.append((url, json))
+        if len(posted) == 1:
+            raise requests.ConnectionError("server evicted")
+        return SimpleNamespace(status_code=200, json=lambda: {
+            "choices": [{"message": {"content": "ok"}}], "usage": {"completion_tokens": 1}})
+
+    monkeypatch.setattr(llama_server.requests, "post", fake_post)
+    assert llama_server.chat("pytest-mf", [{"role": "user", "content": "hi"}]) == ("ok", 1)
+    assert ensured == ["pytest-mf:latest", "pytest-mf:latest"]
+    url, payload = posted[-1]
+    assert url.startswith("http://direct-2")
+    assert payload["model"] == "pytest-mf:latest"
+    assert payload["temperature"] == 0.15
+    assert payload["messages"][0] == {"role": "system", "content": "You are Fred."}
+
+
+def _write_ollama_store(root):
+    import hashlib
+    import json
+
+    blobs = root / "blobs"
+    blobs.mkdir(parents=True)
+
+    def blob(data: bytes) -> str:
+        digest = "sha256:" + hashlib.sha256(data).hexdigest()
+        (blobs / digest.replace(":", "-")).write_bytes(data)
+        return digest
+
+    def manifest(layers):
+        return json.dumps({"layers": [
+            {"mediaType": f"application/vnd.ollama.image.{kind}", "digest": digest, "size": size}
+            for kind, digest, size in layers
+        ]}).encode()
+
+    weights = blob(b"GGUF-weights")
+    params = blob(json.dumps({"num_ctx": 4096, "num_gpu": 0, "num_thread": 6, "temperature": 0.15}).encode())
+    system = blob(b"You are Mistral Small.")
+    v2 = root / "manifests-v2" / "ollama.com" / "library" / "fred-cpu"
+    v2.mkdir(parents=True)
+    fred = blob(manifest([("model", weights, 2 * 1024 ** 3), ("params", params, 1), ("system", system, 1)]))
+    (v2 / "24b").symlink_to(blobs / fred.replace(":", "-"))
+    v1 = root / "manifests" / "registry.ollama.ai" / "library" / "nomic-embed-text"
+    v1.mkdir(parents=True)
+    (v1 / "latest").write_bytes(manifest([("model", blob(b"GGUF-embed"), 300 * 1024 ** 2)]))
+
+
+def test_registry_serves_ollama_store_models_directly(monkeypatch, tmp_path):
+    from utils.local_runtime_policy import is_direct_runtime_model
+
+    _write_ollama_store(tmp_path)
+    monkeypatch.setenv("SWARM_OLLAMA_STORE", str(tmp_path))
+    try:
+        registry.reload()
+        fred = registry.get("fred-cpu:24b")
+        assert fred.driver == "llamacpp" and fred.path.startswith(str(tmp_path / "blobs"))
+        assert fred.ctx == 4096
+        assert fred.options["ngl"] == 0 and fred.options["threads"] == 6
+        assert fred.options["temperature"] == 0.15
+        assert fred.options["default_system"] == "You are Mistral Small."
+        embed = registry.get("nomic-embed-text")  # bare name resolves like Ollama's ':latest'
+        assert embed.name == "nomic-embed-text:latest"
+        assert embed.role == "embed" and embed.options["embedding"] is True
+        assert is_direct_runtime_model("fred-cpu:24b")
+    finally:
+        monkeypatch.setenv("SWARM_OLLAMA_STORE", "")
+        registry.reload()
+
+
+def test_direct_chat_translates_ollama_format_to_openai_response_format():
+    schema = {"type": "object", "properties": {"answer": {"type": "string"}}}
+    as_schema = llama_server._chat_payload("m", [], temperature=0, options={"response_format": schema})
+    assert as_schema["response_format"] == {"type": "json_object", "schema": schema}
+    as_json = llama_server._chat_payload("m", [], temperature=0, options={"response_format": "json"})
+    assert as_json["response_format"] == {"type": "json_object"}
+    openai = {"type": "json_schema", "json_schema": {"name": "x", "schema": schema}}
+    assert llama_server._chat_payload("m", [], temperature=0, options={"response_format": openai})["response_format"] == openai
+
+
+def test_core_llm_routes_registered_models_to_llama_server(monkeypatch, tmp_path):
+    from core import llm
+
+    _register_direct(tmp_path, "pytest-llm-direct", ram_gb=2.0)
+    calls = {}
+
+    def fake_chat(model, messages, **kwargs):
+        calls.update(model=model, **kwargs)
+        kwargs["on_token"] and kwargs["on_token"]("hi")
+        return "hi", 1
+
+    monkeypatch.setattr(llama_server, "chat", fake_chat)
+    monkeypatch.setattr(llm, "_get_ollama", lambda: (_ for _ in ()).throw(AssertionError("must not use Ollama")))
+    chunks = []
+    assert llm.chat("pytest-llm-direct", [{"role": "user", "content": "x"}], stream=True,
+                    temperature=0.2, on_chunk=chunks.append) == ("hi", 1)
+    assert calls["model"] == "pytest-llm-direct" and calls["temperature"] == 0.2
+    assert chunks == ["hi"]
+    monkeypatch.setattr(llm, "_ollama_list", lambda: (_ for _ in ()).throw(ConnectionError("ollama down")))
+    names = [m.model for m in llm.list_models().models]
+    assert "pytest-llm-direct" in names
+
+
+def test_direct_chat_converts_ollama_images_to_content_parts():
+    payload = llama_server._chat_payload(
+        "m", [{"role": "user", "content": "describe", "images": ["QUJD"]}], temperature=0, options={})
+    content = payload["messages"][0]["content"]
+    assert content[0] == {"type": "text", "text": "describe"}
+    assert content[1]["image_url"]["url"] == "data:image/jpeg;base64,QUJD"
+    assert "images" not in payload["messages"][0]

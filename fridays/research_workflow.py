@@ -444,21 +444,19 @@ def _extract_lesson(topic, summary):
 
     # Try agent-based extraction
     try:
-        import requests
+        from core import llm
         prompt = (
             f"From this research summary, extract ONE concise lesson learned "
             f"(max 2 sentences). Return ONLY the lesson, no preamble.\n\n"
             f"Topic: {topic}\nSummary: {summary[:1500]}"
         )
-        resp = requests.post(
-            'http://localhost:11434/api/generate',
-            json={'model': 'qwen2.5:latest', 'prompt': prompt, 'stream': False},
-            timeout=20,
+        text, _tokens = llm.chat(
+            'qwen2.5:7b-instruct', [{'role': 'user', 'content': prompt}],
+            options={'num_predict': 160, 'timeout': 20},
         )
-        if resp.status_code == 200:
-            text = resp.json().get('response', '').strip()
-            if text and len(text) > 10:
-                return text[:500]
+        text = str(text or '').strip()
+        if text and len(text) > 10:
+            return text[:500]
     except Exception:
         pass
 

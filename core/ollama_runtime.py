@@ -35,6 +35,15 @@ class OllamaUnavailable(RuntimeError):
     pass
 
 
+def _direct_model(model: str) -> Optional[str]:
+    """Registered llama-server model name, if this model is served directly."""
+    try:
+        from core import llm
+        return llm._direct_model(model)
+    except Exception:
+        return None
+
+
 class OllamaRuntime:
     _lock = threading.Lock()
     _active_model: Optional[str] = None
@@ -94,6 +103,18 @@ class OllamaRuntime:
         Run a single sequential generation. Returns raw model text.
         Enforces single-resident-model invariant under a lock.
         """
+        direct = _direct_model(model)
+        if direct:
+            from core.seven_llm import llama_server
+            messages = ([{"role": "system", "content": system}] if system else []) + [
+                {"role": "user", "content": prompt}]
+            options: Dict[str, Any] = {"num_predict": num_predict if num_predict > 0 else 4096,
+                                       "top_p": top_p, "timeout": timeout}
+            if format_json:
+                options["response_format"] = "json"
+            text, _tokens = llama_server.chat(direct, messages, temperature=temperature, options=options)
+            return text or ""
+
         with cls._lock:
             # Hot-swap: eject the previous resident first.
             if cls._active_model and cls._active_model != model:

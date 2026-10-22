@@ -29,20 +29,19 @@ def local_model_runtime():
         if _RUNTIME_CACHE['value'] is not None and now < _RUNTIME_CACHE['expires']:
             return _RUNTIME_CACHE['value']
         try:
-            response = requests.get('http://127.0.0.1:11434/api/ps', timeout=1)
-            response.raise_for_status()
+            from core import llm
             models = []
-            for model in response.json().get('models', []):
-                size_vram = int(model.get('size_vram') or 0)
+            for model in llm.ps().models or []:
+                details = getattr(model, 'details', None)
                 models.append({
-                    'name': model.get('name') or model.get('model', 'unknown'),
-                    'parameter_size': model.get('details', {}).get('parameter_size'),
-                    'size_vram': size_vram,
-                    'runner': model.get('runner'),
+                    'name': getattr(model, 'name', None) or getattr(model, 'model', 'unknown'),
+                    'parameter_size': getattr(details, 'parameter_size', None) if details else None,
+                    'size_vram': int(getattr(model, 'size_vram', 0) or 0),
+                    'runner': getattr(model, 'runtime', None) or 'ollama',
                 })
-            value = {'provider': 'Ollama local', 'endpoint': '127.0.0.1:11434', 'reachable': True, 'loaded_models': models}
-        except (requests.RequestException, ValueError, TypeError) as exc:
-            value = {'provider': 'Ollama local', 'endpoint': '127.0.0.1:11434', 'reachable': False, 'error': str(exc), 'loaded_models': []}
+            value = {'provider': 'Local (llama-server)', 'endpoint': 'local', 'reachable': True, 'loaded_models': models}
+        except Exception as exc:
+            value = {'provider': 'Local (llama-server)', 'endpoint': 'local', 'reachable': False, 'error': str(exc), 'loaded_models': []}
         _RUNTIME_CACHE.update(value=value, expires=now + 4)
         return value
 

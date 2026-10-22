@@ -1,5 +1,9 @@
 """
-core/llm.py — Single Ollama gateway for the entire swarm.
+core/llm.py — Single local-LLM gateway for the entire swarm.
+
+Models registered in core.seven_llm.registry with driver 'llamacpp' (including
+every model in the Ollama store, served straight from its GGUF blob) run on
+Seven's own llama-server; only unregistered names still go to an Ollama daemon.
 
 This is the ONLY module in the repo that should import the `ollama` package.
 All agents, pipelines, blueprints, and utilities must call the helpers here.
@@ -153,6 +157,11 @@ def chat(
     Set `stream=True` for incremental token output. `on_chunk(piece)` is
     called for every content chunk as it arrives.
     """
+    direct_model = _direct_model(model)
+    if direct_model:
+        return _direct_chat(direct_model, messages, stream=stream, temperature=temperature,
+                            options=options, on_chunk=on_chunk)
+
     ollama = _get_ollama()
 
     keep_alive = _sanitize_keep_alive(keep_alive if keep_alive is not None else DEFAULT_KEEP_ALIVE)
@@ -217,8 +226,112 @@ def chat(
         )
 
 
-def ps():
-    """Return running models (raw ollama ListResponse; has `.models`)."""
+def _direct_model(model: str) -> str:
+    """Canonical registry name when `model` is served by Seven's own llama-server."""
+    try:
+        from core.seven_llm import registry
+        entry = registry.get(str(model or '').strip())
+    except Exception:
+        return ''
+    if entry and entry.driver == 'llamacpp' and entry.path and os.path.isfile(entry.path):
+        return entry.name
+    return ''
+
+
+def _direct_chat(
+    model: str,
+    messages: list[dict],
+    *,
+    stream: bool,
+    temperature: Optional[float],
+    options: Optional[dict],
+    on_chunk: Optional[Callable[[str], None]],
+) -> tuple[str, int]:
+    from core.seven_llm import llama_server
+
+    sem = _lock_for(model)
+    sem.acquire()
+    t0 = time.monotonic()
+    content, tokens, error = '', 0, None
+    try:
+        content, tokens = llama_server.chat(
+            model, messages, temperature=temperature, options=dict(options or {}),
+            on_token=on_chunk if stream else None,
+        )
+        return content, tokens
+    except Exception as exc:
+        error = str(exc)
+        raise
+    finally:
+        sem.release()
+        logger.info(
+            '[llm] model=%s mode=direct-%s elapsed=%.2fs tokens=%d chars=%d%s',
+            model, 'stream' if stream else 'block', time.monotonic() - t0, tokens, len(content),
+            f' error={error}' if error else '',
+        )
+
+
+def _direct_running() -> list[SimpleNamespace]:
+    try:
+        from core.seven_llm import llama_server, registry
+        snap = llama_server.resource_snapshot()
+    except Exception:
+        return []
+    out = []
+    for item in snap.get('residents') or []:
+        entry = registry.get(item.get('model') or '')
+        size = int(float(entry.ram_gb if entry else item.get('host_gb') or 0) * 1024 ** 3)
+        host = int(float(item.get('host_gb') or 0) * 1024 ** 3)
+        out.append(SimpleNamespace(
+            name=item['model'], model=item['model'], size=size,
+            size_vram=max(0, size - host), runtime='llamacpp', pid=item.get('pid'),
+            expires_at=None, digest='', details=None,
+        ))
+    return out
+
+
+def _direct_installed() -> list[SimpleNamespace]:
+    try:
+        from core.seven_llm import registry
+        entries = registry.list_models()
+    except Exception:
+        return []
+    out = []
+    for entry in entries:
+        if entry.driver != 'llamacpp' or not entry.path or not os.path.isfile(entry.path):
+            continue
+        try:
+            stat = os.stat(entry.path)
+        except OSError:
+            continue
+        out.append(SimpleNamespace(
+            name=entry.name, model=entry.name, size=stat.st_size, runtime='llamacpp',
+            modified_at=time.strftime('%Y-%m-%dT%H:%M:%S', time.localtime(stat.st_mtime)),
+            digest='', details=SimpleNamespace(
+                family='', parameter_size='', quantization_level=entry.quant, format='gguf',
+            ),
+        ))
+    return out
+
+
+def _merge_models(direct: list, fetch_ollama: Callable[[], Any]) -> SimpleNamespace:
+    """Direct models first; Ollama's are added only while that daemon still answers."""
+    models = list(direct)
+    seen = {m.model for m in models}
+    try:
+        legacy = fetch_ollama()
+        for item in list(getattr(legacy, 'models', None) or []):
+            name = getattr(item, 'model', None) or getattr(item, 'name', None)
+            if name and name not in seen:
+                models.append(item)
+                seen.add(name)
+    except Exception:
+        if not models:
+            raise
+    return SimpleNamespace(models=models)
+
+
+def _ollama_ps():
     ollama = _get_ollama()
     if hasattr(ollama, 'ps'):
         return ollama.ps()
@@ -226,8 +339,7 @@ def ps():
     return SimpleNamespace(models=_to_namespace(data.get('models') or []))
 
 
-def list_models():
-    """Return all pulled models (raw ollama ListResponse; has `.models`)."""
+def _ollama_list():
     ollama = _get_ollama()
     if hasattr(ollama, 'list'):
         return ollama.list()
@@ -235,8 +347,32 @@ def list_models():
     return SimpleNamespace(models=_to_namespace(data.get('models') or []))
 
 
+def ps():
+    """Running models (`.models`): Seven's llama-servers, plus Ollama's if it is up."""
+    return _merge_models(_direct_running(), _ollama_ps)
+
+
+def list_models():
+    """Installed models (`.models`): direct GGUFs, plus Ollama's if it is up."""
+    return _merge_models(_direct_installed(), _ollama_list)
+
+
 def show(model: str):
-    """Return metadata for a single model (raw ollama ShowResponse)."""
+    """Return metadata for a single model (Ollama ShowResponse shape)."""
+    direct_model = _direct_model(model)
+    if direct_model:
+        from core.seven_llm import registry
+        entry = registry.get(direct_model)
+        options = dict(entry.options or {})
+        params = [f'num_ctx {entry.ctx}']
+        if options.get('temperature') is not None:
+            params.append(f"temperature {options['temperature']}")
+        return SimpleNamespace(
+            details=SimpleNamespace(family='', parameter_size='', quantization_level=entry.quant, format='gguf'),
+            capabilities=['embedding'] if entry.role == 'embed' else ['completion'],
+            parameters='\n'.join(params),
+            modelfile='',
+        )
     return _get_ollama().show(model)
 
 

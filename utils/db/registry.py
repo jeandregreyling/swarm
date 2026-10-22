@@ -387,16 +387,18 @@ def _probe_local_rows(rows):
                 installed_models.add(name)
     except Exception as exc:
         detail = f'library_probe_error:{type(exc).__name__}:{exc}'
-        return {
-            str(row.get('name') or '').lower(): {
-                'provider': provider,
-                'fault_domain': fault_domain,
-                'runtime_status': 'FAULT',
-                'runtime_reason': detail,
-                'registry_status': 'STATUS_ORPHANED',
+        results = {}
+        for row in rows:
+            row_provider, row_fault_domain = _resolve_provider_meta(row)
+            direct = _is_non_ollama_model(str(row.get('model') or ''))
+            results[str(row.get('name') or '').lower()] = {
+                'provider': row_provider,
+                'fault_domain': row_fault_domain,
+                'runtime_status': 'READY' if direct else 'FAULT',
+                'runtime_reason': 'non_ollama_local' if direct else detail,
+                'registry_status': 'ACTIVE' if direct else 'STATUS_ORPHANED',
             }
-            for row in rows
-        }
+        return results
 
     results = {}
     for row in rows:

@@ -12,30 +12,20 @@ import socket
 
 
 def _describe_image_with_gemma(image_bytes, filename):
-    """Use Gemma3 vision via Ollama HTTP to describe an image attachment."""
-    import base64, json, urllib.request
+    """Use Gemma3 vision (local llama-server with its projector) to describe an image attachment."""
+    import base64
     try:
+        from core import llm
         b64 = base64.b64encode(image_bytes).decode()
-        payload = json.dumps({
-            'model': 'gemma3:latest',
-            'stream': False,
-            'messages': [{
-                'role': 'user',
-                'content': (
-                    f'This is an email attachment named "{filename}". '
-                    'Describe what the image shows in detail.'
-                ),
-                'images': [b64]
-            }]
-        }).encode()
-        req = urllib.request.Request(
-            'http://localhost:11434/api/chat',
-            data=payload,
-            headers={'Content-Type': 'application/json'}
-        )
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            data = json.loads(resp.read())
-            return data['message']['content']
+        content, _tokens = llm.chat('gemma3:latest', [{
+            'role': 'user',
+            'content': (
+                f'This is an email attachment named "{filename}". '
+                'Describe what the image shows in detail.'
+            ),
+            'images': [b64],
+        }], options={'timeout': 90})
+        return content
     except Exception as e:
         return f'(Image description failed: {e})'
 

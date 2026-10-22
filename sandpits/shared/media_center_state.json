@@ -130,7 +130,7 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-BF2D2180E8",
+      "studio_project_id": "P-5AED32C221",
       "synth_runs": [],
       "media_refs": [
         {
@@ -365,7 +365,7 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-CED0BDDE02",
+      "studio_project_id": "P-0810257BF5",
       "synth_runs": [
         {
           "id": "take-116b47c554",
@@ -577,7 +577,7 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-A9DFA3FD0F",
+      "studio_project_id": "P-26D7B3C694",
       "synth_runs": [],
       "media_refs": [
         {
@@ -812,7 +812,7 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-7253605CB3",
+      "studio_project_id": "P-232DBB9A47",
       "synth_runs": [
         {
           "id": "take-0a5fc27b38",
@@ -1024,7 +1024,7 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-EB385A2E89",
+      "studio_project_id": "P-ED4C773782",
       "synth_runs": [],
       "media_refs": [],
       "artifacts": [],
@@ -1164,7 +1164,7 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-ABB38307E3",
+      "studio_project_id": "P-1105353A68",
       "synth_runs": [],
       "media_refs": [],
       "artifacts": [],
@@ -1313,7 +1313,7 @@
         "swarm_node_id": "",
         "handoff_mode": "local-first"
       },
-      "studio_project_id": "P-512AD7DE61"
+      "studio_project_id": "P-3ECA921FF6"
     }
   ],
   "jobs": [
@@ -1702,6 +1702,6 @@
       ]
     }
   ],
-  "tracking_project_id": "P-E839184C5C",
-  "updated_at": "2026-10-20T15:34:03+00:00"
+  "tracking_project_id": "P-57184BF5F6",
+  "updated_at": "2026-10-22T05:17:38+00:00"
 }

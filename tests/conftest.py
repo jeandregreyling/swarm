@@ -49,9 +49,30 @@ os.environ["SWARM_DB_PATH"] = _TEST_DB.name
 os.environ["SWARM_VORTEX_LEDGER_DISABLED"] = "1"
 
 
+_TEST_LLAMA_LOCK = os.path.join(tempfile.gettempdir(), f"swarm_test_llama_{os.getpid()}.lock")
+_TEST_LLAMA_STATE = os.path.join(tempfile.gettempdir(), f"swarm_test_llama_{os.getpid()}.state.json")
+os.environ.setdefault("SEVEN_LLAMA_LOCK_PATH", _TEST_LLAMA_LOCK)
+os.environ.setdefault("SEVEN_LLAMA_STATE_PATH", _TEST_LLAMA_STATE)
+os.environ.setdefault("SEVEN_LLAMA_SYSTEMD_SCOPE", "0")
+# Keep the model registry hermetic: do not import the machine's Ollama store.
+os.environ.setdefault("SWARM_OLLAMA_STORE", "")
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolate_live_llama_servers(monkeypatch):
+    """Never let tests discover, reuse or kill the machine's real llama-servers."""
+    from core.seven_llm import llama_server
+
+    monkeypatch.setattr(llama_server, "_foreign_servers", lambda: [])
+    monkeypatch.setattr(llama_server, "_vram_free_gb", lambda: None)
+
+
 def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
     """Remove the isolated test DB after all tests complete."""
-    try:
-        os.unlink(_TEST_DB.name)
-    except OSError:
-        pass
+    for path in (_TEST_DB.name, _TEST_LLAMA_LOCK, _TEST_LLAMA_STATE):
+        try:
+            os.unlink(path)
+        except OSError:
+            pass

@@ -396,6 +396,17 @@ def _chat_try_hard_kill_local_agent(agent_name):
 
     if model:
         try:
+            from core import llm as _core_llm
+            direct = _core_llm._direct_model(model)
+            if direct:
+                from core.seven_llm import llama_server
+                stopped = llama_server.stop(direct)
+                attempts.append(f'llama-server-stop({direct})={stopped}')
+                return {'agent': name, 'attempted': True, 'ok': True, 'detail': '; '.join(attempts)}
+        except Exception as exc:
+            attempts.append(f'llama-server-stop-failed:{exc}')
+
+        try:
             import ollama  # type: ignore
             stop_fn = getattr(ollama, 'stop', None)
             if callable(stop_fn):

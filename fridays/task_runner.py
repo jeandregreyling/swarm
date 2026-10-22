@@ -161,40 +161,35 @@ def _compact_relay_handoff_prompt(recovery, thread_tail, stage_trace, support_ou
 
 
 def _run_relay_handoff_agent(agent, prompt, timeout_seconds=120):
-    import requests
+    from core import llm
 
     model = _RELAY_HANDOFF_MODELS.get(str(agent or '').strip().lower())
     if not model:
         return False, f'{agent} has no relay handoff model mapping', 0
     try:
-        resp = requests.post(
-            'http://127.0.0.1:11434/api/chat',
-            json={
-                'model': model,
-                'messages': [
-                    {
-                        'role': 'system',
-                        'content': 'You are a local recovery worker. Return only the missing user-visible answer.',
-                    },
-                    {'role': 'user', 'content': prompt},
-                ],
-                'stream': False,
-                'keep_alive': 300,
-                'options': {'temperature': 0.1, 'num_predict': 220, 'num_ctx': 2048},
+        content, tokens = llm.chat(
+            model,
+            [
+                {
+                    'role': 'system',
+                    'content': 'You are a local recovery worker. Return only the missing user-visible answer.',
+                },
+                {'role': 'user', 'content': prompt},
+            ],
+            temperature=0.1,
+            keep_alive=300,
+            options={
+                'num_predict': 220,
+                'num_ctx': 2048,
+                'timeout': max(30, min(int(timeout_seconds or 120), 300)),
             },
-            timeout=max(30, min(int(timeout_seconds or 120), 300)),
         )
-        if resp.status_code >= 400:
-            return False, f'{agent} relay handoff failed http={resp.status_code}', 0
-        data = resp.json()
-        msg = data.get('message') or {}
-        content = str(msg.get('content') or data.get('response') or '').strip()
+        content = str(content or '').strip()
         if not content:
-            return False, f'{agent} relay handoff returned no content', int(data.get('eval_count') or 0)
+            return False, f'{agent} relay handoff returned no content', int(tokens or 0)
         if 'deos_status:' not in content.lower():
             content = content.rstrip() + '\nDEOS_STATUS: done'
-        tokens = int((data.get('eval_count') or 0) + (data.get('prompt_eval_count') or 0))
-        return True, content, tokens
+        return True, content, int(tokens or 0)
     except Exception as exc:
         return False, f'{agent} relay handoff failed: {type(exc).__name__}: {exc}', 0
 
