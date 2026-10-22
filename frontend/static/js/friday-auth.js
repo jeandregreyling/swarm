@@ -396,6 +396,19 @@
     return _currentUser;
   };
 
+  window.fridayInterestUsername = async function () {
+    if (_currentUser && _currentUser.username) {
+      return String(_currentUser.username).trim() || "ghost";
+    } else {
+      const response = await fetch('/api/auth/me');
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+      const data = await response.json();
+      return String((data.user && data.user.username) || "ghost").trim() || "ghost";
+    }
+  };
+
   // ── Load users into a WindowManager window ───────────────────────────
   window._loadUsersWindowContent = function (win) {
     // win is the window state object; win.el is the DOM element

@@ -2068,7 +2068,7 @@ def _skill_maintenance_check(args, agent, **_):
 
     suites = {
         'skills': ('tests/test_skills_loop_local_agents.py', 'tests/test_maintenance_check.py'),
-        'interests': ('tests/test_interests_provenance.py', 'tests/test_y52_interests_cross_user_isolation.py'),
+        'interests': ('tests/test_interests_provenance.py', 'tests/test_y52_interests_cross_user_isolation.py', 'tests/test_interest_identity_frontend.py'),
     }
     suite = str(args or '').strip()
     if suite not in suites:
@@ -2078,7 +2078,9 @@ def _skill_maintenance_check(args, agent, **_):
         path = (root / relative).resolve()
         if not path.is_relative_to(root / 'tests') or not path.is_file():
             return False, f'Maintenance test missing or outside tests/: {relative}'
-    command = [sys.executable, '-m', 'pytest', '-q', *suites[suite]]
+    project_python = root / ('.venv/Scripts/python.exe' if os.name == 'nt' else '.venv/bin/python3')
+    interpreter = str(project_python) if project_python.is_file() else sys.executable
+    command = [interpreter, '-m', 'pytest', '-q', *suites[suite]]
     try:
         with tempfile.TemporaryDirectory(prefix='fridays-maintenance-') as temporary:
             result = subprocess.run(

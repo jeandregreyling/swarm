@@ -30,8 +30,12 @@ def test_maintenance_check_uses_fixed_argv_and_temporary_database(monkeypatch):
     ok, output = skills._skill_maintenance_check('skills', 'apex')
     assert ok
     command, options = seen[0]
+    project_python = Path(skills._SWARM_ROOT_STR).resolve() / (
+        '.venv/Scripts/python.exe' if skills.os.name == 'nt' else '.venv/bin/python3'
+    )
     assert command == [
-        skills.sys.executable, '-m', 'pytest', '-q',
+        str(project_python) if project_python.is_file() else skills.sys.executable,
+        '-m', 'pytest', '-q',
         'tests/test_skills_loop_local_agents.py', 'tests/test_maintenance_check.py',
     ]
     assert options['timeout'] == 120
@@ -40,12 +44,50 @@ def test_maintenance_check_uses_fixed_argv_and_temporary_database(monkeypatch):
     assert 'Exit code: 0' in output and '10 passed' in output
 
 
+@pytest.mark.parametrize('has_project_environment', [True, False])
+def test_maintenance_interpreter_prefers_project_without_resolving_it(
+        tmp_path, monkeypatch, has_project_environment):
+    monkeypatch.setattr(skills, '_SWARM_ROOT_STR', str(tmp_path))
+    for name in ('test_skills_loop_local_agents.py', 'test_maintenance_check.py'):
+        target = tmp_path / 'tests' / name
+        target.parent.mkdir(exist_ok=True)
+        target.touch()
+    project_python = tmp_path / (
+        '.venv/Scripts/python.exe' if skills.os.name == 'nt' else '.venv/bin/python3'
+    )
+    if has_project_environment:
+        project_python.parent.mkdir(parents=True)
+        project_python.symlink_to(skills.sys.executable)
+
+    def run(command, **kwargs):
+        expected = str(project_python) if has_project_environment else skills.sys.executable
+        assert command[0] == expected
+        return SimpleNamespace(returncode=0, stdout='passed', stderr='')
+
+    monkeypatch.setattr(subprocess, 'run', run)
+    assert skills._skill_maintenance_check('skills', 'qwen')[0]
+
+
 def test_maintenance_check_preserves_failed_exit_and_output(monkeypatch):
     monkeypatch.setattr(subprocess, 'run', lambda *args, **kwargs:
                         SimpleNamespace(returncode=1, stdout='1 failed', stderr='test failure'))
     ok, output = skills._skill_maintenance_check('interests', 'qwen')
     assert not ok
     assert 'Exit code: 1' in output and '1 failed' in output and 'test failure' in output
+
+
+def test_interests_suite_executes_ui_identity_and_backend_contracts(monkeypatch):
+    def run(command, **kwargs):
+        assert command[4:] == [
+            'tests/test_interests_provenance.py',
+            'tests/test_y52_interests_cross_user_isolation.py',
+            'tests/test_interest_identity_frontend.py',
+        ]
+        return SimpleNamespace(returncode=0, stdout='11 passed', stderr='')
+
+    monkeypatch.setattr(subprocess, 'run', run)
+    ok, output = skills._skill_maintenance_check('interests', 'qwen')
+    assert ok and 'Exit code: 0' in output
 
 
 def test_maintenance_check_reports_timeout(monkeypatch):

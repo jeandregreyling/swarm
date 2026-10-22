@@ -192,7 +192,7 @@ function _knAge(hours) {
 function knowledgeRefreshInterestStrip() {
   const list = document.getElementById('kn-interests-list');
   if (!list) return;
-  fetch('/api/interests').then(r => r.json()).then(d => {
+  window.fridayInterestUsername().then(username => fetch('/api/interests?username=' + encodeURIComponent(username))).then(r => r.json()).then(d => {
     const items = (d && (d.interests || d.topics || d.items)) || [];
     if (!Array.isArray(items) || !items.length) {
       list.textContent = 'no topics yet — click "Edit interests" to add a few.';
@@ -345,7 +345,7 @@ async function knowledgeSeedInterests() {
     const r = await fetch('/api/interests/seed', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topics }),
+      body: JSON.stringify({ topics, username: await window.fridayInterestUsername() }),
     });
     const d = await r.json();
     if (d && d.ok) {

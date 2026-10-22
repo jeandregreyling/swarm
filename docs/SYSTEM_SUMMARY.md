@@ -21,10 +21,15 @@
   read-only-exercise wording also activate the existing read-only turn policy.
 - `SKILL maintenance_check skills` runs only the fixed skill/training regression
   files; `SKILL maintenance_check interests` runs only the fixed interest
-  provenance/isolation files. No arbitrary paths, shell strings or pytest flags
+  provenance/isolation and executable frontend identity files. No arbitrary paths, shell strings or pytest flags
   are accepted. Runs use a temporary default Swarm database, a 120-second
   timeout, bounded output and the real exit code. They are focused checks,
   not a full-suite certification or a general-purpose execution sandbox.
+  The runner prefers the existing project virtualenv without resolving its
+  Python symlink, falling back to the calling interpreter only if that
+  environment is absent. The UI regression requires Node, or the existing
+  VS Code bundled Node at `/usr/share/code/code`; absence fails rather than
+  silently skipping the check.
 - Run a real local lesson with
   `.venv/bin/python3 scripts/maintenance_training.py --agent apex --exercise lesson --project P-64B2C1CBF6`.
   Other exercises are `source`, `safeguards`, `tests` and `recall`. Each invocation
@@ -38,13 +43,55 @@
   was rejected rather than retained as verified. Qwen passed the constrained
   source check but failed note-writing exercises; Gemma failed note readback.
   These are bounded teaching observations, not team-wide readiness.
-- GPU residency unification, consistent human-interest UI selection, complete
+- GPU residency unification, complete
   KC retrieval/learning, peer-handoff hardening and reliable team-wide teach-back
   remain project work. Ghost separately approved a terminal-only restart;
   `swarm-terminal.service` was restarted through systemd and project HTTP
   readiness returned 200. Ollama was not restarted and Fred remained CPU-only.
   Ordinary Chat 2767 then executed Qwen's `maintenance_check skills` and
   reported its actual zero exit code. No automatic background rollout was added.
+
+### Human-interest profile increment (2026-10-22)
+
+- Ghost approved Qwen proposal `INTERNAL-QWEN-2398` for the bounded identity
+  repair. Qwen and Apex applied the application patches through real scoped
+  skill calls with receipts. The coach supplied executable regression coverage
+  and corrections; this is supervised work, not independent agent readiness.
+- Home's initial GET, seed POST and refresh GET and Knowledge Center's GET and
+  seed POST now explicitly use the shared `fridayInterestUsername()` helper.
+  It uses authenticated in-memory state, otherwise awaits `/api/auth/me` to
+  avoid the bootstrap race. Successful no-user or blank identity uses `ghost`.
+  Proxy/acting identity in localStorage is not used. Auth HTTP/network/JSON
+  errors stop interest requests instead of selecting another user's profile;
+  Home reports failures using the existing error toast.
+- The backend legacy GET default remains `seven`; explicit username queries
+  still select saved interests. This fixes human saved-interest selection,
+  not all-user signal mining, privacy isolation of every interest source,
+  automatic learning, or knowledge sharing.
+- `tests/test_interest_identity_frontend.py` executes the actual three JS files
+  with mocked fetch and DOM, covering identity before/after bootstrap, delayed
+  auth, anonymous/blank fallback, encoded usernames, both views' reads/writes,
+  Home refresh, and failures without production writes. The backend provenance
+  and isolation suites remain part of `maintenance_check interests`.
+- Qwen retained a procedure in its own `interest_profile_maintenance.txt` note
+  and retrieved it in a fresh context, correctly naming the regression command
+  and Ghost's approval boundary. Initial truncated-note and command-selection
+  failures remain project evidence. A successful maintenance receipt proves
+  execution and exit code, not correctness of every sentence in model prose.
+  Qwen also added the executable failed-refresh regression under coaching.
+  Fred wrote and retrieved its own handover and successfully practised the
+  fixed interest check after correction. Its subsequent fresh recall still
+  substituted an unauthorized tool, which was denied. Fred is not cleared for
+  unattended maintenance.
+- Browser reload verified `ghost` selection, explicit-user requests in Home
+  and Knowledge Center, and eight rendered Home interest cards. Static JS is
+  live without a restart. Ghost separately approved a terminal-only restart
+  to activate the Python skill changes. Systemd PID changed from 23426 to
+  59505; HTTP readiness returned 200 after startup. Ordinary Qwen Chat 2768
+  then ran the expanded interest suite with exit code zero, confirmed by
+  backend audit receipt 6675. Ollama and model residency were not changed.
+  The focused training, skill, provenance, isolation and UI tests passed:
+  97 tests, not a full-suite or team-readiness certification.
 
 ## Local Team Restored (2026-10-21)
 

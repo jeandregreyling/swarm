@@ -1250,7 +1250,7 @@
 
   // ── Interests fetch & render ─────────────────────────────────────────────
   function _hcFetchInterests() {
-    fetch('/api/interests?limit=8')
+    window.fridayInterestUsername().then(username => fetch('/api/interests?limit=8&username=' + encodeURIComponent(username)))
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
         if (data.onboarding && data.onboarding_categories && data.onboarding_categories.length > 0) {
@@ -1261,7 +1261,10 @@
           _hcRenderResearchTopics(data.research_topics || []);
         }
       })
-      .catch(() => {}); // Silently degrade if endpoint missing
+      .catch(error => {
+        console.error('Unable to load interests', error);
+        if (typeof showToast === 'function') showToast('Unable to load your interests', 'error');
+      });
   }
 
   // ── Onboarding flow ──────────────────────────────────────────────────────
@@ -1376,11 +1379,11 @@
       saveBtn.textContent = 'Saving...';
     }
 
-    fetch('/api/interests/seed', {
+    window.fridayInterestUsername().then(username => fetch('/api/interests/seed', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topics: topics }),
-    })
+      body: JSON.stringify({ topics: topics, username: username }),
+    }))
     .then(r => r.json())
     .then(data => {
       if (data.ok) {
@@ -1390,16 +1393,21 @@
         _hcSetGreeting();
         _hcSelectedTopics.clear();
         // Re-fetch to show the new interest cards
-        fetch('/api/interests?limit=8')
+        window.fridayInterestUsername().then(username => fetch('/api/interests?limit=8&username=' + encodeURIComponent(username)))
           .then(r => r.ok ? r.json() : Promise.reject())
           .then(d => {
             _hcRenderInterestCards(d.interests || []);
             _hcRenderResearchTopics(d.research_topics || []);
           })
-          .catch(() => {});
+          .catch(error => {
+            console.error('Unable to refresh interests', error);
+            if (typeof showToast === 'function') showToast('Unable to refresh your interests', 'error');
+          });
       }
     })
-    .catch(() => {
+    .catch(error => {
+      console.error('Unable to save interests', error);
+      if (typeof showToast === 'function') showToast('Unable to save your interests', 'error');
       if (saveBtn) {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save my interests';
