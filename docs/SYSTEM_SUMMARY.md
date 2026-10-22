@@ -89,7 +89,8 @@
   to activate the Python skill changes. Systemd PID changed from 23426 to
   59505; HTTP readiness returned 200 after startup. Ordinary Qwen Chat 2768
   then ran the expanded interest suite with exit code zero, confirmed by
-  backend audit receipt 6675. Ollama and model residency were not changed.
+  backend audit receipt 6675. No Ollama restart, explicit model unload or
+  residency-policy change was performed.
   The focused training, skill, provenance, isolation and UI tests passed:
   97 tests, not a full-suite or team-readiness certification.
 
