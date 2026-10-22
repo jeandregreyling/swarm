@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from agents import skills_loop as sl
 
 
@@ -14,6 +16,114 @@ def test_prose_no_write_does_not_make_turn_read_only():
 
 def test_explicit_do_not_edit_is_still_read_only():
     assert sl._is_explicitly_read_only_task(_user('Please do not edit any files.')) is True
+
+
+def test_combined_no_approval_or_edit_instruction_is_read_only():
+    assert sl._is_explicitly_read_only_task(_user('Do not approve or edit.')) is True
+    assert sl._is_explicitly_read_only_task(_user('FIRST-RUN: read-only exercise.')) is True
+
+
+def test_strict_exercise_does_not_infer_a_missing_model_command(monkeypatch):
+    executed = []
+    monkeypatch.setattr(sl, '_execute_skill_cmds',
+                        lambda *args, **kwargs: executed.append(args) or '')
+    answer, _ = sl.run_skill_loop(
+        'apex', lambda _: ('I have done it.', 1),
+        _user('Create sandpits/apex/strict-proof.txt with exactly one line: proof'),
+        lambda _: None, allowed_skill_names={'fs_write'},
+        strict_skill_allowlist=True, nudge_if_no_skills=False,
+    )
+    assert not executed
+    assert '[verification]' in answer
+    assert 'no authorized skill succeeded' in answer
+
+
+def test_strict_exercise_does_not_allow_implicit_lookup_skills(monkeypatch):
+    import fridays.skills
+
+    executed = []
+    monkeypatch.setattr(fridays.skills, 'call',
+                        lambda *args, **kwargs: executed.append(args) or (True, 'data'))
+    result = sl._execute_skill_cmds(
+        [('knowledge_search', 'anything')], 'apex', lambda _: None,
+        allowed_skill_names={'file_write'}, strict_skill_allowlist=True,
+    )
+    assert not executed
+    assert 'Turn policy denied' in result
+
+
+def test_strict_exercise_returns_successful_read_receipt(monkeypatch):
+    replies = iter(['SKILL fs_readonly lines README.md 1 2', 'I read the file.'])
+    monkeypatch.setattr(sl, '_execute_skill_cmds',
+                        lambda *args, **kwargs: '[skill:fs_readonly] OK\nactual source')
+    answer, _ = sl.run_skill_loop(
+        'apex', lambda _: (next(replies), 1), _user('Read README.md.'),
+        lambda _: None, allowed_skill_names={'fs_readonly'},
+        strict_skill_allowlist=True, mid_loop_nudges=0,
+    )
+    assert '[skill:fs_readonly] OK\nactual source' in answer
+
+
+def test_strict_exercise_never_masks_a_denied_command(monkeypatch):
+    replies = iter(['SKILL fs_patch README.md', 'I completed the exercise.'])
+    monkeypatch.setattr(sl, '_execute_skill_cmds',
+                        lambda *args, **kwargs: '[skill:fs_patch] SKIPPED\nTurn policy denied skill execution.')
+    answer, _ = sl.run_skill_loop(
+        'apex', lambda _: (next(replies), 1), _user('Read README.md.'),
+        lambda _: None, allowed_skill_names={'fs_readonly'},
+        strict_skill_allowlist=True, mid_loop_nudges=0,
+    )
+    assert answer.startswith('[verification]')
+    assert '[skill:fs_patch] SKIPPED' in answer
+
+
+def test_strict_exercise_never_executes_beyond_its_tool_budget(monkeypatch):
+    executed = []
+
+    def execute(*args, **kwargs):
+        executed.append(args)
+        return '[skill:fs_readonly] OK\nsource'
+
+    monkeypatch.setattr(sl, '_execute_skill_cmds', execute)
+    answer, _ = sl.run_skill_loop(
+        'apex', lambda _: ('SKILL fs_readonly lines README.md 1 2', 1),
+        _user('Read README.md.'), lambda _: None,
+        allowed_skill_names={'fs_readonly'}, strict_skill_allowlist=True,
+        max_passes=1, mid_loop_nudges=0,
+    )
+    assert len(executed) == 1
+    assert 'tool budget exhausted' in answer
+
+
+def test_strict_execution_requires_an_explicit_allowlist():
+    with pytest.raises(ValueError, match='explicit allowlist'):
+        sl.run_skill_loop('apex', lambda _: ('', 0), _user('Read a file.'),
+                          lambda _: None, strict_skill_allowlist=True)
+    with pytest.raises(ValueError, match='explicit allowlist'):
+        sl._execute_skill_cmds([], 'apex', lambda _: None, strict_skill_allowlist=True)
+
+
+def test_malformed_agent_prefix_gets_a_nudge_not_a_false_tool_execution(monkeypatch):
+    replies = iter([
+        'AgentName: SKILL fs_readonly lines README.md 1 2',
+        'SKILL fs_readonly lines README.md 1 2',
+        'The source was returned.',
+    ])
+    executed = []
+
+    def execute(cmds, *args, **kwargs):
+        executed.extend(cmds)
+        return '[skill:fs_readonly] OK\nactual source'
+
+    monkeypatch.setattr(sl, '_execute_skill_cmds', execute)
+    answer, _ = sl.run_skill_loop(
+        'apex', lambda _: (next(replies), 1), _user('Read README.md.'),
+        lambda _: None, allowed_skill_names={'fs_readonly'},
+        strict_skill_allowlist=True, nudge_if_no_skills=True, max_passes=1,
+        mid_loop_nudges=0,
+    )
+    assert executed == [('fs_readonly', 'lines README.md 1 2')]
+    assert 'actual source' in answer
 
 
 def test_explicit_mail_command_survives_no_file_edits_policy(monkeypatch):
@@ -81,6 +191,25 @@ def test_verified_explicit_note_stops_before_another_rewrite(monkeypatch):
     answer, _ = sl.run_skill_loop('apex', model, _user('Run SKILL file_write apex/proof.txt proof\nThen read it back.'), lambda *_: None)
     assert 'Verified sandpits/apex/proof.txt' in answer
     assert len(calls) == 1
+
+
+def test_note_mismatch_cannot_be_reported_as_a_success(monkeypatch):
+    written = str(Path(sl.__file__).resolve().parents[1] / 'sandpits/librarian/proof.txt')
+    monkeypatch.setattr(sl, '_execute_skill_cmds', lambda *_args, **_kwargs:
+                        f'[skill:file_write] OK\n{written}\n\n[skill:file_read] OK\nwrong bytes')
+    calls = []
+
+    def model(messages):
+        calls.append(messages)
+        if len(calls) == 1:
+            return 'SKILL file_write librarian/proof.txt wrong bytes\nSKILL file_read librarian/proof.txt', 5
+        return 'The result matches the operator request.', 5
+
+    answer, _ = sl.run_skill_loop('librarian', model, _user(
+        'Run SKILL file_write librarian/proof.txt exact bytes\nThen read it back.'), lambda *_: None)
+    assert '[verification] Readback mismatch' in answer
+    assert 'The result matches' not in answer
+    assert any('not correct yet' in turn['content'] for messages in calls[1:] for turn in messages)
 
 
 def test_sandpit_write_uses_caller_identity(monkeypatch):

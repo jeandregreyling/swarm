@@ -430,6 +430,8 @@ def chat(
 
     started = _now()
     events: list[RuntimeEvent] = []
+    from utils.local_runtime_policy import is_resident_cpu_backup
+    cpu_backup = is_resident_cpu_backup(model) and (options or {}).get('num_gpu') == 0
 
     def _fallback_generate() -> RuntimeResult:
         """Fallback path for runtimes where /api/chat fails but /api/generate still works."""
@@ -470,6 +472,8 @@ def chat(
             payload["system"] = system_prompt
 
         fallback_timeout_s = max(1, min(int(idle_timeout_s), FALLBACK_GENERATE_TIMEOUT_S))
+        if cpu_backup:
+            fallback_timeout_s = max(1, min(int(idle_timeout_s), int(absolute_timeout_s - (_now() - started))))
         resp = requests.post(
             f"{base_url}/api/generate",
             json=payload,
@@ -535,6 +539,8 @@ def chat(
         # capped at two minutes, so healthy strict-JSON chats are not converted
         # into a less reliable /api/generate fallback.
         chat_read_timeout_s = max(20, min(int(idle_timeout_s), 120))
+        if cpu_backup:
+            chat_read_timeout_s = max(1, min(int(idle_timeout_s), int(absolute_timeout_s - (_now() - started))))
         with requests.post(
             f"{base_url}/api/chat",
             json=payload,

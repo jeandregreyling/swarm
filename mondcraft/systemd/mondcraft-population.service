@@ -1,0 +1,18 @@
+[Unit]
+Description=Mondcraft Local Mindcraft-Skill Population
+After=swarm-terminal.service mondcraft-native.service
+Requires=mondcraft-native.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jd/swarm/mondcraft
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/jd/.local/share/mondcraft/node-v22.23.3-linux-x64/bin/node /home/jd/swarm/mondcraft/population.cjs
+Restart=on-failure
+RestartSec=10
+SuccessExitStatus=143
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

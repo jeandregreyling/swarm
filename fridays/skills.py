@@ -64,6 +64,12 @@ REGISTRY = {
         'usage': 'SKILL shell <command>',
         'example': 'SKILL shell df -h',
     },
+    'maintenance_check': {
+        'description': 'Run a fixed, focused maintenance regression suite (skills or interests). No shell commands, arbitrary paths or pytest options.',
+        'trust_level': 1,
+        'usage': 'SKILL maintenance_check <skills|interests>',
+        'example': 'SKILL maintenance_check skills',
+    },
     'browse': {
         'description': 'Fetch a URL with headless Chromium. Returns page text. Needs a full URL — use search for questions.',
         'trust_level': 0,
@@ -2056,6 +2062,40 @@ def _skill_fs_patch_lines(args, agent, **_):
         return False, f'fs_patch_lines failed: {e}'
 
 
+def _skill_maintenance_check(args, agent, **_):
+    import subprocess
+    import tempfile
+
+    suites = {
+        'skills': ('tests/test_skills_loop_local_agents.py', 'tests/test_maintenance_check.py'),
+        'interests': ('tests/test_interests_provenance.py', 'tests/test_y52_interests_cross_user_isolation.py'),
+    }
+    suite = str(args or '').strip()
+    if suite not in suites:
+        return False, 'Usage: SKILL maintenance_check <skills|interests>; arbitrary commands and options are not allowed.'
+    root = Path(_SWARM_ROOT_STR).resolve()
+    for relative in suites[suite]:
+        path = (root / relative).resolve()
+        if not path.is_relative_to(root / 'tests') or not path.is_file():
+            return False, f'Maintenance test missing or outside tests/: {relative}'
+    command = [sys.executable, '-m', 'pytest', '-q', *suites[suite]]
+    try:
+        with tempfile.TemporaryDirectory(prefix='fridays-maintenance-') as temporary:
+            result = subprocess.run(
+                command, cwd=root, capture_output=True, text=True, timeout=120,
+                env={**os.environ, 'SWARM_DB_PATH': str(Path(temporary) / 'tests.db')},
+            )
+    except subprocess.TimeoutExpired:
+        return False, f'Maintenance suite {suite} timed out after 120 seconds; no pass recorded.'
+    except OSError as exc:
+        return False, f'Maintenance suite {suite} could not start: {exc}'
+    output = '\n'.join(part for part in (result.stdout, result.stderr) if part).strip()
+    return result.returncode == 0, (
+        f'Maintenance suite: {suite}\nTests: {", ".join(suites[suite])}\n'
+        f'Exit code: {result.returncode}\n{output[-6000:]}'
+    )
+
+
 def _skill_knowledge_search(args, agent, **_):
     query = (args or '').strip()
     if not query:
@@ -2682,6 +2722,7 @@ def _skill_check_models(args, agent, **_):
 _HANDLERS = {
     'email_ticket_reply': _skill_email_ticket_reply,
     'shell':          _skill_shell,
+    'maintenance_check': _skill_maintenance_check,
     'browse':         _skill_browse,
     'file_read':      _skill_file_read,
     'file_write':     _skill_file_write,

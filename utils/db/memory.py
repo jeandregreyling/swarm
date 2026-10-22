@@ -90,9 +90,9 @@ def get_agent_memory(agent_name, query='', limit=5):
     conn = get_connection()
     rows = conn.execute(f"""
         SELECT id,subject,content,tags,importance,created_at FROM {table}
-        WHERE (subject LIKE ? OR content LIKE ?) {archive_filter}
+        WHERE lower(agent)=? AND (subject LIKE ? OR content LIKE ?) {archive_filter}
         ORDER BY importance DESC, created_at DESC LIMIT ?
-    """, (f'%{query}%', f'%{query}%', limit)).fetchall()
+    """, (agent_name.lower(), f'%{query}%', f'%{query}%', limit)).fetchall()
     conn.close()
     return rows
 

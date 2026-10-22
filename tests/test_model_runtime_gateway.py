@@ -76,3 +76,27 @@ def test_chat_generate_fallback_has_short_timeout(monkeypatch):
     assert result.ok is True
     assert result.content == "OK"
     assert calls[1][1]["timeout"] == (10, gateway.FALLBACK_GENERATE_TIMEOUT_S)
+
+
+def test_cpu_backup_transport_uses_its_finite_caller_budget(monkeypatch):
+    calls = []
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {'response': 'READY', 'eval_count': 1}
+
+    def post(url, **kwargs):
+        calls.append((url, kwargs))
+        if url.endswith('/api/chat'):
+            raise gateway.requests.ReadTimeout('CPU prompt processing')
+        return Response()
+
+    monkeypatch.setattr(gateway.requests, 'post', post)
+    result = gateway.chat('fred-cpu:24b', [{'role': 'user', 'content': 'ready'}],
+                          idle_timeout_s=180, absolute_timeout_s=600, options={'num_gpu': 0})
+    assert result.ok
+    assert calls[0][1]['timeout'] == (10, 180)
+    assert calls[1][1]['timeout'] == (10, 180)

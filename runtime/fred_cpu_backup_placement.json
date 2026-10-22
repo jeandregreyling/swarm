@@ -1,0 +1,29 @@
+{
+  "backup": "/home/jd/swarm-backups/before-fred-cpu-20261021-032827.db",
+  "model": "fred-cpu:24b",
+  "parameters": "num_gpu                        0\nnum_thread                     6\ntemperature                    0.15\nnum_ctx                        8192",
+  "placement": {
+    "models": [
+      {
+        "name": "fred-cpu:24b",
+        "model": "fred-cpu:24b",
+        "size": 16193054310,
+        "digest": "fa8cfca798d6e22bce091067aa05bd094840d369ab5f8de2d099ff0c8315b46f",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "llama",
+          "families": [
+            "llama"
+          ],
+          "parameter_size": "23.6B",
+          "quantization_level": "Q4_K_M"
+        },
+        "expires_at": "2319-01-31T14:16:05.104515482+11:00",
+        "size_vram": 0,
+        "context_length": 8192,
+        "runner": "llamacpp"
+      }
+    ]
+  }
+}

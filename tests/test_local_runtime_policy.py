@@ -53,6 +53,45 @@ def test_direct_gguf_is_chat_capable_but_not_ollama():
     assert is_chat_capable_model("seven-direct:daily") is True
 
 
+def test_compact_local_prompt_keeps_current_request_not_unrelated_studio_history():
+    from utils.local_runtime_policy import compact_local_chat_prompt
+
+    request = 'SKILL file_write llama/proof.txt actual task'
+    wrapped = 'Unrelated Studio recovery instructions\n=== New user message ===\n' + request
+    assert compact_local_chat_prompt(wrapped) == request
+    assert compact_local_chat_prompt('hello') == 'hello'
+
+
+def test_private_recall_filters_shared_pool_by_owner(monkeypatch, tmp_path):
+    import sqlite3
+    from utils.db import memory
+
+    db_path = tmp_path / 'memory.db'
+
+    def connect():
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    conn = connect()
+    conn.execute('''CREATE TABLE memory (
+        id INTEGER PRIMARY KEY, agent TEXT, subject TEXT, content TEXT,
+        tags TEXT, importance INTEGER, created_at TEXT, archived INTEGER
+    )''')
+    conn.executemany('INSERT INTO memory VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
+        (1, 'gemma', 'private', 'other agent secret', '', 9, '2026-10-21', 0),
+        (2, 'Duck', 'private', 'own verified finding', '', 5, '2026-10-21', 0),
+        (3, 'duck', 'private', 'archived finding', '', 9, '2026-10-21', 1),
+    ])
+    conn.commit()
+    conn.close()
+    monkeypatch.setattr(memory, 'get_connection', connect)
+
+    assert [row['id'] for row in memory.get_agent_memory('duck')] == [2]
+    assert memory.get_agent_memory('duck', query='secret') == []
+    assert memory.get_agent_memory('librarian') == []
+
+
 def test_registered_apex_direct_model_is_not_ollama(monkeypatch):
     from core.seven_llm import registry
     from core.seven_llm.registry import ModelEntry

@@ -43,6 +43,48 @@ def api_tickets():
 
 
 
+@tickets_bp.route('/api/tickets', methods=['POST'])
+def create_local_ticket():
+    from uuid import uuid4
+    from core.pipeline.ticket import create
+    data = request.get_json(silent=True) or {}
+    question = data.get('question')
+    if not isinstance(question, str) or not question.strip() or len(question) > 500:
+        return jsonify({'error': 'question must be a nonempty string of at most 500 characters'}), 400
+    ticket_number = f'LOCAL-{uuid4().hex[:12].upper()}'
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            "INSERT INTO queue (from_addr,subject,question,status,source_type,agent) "
+            "VALUES ('operator:dashboard',?,?,'queued','internal','gemma')",
+            (question.strip()[:200], question.strip()),
+        )
+        queue_id = cursor.lastrowid
+        conn.commit()
+    finally:
+        conn.close()
+    create(ticket_number, 'operator:dashboard', question.strip(),
+           queue_id=queue_id, channel='local')
+    return jsonify({'ok': True, 'ticket_number': ticket_number, 'queue_id': queue_id}), 201
+
+
+@tickets_bp.route('/api/tickets/<ticket_number>/process', methods=['POST'])
+def process_ticket_locally(ticket_number):
+    from core.pipeline.ticket import process_local_ticket
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict) or not isinstance(data.get('recheck', False), bool):
+        return jsonify({'ok': False, 'error': 'recheck must be a boolean'}), 400
+    try:
+        result = process_local_ticket(ticket_number, recheck=data.get('recheck', False))
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 409
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception('Local ticket processing failed: %s', ticket_number)
+        return jsonify({'ok': False, 'error': 'Local processing failed; see the ticket processing_error note.'}), 502
+    return jsonify(result)
+
+
 @tickets_bp.route('/api/tickets/<ticket_number>')
 def api_ticket_detail(ticket_number):
     conn = get_connection()
@@ -51,7 +93,8 @@ def api_ticket_detail(ticket_number):
         """SELECT ticket_number, status, duck_result, gemma_routing, question,
                   tags, sender_email, created_at, closed_at, final_answer,
                   sniffles_result, sniffles_checked, duck_visited,
-                  channel, conv_id, email_message_id
+                  channel, conv_id, email_message_id,
+                  (SELECT status FROM queue WHERE id=tickets.queue_id) AS processing_status
            FROM tickets WHERE ticket_number=?""",
         (ticket_number,)
     ).fetchone()

@@ -14,7 +14,7 @@ Rules:
   - Every execution logged to ghost_circle.
   - Output capped at 4000 chars.
   - Timeout: 30 seconds hard limit.
-  - Working directory locked to /home/seven/swarm (no cd out).
+    - Working directory locked to SWARM_ROOT (no cd out).
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
@@ -34,7 +34,8 @@ import logging
 import re
 import sqlite3
 
-sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, _SWARM_ROOT)
+_SWARM_ROOT_RE = re.escape(os.path.abspath(_SWARM_ROOT))
 
 logger = logging.getLogger('seven.shell_agent')
 
@@ -78,13 +79,13 @@ WHITELIST = [
 
     # File reads — Level 0 (swarm dir only)
     (r'^ls(\s+-[lahrt]+)?(\s+\.?/?[\w\-\./]+)?$',      0, 'list files'),
-    (r'^find\s+/home/seven/swarm\S*\s+-maxdepth\s+\d+\s+-type\s+[fd](\s+-name\s+\S+)?$', 0, 'find files (bounded)'),
-    (r'^cat\s+(\.?/?[\w\-\./]+|/home/seven/swarm/\S+)$', 0, 'read file'),
-    (r'^wc\s+-[lw]\s+(\.?/?[\w\-\./]+|/home/seven/swarm/\S+)$', 0, 'word/line count'),
-    (r'^tail(\s+-n\s+\d+)?\s+(\.?/?[\w\-\./]+|/home/seven/swarm/\S+)$', 0, 'tail file'),
-    (r'^head(\s+-n\s+\d+)?\s+(\.?/?[\w\-\./]+|/home/seven/swarm/\S+)$', 0, 'head file'),
+    (rf'^find\s+{_SWARM_ROOT_RE}\S*\s+-maxdepth\s+\d+\s+-type\s+[fd](\s+-name\s+\S+)?$', 0, 'find files (bounded)'),
+    (rf'^cat\s+(\.?/?[\w\-\./]+|{_SWARM_ROOT_RE}/\S+)$', 0, 'read file'),
+    (rf'^wc\s+-[lw]\s+(\.?/?[\w\-\./]+|{_SWARM_ROOT_RE}/\S+)$', 0, 'word/line count'),
+    (rf'^tail(\s+-n\s+\d+)?\s+(\.?/?[\w\-\./]+|{_SWARM_ROOT_RE}/\S+)$', 0, 'tail file'),
+    (rf'^head(\s+-n\s+\d+)?\s+(\.?/?[\w\-\./]+|{_SWARM_ROOT_RE}/\S+)$', 0, 'head file'),
     # grep: explicit flags only (-i, -n, -c, -l), no -r recursive
-    (r'^grep\s+(-[incl]\s+)*.+\s+/home/seven/swarm/\S+$', 0, 'grep swarm file'),
+    (rf'^grep\s+(-[incl]\s+)*.+\s+{_SWARM_ROOT_RE}/\S+$', 0, 'grep swarm file'),
 
     # Read-only database query (scripts/db_query.py enforces SELECT-only, ro open)
     (r'^(\.venv/bin/)?python3 scripts/db_query\.py "[^"`$;\\|&<>]+;?"( (swarm|mind))?$', 0, 'read-only db query'),
@@ -114,7 +115,7 @@ WHITELIST = [
     (r'^wget\s+-q\s+-O\s+-\s+https?://\S+$',             4, 'wget fetch'),
 
     # Python — Level 4
-    (r'^python3\s+/home/seven/swarm/\S+\.py(\s+.*)?$',  4, 'run swarm script'),
+    (rf'^python3\s+{_SWARM_ROOT_RE}/\S+\.py(\s+.*)?$',  4, 'run swarm script'),
 
     # Git — Level 4 (read only, but may expose history)
     (r'^git\s+(status|log|diff|show)(\s+.*)?$',          4, 'git read'),
@@ -463,9 +464,9 @@ def test():
         ('curl -s http://example.com',                   True),   # Level 4 — approval needed for agent
         ('rm -rf /',                                     False),
         ('cat /etc/passwd',                              False),
-        ('ls /home/seven/swarm',                         True),
-        ('grep foo /home/seven/swarm/config.py',         True),
-        ('grep -r foo /home/seven/swarm/config.py',      False),  # -r blocked
+        (f'ls {_SWARM_ROOT}',                            True),
+        (f'grep foo {_SWARM_ROOT}/config.py',            True),
+        (f'grep -r foo {_SWARM_ROOT}/config.py',         False),  # -r blocked
     ]
     passed = 0
     for cmd, should_pass in tests:

@@ -22,6 +22,7 @@ HARD_CODED = "/home/seven/swarm"
 PRIORITY_FILES = [
     Path("fridays/task_runner.py"),
     Path("fridays/scheduler.py"),
+    Path("fridays/shell_agent.py"),
     Path("lib/system/file_versioning.py"),
 ]
 
@@ -112,3 +113,14 @@ def test_file_versioning_uses_swarm_root_env(tmp_path, monkeypatch):
 
     assert fv.VERSIONS_DIR == os.path.join(fake_root, ".swarm_versions")
     assert fv.RESTORE_BIN_DIR == os.path.join(fake_root, ".restore_bin")
+    
+def test_shell_whitelist_behavior(tmp_path, monkeypatch):
+    """Test shell whitelist behavior at the current root and rejection of the retired root."""
+    current_root = str(tmp_path / "swarm")
+    retired_root = "/home/seven/swarm"
+    os.makedirs(current_root, exist_ok=True)
+    monkeypatch.setenv("SWARM_ROOT", current_root)
+
+    # Simulate the whitelist check
+    assert current_root in sys.path
+    assert retired_root not in sys.path

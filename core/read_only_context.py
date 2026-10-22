@@ -67,14 +67,51 @@ def _sanitize_excerpt(value: Any, limit: int = 400) -> str:
     return text[:limit]
 
 
+def _repository_matches_without_rg(terms: list[str]) -> tuple[list[dict[str, str]], str | None]:
+    import fnmatch
+    import time
+
+    matches = []
+    deadline = time.monotonic() + 4
+    scanned = 0
+    blocked = {'.git', '__pycache__', 'node_modules', 'sandpits', 'logs', 'attachments', 'models'}
+    root = REPO_ROOT.resolve()
+    for scope in _SEARCH_SCOPES:
+        base = root / scope
+        entries = [(str(base.parent), [], [base.name])] if base.is_file() else os.walk(base, followlinks=False)
+        for directory, dirs, files in entries:
+            dirs[:] = sorted(name for name in dirs if name not in blocked and not name.startswith(('.env', '.venv')))
+            for name in sorted(files):
+                if time.monotonic() > deadline or scanned >= 2000:
+                    return matches, matches[0]['path'] if matches else None
+                scanned += 1
+                path = Path(directory) / name
+                relative = path.relative_to(root).as_posix()
+                if any(part.startswith('.env') or any(word in part.lower() for word in ('secret', 'credential', 'token')) for part in path.relative_to(root).parts):
+                    continue
+                if not any(fnmatch.fnmatch(name, pattern) for pattern in _SEARCH_GLOBS):
+                    continue
+                try:
+                    if not path.resolve().is_relative_to(root) or path.stat().st_size > 256 * 1024:
+                        continue
+                    for number, line in enumerate(path.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
+                        if any(term in line.lower() for term in terms):
+                            matches.append({'path': relative, 'line': str(number), 'excerpt': _sanitize_excerpt(line, 240)})
+                            break
+                except OSError:
+                    continue
+                if len(matches) >= 8:
+                    return matches, matches[0]['path']
+    return matches, matches[0]['path'] if matches else None
+
+
 def _repository_matches(query: str) -> tuple[list[dict[str, str]], str | None]:
     terms = _terms(query)
     if not terms:
         return [], None
     rg = shutil.which('rg')
     if not rg:
-        logger.error('Read-only repository retrieval requires ripgrep (rg)')
-        return [], None
+        return _repository_matches_without_rg(terms)
 
     pattern = '|'.join(re.escape(term) for term in terms)
     command = [

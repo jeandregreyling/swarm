@@ -1,0 +1,136 @@
+{
+  "controller": {
+    "active": "qwen",
+    "error": null,
+    "paused": false,
+    "rounds": 8,
+    "running": true,
+    "turn": 2
+  },
+  "match_id": "mvho26z3",
+  "connected": 14,
+  "manual": "mondcraft/MANUAL.md",
+  "verified_new_manual_turns": [
+    {
+      "turn": 2,
+      "agent": "fred",
+      "model": "fred-cpu:24b",
+      "attempts": [
+        {
+          "response": "```json\n{\n  \"action\": \"explore\",\n  \"target\": \"G7\",\n  \"reason\": \"discover new terrain\"\n}\n```",
+          "tokens": 33
+        }
+      ],
+      "manual_version": "field-manual-v1",
+      "manual_sha256": "ab2fa712f8afbe67f0cba26fce8ebf7b764a87744237380179868b62811846fe",
+      "elapsed_s": 232.039,
+      "event": {
+        "turn": 2,
+        "agent": "fred",
+        "model": "fred-cpu:24b",
+        "action": "explore",
+        "target": "G7",
+        "previous": null,
+        "owner": null,
+        "strength": 0,
+        "reason": "discover new terrain",
+        "at": 1792562920567,
+        "position": {
+          "x": 7.5,
+          "y": 5,
+          "z": 8.464026214579846
+        }
+      }
+    },
+    {
+      "turn": 3,
+      "agent": "mistral",
+      "model": "mistral-small:24b",
+      "attempts": [
+        {
+          "response": "{\"action\": \"explore\", \"target\": \"F8\", \"reason\": \"discover nearby terrain\"}",
+          "tokens": 24
+        }
+      ],
+      "manual_version": "field-manual-v1",
+      "manual_sha256": "ab2fa712f8afbe67f0cba26fce8ebf7b764a87744237380179868b62811846fe",
+      "elapsed_s": 76.171,
+      "event": {
+        "turn": 3,
+        "agent": "mistral",
+        "model": "mistral-small:24b",
+        "action": "explore",
+        "target": "F8",
+        "previous": null,
+        "owner": null,
+        "strength": 0,
+        "reason": "discover nearby terrain",
+        "at": 1792562996818,
+        "position": {
+          "x": 4.684397363066808,
+          "y": 5,
+          "z": 11.420113409225003
+        }
+      }
+    }
+  ],
+  "resources": [
+    [
+      "gemma",
+      {}
+    ],
+    [
+      "llama",
+      {}
+    ],
+    [
+      "fred",
+      {}
+    ],
+    [
+      "mistral",
+      {}
+    ],
+    [
+      "qwen",
+      {}
+    ],
+    [
+      "librarian",
+      {}
+    ],
+    [
+      "duck",
+      {}
+    ],
+    [
+      "seven",
+      {}
+    ],
+    [
+      "sniffles",
+      {}
+    ],
+    [
+      "eight",
+      {}
+    ],
+    [
+      "thirteen",
+      {}
+    ],
+    [
+      "nineteen",
+      {}
+    ],
+    [
+      "twenty",
+      {}
+    ],
+    [
+      "apex",
+      {}
+    ]
+  ],
+  "limitations": "Live ongoing session; an exploration turn is verified. Resource gathering remains subject to model choice and actual mining verification. Observation is active during this chat, not a promise of continuous assistant presence."
+}

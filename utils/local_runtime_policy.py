@@ -175,6 +175,29 @@ _ERROR_RESPONSE_RE = re.compile(
 )
 
 
+FRED_CPU_BACKUP_MODEL = 'fred-cpu:24b'
+
+
+def is_resident_cpu_backup(model: Any) -> bool:
+    return str(model or '').strip().lower() == FRED_CPU_BACKUP_MODEL
+
+
+def local_inference_options(agent_name: Any) -> dict[str, int]:
+    if normalize_agent_name(agent_name) == 'fred':
+        return {'num_gpu': 0, 'num_thread': min(6, os.cpu_count() or 1)}
+    return {}
+
+
+def compact_local_chat_prompt(message: Any) -> str:
+    raw = str(message or '').strip()
+    marker = '=== New user message ==='
+    if marker in raw:
+        latest = raw.rsplit(marker, 1)[-1].strip()
+        if latest:
+            return latest[-3000:]
+    return raw[-3000:] if len(raw) > 5000 else raw
+
+
 def is_explicitly_no_tools_request(user_message: Any) -> bool:
     """Return whether the operator explicitly prohibited tools for this turn."""
     return bool(_NO_TOOL_REQUEST_RE.search(str(user_message or "")))
@@ -200,7 +223,7 @@ def agent_capability_allowed(agent_name: Any, capability: Any) -> bool:
 
 
 def persist_read_only_chat_memory(agent_name: Any, user_message: Any, response: Any) -> bool:
-    """Persist a successful read-only chat response to that agent's own pool."""
+    """Persist a successful local chat response to that agent's own pool."""
     agent = normalize_agent_name(agent_name)
     if (
         agent not in MEMORY_WRITE_AGENT_PROFILES
@@ -208,13 +231,28 @@ def persist_read_only_chat_memory(agent_name: Any, user_message: Any, response: 
     ):
         return False
 
-    payload = json.loads(str(response or ""))
-    if (
-        not isinstance(payload, dict)
-        or payload.get("kind") not in {"analysis", "recommendation", "draft"}
-        or payload.get("human_review_required") is not True
+    content = str(response or "").strip()
+    if not content or re.match(
+        r"^(?:\[local runtime error:|\[verification\]|(?:\[[^\]\n]+\]\s*)?error:)",
+        content,
+        re.IGNORECASE,
     ):
         return False
+    try:
+        payload = json.loads(content)
+    except json.JSONDecodeError:
+        if content.startswith(("{", "[")):
+            return False
+        tags, source = "chat,unverified", "local_chat"
+    else:
+        if (
+            not isinstance(payload, dict)
+            or payload.get("kind") not in {"analysis", "recommendation", "draft"}
+            or payload.get("human_review_required") is not True
+        ):
+            return False
+        content = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
+        tags, source = "chat,review_gated", "read_only_chat"
 
     from utils.db.agents import agent_has_capability
 
@@ -227,10 +265,10 @@ def persist_read_only_chat_memory(agent_name: Any, user_message: Any, response: 
     save_agent_memory(
         agent,
         subject,
-        json.dumps(payload, ensure_ascii=True, separators=(",", ":")),
-        tags="chat,review_gated",
+        content,
+        tags=tags,
         importance=5,
-        source="read_only_chat",
+        source=source,
     )
     return True
 

@@ -1,0 +1,63 @@
+{
+  "ticket": "LOCAL-D4F63C10AA67",
+  "timestamp": "2026-10-21T04:09:11.339195+00:00",
+  "executor": "Seven Runtime /api/roll-call",
+  "request": {
+    "model": "gpt-oss:20b",
+    "timeout_seconds": 120
+  },
+  "result": {
+    "ok": true,
+    "model": "gpt-oss:20b",
+    "grade": "passed",
+    "expected": "SEVEN_MODEL_ROLL_CALL_OK",
+    "content": "SEVEN_MODEL_ROLL_CALL_OK",
+    "runtime": {
+      "ok": true,
+      "model": "gpt-oss:20b",
+      "content": "SEVEN_MODEL_ROLL_CALL_OK",
+      "tokens": 22,
+      "elapsed_s": 85.9627947807312,
+      "error": "",
+      "events": [
+        {
+          "stage": "queued",
+          "at": 1792555664.382742,
+          "detail": "",
+          "tokens": 0
+        },
+        {
+          "stage": "dispatch",
+          "at": 1792555664.3827553,
+          "detail": "absolute=120s idle=120s",
+          "tokens": 0
+        },
+        {
+          "stage": "first_token",
+          "at": 1792555750.2605772,
+          "detail": "",
+          "tokens": 1
+        },
+        {
+          "stage": "completed",
+          "at": 1792555750.345443,
+          "detail": "",
+          "tokens": 22
+        }
+      ]
+    },
+    "unload": {
+      "ok": true,
+      "model": "gpt-oss:20b",
+      "stuck": false,
+      "action": "unloaded",
+      "attempted": [
+        {
+          "step": "unload",
+          "ok": true
+        }
+      ],
+      "message": "gpt-oss:20b unloaded cleanly"
+    }
+  }
+}

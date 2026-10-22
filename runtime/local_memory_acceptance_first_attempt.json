@@ -1,0 +1,131 @@
+{
+  "marker": "cedar-61c4fb5f",
+  "save_chat": {
+    "agent": "qwen",
+    "elapsed_ms": 5666,
+    "eta_seconds": 0,
+    "job_id": null,
+    "pending": false,
+    "response": "The maintenance marker is cedar-61c4fb5f.",
+    "runtime_class": "local",
+    "stage_trace": [
+      {
+        "text": "queued",
+        "ts": 1792551088.524147
+      },
+      {
+        "text": "waiting for model slot \u00b7 qwen",
+        "ts": 1792551088.5251136
+      },
+      {
+        "text": "dispatching to local ollama \u00b7 qwen",
+        "ts": 1792551088.5781224
+      },
+      {
+        "text": "loading context",
+        "ts": 1792551088.5792708
+      },
+      {
+        "text": "sending model request",
+        "ts": 1792551089.3001807
+      },
+      {
+        "text": "gateway: queued",
+        "ts": 1792551089.3002124
+      },
+      {
+        "text": "gateway: fallback",
+        "ts": 1792551089.3002172
+      },
+      {
+        "text": "gateway: fallback_generate",
+        "ts": 1792551092.4012635
+      },
+      {
+        "text": "gateway: completed 15t",
+        "ts": 1792551092.4012697
+      },
+      {
+        "text": "persisting private memory",
+        "ts": 1792551092.403793
+      },
+      {
+        "text": "private memory saved",
+        "ts": 1792551092.481623
+      },
+      {
+        "text": "finalizing answer",
+        "ts": 1792551092.4816952
+      }
+    ],
+    "tokens": 15,
+    "status": "completed",
+    "conversation_id": 2733
+  },
+  "persisted_ids": [
+    111
+  ],
+  "recall_after_restart": {
+    "agent": "qwen",
+    "elapsed_ms": 5259,
+    "eta_seconds": 0,
+    "job_id": null,
+    "pending": false,
+    "response": "maintenance-20231215",
+    "runtime_class": "local",
+    "stage_trace": [
+      {
+        "text": "queued",
+        "ts": 1792551173.6283257
+      },
+      {
+        "text": "waiting for model slot \u00b7 qwen",
+        "ts": 1792551173.629062
+      },
+      {
+        "text": "dispatching to local ollama \u00b7 qwen",
+        "ts": 1792551173.6986322
+      },
+      {
+        "text": "loading context",
+        "ts": 1792551173.6998208
+      },
+      {
+        "text": "sending model request",
+        "ts": 1792551174.02094
+      },
+      {
+        "text": "gateway: queued",
+        "ts": 1792551174.0221636
+      },
+      {
+        "text": "gateway: fallback",
+        "ts": 1792551174.0221705
+      },
+      {
+        "text": "gateway: fallback_generate",
+        "ts": 1792551177.0732322
+      },
+      {
+        "text": "gateway: completed 11t",
+        "ts": 1792551177.073239
+      },
+      {
+        "text": "persisting private memory",
+        "ts": 1792551177.0755856
+      },
+      {
+        "text": "private memory saved",
+        "ts": 1792551177.191204
+      },
+      {
+        "text": "finalizing answer",
+        "ts": 1792551177.191289
+      }
+    ],
+    "tokens": 11,
+    "status": "completed",
+    "conversation_id": 2734
+  },
+  "passed": false
+}

@@ -1,0 +1,61 @@
+{
+  "ticket": "LOCAL-D4F63C10AA67",
+  "result": {
+    "model": "apex-direct:20b",
+    "probe": "actual model-generated file_write and file_read via shared wrapper skill loop",
+    "grade": "passed",
+    "num_predict": 2048,
+    "absolute_timeout_s": 120,
+    "elapsed_s": 46.529839,
+    "expected": "direct 20b ticket proof 5e859079ce",
+    "actual": "direct 20b ticket proof 5e859079ce",
+    "path": "sandpits/apex/ticket_20b_5e859079ce.txt",
+    "sha256": "f3c374123b1f9555924d505743bd43b1c76ec8ba7e08055a8fee2dbc33d608d6",
+    "tokens": 671,
+    "answer": "Verified sandpits/apex/ticket_20b_5e859079ce.txt:\ndirect 20b ticket proof 5e859079ce\n\nExecution evidence:\n[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/apex/ticket_20b_5e859079ce.txt\n\n[skill:file_read] OK\ndirect 20b ticket proof 5e859079ce",
+    "error": "",
+    "cleanup": {
+      "ok": true,
+      "model": "apex-direct:20b",
+      "action": "direct_stop"
+    },
+    "passed": true,
+    "live_apex_assignment_changed": false
+  },
+  "model_calls": [
+    {
+      "ok": true,
+      "model": "apex-direct:20b",
+      "content": "SKILL file_write apex/ticket_20b_5e859079ce.txt direct 20b ticket proof 5e859079ce\nSKILL file_read apex/ticket_20b_5e859079ce.txt\nticket proof 5e859079ce",
+      "tokens": 671,
+      "elapsed_s": 45.317978620529175,
+      "error": "",
+      "events": [
+        {
+          "stage": "queued",
+          "at": 1792556156.2501242,
+          "detail": "",
+          "tokens": 0
+        },
+        {
+          "stage": "direct_dispatch",
+          "at": 1792556156.2501273,
+          "detail": "driver=llamacpp absolute=120s idle=120s",
+          "tokens": 0
+        },
+        {
+          "stage": "first_token",
+          "at": 1792556201.568098,
+          "detail": "",
+          "tokens": 671
+        },
+        {
+          "stage": "completed",
+          "at": 1792556201.5681007,
+          "detail": "",
+          "tokens": 671
+        }
+      ]
+    }
+  ]
+}

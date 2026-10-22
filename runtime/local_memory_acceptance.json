@@ -1,0 +1,131 @@
+{
+  "marker": "cedar-61c4fb5f",
+  "save_chat": {
+    "agent": "qwen",
+    "elapsed_ms": 5666,
+    "eta_seconds": 0,
+    "job_id": null,
+    "pending": false,
+    "response": "The maintenance marker is cedar-61c4fb5f.",
+    "runtime_class": "local",
+    "stage_trace": [
+      {
+        "text": "queued",
+        "ts": 1792551088.524147
+      },
+      {
+        "text": "waiting for model slot \u00b7 qwen",
+        "ts": 1792551088.5251136
+      },
+      {
+        "text": "dispatching to local ollama \u00b7 qwen",
+        "ts": 1792551088.5781224
+      },
+      {
+        "text": "loading context",
+        "ts": 1792551088.5792708
+      },
+      {
+        "text": "sending model request",
+        "ts": 1792551089.3001807
+      },
+      {
+        "text": "gateway: queued",
+        "ts": 1792551089.3002124
+      },
+      {
+        "text": "gateway: fallback",
+        "ts": 1792551089.3002172
+      },
+      {
+        "text": "gateway: fallback_generate",
+        "ts": 1792551092.4012635
+      },
+      {
+        "text": "gateway: completed 15t",
+        "ts": 1792551092.4012697
+      },
+      {
+        "text": "persisting private memory",
+        "ts": 1792551092.403793
+      },
+      {
+        "text": "private memory saved",
+        "ts": 1792551092.481623
+      },
+      {
+        "text": "finalizing answer",
+        "ts": 1792551092.4816952
+      }
+    ],
+    "tokens": 15,
+    "status": "completed",
+    "conversation_id": 2733
+  },
+  "persisted_ids": [
+    111
+  ],
+  "recall_after_restart": {
+    "agent": "qwen",
+    "elapsed_ms": 3096,
+    "eta_seconds": 0,
+    "job_id": null,
+    "pending": false,
+    "response": "cedar-61c4fb5f",
+    "runtime_class": "local",
+    "stage_trace": [
+      {
+        "text": "queued",
+        "ts": 1792551326.3016272
+      },
+      {
+        "text": "waiting for model slot \u00b7 qwen",
+        "ts": 1792551326.302554
+      },
+      {
+        "text": "dispatching to local ollama \u00b7 qwen",
+        "ts": 1792551326.3754396
+      },
+      {
+        "text": "loading context",
+        "ts": 1792551326.3766015
+      },
+      {
+        "text": "sending model request",
+        "ts": 1792551326.4866219
+      },
+      {
+        "text": "gateway: queued",
+        "ts": 1792551326.4880118
+      },
+      {
+        "text": "gateway: fallback",
+        "ts": 1792551326.4880176
+      },
+      {
+        "text": "gateway: fallback_generate",
+        "ts": 1792551327.380953
+      },
+      {
+        "text": "gateway: completed 11t",
+        "ts": 1792551327.3809588
+      },
+      {
+        "text": "persisting private memory",
+        "ts": 1792551327.3831465
+      },
+      {
+        "text": "private memory saved",
+        "ts": 1792551327.5408251
+      },
+      {
+        "text": "finalizing answer",
+        "ts": 1792551327.5409033
+      }
+    ],
+    "tokens": 11,
+    "status": "completed",
+    "conversation_id": 2735
+  },
+  "passed": true
+}

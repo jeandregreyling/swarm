@@ -1180,6 +1180,9 @@ def _chat_reconcile_unowned_ollama_runners(conversation_id=None):
         if not agent or agent in active_agents:
             continue
         configured_model = _chat_agent_configured_model(agent)
+        from utils.local_runtime_policy import is_resident_cpu_backup
+        if is_resident_cpu_backup(configured_model):
+            continue
         aliases = _chat_model_aliases(configured_model)
         if not configured_model or not aliases:
             continue

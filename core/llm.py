@@ -26,8 +26,8 @@ pull(model, stream=True) -> iterator
 Rules enforced
 --------------
   * keep_alive: None/negative/zero → DEFAULT_KEEP_ALIVE (1800s).
-    A caller CANNOT request "Forever" ("-1"). That bug class is structurally
-    impossible here.
+    The named Fred CPU-only backup may explicitly remain resident in system RAM;
+    other models retain finite TTLs.
   * Stream retries on failure are disallowed. If a stream raises, we return
     the partial content the caller already received. Re-calling ollama.chat
     on a stuck runner spawned a second runner that also hung — never again.
@@ -306,8 +306,17 @@ def chat_via_gateway(
     """
     from core import model_runtime_gateway as _gw
 
+    from utils.local_runtime_policy import is_resident_cpu_backup
     keep_alive_val = _sanitize_keep_alive(keep_alive if keep_alive is not None else DEFAULT_KEEP_ALIVE)
-    if isinstance(keep_alive_val, str):
+    persistent_cpu = (
+        is_resident_cpu_backup(model)
+        and (options or {}).get('num_gpu') == 0
+        and keep_alive == -1
+    )
+    if persistent_cpu:
+        keep_alive_arg = -1
+        keep_alive_log = 'resident_cpu'
+    elif isinstance(keep_alive_val, str):
         keep_alive_arg: Any = keep_alive_val
         keep_alive_log = keep_alive_val
     else:
@@ -315,6 +324,7 @@ def chat_via_gateway(
         keep_alive_log = int(keep_alive_val)
 
     opts: dict = dict(options or {})
+    opts.setdefault('num_ctx', 8192)
     if temperature is not None and 'temperature' not in opts:
         opts['temperature'] = temperature
 

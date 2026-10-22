@@ -63,6 +63,50 @@ function loadTicketsData(win) {
     });
 }
 
+async function createLocalTicket(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const question = form.querySelector('textarea').value.trim();
+  if (!question) return;
+  const submit = form.querySelector('[type="submit"]');
+  submit.disabled = true;
+  try {
+    const response = await fetch('/api/tickets', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: question.trim() })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Ticket creation failed');
+    form.reset();
+    form.hidden = true;
+    openTicketDetail(result.ticket_number);
+    const win = winManager.windows.get('tickets');
+    if (win) loadTicketsData(win);
+  } catch (error) {
+    if (typeof showToast === 'function') showToast(error.message, 'error');
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function processLocalTicket(ticketNumber, button) {
+  button.disabled = true;
+  button.textContent = 'Processing...';
+  try {
+    const response = await fetch('/api/tickets/' + encodeURIComponent(ticketNumber) + '/process', { method: 'POST' });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Ticket processing failed');
+    if (typeof showToast === 'function') showToast(
+      result.ok ? 'Findings reported and reviewed' : 'Findings require review', result.ok ? 'success' : 'warning'
+    );
+    openTicketDetail(ticketNumber);
+  } catch (error) {
+    if (typeof showToast === 'function') showToast(error.message, 'error');
+    button.disabled = false;
+    button.textContent = 'Triage & Report';
+  }
+}
+
 function deleteTicket(ticketId) {
   fetch('/api/tickets/' + encodeURIComponent(ticketId), { method: 'DELETE' })
     .then(r => {

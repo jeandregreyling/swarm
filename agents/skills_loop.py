@@ -59,7 +59,9 @@ _READ_ONLY_SKILL_COMMAND_RE = re.compile(
 )
 _READ_ONLY_TASK_RE = re.compile(
     r'\b(?:do not|don\'t|never)\s+'
-    r'(?:edit|modify|change|write|patch|create|delete|remove|use|run)\b',
+    r'(?:approve\s+(?:or|and)\s+)?'
+    r'(?:edit|modify|change|write|patch|create|delete|remove|use|run)\b'
+    r'|\b(?:read[- ]only|inspection[- ]only)\s+(?:exercise|task|request)\b',
     re.IGNORECASE,
 )
 _READ_ONLY_TASK_SKILLS = {'fs_readonly'}
@@ -343,8 +345,10 @@ def _is_level0_shell(skill_name, skill_args, allowed_skill_names):
         return False
 
 
-def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_id=None, allowed_skill_names=None):
+def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_id=None, allowed_skill_names=None, strict_skill_allowlist=False):
     """Execute a list of (skill_name, skill_args) pairs. Returns joined output string."""
+    if strict_skill_allowlist and allowed_skill_names is None:
+        raise ValueError('Strict skill execution requires an explicit allowlist')
     char_limit = max_chars or _MAX_SKILL_OUTPUT_CHARS
     try:
         from fridays.skills import call as skill_call
@@ -371,7 +375,10 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
         if (
             allowed_skill_names is not None
             and skill_name not in allowed_skill_names
-            and not _is_level0_shell(skill_name, skill_args, allowed_skill_names)
+            and (
+                strict_skill_allowlist
+                or not _is_level0_shell(skill_name, skill_args, allowed_skill_names)
+            )
         ):
             parts.append(
                 f'[skill:{skill_name}] SKIPPED\n'
@@ -456,6 +463,7 @@ def run_skill_loop(
     source_conv_id=None,
     allowed_skill_names=None,
     mid_loop_nudges=2,
+    strict_skill_allowlist=False,
 ):
     """
     Execute `call_fn(messages)` with SKILL command interception and re-prompting.
@@ -479,11 +487,16 @@ def run_skill_loop(
         If True and the first response contains no SKILL commands, send one
         follow-up nudge asking the model to emit them. Useful for models
         (e.g. Grok) that default to prose descriptions instead of commands.
+    strict_skill_allowlist : bool
+        Require an explicit skill allowlist with no implicit lookup exemptions
+        or synthesized commands. Include tool receipts and flag failed exercises.
 
     Returns
     -------
     (answer: str, tokens: int)
     """
+    if strict_skill_allowlist and allowed_skill_names is None:
+        raise ValueError('Strict skill execution requires an explicit allowlist')
     skill_char_limit = max_skill_chars or _MAX_SKILL_OUTPUT_CHARS
     no_tools_requested = _is_explicitly_no_tools_task(messages)
     if no_tools_requested:
@@ -536,7 +549,8 @@ def run_skill_loop(
     if is_read_only or str(agent_name or '').strip().lower() in MEMORY_WRITE_AGENT_PROFILES:
         commands = _extract_read_only_skill_cmds(first_content)
         can_write_shared_note = (
-            len(commands) == 1
+            not strict_skill_allowlist
+            and len(commands) == 1
             and commands[0][0] == 'shared_memory_write'
             and (
                 allowed_skill_names is None
@@ -640,9 +654,7 @@ def run_skill_loop(
 
     # Diagnostic: log whether the first response contains SKILL commands
     # A SKILL line inside backticks is text, not a command, so it must not count here.
-    has_skill = bool(_extract_skill_cmds(first_content)) or (
-        'SKILL ' in str(first_content or '').upper() and not _fenced_skill_in_text(first_content)
-    )
+    has_skill = bool(_extract_skill_cmds(first_content))
     logger.info(
         f'[{agent_name}] pass 0 response: has_skill={has_skill} '
         f'len={len(str(first_content or ""))} '
@@ -676,13 +688,14 @@ def run_skill_loop(
 
     pass_num = 0
     _all_results = []
+    note_verification_error = ''
     _look_only = _asks_only_to_look(messages)
     # Agents that finish in prose after reading (Fred) pass 0: the nudge leaves out skill results and invites stray greps.
     _mid_loop_nudges_remaining = 0 if _look_only else max(0, int(mid_loop_nudges))
 
     for _pass in range(max_passes):
         skill_cmds = _extract_skill_cmds(answer)
-        if not skill_cmds and pass_num == 0 and (
+        if not strict_skill_allowlist and not skill_cmds and pass_num == 0 and (
             allowed_skill_names is None or 'fs_write' in allowed_skill_names
         ):
             explicit_write = _explicit_one_line_sandpit_write(messages, agent_name)
@@ -723,6 +736,7 @@ def run_skill_loop(
                             skill_char_limit,
                             source_conv_id=source_conv_id,
                             allowed_skill_names=allowed_skill_names,
+                            strict_skill_allowlist=strict_skill_allowlist,
                         )
                         pass_num += 1
                         _all_results.append(nudge_results)
@@ -761,6 +775,7 @@ def run_skill_loop(
             skill_char_limit,
             source_conv_id=source_conv_id,
             allowed_skill_names=allowed_skill_names,
+            strict_skill_allowlist=strict_skill_allowlist,
         )
         pass_num += 1
         _all_results.append(skill_results)
@@ -772,9 +787,15 @@ def run_skill_loop(
             receipts = '\n\n'.join(_all_results)
             written_path = str(Path(__file__).resolve().parents[1] / 'sandpits' / note_path)
             readbacks = re.findall(r'\[skill:file_read\] OK\n(.*?)(?=\n\n\[skill:|\Z)', receipts, re.DOTALL)
-            if note_path.startswith(f'{agent_name}/') and written_path in receipts and expected_note in readbacks:
-                answer = f'Verified sandpits/{note_path}:\n{expected_note}'
-                break
+            if note_path.startswith(f'{agent_name}/') and written_path in receipts and readbacks:
+                if readbacks[-1].rstrip('\n') == expected_note:
+                    note_verification_error = ''
+                    answer = f'Verified sandpits/{note_path}:\n{expected_note}'
+                    break
+                note_verification_error = (
+                    f'[verification] Readback mismatch for sandpits/{note_path}. '
+                    f'Expected {expected_note!r}; observed {readbacks[-1]!r}.'
+                )
 
         logger.debug(
             f'[{agent_name}] pass {pass_num}: ran {len(skill_cmds)} skill(s); '
@@ -820,7 +841,21 @@ def run_skill_loop(
                 + skill_results
             )
 
-        follow_up = _asks_reminder + follow_up
+        if note_verification_error:
+            follow_up = (
+                note_verification_error + '\nThe explicitly requested note is not correct yet. '
+                'Emit file_write with the exact original requested content, then file_read to verify. '
+                'Do not claim a match unless the actual readback matches.\n\n' + follow_up
+            )
+        if strict_skill_allowlist:
+            follow_up = (
+                'Actual tool receipts are below. Use them to answer the original request. '
+                'Do not repeat a successful command or claim unsupported results. '
+                'Give the final factual answer now unless another permitted tool is '
+                'necessary to finish the original exercise.\n\n' + skill_results
+            )
+        else:
+            follow_up = _asks_reminder + follow_up
 
         # Keep context lean: baseline messages + last assistant turn + new follow_up.
         # This prevents unbounded growth that blows token limits on tight APIs.
@@ -843,12 +878,15 @@ def run_skill_loop(
 
     # A reply that still ends in SKILL lines never got to run them; run them now.
     trailing = _extract_skill_cmds(answer) if answer else []
-    if trailing:
+    if trailing and strict_skill_allowlist:
+        answer = '[verification] Exercise failed: tool budget exhausted before a final answer.'
+    elif trailing:
         try:
             _all_results.append(_execute_skill_cmds(
                 trailing, agent_name, emit_fn, skill_char_limit,
                 source_conv_id=source_conv_id,
                 allowed_skill_names=allowed_skill_names,
+                strict_skill_allowlist=strict_skill_allowlist,
             ))
             raw_results = _all_results[-1]
             answer = 'Ran the final skill lines:\n' + raw_results
@@ -897,8 +935,19 @@ def run_skill_loop(
     note = unfinished_file_edit_note(joined)
     if note:
         answer = note + '\n\n' + str(answer or '')
+    if note_verification_error:
+        final_readbacks = re.findall(r'\[skill:file_read\] OK\n(.*?)(?=\n\n\[skill:|\Z)', joined, re.DOTALL)
+        if not final_readbacks or final_readbacks[-1].rstrip('\n') != expected_note:
+            answer = note_verification_error + '\nThe requested note was not verified successfully.'
     if any(result.group(2) == 'OK' for result in _FILE_EDIT_RESULT.finditer(joined)):
         answer = str(answer or '') + '\n\nExecution evidence:\n' + joined
+    if strict_skill_allowlist:
+        if not re.search(r'\[skill:[a-z0-9_-]+\] OK\b', joined):
+            answer = '[verification] Exercise failed: no authorized skill succeeded.\n' + str(answer or '')
+        elif re.search(r'\[skill:[a-z0-9_-]+\] (?:FAILED|ERROR|SKIPPED)\b', joined):
+            answer = '[verification] Exercise failed: a tool was denied or failed.\n' + str(answer or '')
+        if joined and 'Execution evidence:\n' + joined not in str(answer or ''):
+            answer = str(answer or '') + '\n\nExecution evidence:\n' + joined
 
     _tl(source_conv_id, agent_name, 'final', str(answer or '')[:1200])
     return answer, total_tokens

@@ -38,6 +38,8 @@ def _build_context(message):
     finally:
         conn.close()
     mems = get_agent_memory(AGENT_NAME, query=message, limit=4) or []
+    if not mems:
+        mems = get_agent_memory(AGENT_NAME, query='', limit=3) or []
     if mems:
         lines.append(f"\n=== LLaMA's memory ===")
         for m in mems:
@@ -74,6 +76,8 @@ def chat(message, conversation_history=None, stage_cb=None):
     from config import LLAMA_SYSTEM_PROMPT
 
     _emit('loading context')
+    from utils.local_runtime_policy import compact_local_chat_prompt
+    message = compact_local_chat_prompt(message)
     context = _build_context(message)
     from utils.local_runtime_policy import LOCAL_AGENT_TURN_POLICY
 

@@ -1,0 +1,656 @@
+{
+  "connected": [
+    "gemma",
+    "llama",
+    "fred",
+    "mistral",
+    "qwen",
+    "librarian",
+    "duck",
+    "seven",
+    "sniffles",
+    "eight",
+    "thirteen",
+    "nineteen",
+    "twenty",
+    "apex"
+  ],
+  "players": [
+    {
+      "color": "#ef476f",
+      "connected": true,
+      "errors": 0,
+      "label": "Gemma3",
+      "legal": [
+        {
+          "id": "I3",
+          "owner": "apex",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "H4",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "I4",
+          "owner": "gemma",
+          "strength": 1,
+          "terrain": "crystal"
+        },
+        {
+          "id": "I5",
+          "owner": "gemma",
+          "strength": 2,
+          "terrain": "grass"
+        }
+      ],
+      "model": "gemma3:latest",
+      "name": "gemma",
+      "number": 1,
+      "position": {
+        "x": 18,
+        "y": 5,
+        "z": 17
+      },
+      "wins": 1,
+      "x": 8,
+      "z": 3
+    },
+    {
+      "color": "#06d6a0",
+      "connected": true,
+      "errors": 0,
+      "label": "LlaMA",
+      "legal": [
+        {
+          "id": "I6",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "H7",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "I7",
+          "owner": "llama",
+          "strength": 3,
+          "terrain": "grass"
+        },
+        {
+          "id": "I8",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "llama3.2:latest",
+      "name": "llama",
+      "number": 2,
+      "position": {
+        "x": 15,
+        "y": 5,
+        "z": 7
+      },
+      "wins": 0,
+      "x": 8,
+      "z": 6
+    },
+    {
+      "color": "#ffd166",
+      "connected": true,
+      "errors": 0,
+      "label": "Fred (Mistral)",
+      "legal": [
+        {
+          "id": "G7",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "F8",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "G8",
+          "owner": "fred",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "H8",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grove"
+        },
+        {
+          "id": "G9",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "fred-cpu:24b",
+      "name": "fred",
+      "number": 3,
+      "position": {
+        "x": 0,
+        "y": 5,
+        "z": 13
+      },
+      "wins": 0,
+      "x": 6,
+      "z": 7
+    },
+    {
+      "color": "#118ab2",
+      "connected": true,
+      "errors": 0,
+      "label": "Mistral",
+      "legal": [
+        {
+          "id": "F8",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "E9",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "F9",
+          "owner": "mistral",
+          "strength": 2,
+          "terrain": "grove"
+        },
+        {
+          "id": "G9",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "mistral-small:24b",
+      "name": "mistral",
+      "number": 3,
+      "position": {
+        "x": 5,
+        "y": 5,
+        "z": 1
+      },
+      "wins": 0,
+      "x": 5,
+      "z": 8
+    },
+    {
+      "color": "#f78c6b",
+      "connected": true,
+      "errors": 0,
+      "label": "Qwen",
+      "legal": [
+        {
+          "id": "D8",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "C9",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "D9",
+          "owner": "qwen",
+          "strength": 2,
+          "terrain": "crystal"
+        },
+        {
+          "id": "E9",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "qwen2.5:14b-instruct",
+      "name": "qwen",
+      "number": 4,
+      "position": {
+        "x": 4,
+        "y": 5,
+        "z": 29
+      },
+      "wins": 0,
+      "x": 3,
+      "z": 8
+    },
+    {
+      "color": "#a78bfa",
+      "connected": true,
+      "errors": 0,
+      "label": "Vortex",
+      "legal": [
+        {
+          "id": "C7",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grove"
+        },
+        {
+          "id": "B8",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "C8",
+          "owner": "librarian",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "D8",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "C9",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "qwen2.5:7b-instruct",
+      "name": "librarian",
+      "number": 5,
+      "position": {
+        "x": 23,
+        "y": 5,
+        "z": 22
+      },
+      "wins": 0,
+      "x": 2,
+      "z": 7
+    },
+    {
+      "color": "#54c6eb",
+      "connected": true,
+      "errors": 0,
+      "label": "Duck",
+      "legal": [
+        {
+          "id": "A6",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "A7",
+          "owner": "duck",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "B7",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "A8",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grove"
+        }
+      ],
+      "model": "mistral:latest",
+      "name": "duck",
+      "number": 6,
+      "position": {
+        "x": 19,
+        "y": 5,
+        "z": 16
+      },
+      "wins": 0,
+      "x": 0,
+      "z": 6
+    },
+    {
+      "color": "#f284b6",
+      "connected": true,
+      "errors": 0,
+      "label": "Seven",
+      "legal": [
+        {
+          "id": "A4",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "A5",
+          "owner": "seven",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "B5",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "A6",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "seven-direct:daily",
+      "name": "seven",
+      "number": 7,
+      "position": {
+        "x": 22,
+        "y": 5,
+        "z": 12
+      },
+      "wins": 0,
+      "x": 0,
+      "z": 4
+    },
+    {
+      "color": "#91c483",
+      "connected": true,
+      "errors": 0,
+      "label": "Sniffles",
+      "legal": [
+        {
+          "id": "A2",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "A3",
+          "owner": "sniffles",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "B3",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "A4",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "qwen2.5:7b-instruct",
+      "name": "sniffles",
+      "number": 7,
+      "position": {
+        "x": 23,
+        "y": 5,
+        "z": 16
+      },
+      "wins": 0,
+      "x": 0,
+      "z": 2
+    },
+    {
+      "color": "#ff9f43",
+      "connected": true,
+      "errors": 0,
+      "label": "Eight",
+      "legal": [
+        {
+          "id": "C1",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "B2",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "C2",
+          "owner": "eight",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "D2",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "C3",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "gemma3:latest",
+      "name": "eight",
+      "number": 8,
+      "position": {
+        "x": 9,
+        "y": 5,
+        "z": 26
+      },
+      "wins": 0,
+      "x": 2,
+      "z": 1
+    },
+    {
+      "color": "#5d9cec",
+      "connected": true,
+      "errors": 0,
+      "label": "Thirteen",
+      "legal": [
+        {
+          "id": "C1",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "D1",
+          "owner": "thirteen",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "E1",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "D2",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "llama3.2:latest",
+      "name": "thirteen",
+      "number": 13,
+      "position": {
+        "x": 0,
+        "y": 5,
+        "z": 18
+      },
+      "wins": 0,
+      "x": 3,
+      "z": 0
+    },
+    {
+      "color": "#dd6e42",
+      "connected": true,
+      "errors": 0,
+      "label": "Nineteen",
+      "legal": [
+        {
+          "id": "E1",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "F1",
+          "owner": "nineteen",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "G1",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "F2",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grove"
+        }
+      ],
+      "model": "qwen2.5:14b-instruct",
+      "name": "nineteen",
+      "number": 19,
+      "position": {
+        "x": 4,
+        "y": 5,
+        "z": 16
+      },
+      "wins": 0,
+      "x": 5,
+      "z": 0
+    },
+    {
+      "color": "#b9cb55",
+      "connected": true,
+      "errors": 0,
+      "label": "Twenty",
+      "legal": [
+        {
+          "id": "G1",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "F2",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grove"
+        },
+        {
+          "id": "G2",
+          "owner": "twenty",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "H2",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "G3",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        }
+      ],
+      "model": "qwen2.5-coder:7b",
+      "name": "twenty",
+      "number": 20,
+      "position": {
+        "x": 25,
+        "y": 5,
+        "z": 29
+      },
+      "wins": 0,
+      "x": 6,
+      "z": 1
+    },
+    {
+      "color": "#c679d9",
+      "connected": true,
+      "errors": 0,
+      "label": "Apex",
+      "legal": [
+        {
+          "id": "I2",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "H3",
+          "owner": null,
+          "strength": 0,
+          "terrain": "grass"
+        },
+        {
+          "id": "I3",
+          "owner": "apex",
+          "strength": 2,
+          "terrain": "grass"
+        },
+        {
+          "id": "I4",
+          "owner": "gemma",
+          "strength": 1,
+          "terrain": "crystal"
+        }
+      ],
+      "model": "apex-direct:7b",
+      "name": "apex",
+      "number": 21,
+      "position": {
+        "x": 16,
+        "y": 5,
+        "z": 14
+      },
+      "wins": 0,
+      "x": 8,
+      "z": 2
+    }
+  ],
+  "in_world_replies": [
+    {
+      "action": "chat",
+      "agent": "seven",
+      "at": 1792560877359,
+      "reason": "seven: hey Ghost"
+    }
+  ],
+  "fridays_port": 5050,
+  "scope": "Actual Minecraft profiles/entities discovered after rejoin; Ghost Find Agent reached Seven. Model-turn loop is currently stopped, characters remain connected."
+}

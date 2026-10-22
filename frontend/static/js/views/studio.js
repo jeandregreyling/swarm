@@ -1242,7 +1242,7 @@ function openTicketDetail(ticketNumber) {
       const stColor = t.status === 'open' ? '#4caf50' : t.status === 'in_progress' ? '#ffa500' : '#888';
       const noteRows = notes.map(n =>
         `<div style="padding:8px 10px;background:var(--bg);border-radius:4px;border-left:2px solid var(--accent);margin-bottom:6px;font-size:12px;">
-          <div style="color:var(--text-dim);font-size:10px;margin-bottom:4px;">${_escHtml((n.created_at||'').slice(0,16))} — ${_escHtml(n.author||'system')}</div>
+          <div style="color:var(--text-dim);font-size:10px;margin-bottom:4px;">${_escHtml((n.created_at||'').slice(0,16))} — ${_escHtml(n.agent||n.author||'system')} · ${_escHtml(n.note_type||'note')}</div>
           <div style="white-space:pre-wrap;">${_escHtml(n.content||'')}</div>
         </div>`
       ).join('');
@@ -1303,6 +1303,8 @@ function openTicketDetail(ticketNumber) {
         </div>` : ''}
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+          ${t.status === 'open' && t.processing_status === 'queued' ? `<button onclick='processLocalTicket(${tnJs}, this)'
+            style="padding:6px 14px;min-width:125px;background:var(--card);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;cursor:pointer;">Triage &amp; Report</button>` : ''}
           <button onclick="sendTicketToChat(${tnJs}, ${questionHintJs})"
             style="padding:6px 14px;background:#2196f31a;border:1px solid #2196f344;border-radius:4px;color:#2196f3;font-size:12px;cursor:pointer;font-weight:600;"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" style="vertical-align:-1px;"><path d="M2.5 3h11a1 1 0 011 1v6a1 1 0 01-1 1h-3l-3 2.5V11h-5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Send to Chat</button>
           ${t.status !== 'closed'

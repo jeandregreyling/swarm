@@ -1,7 +1,7 @@
 """
 # LINKED TO: utils/config.py — imports FRED_SYSTEM_PROMPT (edit prompts there, not here)
 agents/fred/fred_agent.py — Fred
-The only local agent: system administrator, chat bot and coder (one hat at a time).
+Local CPU-only maintenance/admin and developer backup.
 Powered by mistral-small:24b via local Ollama.
 
 Now uses the shared agents/skills_loop.py for SKILL command interception,
@@ -75,8 +75,11 @@ def chat(message, conversation_history=None, stage_cb=None, agent_name=None):
 
     name = (agent_name or AGENT_NAME).strip().lower()
     model = preferred_model_for_agent(name, MODEL)
+    if name == 'fred':
+        from utils.local_runtime_policy import compact_local_chat_prompt
+        message = compact_local_chat_prompt(message)
     from config import worker_system_prompt
-    from utils.local_runtime_policy import LOCAL_AGENT_TURN_POLICY
+    from utils.local_runtime_policy import LOCAL_AGENT_TURN_POLICY, local_inference_options
     try:
         from coding_bible import inject as _bible_inject
     except Exception:
@@ -113,7 +116,8 @@ def chat(message, conversation_history=None, stage_cb=None, agent_name=None):
             stage_cb=stage_cb,
             on_chunk=_cb,
             temperature=0.6,
-            options={'num_ctx': WORKER_NUM_CTX},
+            options={'num_ctx': WORKER_NUM_CTX, **local_inference_options(name)},
+            keep_alive=-1 if name == 'fred' else None,
             idle_timeout_s=GATEWAY_IDLE_TIMEOUT_S,
             absolute_timeout_s=GATEWAY_ABSOLUTE_TIMEOUT_S,
         )

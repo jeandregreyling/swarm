@@ -1,0 +1,17 @@
+[Unit]
+Description=Mondcraft Local Minecraft Survival Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jd/swarm/runtime/mondcraft/native-server
+ExecStart=/home/jd/.local/share/mondcraft/java11/zulu11.90.205-ca-jre11.0.32.1-linux_x64/bin/java -Xms1G -Xmx3G -jar /home/jd/.local/share/mondcraft/minecraft-1.16.5-server.jar nogui
+ExecStartPost=/home/jd/swarm/.venv/bin/python3 /home/jd/swarm/mondcraft/wait_for_native.py
+Restart=on-failure
+RestartSec=10
+SuccessExitStatus=143
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

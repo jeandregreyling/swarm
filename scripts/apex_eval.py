@@ -229,7 +229,8 @@ def run_local_team(agent_names=None):
             except Exception as exc:
                 result['error'] = str(exc)
             result['seconds'] = round(time.time() - started, 1)
-            result['passed'] = result['connection_pass'] and result['write_pass']
+            result['passed'] = (result['connection_pass'] and result['write_pass']
+                                and result.get('job_status') in {'completed', 'done'})
             results.append(result)
             report_path.write_text(json.dumps({'run_id': run_id, 'results': results,
                                                'passed': all(item['passed'] for item in results)}, indent=2))

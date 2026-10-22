@@ -1,0 +1,12 @@
+{
+  "start": {
+    "match_id": "mvho26z3",
+    "ok": true,
+    "players": 14
+  },
+  "manual": "mondcraft/MANUAL.md",
+  "mode": "verified gather/explore/gather practical lessons",
+  "previous_turn": 27,
+  "minecraft_world_restarted": false,
+  "fred_scheduled_last": true
+}

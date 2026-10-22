@@ -1,0 +1,114 @@
+{
+  "ticket": "LOCAL-1DF52DA9D528",
+  "result": {
+    "agent": "nineteen",
+    "findings": "### Findings\n- The live application database reflects an operational state with 14 enabled local agents.\n- There are 4 open tickets and 602 closed tickets, indicating a high ticket resolution rate.\n- 107 steps remain unfinished in the Studio, suggesting ongoing work in progress.\n- 12 tasks are overdue, indicating potential delays in task completion.\n\n### Evidence\n- **Enabled Local Agents**: The database lists 14 enabled agents with specific roles.\n- **Ticket Status**: 4 open tickets and 602 closed tickets.\n- **Studio Work**: 107 unfinished steps.\n- **Overdue Tasks**: 12 tasks.\n\n### Limitations\n- The evidence is limited to the live application database and does not include real-time updates or external system checks.\n- No information is provided about the nature of unfinished Studio steps or overdue tasks, making it hard to assess the causes of delays.\n- The report does not include insights into the efficiency or effectiveness of the local agents.\n\n### Next Actions\n- Prioritize addressing the 12 overdue tasks to prevent further delays.\n- Investigate the 107 unfinished Studio steps to understand the reasons for their non-completion and plan a strategy to resolve them.\n- Maintain the high ticket resolution rate by ensuring the open tickets are handled efficiently.",
+    "ok": true,
+    "review": "YES\n\nThe report accurately reflects the data provided in the evidence, distinguishing facts from limitations. It reports the number of enabled local agents, open and closed tickets, unfinished Studio steps, and overdue tasks. However, it also acknowledges the limitations of the evidence, such as the lack of real-time updates or external system checks, and the absence of insights into the efficiency or effectiveness of the local agents. The report recommends prioritizing the resolution of overdue tasks and investigating the reasons for unfinished Studio steps, which aligns with addressing the identified issues.",
+    "status": "reported",
+    "ticket_number": "LOCAL-1DF52DA9D528"
+  },
+  "detail": {
+    "duck": null,
+    "messages": [],
+    "notes": [
+      {
+        "agent": "librarian",
+        "content": "queue_id=2373 | tags=",
+        "created_at": "2026-10-21 02:46:22",
+        "id": 605,
+        "note_type": "intake"
+      },
+      {
+        "agent": "librarian",
+        "content": "Local-only triage started. No tools, file changes or email are authorized.",
+        "created_at": "2026-10-21 02:46:22",
+        "id": 606,
+        "note_type": "processing"
+      },
+      {
+        "agent": "gemma",
+        "content": "{\"agents\": \"nineteen\", \"mode\": \"local_findings\", \"needs_web\": false, \"reason\": \"AGENT: nineteen\\nREASON: Nineteen\\u2019s structured problem-solving skills are best suited to rapidly synthesizing the required information about Studio work and task status from the available evidence.\", \"model\": \"qwen2.5:14b-instruct\"}",
+        "created_at": "2026-10-21 02:46:26",
+        "id": 607,
+        "note_type": "triage"
+      },
+      {
+        "agent": "librarian",
+        "content": "{\"source\": \"live application database; not a filesystem or service inspection\", \"local_agents\": [{\"name\": \"gemma\", \"model\": \"gemma3:latest\", \"role\": \"Director \\u2014 routes, synthesises, speaks last\"}, {\"name\": \"llama\", \"model\": \"llama3.2:latest\", \"role\": \"Correspondent \\u2014 web search, fast first response\"}, {\"name\": \"qwen\", \"model\": \"qwen2.5:14b-instruct\", \"role\": \"Deep Analyst \\u2014 specialist depth, multilingual reasoning\"}, {\"name\": \"librarian\", \"model\": \"qwen2.5:7b-instruct\", \"role\": \"Gatekeeper + Vortex \\u2014 tags, queues, closes, checkpoints\"}, {\"name\": \"duck\", \"model\": \"mistral:latest\", \"role\": \"Sanity checker \\u2014 YES/NO after every ticket\"}, {\"name\": \"sniffles\", \"model\": \"qwen2.5:7b-instruct\", \"role\": \"Inspector \\u2014 memory auditor, read only, chain-of-thought\"}, {\"name\": \"eight\", \"model\": \"gemma3:latest\", \"role\": \"SAP specialist \\u2014 three-voice debate (Functional/Technical/Devil)\"}, {\"name\": \"mistral\", \"model\": \"mistral-small:24b\", \"role\": \"Analyst \\u2014 deep reasoning, debates, challenges Two\"}, {\"name\": \"thirteen\", \"model\": \"llama3.2:latest\", \"role\": \"Local developer agent \\u2014 Llama\"}, {\"name\": \"seven\", \"model\": \"seven-direct:daily\", \"role\": \"Personal companion \\u2014 loyal, thinks out loud\"}, {\"name\": \"nineteen\", \"model\": \"qwen2.5:14b-instruct\", \"role\": \"Local reasoning agent \\u2014 fast analysis and structured problem solving\"}, {\"name\": \"twenty\", \"model\": \"qwen2.5-coder:7b\", \"role\": \"Local Qwen agent \\u2014 multi-file coding and deeper refactoring\"}, {\"name\": \"fred\", \"model\": \"mistral-small:24b\", \"role\": \"System administrator, chat bot and coder (one hat at a time)\"}, {\"name\": \"apex\", \"model\": \"apex-direct:7b\", \"role\": \"Local worker: system administrator, chat bot and coder\"}], \"ticket_status_counts\": {\"closed\": 602, \"open\": 4}, \"unfinished_studio_steps\": 107, \"overdue_enabled_tasks\": 12}",
+        "created_at": "2026-10-21 02:46:26",
+        "id": 608,
+        "note_type": "evidence"
+      },
+      {
+        "agent": "nineteen",
+        "content": "### Findings\n- **Enabled Local Team:** The local team includes 13 agents with specific roles such as Director, Correspondent, Deep Analyst, and System Administrator.\n- **Unresolved Studio Work:** There are 107 unfinished steps in the Studio workflow.\n- **Overdue Task Count:** There are 12 overdue tasks enabled in the system.\n\n### Evidence\n- Backend observations from the live application database.\n\n### Limitations\n- **No Filesystem Inspection:** The data provided is from the live application database and does not include filesystem or service inspection.\n- **No Direct Task Information:** The counts of closed and open tickets, unfinished steps, and overdue tasks are provided but no specific details about individual tasks or steps are available.\n\n### Next Actions\n- **Prioritize Overdue Tasks:** Address the 12 overdue tasks by assigning them to relevant agents or escalating them to higher priority.\n- **Review Unresolved Studio Work:** Investigate and assign the 107 unfinished steps to ensure they are completed in a timely manner.\n- **Regular Updates:** Ensure regular updates and reviews of task statuses and workflow steps to prevent accumulation of unresolved work.",
+        "created_at": "2026-10-21 02:46:36",
+        "id": 609,
+        "note_type": "findings"
+      },
+      {
+        "agent": "duck",
+        "content": "### Findings\n- **Enabled Local Team:** The local team consists of 13 agents, each with a specific role such as Director, Correspondent, Deep Analyst, Sanity checker, Inspector, SAP specialist, Analyst, Local developer agent, Personal companion, Local reasoning agent, Local Qwen agent, System administrator, and Local worker.\n\n- **Unresolved Studio Work:** There are 107 unfinished steps in the Studio workflow.\n\n- **Overdue Task Count:** There are 12 overdue tasks currently enabled in the system.\n\n### Evidence\n- Data obtained from the live application database, not a filesystem or service inspection.\n\n### Limitations\n- **No Filesystem Access:** The data provided does not include filesystem or service inspection.\n- **No Direct Task Details:** The counts of closed and open tickets, unfinished steps, and overdue tasks are provided, but specific details about individual tasks or steps are not available.\n\n### Recommendations\n- **Prioritize Overdue Tasks:** Assign the 12 overdue tasks to relevant agents or escalate them to higher priority.\n- **Review Unresolved Studio Work:** Investigate and assign the 107 unfinished steps to ensure they are completed in a timely manner.\n- **Regular Updates:** Regularly review task statuses and workflow steps to prevent the accumulation of unresolved work.",
+        "created_at": "2026-10-21 02:46:43",
+        "id": 610,
+        "note_type": "review"
+      },
+      {
+        "agent": "librarian",
+        "content": "Local-only triage started. No tools, file changes or email are authorized.",
+        "created_at": "2026-10-21 02:50:07",
+        "id": 611,
+        "note_type": "processing"
+      },
+      {
+        "agent": "gemma",
+        "content": "{\"agents\": \"nineteen\", \"mode\": \"local_findings\", \"needs_web\": false, \"reason\": \"AGENT: nineteen\\nREASON: Nineteen's fast analysis and structured problem-solving skills are best suited to quickly assess the current state of Studio work and task priorities based on the provided evidence.\", \"model\": \"qwen2.5:14b-instruct\"}",
+        "created_at": "2026-10-21 02:50:09",
+        "id": 612,
+        "note_type": "triage"
+      },
+      {
+        "agent": "librarian",
+        "content": "{\"source\": \"live application database; not a filesystem or service inspection\", \"local_agents\": [{\"name\": \"gemma\", \"model\": \"gemma3:latest\", \"role\": \"Director \\u2014 routes, synthesises, speaks last\"}, {\"name\": \"llama\", \"model\": \"llama3.2:latest\", \"role\": \"Correspondent \\u2014 web search, fast first response\"}, {\"name\": \"qwen\", \"model\": \"qwen2.5:14b-instruct\", \"role\": \"Deep Analyst \\u2014 specialist depth, multilingual reasoning\"}, {\"name\": \"librarian\", \"model\": \"qwen2.5:7b-instruct\", \"role\": \"Gatekeeper + Vortex \\u2014 tags, queues, closes, checkpoints\"}, {\"name\": \"duck\", \"model\": \"mistral:latest\", \"role\": \"Sanity checker \\u2014 YES/NO after every ticket\"}, {\"name\": \"sniffles\", \"model\": \"qwen2.5:7b-instruct\", \"role\": \"Inspector \\u2014 memory auditor, read only, chain-of-thought\"}, {\"name\": \"eight\", \"model\": \"gemma3:latest\", \"role\": \"SAP specialist \\u2014 three-voice debate (Functional/Technical/Devil)\"}, {\"name\": \"mistral\", \"model\": \"mistral-small:24b\", \"role\": \"Analyst \\u2014 deep reasoning, debates, challenges Two\"}, {\"name\": \"thirteen\", \"model\": \"llama3.2:latest\", \"role\": \"Local developer agent \\u2014 Llama\"}, {\"name\": \"seven\", \"model\": \"seven-direct:daily\", \"role\": \"Personal companion \\u2014 loyal, thinks out loud\"}, {\"name\": \"nineteen\", \"model\": \"qwen2.5:14b-instruct\", \"role\": \"Local reasoning agent \\u2014 fast analysis and structured problem solving\"}, {\"name\": \"twenty\", \"model\": \"qwen2.5-coder:7b\", \"role\": \"Local Qwen agent \\u2014 multi-file coding and deeper refactoring\"}, {\"name\": \"fred\", \"model\": \"mistral-small:24b\", \"role\": \"System administrator, chat bot and coder (one hat at a time)\"}, {\"name\": \"apex\", \"model\": \"apex-direct:7b\", \"role\": \"Local worker: system administrator, chat bot and coder\"}], \"enabled_local_agent_count\": 14, \"ticket_status_counts\": {\"closed\": 602, \"open\": 4}, \"unfinished_studio_steps\": 107, \"overdue_enabled_tasks\": 12}",
+        "created_at": "2026-10-21 02:50:09",
+        "id": 613,
+        "note_type": "evidence"
+      },
+      {
+        "agent": "nineteen",
+        "content": "### Findings\n- The live application database reflects an operational state with 14 enabled local agents.\n- There are 4 open tickets and 602 closed tickets, indicating a high ticket resolution rate.\n- 107 steps remain unfinished in the Studio, suggesting ongoing work in progress.\n- 12 tasks are overdue, indicating potential delays in task completion.\n\n### Evidence\n- **Enabled Local Agents**: The database lists 14 enabled agents with specific roles.\n- **Ticket Status**: 4 open tickets and 602 closed tickets.\n- **Studio Work**: 107 unfinished steps.\n- **Overdue Tasks**: 12 tasks.\n\n### Limitations\n- The evidence is limited to the live application database and does not include real-time updates or external system checks.\n- No information is provided about the nature of unfinished Studio steps or overdue tasks, making it hard to assess the causes of delays.\n- The report does not include insights into the efficiency or effectiveness of the local agents.\n\n### Next Actions\n- Prioritize addressing the 12 overdue tasks to prevent further delays.\n- Investigate the 107 unfinished Studio steps to understand the reasons for their non-completion and plan a strategy to resolve them.\n- Maintain the high ticket resolution rate by ensuring the open tickets are handled efficiently.",
+        "created_at": "2026-10-21 02:50:20",
+        "id": 614,
+        "note_type": "findings"
+      },
+      {
+        "agent": "duck",
+        "content": "YES\n\nThe report accurately reflects the data provided in the evidence, distinguishing facts from limitations. It reports the number of enabled local agents, open and closed tickets, unfinished Studio steps, and overdue tasks. However, it also acknowledges the limitations of the evidence, such as the lack of real-time updates or external system checks, and the absence of insights into the efficiency or effectiveness of the local agents. The report recommends prioritizing the resolution of overdue tasks and investigating the reasons for unfinished Studio steps, which aligns with addressing the identified issues.",
+        "created_at": "2026-10-21 02:50:23",
+        "id": 615,
+        "note_type": "review"
+      }
+    ],
+    "proposals": [],
+    "snoozes": [],
+    "ticket": {
+      "channel": "local",
+      "closed_at": null,
+      "conv_id": null,
+      "created_at": "2026-10-21 02:46:22",
+      "duck_result": "",
+      "duck_visited": 0,
+      "email_message_id": "",
+      "final_answer": "Local analyst: nineteen (qwen2.5:14b-instruct)\n\n### Findings\n- The live application database reflects an operational state with 14 enabled local agents.\n- There are 4 open tickets and 602 closed tickets, indicating a high ticket resolution rate.\n- 107 steps remain unfinished in the Studio, suggesting ongoing work in progress.\n- 12 tasks are overdue, indicating potential delays in task completion.\n\n### Evidence\n- **Enabled Local Agents**: The database lists 14 enabled agents with specific roles.\n- **Ticket Status**: 4 open tickets and 602 closed tickets.\n- **Studio Work**: 107 unfinished steps.\n- **Overdue Tasks**: 12 tasks.\n\n### Limitations\n- The evidence is limited to the live application database and does not include real-time updates or external system checks.\n- No information is provided about the nature of unfinished Studio steps or overdue tasks, making it hard to assess the causes of delays.\n- The report does not include insights into the efficiency or effectiveness of the local agents.\n\n### Next Actions\n- Prioritize addressing the 12 overdue tasks to prevent further delays.\n- Investigate the 107 unfinished Studio steps to understand the reasons for their non-completion and plan a strategy to resolve them.\n- Maintain the high ticket resolution rate by ensuring the open tickets are handled efficiently.\n\nDuck review: YES\n\nThe report accurately reflects the data provided in the evidence, distinguishing facts from limitations. It reports the number of enabled local agents, open and closed tickets, unfinished Studio steps, and overdue tasks. However, it also acknowledges the limitations of the evidence, such as the lack of real-time updates or external system checks, and the absence of insights into the efficiency or effectiveness of the local agents. The report recommends prioritizing the resolution of overdue tasks and investigating the reasons for unfinished Studio steps, which aligns with addressing the identified issues.\n\nAnalysis only. No file edits, shell commands or email were executed. Ticket remains open for human review and any approved remediation.",
+      "gemma_routing": "{\"agents\": \"nineteen\", \"mode\": \"local_findings\", \"needs_web\": false, \"reason\": \"AGENT: nineteen\\nREASON: Nineteen's fast analysis and structured problem-solving skills are best suited to quickly assess the current state of Studio work and task priorities based on the provided evidence.\", \"model\": \"qwen2.5:14b-instruct\"}",
+      "question": "Using current application evidence, report the enabled local team, unresolved Studio work and overdue task count. Distinguish facts from limitations and recommend priorities. Do not edit files or send email.",
+      "sender_email": "operator:dashboard",
+      "sniffles_checked": 0,
+      "sniffles_result": null,
+      "status": "open",
+      "tags": "",
+      "ticket_number": "LOCAL-1DF52DA9D528"
+    }
+  }
+}

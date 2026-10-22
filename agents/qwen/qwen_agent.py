@@ -18,17 +18,8 @@ MODEL = preferred_model_for_agent(AGENT_NAME, 'qwen:latest')
 
 
 def _compact_chat_prompt(message):
-    raw = str(message or '').strip()
-    if not raw:
-        return ''
-    marker = '=== New user message ==='
-    if marker in raw:
-        latest = raw.rsplit(marker, 1)[-1].strip()
-        if latest:
-            return latest[-3000:]
-    if len(raw) > 5000:
-        return raw[-3000:]
-    return raw
+    from utils.local_runtime_policy import compact_local_chat_prompt
+    return compact_local_chat_prompt(message)
 
 
 def _build_context(message):
@@ -53,6 +44,8 @@ def _build_context(message):
     finally:
         conn.close()
     mems = get_agent_memory(AGENT_NAME, query=message, limit=5) or []
+    if not mems:
+        mems = get_agent_memory(AGENT_NAME, query='', limit=3) or []
     if mems:
         lines.append(f"\n=== Qwen's memory ===")
         for m in mems:

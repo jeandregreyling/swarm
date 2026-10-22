@@ -950,6 +950,20 @@ def test_watchdog_does_not_stop_owned_ollama_runner(monkeypatch):
     assert stop_calls == []
 
 
+def test_watchdog_preserves_intentionally_resident_fred_cpu_backup(monkeypatch):
+    from frontend.blueprints import chat as chat_mod
+
+    stop_calls = []
+    monkeypatch.setattr(chat_mod, '_chat_sch_council_active', lambda: False)
+    monkeypatch.setattr(chat_mod, '_chat_active_local_agents_from_db', lambda: set())
+    monkeypatch.setattr(chat_mod, '_chat_running_ollama_models', lambda: ['fred-cpu:24b'])
+    monkeypatch.setattr(chat_mod, '_all_local_ollama_chat_agents', lambda: {'fred'})
+    monkeypatch.setattr(chat_mod, '_chat_agent_configured_model', lambda _agent: 'fred-cpu:24b')
+    monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', lambda agent: stop_calls.append(agent))
+    assert chat_mod._chat_reconcile_unowned_ollama_runners() == []
+    assert stop_calls == []
+
+
 def test_watchdog_does_not_stop_sch_council_runners(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     from frontend.blueprints import chat as chat_mod

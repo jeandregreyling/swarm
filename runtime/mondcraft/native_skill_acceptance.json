@@ -1,0 +1,93 @@
+{
+  "actor": "SkillProbe",
+  "receipts": [
+    {
+      "action": "collect",
+      "args": {
+        "item": "oak_log",
+        "count": 1
+      },
+      "success": true,
+      "before": {},
+      "after": {
+        "oak_log": 1
+      },
+      "output": "Collected 1 oak_log.\n",
+      "health": 20,
+      "food": 20,
+      "position": {
+        "x": 6.461253625300611,
+        "y": 5,
+        "z": 0.31086394932859246
+      }
+    },
+    {
+      "action": "craft",
+      "args": {
+        "item": "oak_planks",
+        "count": 1
+      },
+      "success": true,
+      "before": {
+        "oak_log": 1
+      },
+      "after": {
+        "oak_planks": 4
+      },
+      "output": "Successfully crafted oak_planks, you now have 4 oak_planks.\n",
+      "health": 20,
+      "food": 20,
+      "position": {
+        "x": 6.461253625300611,
+        "y": 5,
+        "z": 0.31086394932859246
+      }
+    },
+    {
+      "action": "craft",
+      "args": {
+        "item": "crafting_table",
+        "count": 1
+      },
+      "success": true,
+      "before": {
+        "oak_planks": 4
+      },
+      "after": {
+        "crafting_table": 1
+      },
+      "output": "Successfully crafted crafting_table, you now have 1 crafting_table.\n",
+      "health": 20,
+      "food": 20,
+      "position": {
+        "x": 6.461253625300611,
+        "y": 5,
+        "z": 0.31086394932859246
+      }
+    },
+    {
+      "action": "place",
+      "args": {
+        "item": "crafting_table",
+        "x": 8,
+        "y": 5,
+        "z": 0
+      },
+      "success": true,
+      "before": {
+        "crafting_table": 1
+      },
+      "after": {},
+      "output": "Placed crafting_table at (8, 5, 0).\n",
+      "health": 20,
+      "food": 20,
+      "position": {
+        "x": 6.461253625300611,
+        "y": 5,
+        "z": 0.31086394932859246
+      }
+    }
+  ],
+  "placed": "crafting_table",
+  "passed": true
+}

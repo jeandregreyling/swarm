@@ -24,6 +24,7 @@ def test_utility_agents_use_skills_loop_on_their_own_models(monkeypatch, agent):
 
     def gateway(model, messages, **kwargs):
         called['model'] = model
+        called['messages'] = messages
         return 'model output', 8
 
     def skill_loop(**kwargs):
@@ -38,6 +39,58 @@ def test_utility_agents_use_skills_loop_on_their_own_models(monkeypatch, agent):
     assert called['agent'] == agent
     assert 'file_write' in called['skills']
     assert 'fs_write' not in called['skills']
+    assert 'without quotes or bullets' in called['messages'][0]['content']
+    assert called['messages'][-1]['content'] == 'Write an audit note'
+
+
+@pytest.mark.parametrize('agent', ['fred', 'apex'])
+def test_fred_engine_cpu_backup_options_do_not_change_apex(monkeypatch, agent):
+    from agents.fred import fred_agent
+
+    monkeypatch.setattr(fred_agent, '_build_context', lambda *_args: '')
+    monkeypatch.setattr(fred_agent, 'preferred_model_for_agent', lambda name, _fallback: name + '-model')
+    monkeypatch.setattr('database.save_agent_memory', lambda *_args, **_kwargs: None)
+    monkeypatch.setattr('agents.skills_loop.run_skill_loop', lambda **kwargs: kwargs['call_fn'](kwargs['messages']))
+    called = {}
+
+    def gateway(model, messages, **kwargs):
+        called.update(model=model, **kwargs)
+        called['messages'] = messages
+        return 'ready', 5
+
+    monkeypatch.setattr('core.llm.chat_via_gateway', gateway)
+    prompt = 'Unrelated Studio recovery\n=== New user message ===\nSay ready'
+    assert fred_agent.chat(prompt, agent_name=agent) == ('ready', 5)
+    if agent == 'fred':
+        assert called['options']['num_gpu'] == 0
+        assert 1 <= called['options']['num_thread'] <= 6
+        assert called['keep_alive'] == -1
+        assert called['messages'][-1]['content'] == 'Say ready'
+    else:
+        assert 'num_gpu' not in called['options']
+        assert called['keep_alive'] is None
+
+
+def test_fred_ticket_calls_enforce_cpu_residency(monkeypatch):
+    from core.pipeline import orchestrator
+
+    monkeypatch.setattr(orchestrator, '_get_agents', lambda: {'fred': 'fred-cpu:24b'})
+    monkeypatch.setattr(orchestrator, '_get_system_prompts', lambda: {'fred': 'Local backup'})
+    monkeypatch.setattr(orchestrator, '_get_temps', lambda: {})
+    monkeypatch.setattr(orchestrator, '_select_keep_alive', lambda _agent: 300)
+    monkeypatch.setattr(orchestrator, 'log_action', lambda *_args: None)
+    monkeypatch.setattr(orchestrator, 'log_agent_thinking', lambda *_args: None)
+    monkeypatch.setattr(orchestrator, 'batch_commit', lambda *_args: None)
+    called = {}
+
+    def gateway(model, messages, **kwargs):
+        called.update(kwargs)
+        return 'ready', 1
+
+    monkeypatch.setattr('core.llm.chat_via_gateway', gateway)
+    assert orchestrator.ask_agent('fred', 'Say ready', retries=0) == 'ready'
+    assert called['options']['num_gpu'] == 0
+    assert called['keep_alive'] == -1
 
 
 def test_twenty_repairs_legacy_qwen_alias(monkeypatch):
@@ -156,6 +209,25 @@ def test_trio_agents_do_not_force_json_gateway_mode(
     assert called["model"] == module.MODEL
     assert "response_format" not in called["kwargs"]
     assert called["messages"][0]["content"].endswith(LOCAL_AGENT_TURN_POLICY)
+
+
+@pytest.mark.parametrize('module_path', ['agents.qwen.qwen_agent', 'agents.llama.llama_agent'])
+def test_local_context_recalls_private_memory_when_question_wording_changes(monkeypatch, module_path):
+    import importlib
+    module = importlib.import_module(module_path)
+
+    queries = []
+
+    def memories(agent, query='', limit=5):
+        assert agent == module.AGENT_NAME
+        queries.append(query)
+        return [] if query else [{'subject': 'Diagnostic fact', 'content': 'cedar-42'}]
+
+    monkeypatch.setattr('database.get_agent_memory', memories)
+    monkeypatch.setattr('database.get_shared_agent_memory', lambda *_args, **_kwargs: [])
+    monkeypatch.setattr('core.read_only_context.build_local_agent_context', lambda *_args: '')
+    assert 'cedar-42' in module._build_context('What marker did I ask you to retain?')
+    assert queries == ['What marker did I ask you to retain?', '']
 
 
 def test_mistral_runtime_policy_overrides_legacy_context_instructions(monkeypatch):

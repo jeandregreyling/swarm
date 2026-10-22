@@ -84,3 +84,33 @@ def test_live_chat_accepts_synchronous_responses_without_polling(monkeypatch):
     assert result['status'] == 'completed'
     assert result['response'] == 'ready'
     assert result['conversation_id'] == 42
+
+
+def test_local_acceptance_rejects_an_unfinished_job_even_when_file_is_correct(monkeypatch, tmp_path):
+    import json
+    import re
+    from types import SimpleNamespace
+    from core import model_runtime_gateway as gateway
+    from core.seven_llm import llama_server
+
+    (tmp_path / 'runtime').mkdir()
+    monkeypatch.setattr(ev, 'ROOT', str(tmp_path))
+    monkeypatch.setattr(ev, '_get_json', lambda *_args: [
+        {'name': 'fred', 'model': 'local-test', 'tier': 'local', 'enabled': 1}
+    ])
+    monkeypatch.setattr(gateway, 'chat', lambda _model, messages, **_kwargs: SimpleNamespace(
+        ok=True, content=messages[-1]['content'].split('without quotes: ')[-1], tokens=5, error=''))
+    monkeypatch.setattr(llama_server, 'snapshot', lambda: [])
+
+    def unfinished_chat(_agent, message):
+        match = re.search(r'SKILL file_write (\S+) ([^\n]+)', message)
+        path = tmp_path / 'sandpits' / match.group(1)
+        path.parent.mkdir(parents=True)
+        path.write_text(match.group(2))
+        return {'status': 'running', 'response': ''}
+
+    monkeypatch.setattr(ev, 'run_chat', unfinished_chat)
+    assert ev.run_local_team(['fred']) == 1
+    report = json.loads((tmp_path / 'runtime' / 'local_model_acceptance.json').read_text())
+    assert report['results'][0]['write_pass'] is True
+    assert report['passed'] is False

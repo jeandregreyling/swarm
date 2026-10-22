@@ -1,0 +1,13 @@
+{
+  "ticket": "LOCAL-D4F63C10AA67",
+  "result": {
+    "model": "apex-direct:20b",
+    "grade": "failed",
+    "probe": "real skill-loop note create/readback",
+    "num_predict": 384,
+    "absolute_timeout_s": 120,
+    "error": "Direct model produced no final answer; reasoning is not an executable reply",
+    "write_performed": false,
+    "evidence_limit": "No final answer was accepted and no file-write skill was executed; health marker alone had passed. Review whether the bounded completion budget is sufficient for this reasoning model before retrying. No reasoning text was exposed or executed."
+  }
+}

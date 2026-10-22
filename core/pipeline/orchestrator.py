@@ -304,7 +304,7 @@ def _select_keep_alive(agent_name):
     ka = _get_keep_alive()
     return ka.get(agent_name, 300)
 
-def ask_agent(agent_name, prompt, retries=2, *, allow_skills=False):
+def ask_agent(agent_name, prompt, retries=2, *, allow_skills=False, system_prompt_override=None):
     agent_name = agent_name.lower()  # normalize — AGENTS dict uses lowercase keys
     agents_live = _get_agents()
     prompts_live = _get_system_prompts()
@@ -322,7 +322,22 @@ def ask_agent(agent_name, prompt, retries=2, *, allow_skills=False):
     model = agents_live.get(agent_name) or AGENTS.get(agent_name)
     if not model:
         raise KeyError(f'Unknown agent: {agent_name}')
-    system = prompts_live.get(agent_name, '')
+    system = prompts_live.get(agent_name, '') if system_prompt_override is None else system_prompt_override
+    if allow_skills and role_name in {'duck', 'librarian', 'sniffles'}:
+        from utils.local_runtime_policy import compact_local_chat_prompt
+        prompt = compact_local_chat_prompt(prompt)
+        role = {'duck': 'reviewer', 'librarian': 'knowledge keeper', 'sniffles': 'memory auditor'}[role_name]
+        system = (
+            f'You are {role_name}, the local {role}. Answer the current request only. '
+            'Your available tools are file_read, file_write, fs_readonly, memory_search and knowledge_search. '
+            'For an explicitly requested note, emit SKILL file_write '
+            f'{role_name}/filename.txt exact content on its own line, without quotes or bullets. '
+            f'Then emit SKILL file_read {role_name}/filename.txt on its own line to verify it. '
+            'Use the actual filename and content from the request. Never modify another agent\'s sandpit. '
+            'Do not emit fs_write, fs_patch, shell, email or approval commands. '
+            'After successful readback, give a short factual answer and stop. '
+            'Never claim an action happened without actual backend skill evidence.'
+        )
     temps_live = _get_temps()
     temp = temps_live.get(agent_name, 0.5)
     
@@ -336,6 +351,10 @@ def ask_agent(agent_name, prompt, retries=2, *, allow_skills=False):
 
     start_time = time.time()
     keep_alive = _select_keep_alive(agent_name)
+    from utils.local_runtime_policy import local_inference_options
+    inference_options = local_inference_options(agent_name)
+    if agent_name == 'fred':
+        keep_alive = -1
     log_action('orchestrator', f'keepalive:{agent_name}', f'keep_alive={keep_alive}', 'info')
     from core import llm as _llm
     for attempt in range(retries + 1):
@@ -356,6 +375,7 @@ def ask_agent(agent_name, prompt, retries=2, *, allow_skills=False):
             else:
                 answer, ec = _llm.chat_via_gateway(
                     model, messages, temperature=temp, keep_alive=keep_alive,
+                    options=inference_options,
                 )
             _LAST_EVAL_COUNT[agent_name] = ec
             elapsed_ms = int((time.time() - start_time) * 1000)

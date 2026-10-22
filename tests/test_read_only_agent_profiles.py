@@ -126,6 +126,23 @@ def test_read_only_chat_memory_is_private_and_capability_gated(monkeypatch):
     assert len(writes) == 1
 
 
+def test_prose_chat_memory_is_private_unverified_and_skips_failures(monkeypatch):
+    from utils.db import agents as db_agents
+
+    writes = []
+    monkeypatch.setattr(db_agents, 'agent_has_capability', lambda *_args: True)
+    monkeypatch.setattr(
+        'database.save_agent_memory',
+        lambda *args, **kwargs: writes.append((args, kwargs)),
+    )
+    assert persist_read_only_chat_memory('qwen', 'Remember this observation', 'The diagnostic marker is cedar-42.')
+    assert writes[0][0] == ('qwen', 'Remember this observation', 'The diagnostic marker is cedar-42.')
+    assert writes[0][1]['tags'] == 'chat,unverified'
+    for response in ('', '[qwen] error: offline', '[local runtime error: offline]', '[verification] failed', '{invalid json'):
+        assert not persist_read_only_chat_memory('qwen', 'diagnostic', response)
+    assert len(writes) == 1
+
+
 def test_explicit_no_tools_request_skips_automatic_private_memory_write(monkeypatch):
     from utils.db import agents as db_agents
 
@@ -739,7 +756,12 @@ def test_repository_context_uses_checkout_scoped_source_only(monkeypatch, tmp_pa
         'READ_ONLY_POLICY_MARKER=DO_NOT_INDEX\n',
         encoding='utf-8',
     )
+    (tmp_path / 'agents' / 'credentials.py').write_text('READ_ONLY_POLICY_MARKER=DO_NOT_INDEX')
+    outside = tmp_path.parent / 'outside-context.py'
+    outside.write_text('READ_ONLY_POLICY_MARKER=DO_NOT_INDEX')
+    (tmp_path / 'agents' / 'escape.py').symlink_to(outside)
     monkeypatch.setattr(read_only_context, 'REPO_ROOT', tmp_path)
+    monkeypatch.setattr(read_only_context.shutil, 'which', lambda _command: None)
 
     matches, _history_path = read_only_context._repository_matches('READ_ONLY_POLICY_MARKER')
 

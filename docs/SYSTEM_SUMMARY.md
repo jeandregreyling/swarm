@@ -1,5 +1,51 @@
 # System summary (written after reading the repo, 2026-10-19)
 
+## Agent-led maintenance training (2026-10-22)
+
+- Project `P-64B2C1CBF6` records the improvement backlog, role assignments,
+  dependencies, acceptance cases and actual local-model teaching results.
+  Gemma coordinates, Apex implements after readiness, Fred maintains/recovery,
+  Qwen verifies, LLaMA documents and Librarian curates. Seven remains read-only;
+  Ghost retains human approval authority.
+- Initial ordinary-Chat exercises exposed malformed commands, unsupported
+  claims and a Qwen transport timeout. Fred did execute `free -h` and correctly
+  explain the service-operation approval boundary. Permissions alone do not
+  establish maintenance competence. No source edit or proposal claimed by the
+  failed Apex exercise actually succeeded.
+- Ghost approved repairing the teaching safeguards before further delegation.
+  `run_skill_loop(..., allowed_skill_names=..., strict_skill_allowlist=True)`
+  now requires an explicit allowlist, disables implicit lookup exemptions and
+  synthesized commands, enforces the tool-round budget, includes actual
+  receipts and flags missing/failed execution. This is opt-in; ordinary callers
+  retain existing behaviour. Explicit combined "do not approve or edit" and
+  read-only-exercise wording also activate the existing read-only turn policy.
+- `SKILL maintenance_check skills` runs only the fixed skill/training regression
+  files; `SKILL maintenance_check interests` runs only the fixed interest
+  provenance/isolation files. No arbitrary paths, shell strings or pytest flags
+  are accepted. Runs use a temporary default Swarm database, a 120-second
+  timeout, bounded output and the real exit code. They are focused checks,
+  not a full-suite certification or a general-purpose execution sandbox.
+- Run a real local lesson with
+  `.venv/bin/python3 scripts/maintenance_training.py --agent apex --exercise lesson --project P-64B2C1CBF6`.
+  Other exercises are `source`, `safeguards`, `tests` and `recall`. Each invocation
+  starts with fresh model context and uses the canonical enabled-local model
+  assignment. The script does not change models, grants or services.
+  Successful exercises require backend receipts; lesson/recall also check actual
+  own-sandpit bytes. Only verified exercises enter authorized private memory;
+  successes and failures both enter the project blackboard.
+- Apex persisted an own-sandpit lesson, retrieved it in a fresh invocation and
+  ran the fixed regression suite. A later source teach-back was incorrect and
+  was rejected rather than retained as verified. Qwen passed the constrained
+  source check but failed note-writing exercises; Gemma failed note readback.
+  These are bounded teaching observations, not team-wide readiness.
+- GPU residency unification, consistent human-interest UI selection, complete
+  KC retrieval/learning, peer-handoff hardening and reliable team-wide teach-back
+  remain project work. Ghost separately approved a terminal-only restart;
+  `swarm-terminal.service` was restarted through systemd and project HTTP
+  readiness returned 200. Ollama was not restarted and Fred remained CPU-only.
+  Ordinary Chat 2767 then executed Qwen's `maintenance_check skills` and
+  reported its actual zero exit code. No automatic background rollout was added.
+
 ## Local Team Restored (2026-10-21)
 
 This section supersedes the single-worker state described below.
@@ -37,6 +83,37 @@ This section supersedes the single-worker state described below.
 - The existing mail route now accepts small own-sandpit text attachments. The `email_ticket_reply` skill binds the recipient to the ticket, requires the caller's approved proposal, and suppresses repeat sends once a matching SMTP receipt exists. Only Apex received this explicit mail-skill grant for the acceptance task.
 - This was a controlled live pipeline exercise. It does not establish unattended inbox processing by an inactive listener service. Online model providers remain disabled.
 
+## Memory and Local Ticket Verification (2026-10-21)
+
+- Private memory reads now filter by agent identity, including agents sharing the legacy memory table. Historical rows were not wiped or reassigned.
+- Normal local prose can be retained as unverified chat memory. Errors and explicitly memory-disabled turns are excluded. Qwen saved a fresh diagnostic fact through real Chat and recalled it in a new conversation after a PROD restart; the failed first recall is preserved separately.
+- Qwen and LLaMA use compact current-turn prompts and bounded private recall. Utility agents retain separate local models and restricted own-note tools. Repository context has a bounded, sanitized fallback when ripgrep is missing.
+- `POST /api/tickets` creates a real local ticket and queue entry. `POST /api/tickets/<number>/process` claims that entry, runs local Gemma triage, local analyst findings, and Duck review. Every stage and the backend observations are recorded as ticket notes; the report is visible in ticket detail. This report-only path cannot execute tools or send email, and does not close the ticket or approve remediation.
+- Live ticket `LOCAL-1DF52DA9D528` completed Gemma -> Nineteen -> Duck with a saved report. The first malformed review was rejected and retained. Queue completion means the analysis finished, not that the underlying system backlog was resolved.
+- `runtime/local_team_verified_latest.json` consolidates the latest completed real-model checks for all 14 local roles: 13 exact own-sandpit writes and Seven's observer/no-write check. This combines full and targeted reruns, not one flawless uninterrupted run. Failed and interrupted reports remain available.
+- Acceptance now requires both actual file bytes and a completed Chat request. Explicit-note readback mismatches request correction from the model and cannot be hidden by an unsupported success claim.
+- Focused verification: 220 tests passed. This is not a full-suite certification or a guarantee that arbitrary natural-language requests always succeed.
+- Apex is agent 21 and remains enabled. Fred remains enabled; his false sole-agent identity was replaced with a maintenance/admin fallback description. No memories or grants were removed.
+- Still outstanding: scheduler/listener recovery, stale Studio owners and proof links, remaining identity cards, KC historical-version cleanup, and older test/memory debris. Legacy background jobs have not been released or external model providers enabled.
+
+## Fred CPU/RAM Backup (2026-10-21)
+
+- Fred uses `fred-cpu:24b`, a separate Ollama alias over the installed Mistral Small 24B weights. The alias defaults to `num_gpu=0`, six CPU threads and an 8192-token context; no model download or duplicate weight copy was required.
+- Both interactive Fred Chat and orchestrated ticket calls enforce zero GPU layers. Apex's direct model and Mistral's separate assignment are unchanged.
+- Only the explicitly named CPU alias with zero-GPU options may request indefinite keep-alive through the gateway. Idle orphan reconciliation preserves this intentional RAM resident; other models retain finite TTLs.
+- Ollama placement was measured at about 15.1 GiB loaded with `size_vram=0`. Residency lasts while Ollama remains running; restarting Ollama itself clears RAM and the model loads again when requested.
+- A real CPU request exposed hidden 120-second chat and 60-second fallback transport caps. The CPU backup now uses the caller's finite idle/absolute budget, and Fred compacts unrelated wrapper history before inference. This does not add automatic failover or silently replay failed mutations.
+- The pre-change registry backup is outside the repository under `~/swarm-backups/before-fred-cpu-*.db`. The local alias and registry update are machine state, not transported by a source-only checkout.
+
+## Ticketed 20B Recheck (2026-10-21)
+
+- Ticket `LOCAL-D4F63C10AA67` now contains actual Seven Runtime diagnostics, not only historical summaries. Both `gpt-oss:20b` and `apex-direct:20b` passed strict exact-marker roll-calls and clean unload checks.
+- A real direct-20B skill-loop probe failed with a 384-token completion budget: no final answer was accepted and no write was executed. The failed receipt is retained.
+- A bounded retry with `num_predict=2048` and a 120-second timeout completed model-generated `file_write` and `file_read` calls. The exact fresh file was `sandpits/apex/ticket_20b_5e859079ce.txt`; 671 generated tokens, about 46.53 seconds including cleanup. Proof: `runtime/local_model_ticket_20b_tool_probe.json`.
+- No hidden reasoning was exposed or executed. No paid fallback, model download, retraining, automatic mutation replay, or live Apex model reassignment occurred. A basic passing tool task does not certify arbitrary requests.
+- The ticket processor can recheck an open ticket when a fresh diagnostic arrives after its last review. It includes parsed diagnostic receipts in the local analyst and Duck inputs. Its streaming gateway now has the same 8192-token default context as the legacy chat helper; explicit caller overrides remain intact.
+- The latest same-ticket review ran Gemma triage -> Nineteen findings -> Duck YES and included the functional pass as well as the older failed-budget test. Full review and history: `runtime/local_model_handling_ticket_final.json`. The broader model-handling policy remains reviewable work; this is bounded execution evidence, not automatic deployment approval.
+
 ## Intent
 Fridays is a local-first swarm that **does** things rather than reports them (`docs/the-standard.md`). The founding design (Studio doc "What We Are Building" and "Constraints That Must Never Be Broken") sets the rules agents work under:
 
@@ -44,7 +121,7 @@ Fridays is a local-first swarm that **does** things rather than reports them (`d
 - **Trust ladder.** Agents start in their own sandpit (`sandpits/<name>/`). They earn write access to real paths by reliable behaviour (constraint 22). Nothing leaves a sandpit for the real system without a check (23). Real-system writes are logged to `ghost_circle` (24).
 - **Honesty and proof.** Work counts only when a real result shows it.
 
-Since then the build changed: one worker agent (Fred, now Apex) wears the hats, DEOS (Decides, Executes, Operates, Sustains) is the governance framework Watchdog enforces, Seven and DEV/UAT are removed, and PROD (5050) is the only environment.
+The local team and Seven have been restored. Apex (agent 21) is the direct local coder; Fred remains a separate local identity, not the only worker. DEOS (Decides, Executes, Operates, Sustains) remains the governance framework. PROD (5050) is the only running application environment; DEV/UAT remain off.
 
 ## The wrapper (what agents are asked to change)
 - Flask app `frontend/terminal.py`; main page `frontend/templates/terminal_base.html` (3,324 lines): home page (`#home-page`), tiles, proof trail, the home chat (`#home-chat-body`, `#home-chat-input-area`) and a floating taskbar (`#taskbar`).

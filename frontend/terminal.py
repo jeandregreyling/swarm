@@ -52,6 +52,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.auth',           'auth_bp'),
     ('blueprints.brief',          'brief_bp'),
     ('blueprints.chat',           'chat_bp'),
+    ('blueprints.mondcraft',      'mondcraft_bp'),
     ('blueprints.conversations',  'conversations_bp'),
     ('blueprints.debates',        'debates_bp'),
     ('blueprints.decisions',      'decisions_bp'),

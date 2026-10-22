@@ -1,0 +1,49 @@
+{
+  "ticket": "LOCAL-D4F63C10AA67",
+  "result": {
+    "ok": true,
+    "model": "apex-direct:20b",
+    "grade": "passed",
+    "expected": "SEVEN_MODEL_ROLL_CALL_OK",
+    "content": "SEVEN_MODEL_ROLL_CALL_OK",
+    "runtime": {
+      "ok": true,
+      "model": "apex-direct:20b",
+      "content": "SEVEN_MODEL_ROLL_CALL_OK",
+      "tokens": 64,
+      "elapsed_s": 13.6737220287323,
+      "error": "",
+      "events": [
+        {
+          "stage": "queued",
+          "at": 1792556510.2848299,
+          "detail": "",
+          "tokens": 0
+        },
+        {
+          "stage": "direct_dispatch",
+          "at": 1792556510.284835,
+          "detail": "driver=llamacpp absolute=120s idle=120s",
+          "tokens": 0
+        },
+        {
+          "stage": "first_token",
+          "at": 1792556523.958546,
+          "detail": "",
+          "tokens": 64
+        },
+        {
+          "stage": "completed",
+          "at": 1792556523.9585495,
+          "detail": "",
+          "tokens": 64
+        }
+      ]
+    },
+    "unload": {
+      "ok": true,
+      "model": "apex-direct:20b",
+      "action": "direct_stop"
+    }
+  }
+}

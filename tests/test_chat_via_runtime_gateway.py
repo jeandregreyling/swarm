@@ -74,6 +74,39 @@ def test_gateway_chat_fires_event_and_token_callbacks(monkeypatch):
     assert "completed" == events_seen[-1]
 
 
+@pytest.mark.parametrize(('model', 'options', 'expected'), [
+    ('fred-cpu:24b', {'num_gpu': 0}, -1),
+    ('fred-cpu:24b', {'num_gpu': 1}, f'{llm.DEFAULT_KEEP_ALIVE}s'),
+    ('mistral-small:24b', {'num_gpu': 0}, f'{llm.DEFAULT_KEEP_ALIVE}s'),
+])
+def test_only_explicit_cpu_backup_can_remain_resident(monkeypatch, model, options, expected):
+    captured = {}
+
+    def gateway(model, messages, **kwargs):
+        captured.update(kwargs)
+        return gw.RuntimeResult(ok=True, model=model, content='ready', tokens=1)
+
+    monkeypatch.setattr(gw, 'chat', gateway)
+    assert llm.chat_via_gateway(model, [{'role': 'user', 'content': 'ready'}],
+                               options=options, keep_alive=-1) == ('ready', 1)
+    assert captured['keep_alive'] == expected
+
+
+@pytest.mark.parametrize('context', [None, 4096])
+def test_gateway_context_default_matches_chat_and_preserves_override(monkeypatch, context):
+    captured = {}
+
+    def gateway(model, messages, **kwargs):
+        captured.update(kwargs)
+        return gw.RuntimeResult(ok=True, model=model, content='ready', tokens=1)
+
+    monkeypatch.setattr(gw, 'chat', gateway)
+    options = {} if context is None else {'num_ctx': context}
+    llm.chat_via_gateway('qwen2.5:14b-instruct', [{'role': 'user', 'content': 'ready'}], options=options)
+    assert captured['options']['num_ctx'] == (8192 if context is None else context)
+    assert options == ({} if context is None else {'num_ctx': context})
+
+
 def test_chat_via_gateway_translates_events_to_stage_cb(monkeypatch):
     def fake_post(url, json=None, stream=None, timeout=None):
         return _FakePostResp(_stream_lines())
@@ -254,7 +287,8 @@ def test_qwen_uses_fast_generate_first_model():
     assert "QWEN_CHAT_SYSTEM_PROMPT" in src
     assert "prefer_generate=True" in src
     assert "def _compact_chat_prompt" in src
-    assert "=== New user message ===" in src
+    from agents.qwen.qwen_agent import _compact_chat_prompt
+    assert _compact_chat_prompt('old wrapper\n=== New user message ===\ncurrent task') == 'current task'
 
 
 def test_seven_defaults_to_direct_runtime_model():

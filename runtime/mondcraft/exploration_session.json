@@ -1,0 +1,12 @@
+{
+  "started": {
+    "match_id": "mvho26z3",
+    "ok": true,
+    "players": 14
+  },
+  "manual": "mondcraft/MANUAL.md",
+  "initial_turn": 2,
+  "world_preserved": true,
+  "rounds": 8,
+  "resource_deposits": 81
+}

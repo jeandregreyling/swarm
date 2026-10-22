@@ -1,0 +1,19 @@
+[Unit]
+Description=Mondcraft Minecraft Agent Arena
+After=mondcraft-native.service network.target
+Requires=mondcraft-native.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jd/swarm/mondcraft
+Environment=MONDCRAFT_MC_PORT=55918
+Environment=MONDCRAFT_PORT=6060
+ExecStart=/home/jd/.local/share/mondcraft/node-v22.23.3-linux-x64/bin/node /home/jd/swarm/mondcraft/server.cjs
+Restart=on-failure
+RestartSec=5
+SuccessExitStatus=143
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

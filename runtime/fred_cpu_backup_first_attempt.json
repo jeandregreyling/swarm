@@ -1,0 +1,42 @@
+{
+  "run_id": "35cdc2586d",
+  "results": [
+    {
+      "agent": "fred",
+      "configured_model": "fred-cpu:24b",
+      "connection_pass": true,
+      "write_pass": false,
+      "observer": false,
+      "connection_reply": "CONNECTED_fred_35cdc2586d",
+      "connection_error": "",
+      "connection_tokens": 16,
+      "path": "sandpits/fred/model_write_35cdc2586d.txt",
+      "expected_content": "fred model write proof 35cdc2586d",
+      "actual_content": null,
+      "job_status": "completed",
+      "reply": "[local runtime error: HTTPConnectionPool(host='localhost', port=11434): Read timed out. (read timeout=60)]",
+      "error": "",
+      "seconds": 213.9,
+      "passed": false
+    },
+    {
+      "agent": "apex",
+      "configured_model": "apex-direct:7b",
+      "connection_pass": true,
+      "write_pass": true,
+      "observer": false,
+      "connection_reply": "CONNECTED_apex_35cdc2586d",
+      "connection_error": "",
+      "connection_tokens": 14,
+      "path": "sandpits/apex/model_write_35cdc2586d.txt",
+      "expected_content": "apex model write proof 35cdc2586d",
+      "actual_content": "apex model write proof 35cdc2586d",
+      "job_status": "completed",
+      "reply": "Verified sandpits/apex/model_write_35cdc2586d.txt:\napex model write proof 35cdc2586d\n\nExecution evidence:\n[skill:file_write] OK\n/mnt/archive/projects/swarm/sandpits/apex/model_write_35cdc2586d.txt\n\n[skill:file_read] OK\napex model write proof 35cdc2586d",
+      "error": "",
+      "seconds": 21.6,
+      "passed": true
+    }
+  ],
+  "passed": false
+}

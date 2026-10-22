@@ -1,0 +1,55 @@
+{
+  "ticket": "LOCAL-D4F63C10AA67",
+  "timestamp": "2026-10-21T04:10:59.873686+00:00",
+  "executor": "Seven Runtime /api/roll-call",
+  "request": {
+    "model": "apex-direct:20b",
+    "timeout_seconds": 120
+  },
+  "result": {
+    "ok": true,
+    "model": "apex-direct:20b",
+    "grade": "passed",
+    "expected": "SEVEN_MODEL_ROLL_CALL_OK",
+    "content": "SEVEN_MODEL_ROLL_CALL_OK",
+    "runtime": {
+      "ok": true,
+      "model": "apex-direct:20b",
+      "content": "SEVEN_MODEL_ROLL_CALL_OK",
+      "tokens": 63,
+      "elapsed_s": 5.0453784465789795,
+      "error": "",
+      "events": [
+        {
+          "stage": "queued",
+          "at": 1792555854.664079,
+          "detail": "",
+          "tokens": 0
+        },
+        {
+          "stage": "direct_dispatch",
+          "at": 1792555854.664083,
+          "detail": "driver=llamacpp absolute=120s idle=120s",
+          "tokens": 0
+        },
+        {
+          "stage": "first_token",
+          "at": 1792555859.7094505,
+          "detail": "",
+          "tokens": 63
+        },
+        {
+          "stage": "completed",
+          "at": 1792555859.7094543,
+          "detail": "",
+          "tokens": 63
+        }
+      ]
+    },
+    "unload": {
+      "ok": true,
+      "model": "apex-direct:20b",
+      "action": "direct_stop"
+    }
+  }
+}
