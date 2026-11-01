@@ -84,7 +84,7 @@ def _sse_chat(conversation_id, agent, status, **extra):
     try:
         _sse_module().publish_chat_update(conversation_id, agent, status, **extra)
     except Exception:
-        pass
+        _LOG.exception('Failed to publish chat SSE update for conversation %s', conversation_id)
 
 chat_bp = Blueprint('chat', __name__)
 _LOG = logging.getLogger('fridays.chat')
@@ -2664,10 +2664,15 @@ def api_chat():
         fault = primary_chat_fault
         from core import llm
 
+        apex_deadline = time.monotonic() + 180
+
         def apex_model(model, messages):
+            remaining = max(1, int(apex_deadline - time.monotonic()))
+            from core.apex_tools import TURN_FORMAT
             return llm.chat_via_gateway(
-                model, messages, temperature=0.2, idle_timeout_s=60, absolute_timeout_s=180,
+                model, messages, temperature=0.2, idle_timeout_s=min(60, remaining), absolute_timeout_s=remaining,
                 options={'num_ctx': 8192, 'num_predict': 1800},
+                response_format=TURN_FORMAT if apex_lane and not (fault or continuing_recovery) else None,
             )
 
         def _offline_response(exc, conversation_id=None, *, recovery=False):
@@ -2767,6 +2772,12 @@ def api_chat():
             })
 
         parsed_skill = _parse_chat_skill_command(message)
+        if parsed_skill and apex_lane:
+            _LOG.warning('APEX lane refused legacy SKILL invocation: %s', parsed_skill[0])
+            return jsonify({
+                'ok': False, 'state': STATE_OK, 'conversation_id': conv_id,
+                'response': 'APEX exposes only structured read-only repository tools; legacy SKILL execution is disabled.',
+            }), 403
         if parsed_skill:
             from fridays.skills import call as skill_call, REGISTRY as SKILL_REGISTRY
 
@@ -2843,8 +2854,8 @@ def api_chat():
         history = _chat_history_from_rows(thread_rows)
 
         if apex_lane:
-            # Healthy primary storage: dispatch straight to APEX via the gateway and
-            # persist to the primary thread. No per-agent module, no fallback model.
+            from core.apex_tools import run_apex_tools, receipt_text
+
             apex_row = next(row for row in routable_rows if row['name'] == APEX_AGENT['name'])
             messages = [{'role': 'system', 'content': apex_system_prompt(apex_row, recovery=False)}]
             messages.extend(history)
@@ -2852,8 +2863,28 @@ def api_chat():
                 messages.append({'role': 'user', 'content': message})
             started = time.monotonic()
             _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=APEX_AGENT['model'])
+
+            def authorize_inspection():
+                from utils.local_runtime_policy import agent_skill_allowed
+                from sqlite3 import DatabaseError
+                try:
+                    return (
+                        agent_skill_allowed(APEX_AGENT['name'], 'fs_readonly')
+                        and can_user_invoke_skill(identity['effective_user'], 'fs_readonly', default_allow=True)
+                    )
+                except DatabaseError as exc:
+                    raise RuntimeError('Repository tool authorization storage is unavailable') from exc
+
+            def record_tool_receipt(receipt):
+                log_message(conv_id, APEX_AGENT['name'], receipt_text(receipt),
+                            to_agent='user', message_type='tool_result')
+                # Outputs stay in the authenticated thread, not the broadcast SSE feed.
+                _sse_chat(conv_id, APEX_AGENT['name'], 'tool_receipt',
+                          receipt={key: receipt[key] for key in ('id', 'tool', 'status', 'truncated')})
+
             try:
-                response_text, tokens_used = call_apex(apex_model, APEX_AGENT['model'], messages)
+                response_text, tokens_used, tool_receipts = run_apex_tools(
+                    apex_model, messages, authorize_inspection, record_tool_receipt)
             except ApexOffline as exc:
                 _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state=STATE_OFFLINE, error=str(exc))
                 return _offline_response(exc, conv_id)
@@ -2873,6 +2904,7 @@ def api_chat():
                 'agent': APEX_AGENT['name'], 'response': response_text, 'tokens': tokens_used,
                 'elapsed_ms': elapsed_ms, 'runtime_class': 'local', 'eta_seconds': 0,
                 'pending': False, 'job_id': None, 'model': APEX_AGENT['model'],
+                'tool_receipts': tool_receipts,
             }
             return jsonify({
                 'ok': True, 'state': STATE_OK, 'mode': 'apex', 'storage_degraded': False,
@@ -2882,6 +2914,7 @@ def api_chat():
                 'history_mode': history_mode,
                 'history_limit': history_limit if history_mode == 'recent' else None,
                 'conversation_id': conv_id,
+                'tool_receipts': tool_receipts,
             })
 
         transcript = _thread_transcript_from_rows(thread_rows[-12:])

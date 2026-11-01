@@ -337,6 +337,80 @@ def healthy_route(tmp_path, monkeypatch):
     return app.test_client(), connect, gateway_calls
 
 
+def test_healthy_tool_loop_persists_receipts_and_publishes_sanitized_sse(healthy_route, monkeypatch):
+    from frontend.blueprints import chat, sse
+    from core import llm
+    from core.apex_tools import ReadOnlyRepository
+    import queue
+
+    client, connect, _ = healthy_route
+    monkeypatch.setattr(chat, "can_user_invoke_skill", lambda *_args, **_kw: True)
+    monkeypatch.setattr(ReadOnlyRepository, "call", lambda _self, name, args: "actual backend output")
+    outputs = iter([
+        json.dumps({"tool_calls": [{"name": "git_status", "arguments": {}}]}),
+        "The backend inspected the workspace.",
+    ])
+    monkeypatch.setattr(llm, "chat_via_gateway", lambda *_args, **_kw: (next(outputs), 3))
+    events = queue.Queue()
+    with sse._sub_lock:
+        sse._subscribers.append(events)
+    try:
+        response = client.post("/api/chat", json={
+            "message": "Inspect the workspace", "local_only": True, "new_thread": True,
+        })
+    finally:
+        with sse._sub_lock:
+            sse._subscribers.remove(events)
+    assert response.status_code == 200, response.get_json()
+    body = response.get_json()
+    receipt = body["tool_receipts"][0]
+    assert receipt["output"] == "actual backend output" and receipt["status"] == "succeeded"
+    with connect() as conn:
+        row = conn.execute("SELECT content FROM messages WHERE message_type='tool_result'").fetchone()
+    assert receipt["id"] in row["content"] and "actual backend output" in row["content"]
+    published = []
+    while not events.empty():
+        published.append(events.get_nowait())
+    tool_events = [event for event in published if '"status": "tool_receipt"' in event]
+    assert len(tool_events) == 1
+    assert receipt["id"] in tool_events[0]
+    assert "actual backend output" not in tool_events[0]
+    assert f'"conversation_id": {body["conversation_id"]}' in tool_events[0]
+
+
+def test_healthy_tool_authorization_database_failure_stops_execution(healthy_route, monkeypatch):
+    from frontend.blueprints import chat
+    from core import llm
+    from core.apex_tools import ReadOnlyRepository
+
+    client, _, _ = healthy_route
+
+    def denied(*_args, **_kw):
+        raise sqlite3.DatabaseError("permission storage malformed")
+
+    monkeypatch.setattr(chat, "can_user_invoke_skill", denied)
+    monkeypatch.setattr(ReadOnlyRepository, "call", lambda *_args: pytest.fail("Unauthorized read"))
+    monkeypatch.setattr(llm, "chat_via_gateway", lambda *_args, **_kw: (
+        json.dumps({"tool_calls": [{"name": "git_status", "arguments": {}}]}), 1))
+    response = client.post("/api/chat", json={
+        "message": "Inspect", "local_only": True, "new_thread": True,
+    })
+    assert response.status_code == 500
+    assert "authorization storage is unavailable" in response.get_json()["response"]
+
+
+def test_apex_legacy_skill_execution_is_disabled(healthy_route, monkeypatch):
+    from frontend.blueprints import chat
+
+    client, _, calls = healthy_route
+    monkeypatch.setattr(chat, "_parse_chat_skill_command", lambda _: ("shell", "touch forbidden"))
+    response = client.post("/api/chat", json={
+        "message": "SKILL shell touch forbidden", "local_only": True, "new_thread": True,
+    })
+    assert response.status_code == 403
+    assert calls == []
+
+
 def test_healthy_storage_routes_every_local_request_to_apex_and_persists_primary(healthy_route):
     client, connect, gateway_calls = healthy_route
     response = client.post("/api/chat", json={

@@ -89,7 +89,7 @@ def call_apex(call_model, model: str, messages: list[dict]) -> tuple[str, int]:
 
 def apex_roster(*, storage_degraded: bool = False) -> list[dict]:
     """Single-entry roster; DB-independent so routing never depends on the agents table."""
-    role = "Local recovery chat; no operational tools" if storage_degraded else "Sole local chat target; no operational tools"
+    role = "Local recovery chat; no operational tools" if storage_degraded else "Sole local chat target; bounded repository inspection"
     return [{**APEX_AGENT, "enabled": True, "status": "on_demand",
              "available": True, "storage_degraded": storage_degraded,
              "role": role, "roles": ["recovery-chat"] if storage_degraded else ["apex-chat"],
@@ -103,15 +103,22 @@ def recovery_roster() -> list[dict]:
 
 
 def apex_system_prompt(agent: dict, *, recovery: bool) -> str:
+    directive = NO_BS_DIRECTIVE if recovery else (
+        "Reasoning: low\nNever guess paths or results. Discover workspace facts with attached "
+        "read-only tools; ask for context only when discovery is unavailable or insufficient."
+    )
     base = (
         f"You are {agent.get('label') or agent['name']}, the local DEOS chat agent for JD.\n"
-        + NO_BS_DIRECTIVE + "\n" + conversation_lesson()
-        + "\nNo tools are attached. Never claim to have read files, repaired storage, "
-        "or executed commands. Ask for missing context. Do not echo wrapper status text."
+        + directive + "\n" + conversation_lesson()
+        + "\nNever invent execution or missing context. Do not echo wrapper status text."
     )
     if recovery:
-        base += ("\nThe current recovery thread is available; original database memories are unavailable. "
+        base += ("\nNo tools are attached in recovery. Never claim file access or command execution. "
+                 "The current recovery thread is available; original database memories are unavailable. "
                  "Use only this recovery thread; unavailable memories must not be invented.")
+    else:
+        from core.apex_tools import TOOL_GUIDANCE
+        base += TOOL_GUIDANCE
     return base
 
 

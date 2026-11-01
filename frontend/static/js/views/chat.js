@@ -6495,6 +6495,11 @@ function sendMessage(source = 'user', relayMeta = null) {
     const pendingJobs = Array.isArray(data.pending_jobs) ? data.pending_jobs : [];
     const discovered = [];
 
+    (Array.isArray(data.tool_receipts) ? data.tool_receipts : []).forEach(receipt => {
+      _appendChatBubble('apex', `[tool:${receipt.tool}] ${receipt.status} (receipt ${receipt.id})\n` +
+        JSON.stringify(receipt.arguments) + '\n' + receipt.output +
+        (receipt.truncated ? '\n[output truncated]' : ''));
+    });
     if (immediateResponses.length) {
       if (optimisticJobId) _removeThinkingBubbleById(optimisticJobId);
       immediateResponses.forEach(entry => {

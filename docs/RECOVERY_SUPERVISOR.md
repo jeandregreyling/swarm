@@ -43,6 +43,28 @@ conversations are unavailable, not silently replaced with empty records.
 
 ### APEX-only local chat lane
 
+Healthy APEX chat now uses a bounded read-only repository bridge instead of
+one-shot inference. The existing text gateway carries whole-response JSON
+`tool_calls`/`answer` envelopes constrained by a JSON response schema; this is
+not native OpenAI tool-call transport. Empty `tool_calls` denotes a final answer.
+Only `git_status`, `list_files`, `read_file`, and literal `grep_repo` are
+attached. The backend validates every envelope and checks the active operator's
+`fs_readonly` permission and agent runtime policy before each call. Permission
+lookup failures stop execution; no permissions or live schema are rewritten.
+Writes, arbitrary commands, web access, and legacy `SKILL` dispatch are not
+available on this lane. Recovery remains text-only.
+
+File reads are restricted to bounded tracked UTF-8 source/documentation,
+excluding symlinks, secrets, databases, private sandpits and runtime contents.
+Git status uses one fixed non-mutating command with optional locks disabled,
+allowing untracked runtime names to be discovered without reading their data.
+Each result is persisted as a `tool_result` in the originating conversation;
+sanitized receipt metadata is published through the existing chat SSE channel.
+The HTTP response also includes `tool_receipts`. A maximum of six model rounds,
+twelve calls and a shared 180-second inference budget prevents unbounded loops.
+Malformed calls, denied access, file failures and exhausted limits are explicit,
+not successful-looking fallbacks. Tool outputs are untrusted reference data.
+
 Every `local_only` `/api/chat` request (both the chat tile and home chat always
 send `local_only: true`) now routes to a single target: `apex` →
 `gpt-oss:20b`, the externally owned llama-server registered in

@@ -1052,6 +1052,15 @@
         }
 
         // Render completed (non-pending) agent responses
+        (Array.isArray(data.tool_receipts) ? data.tool_receipts : []).forEach(receipt => {
+          _hcAppendBubble({
+            sender: 'apex', message_type: 'tool_result',
+            content: `[tool:${receipt.tool}] ${receipt.status} (receipt ${receipt.id})\n` +
+              JSON.stringify(receipt.arguments) + '\n' + receipt.output +
+              (receipt.truncated ? '\n[output truncated]' : ''),
+            created_at: new Date().toISOString()
+          });
+        });
         if (immediate.length > 0) {
           immediate.forEach(resp => {
             _hcAppendBubble({
