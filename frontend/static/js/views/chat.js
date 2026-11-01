@@ -10,7 +10,7 @@
 // the DB is the canonical source of truth for agent number/label/tier.
 // To rename an agent or swap its model: UPDATE agents SET label=..., number=... WHERE name=...
 let CHAT_AGENT_OPTIONS = [
-  { value: 'gemma', label: '1 · Gemma3', number: 1, tier: 'local', hasTemp: true },
+  { value: 'gemma', label: '1 · Hummingbird', number: 1, tier: 'local', hasTemp: true },
   { value: 'llama', label: '2 · LlaMA',  number: 2, tier: 'local', hasTemp: true },
   { value: 'seven', label: '7 · Seven',  number: 7, tier: 'local', hasTemp: false },
 ];

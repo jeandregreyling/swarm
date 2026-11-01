@@ -133,7 +133,7 @@ def api_tool_approval():
             return jsonify({'ok': False, 'error': 'Cross-origin approval refused'}), 403
 
         def authorize(tool):
-            permission = 'fs_write' if tool == 'propose_write_file' else 'git_commit'
+            permission = 'fs_write' if tool in {'propose_write_file', 'propose_patch'} else 'git_commit'
             return can_user_invoke_skill(owner, permission, default_allow=True)
 
         result = APPROVALS.decide(
@@ -2917,15 +2917,22 @@ def api_chat():
 
         if apex_lane:
             from core.apex_tools import run_apex_tools, receipt_text
+            from core.apex_context import prepare_context, budget_receipts
+            from utils.thread_memory import apex_carry_over_block, checkpoint_apex
 
             apex_row = next(row for row in routable_rows if row['name'] == APEX_AGENT['name'])
             operator = _tool_operator()
             messages = [{'role': 'system', 'content': apex_system_prompt(
                 apex_row, recovery=False, proposals=operator is not None)}]
+            carry_over = apex_carry_over_block(conv_id)
+            if carry_over:
+                messages.append({'role': 'user', 'content': carry_over})
             messages.extend(history)
             if not history or history[-1]['role'] != 'user':
                 messages.append({'role': 'user', 'content': message})
             started = time.monotonic()
+            lifecycle_receipts = []
+            checkpoint_apex(conv_id, message, 'in progress; no new execution verified')
             _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=APEX_AGENT['model'])
 
             def authorize_inspection():
@@ -2942,6 +2949,8 @@ def api_chat():
             def record_tool_receipt(receipt):
                 log_message(conv_id, APEX_AGENT['name'], receipt_text(receipt),
                             to_agent='user', message_type='tool_result')
+                lifecycle_receipts.append(receipt)
+                checkpoint_apex(conv_id, message, 'in progress', lifecycle_receipts)
                 # Outputs stay in the authenticated thread, not the broadcast SSE feed.
                 _sse_chat(conv_id, APEX_AGENT['name'], 'tool_receipt',
                           receipt={key: receipt[key] for key in ('id', 'tool', 'status', 'truncated')})
@@ -2970,11 +2979,14 @@ def api_chat():
             try:
                 response_text, tokens_used, tool_receipts = run_apex_tools(
                     apex_model, messages, authorize_inspection, record_tool_receipt,
-                    proposal_handler=propose_tool if operator else None)
+                    proposal_handler=propose_tool if operator else None,
+                    prepare_messages=prepare_context, prepare_receipts=budget_receipts)
             except ApexOffline as exc:
+                checkpoint_apex(conv_id, message, f'offline: {exc}', lifecycle_receipts)
                 _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state=STATE_OFFLINE, error=str(exc))
                 return _offline_response(exc, conv_id)
             except RuntimeError as exc:
+                checkpoint_apex(conv_id, message, f'blocked: {exc}', lifecycle_receipts)
                 _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state='error', error=str(exc))
                 _LOG.error('APEX runtime error: %s', exc)
                 return jsonify({
@@ -2985,6 +2997,10 @@ def api_chat():
             elapsed_ms = int((time.monotonic() - started) * 1000)
             log_message(conv_id, APEX_AGENT['name'], response_text, to_agent='user',
                         message_type='response', tokens_used=tokens_used)
+            checkpoint_apex(conv_id, message, 'turn completed; receipt statuses are authoritative',
+                            lifecycle_receipts)
+            if not _record_exchange(conv_id, APEX_AGENT['name'], message, response_text):
+                raise RuntimeError('APEX durable exchange persistence failed')
             _sse_chat(conv_id, APEX_AGENT['name'], 'completed', state=STATE_OK, tokens=tokens_used)
             entry = {
                 'agent': APEX_AGENT['name'], 'response': response_text, 'tokens': tokens_used,

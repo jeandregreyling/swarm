@@ -19,7 +19,7 @@ import uuid
 from core.apex_tools import MAX_DIFF_BYTES, MAX_FILE_BYTES, MAX_WRITE_BYTES, ReadOnlyRepository
 
 LOG = logging.getLogger(__name__)
-PROPOSAL_TOOLS = {"propose_write_file", "propose_commit"}
+PROPOSAL_TOOLS = {"propose_write_file", "propose_commit", "propose_patch"}
 APPROVAL_TIMEOUT = 900
 
 
@@ -68,9 +68,9 @@ class ApprovalStore:
         self._reserved: set[tuple[str, str]] = set()
 
     @staticmethod
-    def _state(repository, relative, *, commit: bool = False):
+    def _state(repository, relative, *, commit: bool = False, patch: bool = False):
         # Reuse the tracked-text and protected-path boundary; never read private pools.
-        limit = MAX_FILE_BYTES if commit else MAX_WRITE_BYTES
+        limit = MAX_FILE_BYTES if commit or patch else MAX_WRITE_BYTES
         repository._text(relative, set(repository._tracked()), allow_untracked=commit, max_bytes=limit)
         path = repository._path(relative)
         with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), "rb") as stream:
@@ -110,12 +110,21 @@ class ApprovalStore:
         if not isinstance(args, dict):
             raise ValueError("Proposal arguments must be an object")
         head = index_hash = ""
+        patch = tool == "propose_patch"
         if tool == "propose_write_file":
             if set(args) != {"path", "content"} or not isinstance(args["content"], str):
                 raise ValueError("propose_write_file requires path and complete UTF-8 content")
             paths = [args["path"]]
             if len(args["content"].encode()) > MAX_WRITE_BYTES or "\0" in args["content"]:
                 raise ValueError("Write payload exceeds limit or contains binary data")
+        elif patch:
+            if (set(args) != {"file_path", "exact_old_text", "new_text"}
+                    or not isinstance(args["exact_old_text"], str) or not args["exact_old_text"]
+                    or not isinstance(args["new_text"], str)
+                    or any(len(args[key].encode("utf-8")) > 8000 or "\0" in args[key]
+                           for key in ("exact_old_text", "new_text"))):
+                raise ValueError("propose_patch requires file_path, nonempty exact_old_text and new_text; text limit 8000 bytes")
+            paths = [args["file_path"]]
         else:
             if (set(args) != {"paths", "message"} or not isinstance(args["paths"], list)
                     or not 1 <= len(args["paths"]) <= 20
@@ -128,17 +137,31 @@ class ApprovalStore:
                 or len(set(paths)) != len(paths)):
             raise ValueError("Paths must be unique canonical workspace-relative file paths")
         commit = tool == "propose_commit"
-        states = {path: self._state(repository, path, commit=commit) for path in paths}
-        if tool == "propose_write_file":
+        states = {path: self._state(repository, path, commit=commit, patch=patch) for path in paths}
+        if tool == "propose_write_file" or patch:
             before = states[paths[0]][0].decode("utf-8")
-            after = args["content"]
+            if patch:
+                matches = before.count(args["exact_old_text"])
+                if matches != 1:
+                    raise ValueError(
+                        f"Exact patch text matched {matches} locations; provide a larger unique context "
+                        "chunk from a fresh raw read. No transaction created."
+                    )
+                after = before.replace(args["exact_old_text"], args["new_text"], 1)
+                if len(after.encode("utf-8")) > MAX_FILE_BYTES:
+                    raise ValueError("Patched file exceeds the 1 MiB limit")
+            else:
+                after = args["content"]
             if before == after:
                 raise ValueError("Write proposal has no changes")
             diff = "".join(difflib.unified_diff(
                 before.splitlines(keepends=True), after.splitlines(keepends=True),
                 fromfile="a/" + paths[0], tofile="b/" + paths[0]))
             # Show complete file payload when a missing final newline affects diff display.
-            diff = json.dumps({"unified_diff": diff, "new_content": after}, ensure_ascii=True, indent=2)
+            diff = json.dumps(
+                {"unified_diff": diff, **({"exact_old_text": args["exact_old_text"],
+                                          "new_text": args["new_text"]} if patch else {"new_content": after})},
+                ensure_ascii=True, indent=2)
         else:
             head = repository._git("rev-parse", "HEAD").strip()
             index_hash = self._index_hash(repository)
@@ -205,9 +228,10 @@ class ApprovalStore:
                 else:
                     repository = transaction.repository
                     for path in transaction.paths:
-                        if self._hash(self._state(repository, path, commit=transaction.tool == "propose_commit")) != transaction.hashes[path]:
+                        if self._hash(self._state(repository, path, commit=transaction.tool == "propose_commit",
+                                                  patch=transaction.tool == "propose_patch")) != transaction.hashes[path]:
                             raise ApprovalConflict("Stale payload: target file changed since proposal")
-                    if transaction.tool == "propose_write_file":
+                    if transaction.tool in {"propose_write_file", "propose_patch"}:
                         output = self._write(transaction)
                     else:
                         if (repository._git("rev-parse", "HEAD").strip() != transaction.head
@@ -224,21 +248,27 @@ class ApprovalStore:
         repository = transaction.repository
         relative = transaction.paths[0]
         path = repository._path(relative)
+        patch = transaction.tool == "propose_patch"
+        content = (
+            transaction.states[relative][0].decode("utf-8").replace(
+                transaction.args["exact_old_text"], transaction.args["new_text"], 1)
+            if patch else transaction.args["content"]
+        )
         temp_path = None
         try:
             with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".apex-write-", delete=False) as stream:
                 temp_path = Path(stream.name)
-                stream.write(transaction.args["content"].encode("utf-8"))
+                stream.write(content.encode("utf-8"))
                 stream.flush()
                 os.fchmod(stream.fileno(), transaction.states[relative][1])
                 os.fsync(stream.fileno())
-            if self._hash(self._state(repository, relative)) != transaction.hashes[relative]:
+            if self._hash(self._state(repository, relative, patch=patch)) != transaction.hashes[relative]:
                 raise ApprovalConflict("Stale payload: target changed before atomic replacement")
             os.replace(temp_path, path)
         finally:
             if temp_path is not None and temp_path.exists():
                 temp_path.unlink()
-        return f"Approved write completed: {relative}; SHA-256 {self._hash(self._state(repository, relative))}"
+        return f"Approved {'patch' if patch else 'write'} completed: {relative}; SHA-256 {self._hash(self._state(repository, relative, patch=patch))}"
 
     def _commit(self, transaction):
         repository = transaction.repository

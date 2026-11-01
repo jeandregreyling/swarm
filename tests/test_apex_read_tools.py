@@ -66,6 +66,17 @@ def test_argument_ranges_are_strict(repository, args):
         repository.call("read_file", args)
 
 
+def test_read_file_returns_at_most_one_hundred_lines(repository):
+    repository.root.joinpath("sample.py").write_text("".join(f"line {i}\n" for i in range(250)))
+    result = repository.call("read_file", {"path": "sample.py"})
+    assert len(result.splitlines()) == 100
+    assert result.endswith("100: line 99")
+    with pytest.raises(ValueError, match="maximum 100 lines"):
+        repository.call("read_file", {"path": "sample.py", "start": 1, "end": 101})
+    page = repository.call("read_file", {"path": "sample.py", "start": 101, "end": 200, "raw": True})
+    assert len(page.splitlines()) == 100 and page.startswith("line 100\n")
+
+
 def test_multiround_receipts_come_from_backend_and_return_to_model(repository):
     outputs = iter([
         envelope(("git_status", {})),
@@ -112,6 +123,66 @@ def test_quoted_prose_fences_and_skill_lines_are_not_executable(repository, cont
                                         [{"role": "user", "content": "Explain the format"}],
                                         lambda: True, lambda _: None, repository)
     assert answer == content and receipts == []
+
+
+def test_leading_sentence_does_not_bypass_proposal_gate(repository):
+    calls = []
+    content = ('I have prepared the change for review.\n'
+               '{"tool_calls":[{"name":"propose_write_file","arguments":'
+               '{"path":"sample.py","content":"hello\\n"}}],"answer":""}')
+    outputs = iter([content, '{"tool_calls":[],"answer":"User denied execution."}'])
+
+    def propose(repo, name, args):
+        calls.append((name, args))
+        assert repo.root.joinpath("sample.py").read_text() == "hello\nworld\n"
+        return {"status": "denied", "output": "User Denied Execution"}
+
+    _, _, receipts = run_apex_tools(lambda *_: (next(outputs), 1), [],
+                                   lambda: True, lambda _: None, repository, propose)
+    assert calls == [("propose_write_file", {"path": "sample.py", "content": "hello\n"})]
+    assert receipts[0]["status"] == "denied"
+    assert repository.root.joinpath("sample.py").read_text() == "hello\nworld\n"
+
+
+@pytest.mark.parametrize("prefix,suffix", [
+    ("Here is an example.\n", ""), ("I found the file. ", ""),
+    ("I will call the tool:\n", ""), ("I found the file.\n```json\n", "\n```"),
+    ("I found the file.\n", "\nTrailing prose"),
+    ("I found the file.\n", '\n{"tool_calls":[],"answer":"Other"}'),
+])
+def test_ambiguous_embedded_payloads_are_not_executed(repository, monkeypatch, prefix, suffix):
+    monkeypatch.setattr(repository, "call", lambda *_: pytest.fail("Ambiguous payload executed"))
+    content = prefix + envelope(("git_status", {})) + suffix
+    answer, _, receipts = run_apex_tools(lambda *_: (content, 1), [],
+                                       lambda: True, lambda _: None, repository)
+    assert answer == content and receipts == []
+
+
+def test_no_final_channel_gets_one_bounded_retry_without_executing_reasoning(repository):
+    messages = []
+
+    def model(_, working):
+        messages.append(list(working))
+        if len(messages) == 1:
+            raise RuntimeError("Direct model produced no final answer; reasoning is not an executable reply")
+        return '{"tool_calls":[],"answer":"Blocked on a complete file read."}', 2
+
+    answer, _, receipts = run_apex_tools(model, [], lambda: True, lambda _: None, repository)
+    assert len(messages) == 2 and not receipts
+    assert "BACKEND FORMAT ERROR" in messages[1][-1]["content"]
+    assert answer == "Blocked on a complete file read."
+
+
+def test_no_final_channel_repeated_failure_stops(repository):
+    attempts = []
+
+    def model(*_):
+        attempts.append(1)
+        raise RuntimeError("Direct model produced no final answer; reasoning is not an executable reply")
+
+    with pytest.raises(RuntimeError, match="no final answer"):
+        run_apex_tools(model, [], lambda: True, lambda _: None, repository)
+    assert len(attempts) == 2
 
 
 @pytest.mark.parametrize("content", [
@@ -196,6 +267,17 @@ def test_prompt_attaches_only_read_tools_and_recovery_has_none():
     assert "READ-ONLY REPOSITORY BRIDGE" not in recovery
 
 
+def test_owner_prompt_contains_complete_patch_envelope_only_when_attached():
+    from core.apex_tools import PROPOSAL_GUIDANCE
+    marker = '{"tool_calls":[{"name":"propose_patch"'
+    example = PROPOSAL_GUIDANCE[PROPOSAL_GUIDANCE.index(marker):].split(". This complete", 1)[0]
+    payload = json.loads(example)
+    assert payload["answer"] == ""
+    assert set(payload["tool_calls"][0]["arguments"]) == {"file_path", "exact_old_text", "new_text"}
+    assert marker in apex_system_prompt(APEX_AGENT, recovery=False, proposals=True)
+    assert marker not in apex_system_prompt(APEX_AGENT, recovery=False, proposals=False)
+
+
 @pytest.mark.parametrize("path", [".env", "data.db", "runtime/artifact.txt"])
 def test_grep_cannot_turn_protected_file_refusals_into_empty_success(repository, path):
     with pytest.raises(PermissionError):
@@ -218,10 +300,55 @@ def test_call_limit_rejects_batch_before_any_read(repository, monkeypatch):
 
 
 def test_transport_schema_requires_integer_line_arguments():
-    args = TURN_FORMAT["json_schema"]["schema"]["oneOf"][0]["properties"]["tool_calls"]["items"]["properties"]["arguments"]
+    variants = TURN_FORMAT["json_schema"]["schema"]["oneOf"][0]["properties"]["tool_calls"]["items"]["oneOf"]
+    read = next(item for item in variants if item["properties"]["name"]["const"] == "read_file")
+    args = read["properties"]["arguments"]
     assert args["properties"]["start"] == {"type": "integer", "minimum": 1}
     assert args["properties"]["end"] == {"type": "integer", "minimum": 1}
     assert args["additionalProperties"] is False
+
+
+def test_transport_schema_restricts_arguments_to_each_tool():
+    read, proposal, _ = TURN_FORMAT["json_schema"]["schema"]["oneOf"]
+    variants = (read["properties"]["tool_calls"]["items"]["oneOf"]
+                + proposal["properties"]["tool_calls"]["items"]["oneOf"])
+    expected = {
+        "git_status": ([], []), "list_files": (["path"], []),
+        "grep_repo": (["query", "path"], ["query"]),
+        "read_file": (["path", "start", "end", "raw"], ["path"]),
+        "get_diff": (["path", "offset"], ["path"]),
+        "propose_write_file": (["path", "content"], ["path", "content"]),
+        "propose_commit": (["paths", "message"], ["paths", "message"]),
+        "propose_patch": (["file_path", "exact_old_text", "new_text"],
+                          ["file_path", "exact_old_text", "new_text"]),
+    }
+    assert {item["properties"]["name"]["const"] for item in variants} == set(expected)
+    for item in variants:
+        name = item["properties"]["name"]["const"]
+        arguments = item["properties"]["arguments"]
+        keys, required = expected[name]
+        assert set(arguments["properties"]) == set(keys)
+        assert arguments["required"] == required
+        assert arguments["additionalProperties"] is False
+        assert item["required"] == ["name", "arguments"]
+        assert item["additionalProperties"] is False
+        if "path" in keys:
+            assert arguments["properties"]["path"] == {"type": "string", "minLength": 1}
+
+
+def test_invalid_read_arguments_return_actionable_receipt(repository):
+    outputs = iter([
+        envelope(("grep_repo", {"query": "world", "paths": ["sample.py"]})),
+        envelope(("grep_repo", {"query": "world", "path": "sample.py"})),
+        "Corrected the arguments and found the text.",
+    ])
+    _, _, receipts = run_apex_tools(lambda *_: (next(outputs), 1), [],
+                                   lambda: True, lambda _: None, repository)
+    assert receipts[0]["status"] == "failed"
+    assert "unexpected keys ['paths']" in receipts[0]["output"]
+    assert "singular path as a string" in receipts[0]["output"]
+    assert receipts[1]["status"] == "succeeded"
+    assert "sample.py:2: world" in receipts[1]["output"]
 
 
 def test_raw_read_preserves_blank_lines_and_final_newline(repository):

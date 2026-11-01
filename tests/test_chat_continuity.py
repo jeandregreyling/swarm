@@ -17,6 +17,15 @@ from core.chat_continuity import (
 AGENTS = [{"name": "apex", "model": "gpt-oss:20b", "tier": "local", "label": "APEX"}]
 
 
+@pytest.fixture(autouse=True)
+def isolated_apex_lifecycle(tmp_path, monkeypatch):
+    from core import apex_context
+    from utils import thread_memory
+    monkeypatch.setattr(thread_memory, "MIND_DB_PATH", str(tmp_path / "mind.db"))
+    monkeypatch.setattr(apex_context, "server_prompt_tokens",
+                        lambda messages: sum(len(m["content"].encode("utf-8")) for m in messages) // 3 + 128)
+
+
 def corrupt_connection():
     raise sqlite3.DatabaseError("database disk image is malformed")
 
@@ -335,6 +344,38 @@ def healthy_route(tmp_path, monkeypatch):
     app = Flask(__name__)
     app.register_blueprint(chat.chat_bp)
     return app.test_client(), connect, gateway_calls
+
+
+def test_apex_route_compacts_long_history_and_reloads_same_thread_checkpoint(healthy_route):
+    from utils import thread_memory
+    client, connect, calls = healthy_route
+    raw = '[tool:read_file] succeeded (receipt archived-real)\n{"path":"source.py"}\n' + "evidence\n" * 3000
+    with connect() as conn:
+        cid = conn.execute("INSERT INTO conversations (title) VALUES ('Long thread')").lastrowid
+        for _ in range(10):
+            conn.execute(
+                "INSERT INTO messages (conversation_id,from_agent,to_agent,content,message_type) "
+                "VALUES (?, 'apex', 'user', ?, 'tool_result')", (cid, raw))
+    first = client.post("/api/chat", json={
+        "message": "Continue inspection; preserve unrelated files.", "conversation_id": cid,
+        "agents": ["apex"], "local_only": True, "auto_relay": False, "history_mode": "full",
+    })
+    assert first.status_code == 200
+    assert "evidence\n" * 100 not in str(calls[-1][1])
+    assert "archived-real" in str(calls[-1][1])
+    with connect() as conn:
+        stored = conn.execute(
+            "SELECT content FROM messages WHERE conversation_id=? AND message_type='tool_result'", (cid,)
+        ).fetchall()
+    assert len(stored) == 10 and all(row["content"] == raw for row in stored)
+    assert "Continue inspection" in thread_memory.apex_carry_over_block(cid)
+    second = client.post("/api/chat", json={
+        "message": "What remains?", "conversation_id": cid, "agents": ["apex"],
+        "local_only": True, "auto_relay": False, "history_mode": "recent",
+    })
+    assert second.status_code == 200
+    assert "APEX DURABLE CHECKPOINT" in str(calls[-1][1])
+    assert "Continue inspection" in str(calls[-1][1])
 
 
 def test_healthy_tool_loop_persists_receipts_and_publishes_sanitized_sse(healthy_route, monkeypatch):

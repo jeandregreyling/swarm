@@ -118,6 +118,9 @@ Only `git_status`, `list_files`, `read_file`, literal `grep_repo` and `get_diff`
 attached. The backend validates every envelope and checks the active operator's
 `fs_readonly` permission and agent runtime policy before each call. Permission
 lookup failures stop execution; no permissions or live schema are rewritten.
+Transport schemas bind each tool name to its own required arguments; read calls
+cannot use the commit-only `paths` array. Backend argument failures identify
+unexpected/missing keys and return the expected schema for a bounded retry.
 Direct writes, arbitrary commands, web access, and legacy `SKILL` dispatch are
 not available on this lane. Owner-approved proposals are separate as described
 above. Recovery remains text-only.
@@ -125,6 +128,14 @@ above. Recovery remains text-only.
 File reads are restricted to bounded tracked UTF-8 source/documentation,
 excluding symlinks, secrets, databases, private sandpits and runtime contents.
 Inspection reads accept files up to 1 MiB while output remains bounded.
+`read_file` returns at most 100 lines per call. Before injecting each read
+batch, the wrapper tokenizes the prospective prompt against the 6,392-token
+input budget. Oversized read bodies are withheld and replaced by an explicit
+context-budget error; durable receipts retain the real execution status and raw
+output, plus the warning. The active receipt distinguishes successful inspection
+from failed context delivery. It asks for smaller reads or an authorized patch
+from verified data, never blind execution. Mutation outcome receipts and
+operator instructions are not discarded to make a read fit.
 `get_diff` accepts one explicit tracked or non-ignored untracked source path,
 returning a paginated HEAD-to-worktree patch with `next_offset`; callers must
 follow all pages before treating inspection as complete. It uses the same
@@ -137,6 +148,39 @@ The HTTP response also includes `tool_receipts`. A maximum of six model rounds,
 twelve calls and a shared 180-second inference budget prevents unbounded loops.
 Malformed calls, denied access, file failures and exhausted limits are explicit,
 not successful-looking fallbacks. Tool outputs are untrusted reference data.
+An empty final-channel response receives one logged format retry within the
+existing round/time limits; reasoning-channel content is never executed. A short
+sentence followed by a newline and exactly one complete tool envelope may be
+stripped before normal validation. Inline/quoted examples, fences, trailing
+prose and multiple objects are not executable. All mutation proposals still
+suspend behind the same human approval gate.
+
+The healthy APEX lane budgets every inference with the registered server's
+`/apply-template` and `/tokenize` endpoints, including a formatting margin.
+The 8,192-token context reserves 1,800 tokens for reasoning/output (above the
+1,024-token minimum). Historical receipt dumps are replaced in working context
+by their real status, arguments and receipt/transaction handles. In-loop receipt
+bodies remain until a subsequent model turn consumes them; consumption never
+asserts that the result was analyzed. Full receipts stay in the conversation.
+Older assistant prose may be archived behind explicit markers when necessary;
+system instructions, operator messages and unread receipts are not truncated.
+An irreducibly oversized prompt fails before inference with an explicit budget
+error rather than deleting instructions.
+
+APEX reuses `mind.db`'s thread-state and full-exchange storage. Its checkpoints
+contain the latest request, blocked/completed state and verified receipt handles,
+and are loaded only for the same APEX conversation. Legacy roster seed notes,
+other agents' state and claimed analysis are not injected. This does not expand
+agent tool permissions or replace the independent live approval transaction.
+
+`propose_patch` accepts exactly `file_path`, `exact_old_text`, and `new_text`.
+It reads an existing tracked protected-path-checked file up to 1 MiB and requires
+exactly one nonempty match. Zero/multiple matches return an explicit failure
+asking for a larger unique context block, without creating a transaction.
+Search/replacement blocks are limited to 8,000 UTF-8 bytes each. The preview
+contains the unified diff and exact blocks, not the rest of the large file.
+Approval reuses the same owner/session/CSRF gate, UUID, content/mode hash,
+reservation, atomic write and one-use receipt path as whole-file writes.
 
 Every `local_only` `/api/chat` request (both the chat tile and home chat always
 send `local_only: true`) now routes to a single target: `apex` →

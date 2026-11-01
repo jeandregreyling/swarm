@@ -63,6 +63,69 @@ def test_rejection_resumes_with_denial_without_writing(repository):
     assert (repository.root / "probe.py").read_text() == "value = 1\n"
 
 
+def patch_proposal(store, repository, **overrides):
+    args = {"file_path": "probe.py", "exact_old_text": "value = 1", "new_text": "value = 2"}
+    args.update(overrides)
+    return store.propose(repository, "propose_patch", args, "ghost", "session-1", 1)
+
+
+def test_patch_large_file_preserves_every_other_byte_and_uses_same_gate(repository):
+    path = repository.root / "probe.py"
+    original = b"# padding\r\n" * 30000 + b"value = 1\r\n# end"
+    path.write_bytes(original)
+    path.chmod(0o640)
+    store = ApprovalStore()
+    transaction = patch_proposal(store, repository)
+    assert path.read_bytes() == original and not transaction.ready.is_set()
+    assert len(transaction.diff) < 2000
+    assert transaction.args.keys() == {"file_path", "exact_old_text", "new_text"}
+    assert decide(store, transaction)["status"] == "succeeded"
+    assert path.read_bytes() == original.replace(b"value = 1", b"value = 2", 1)
+    assert path.stat().st_mode & 0o777 == 0o640
+    with pytest.raises(ApprovalConflict, match="consumed"):
+        decide(store, transaction)
+
+
+@pytest.mark.parametrize("text", ["missing", "value"])
+def test_patch_nonunique_match_fails_without_transaction(repository, text):
+    repository.root.joinpath("probe.py").write_text("value = 1\nvalue = 2\n")
+    store = ApprovalStore()
+    with pytest.raises(ValueError, match="larger unique context"):
+        patch_proposal(store, repository, exact_old_text=text)
+    assert store.list_for("ghost", "session-1") == []
+
+
+def test_patch_denial_and_drift_never_write(repository):
+    store = ApprovalStore()
+    transaction = patch_proposal(store, repository)
+    assert decide(store, transaction, False)["status"] == "denied"
+    assert repository.root.joinpath("probe.py").read_text() == "value = 1\n"
+    transaction = patch_proposal(store, repository)
+    repository.root.joinpath("probe.py").write_text("operator changed it\n")
+    assert decide(store, transaction)["status"] == "failed"
+    assert repository.root.joinpath("probe.py").read_text() == "operator changed it\n"
+
+
+@pytest.mark.parametrize("overrides", [
+    {"exact_old_text": ""}, {"new_text": "\0"}, {"new_text": "é" * 4001},
+    {"file_path": "../probe.py"}, {"file_path": ".git/config"},
+])
+def test_patch_strict_arguments_and_paths(repository, overrides):
+    with pytest.raises((ValueError, PermissionError)):
+        patch_proposal(ApprovalStore(), repository, **overrides)
+
+
+def test_patch_cannot_read_untracked_file_or_bypass_permission(repository):
+    repository.root.joinpath("new.py").write_text("value = 1\n")
+    with pytest.raises(PermissionError):
+        patch_proposal(ApprovalStore(), repository, file_path="new.py")
+    store = ApprovalStore()
+    transaction = patch_proposal(store, repository)
+    assert store.decide(transaction.id, True, "ghost", "session-1", transaction.csrf,
+                        lambda _: False)["status"] == "denied"
+    assert repository.root.joinpath("probe.py").read_text() == "value = 1\n"
+
+
 def test_stale_file_and_mode_are_rejected(repository):
     for change_mode in (False, True):
         store = ApprovalStore()
@@ -370,5 +433,7 @@ def test_transport_schema_prevents_mixed_proposal_and_read_batches():
     read, proposal, final = TURN_FORMAT["json_schema"]["schema"]["oneOf"]
     assert proposal["properties"]["tool_calls"]["maxItems"] == 1
     assert proposal["properties"]["answer"]["const"] == ""
-    assert "propose_write_file" not in read["properties"]["tool_calls"]["items"]["properties"]["name"]["enum"]
+    names = [item["properties"]["name"]["const"]
+             for item in read["properties"]["tool_calls"]["items"]["oneOf"]]
+    assert "propose_write_file" not in names
     assert final["properties"]["tool_calls"]["maxItems"] == 0
