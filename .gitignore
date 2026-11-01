@@ -142,3 +142,18 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 runtime/worker_*.txt
+
+# Untracked runtime artifacts from Phase 3 and recovery work
+/runtime/chat-continuity/
+/runtime/conversation-quality-acceptance/
+/runtime/live-chat-repair/
+/runtime/recovery-audit/
+/runtime/recovery-candidate-handoff/
+/runtime/recovery-fixture/
+/runtime/recovery-handshake-validation/
+/runtime/recovery-learning/
+/runtime/recovery-no-bs/
+/runtime/recovery-peer/
+/runtime/recovery-preservation/
+/runtime/recovery/
+/runtime/studio-evidence.sqlite
