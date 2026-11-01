@@ -1,5 +1,7 @@
 """memory.py — Memory routes"""
+import logging
 import re
+from contextlib import closing
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
 
@@ -11,17 +13,13 @@ def _safe_table_name(name):
         raise ValueError(f"Invalid table name: {name!r}")
     return name
 
-# Agent memory table mapping — now from DB registry (single source of truth)
+# Registry mappings remain available to existing write/delete operations.
 from utils.db.registry import get_agent_tables as _reg_mem_tables
-_AGENT_TABLES = _reg_mem_tables()  # snapshot at import; refreshed by registry cache
+_LOG = logging.getLogger(__name__)
 
 def _get_agent_tables():
     """Live read from registry."""
     return _reg_mem_tables()
-
-# Tables that have a `subject` column — derived dynamically
-def _get_subject_tables():
-    return {v for v in _get_agent_tables().values() if v != 'memory'}
 
 # Full set of valid tables for write/delete operations
 def _get_all_memory_tables():
@@ -99,90 +97,20 @@ def _collect_local_file_memories(query='', agent='', limit=120):
 
 
 def _memory_search(query='', min_importance=3, agent='', limit=50):
-    """
-    Dynamic memory search across all agent tables.
-    Adding an agent to _AGENT_TABLES is all that's needed — no SQL changes required.
-    """
-    conn = get_connection()
+    """Read the APEX memory table without resolving registry identifiers."""
+    if agent.strip().lower() not in {'', 'apex'}:
+        raise ValueError('Memory retrieval permits only the APEX agent.')
     like = f'%{query}%'
-    agent_key = agent.lower() if agent else ''
-
-    # ── Single agent query ────────────────────────────────────────────────────
-    _atbl = _get_agent_tables()
-    _stbl = _get_subject_tables()
-    if agent_key and agent_key in _atbl:
-        tbl = _atbl[agent_key]
-        if tbl in _stbl:
-            sql = f"""SELECT id, '{tbl}' AS source_table, agent, subject, content, tags, importance, created_at
-                      FROM {tbl}
-                      WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                        AND importance >= ? AND archived = 0
-                      ORDER BY created_at DESC, importance DESC LIMIT ?"""
-            params = (like, like, like, min_importance, limit)
-        else:
-            sql = f"""SELECT id, '{tbl}' AS source_table, agent, '' AS subject, content, tags, importance, created_at
-                      FROM {tbl}
-                      WHERE (content LIKE ? OR content LIKE ? OR tags LIKE ?)
-                        AND importance >= ? AND archived = 0
-                      ORDER BY created_at DESC, importance DESC LIMIT ?"""
-            params = (like, like, like, min_importance, limit)
-        rows = conn.execute(sql, params).fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
-
-    # ── Generic agent not in our tables (fallback to shared memory table) ────
-    if agent_key:
+    with closing(get_connection()) as conn:
         rows = conn.execute(
-            """SELECT id, 'memory' AS source_table, agent, subject AS subject, content, tags, importance, created_at
-               FROM memory
+            """SELECT id, 'memory_apex' AS source_table, agent, subject,
+                      content, tags, importance, created_at
+               FROM memory_apex
                WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                 AND importance >= ? AND archived = 0 AND agent LIKE ?
+                 AND importance >= ? AND archived = 0
                ORDER BY created_at DESC, importance DESC LIMIT ?""",
-            (like, like, like, min_importance, f'%{agent}%', limit)
+            (like, like, like, min_importance, limit),
         ).fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
-
-    # ── All agents — build UNION dynamically from _AGENT_TABLES ──────────────
-    seen_tables = set()
-    union_parts = []
-    params = []
-
-    # Always include the shared memory table first
-    union_parts.append(
-        """SELECT id, 'memory' AS source_table, agent, subject, content, tags, importance, created_at
-           FROM memory
-           WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-             AND importance >= ? AND archived = 0"""
-    )
-    params.extend([like, like, like, min_importance])
-    seen_tables.add('memory')
-
-    for tbl in set(_atbl.values()):
-        if tbl in seen_tables or tbl == 'memory':
-            continue
-        seen_tables.add(tbl)
-        if tbl in _stbl:
-            union_parts.append(
-                f"""SELECT id, '{tbl}' AS source_table, agent, subject, content, tags, importance, created_at
-                   FROM {tbl}
-                   WHERE (subject LIKE ? OR content LIKE ? OR tags LIKE ?)
-                     AND importance >= ? AND archived = 0"""
-            )
-        else:
-            union_parts.append(
-                f"""SELECT id, '{tbl}' AS source_table, agent, '' AS subject, content, tags, importance, created_at
-                   FROM {tbl}
-                   WHERE (content LIKE ? OR content LIKE ? OR tags LIKE ?)
-                     AND importance >= ? AND archived = 0"""
-            )
-        params.extend([like, like, like, min_importance])
-
-    sql = ' UNION ALL '.join(union_parts) + ' ORDER BY created_at DESC, importance DESC LIMIT ?'
-    params.append(limit)
-
-    rows = conn.execute(sql, params).fetchall()
-    conn.close()
     return [dict(r) for r in rows]
 
 
@@ -191,13 +119,16 @@ def _memory_search(query='', min_importance=3, agent='', limit=50):
 def api_memory():
     q     = request.args.get('q', '')
     mn    = int(request.args.get('min', 3))
-    agent = request.args.get('agent', '')
+    agent = request.args.get('agent', '').strip().lower()
+    if agent not in {'', 'apex'}:
+        _LOG.warning('Rejected non-APEX memory retrieval: %r', agent)
+        return jsonify({'error': 'Memory retrieval permits only the APEX agent.'}), 400
     limit = max(1, min(int(request.args.get('limit', 120) or 120), 500))
     include_local = request.args.get('include_local', '1') != '0'
 
     rows = _memory_search(q, mn, agent, limit=limit)
     if include_local:
-        local_rows = _collect_local_file_memories(query=q, agent=agent, limit=limit)
+        local_rows = _collect_local_file_memories(query=q, agent='apex', limit=limit)
         rows = list(rows) + local_rows
         rows.sort(key=lambda r: (r.get('created_at') or ''), reverse=True)
         rows = rows[:limit]

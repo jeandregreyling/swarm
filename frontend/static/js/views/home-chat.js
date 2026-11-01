@@ -222,13 +222,53 @@
       }).join('');
   }
 
-  // ── Live sync (mirrors chat tile messages every 2s) ──────────────────────
-  let _hcLiveSyncTimer = null;
+  // ── Live sync (SSE-driven; mirrors chat tile messages without a timer) ───
+  // The backend publishes `chat` SSE events (see frontend/blueprints/sse.py)
+  // when a message is committed. We refresh only for the active thread and
+  // only on that signal — no 2s polling interval.
+  let _hcLiveSyncBound = false;
   function _hcStartLiveSync() {
-    if (_hcLiveSyncTimer) clearInterval(_hcLiveSyncTimer);
-    _hcLiveSyncTimer = setInterval(() => {
-      if (_hcConvId && !_hcSending) _hcSilentRefresh(_hcConvId);
-    }, 2000);
+    if (_hcLiveSyncBound) return;
+    _hcLiveSyncBound = true;
+    document.addEventListener('sse:chat', (e) => {
+      const d = (e && e.detail) || {};
+      if (!_hcConvId || _hcSending) return;
+      if (d.conversation_id && String(d.conversation_id) !== String(_hcConvId)) return;
+      if (d.state) _hcSetLaneState(d.state, d.error || '');
+      if (d.status === 'completed' || d.status === 'failed') _hcSilentRefresh(_hcConvId);
+    });
+  }
+
+  // ── Lane state surface: ok | recovery | offline | error ──────────────────
+  // `recovery` = primary storage exception (continuity journal in use).
+  // `offline`  = APEX endpoint unreachable / timed out.
+  let _hcLaneState = 'ok';
+  const _HC_LANE_LABEL = { ok: 'Ready', recovery: 'Recovery', offline: 'Offline', error: 'Error' };
+  function _hcSetLaneState(state, detail) {
+    const next = String(state || 'ok').toLowerCase();
+    _hcLaneState = _HC_LANE_LABEL[next] ? next : 'error';
+    const statusEl = document.getElementById('home-chat-status');
+    if (statusEl) {
+      statusEl.textContent = _HC_LANE_LABEL[_hcLaneState];
+      statusEl.dataset.laneState = _hcLaneState;
+    }
+    const root = document.getElementById('home-chat-input-area');
+    if (root) root.dataset.laneState = _hcLaneState;
+    return _hcLaneState;
+  }
+
+  function _hcApplyLaneResponse(data) {
+    const state = _hcSetLaneState(data && data.state, '');
+    if (state === 'offline' || state === 'error') {
+      _hcAppendBubble({
+        sender: 'system',
+        message_type: 'system',
+        content: (data && data.response) || (state === 'offline' ? 'APEX is offline.' : 'APEX error.'),
+        created_at: new Date().toISOString()
+      });
+      return false;
+    }
+    return true;
   }
 
   function _hcSilentRefresh(convId) {
@@ -1005,6 +1045,12 @@
         }
         delete _hcJobHistory[_hcTempJobId];
 
+        // Lane state from the backend: Offline/Error short-circuit into a system bubble.
+        if (!_hcApplyLaneResponse(data)) {
+          _hcScrollBottom();
+          return;
+        }
+
         // Render completed (non-pending) agent responses
         if (immediate.length > 0) {
           immediate.forEach(resp => {
@@ -1057,10 +1103,12 @@
         if (_hcTmpBubbleErr) _hcTmpBubbleErr.remove();
         delete _hcJobHistory[_hcTempJobId];
 
+        // A transport failure between the browser and the backend is Offline.
+        _hcSetLaneState('offline', err && err.message);
         _hcAppendBubble({
           sender: 'system',
           message_type: 'system',
-          content: `Error: ${err.message || 'Send failed'}`,
+          content: `Offline: ${err.message || 'Send failed'}`,
           created_at: new Date().toISOString()
         });
         _hcScrollBottom();
@@ -1071,7 +1119,8 @@
           sendBtn.classList.remove('sending');
           sendBtn.disabled = false;
         }
-        if (statusEl) statusEl.textContent = 'Ready';
+        // Keep Offline/Recovery visible; only a healthy lane reads "Ready".
+        if (statusEl && _hcLaneState === 'ok') statusEl.textContent = 'Ready';
       });
   }
 
@@ -1125,23 +1174,30 @@
       `<div class="hc-think-progress"><div class="hc-think-progress-fill" style="width:${progressPct}%"></div></div>`;
   }
 
-  // ── Poll pending jobs ────────────────────────────────────────────────────
+  // ── Pending jobs (SSE-driven; no timer loop) ─────────────────────────────
+  // Each `sse:chat` event for a tracked job triggers exactly one status fetch.
+  // The APEX lane answers synchronously, so this only matters for legacy
+  // pending acknowledgements.
   function _hcPollJobs(jobIds) {
     if (!jobIds || jobIds.length === 0) return;
     const convId = _hcConvId;
     const viewVersion = _hcViewVersion;
+    const tracked = new Set(jobIds.map(String));
     const finishedJobs = new Set();
     const statusEl = document.getElementById('home-chat-status');
-    let pollCount = 0;
-    const maxPolls = 600; // ~20 minutes at 2s interval (enough for slow local models)
 
-    const poll = () => {
-      if (_hcConvId !== convId || _hcViewVersion !== viewVersion) return;
-      pollCount += 1;
-      if (pollCount > maxPolls) {
-        if (statusEl) statusEl.textContent = 'Timed out waiting for agents';
-        return;
+    const settle = (job) => {
+      finishedJobs.add(job.job_id);
+      const container = document.getElementById('home-chat-messages');
+      if (container) {
+        const pending = container.querySelector(`.hc-bubble[data-pending-job-id="${CSS.escape(String(job.job_id))}"]`);
+        if (pending) pending.remove();
       }
+      delete _hcJobHistory[job.job_id];
+    };
+
+    const refresh = () => {
+      if (_hcConvId !== convId || _hcViewVersion !== viewVersion) return;
       fetch('/api/chat/jobs/status?job_ids=' + encodeURIComponent(jobIds.join(',')) + (_hcConvId ? '&conversation_id=' + encodeURIComponent(_hcConvId) : ''))
         .then(r => r.json())
         .then(data => {
@@ -1152,14 +1208,7 @@
           jobs.forEach(job => {
             if (finishedJobs.has(job.job_id)) return;
             if (job.status === 'completed' && job.response) {
-              finishedJobs.add(job.job_id);
-              // Remove the thinking bubble and replace with real response
-              const container = document.getElementById('home-chat-messages');
-              if (container) {
-                const pending = container.querySelector(`.hc-bubble[data-pending-job-id="${CSS.escape(String(job.job_id))}"]`);
-                if (pending) pending.remove();
-              }
-              delete _hcJobHistory[job.job_id];
+              settle(job);
               _hcAppendBubble({
                 sender: job.agent,
                 message_type: 'agent',
@@ -1168,13 +1217,7 @@
               });
               _hcScrollBottom();
             } else if (job.status === 'failed') {
-              finishedJobs.add(job.job_id);
-              const container = document.getElementById('home-chat-messages');
-              if (container) {
-                const pending = container.querySelector(`.hc-bubble[data-pending-job-id="${CSS.escape(String(job.job_id))}"]`);
-                if (pending) pending.remove();
-              }
-              delete _hcJobHistory[job.job_id];
+              settle(job);
               _hcAppendBubble({
                 sender: job.agent || 'system',
                 message_type: 'system',
@@ -1190,22 +1233,29 @@
 
           if (!allDone) {
             if (statusEl) statusEl.textContent = 'Agents working…';
-            setTimeout(poll, 2000);
           } else {
-            if (statusEl) statusEl.textContent = 'Ready';
+            document.removeEventListener('sse:chat', onSse);
+            if (statusEl && _hcLaneState === 'ok') statusEl.textContent = 'Ready';
           }
         })
         .catch(() => {
-          // Transient network error — retry instead of silently stopping the poll
-          if (pollCount < maxPolls) {
-            setTimeout(poll, 3000);
-          } else {
-            if (statusEl) statusEl.textContent = 'Ready';
-          }
+          _hcSetLaneState('offline', 'job status fetch failed');
         });
     };
 
-    setTimeout(poll, 2000);
+    const onSse = (e) => {
+      const d = (e && e.detail) || {};
+      if (_hcConvId !== convId || _hcViewVersion !== viewVersion) {
+        document.removeEventListener('sse:chat', onSse);
+        return;
+      }
+      if (d.conversation_id && String(d.conversation_id) !== String(convId)) return;
+      if (d.job_id && !tracked.has(String(d.job_id))) return;
+      refresh();
+    };
+    document.addEventListener('sse:chat', onSse);
+    // One immediate fetch covers the window between the ack and SSE attach.
+    refresh();
   }
 
   // ── Utilities ────────────────────────────────────────────────────────────

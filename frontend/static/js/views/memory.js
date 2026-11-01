@@ -2,17 +2,7 @@
 function renderMemoryAgentTabs() {
   const tabsEl = document.getElementById('memory-agent-tabs');
   if (!tabsEl) return;
-  fetch('/api/agents/config')
-    .then(r => r.ok ? r.json() : null)
-    .catch(() => null)
-    .then(agents => {
-      if (!Array.isArray(agents)) return;
-      let html = `<button class=\"mem-tab active\" data-agent=\"\" onclick=\"_memTab(this,'')\">All</button>`;
-      agents.filter(a => a.enabled).forEach(a => {
-        html += `<button class="mem-tab" data-agent="${_escHtml(a.name)}" onclick="_memTab(this, this.dataset.agent)">${a.number != null ? a.number + ' · ' : ''}${_escHtml(a.label || a.name)}</button>`;
-      });
-      tabsEl.innerHTML = html;
-    });
+  tabsEl.innerHTML = `<button class="mem-tab active" data-agent="apex" onclick="_memTab(this,'apex')">APEX</button>`;
 }
 document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('memory-agent-tabs')) renderMemoryAgentTabs();
@@ -306,12 +296,13 @@ function loadMemoryData(win) {
   window.__memoryWin = win;
   window.__memoryCache = [];
   window.__memoryVisibleRows = [];
-  window.__memoryAgent = window.__memoryAgent || '';
+  window.__memoryAgent = 'apex';
   window.__memorySource = window.__memorySource || 'all';
 
   const _renderList = (flat, agentFilter) => {
     const sourceMode = window.__memorySource || 'all';
-    let shown = agentFilter ? flat.filter(m => (m._agent || m.agent || '') === agentFilter) : flat;
+    // Table ownership is APEX; retain the stored authors of historical entries.
+    let shown = flat;
     if (sourceMode === 'db') {
       shown = shown.filter(m => String(m.source_table || '') !== 'local_file');
     } else if (sourceMode === 'local') {
@@ -366,14 +357,18 @@ function loadMemoryData(win) {
   };
 
   const doMemSearch = (q) => {
-    const agentFilter = window.__memoryAgent || '';
+    const agentFilter = 'apex';
     const sourceMode = window.__memorySource || 'all';
     const includeLocal = sourceMode === 'db' ? '0' : '1';
     const agentParam = agentFilter ? `&agent=${encodeURIComponent(agentFilter)}` : '';
     const url = `/api/memory?min=1&limit=400&include_local=${includeLocal}${agentParam}${q ? '&q=' + encodeURIComponent(q) : ''}`;
     list.innerHTML = '<div style="padding:20px;color:var(--text-dim);font-size:12px;text-align:center;">Loading...</div>';
     fetch(url)
-      .then(r => r.json())
+      .then(async r => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+        return data;
+      })
       .then(data => {
         let flat = [];
         if (data.results && typeof data.results === 'object') {
@@ -387,7 +382,7 @@ function loadMemoryData(win) {
         window.__memoryCache = flat;
         _renderList(flat, agentFilter);
       })
-      .catch(e => { list.innerHTML = `<div style="padding:20px;color:#f77;font-size:12px;">Failed: ${e.message}</div>`; });
+      .catch(e => { list.innerHTML = `<div style="padding:20px;color:#f77;font-size:12px;">Failed: ${_escHtml(e.message)}</div>`; });
   };
 
   const memSearch = win.el.querySelector('#memory-search');

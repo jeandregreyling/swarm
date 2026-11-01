@@ -16,7 +16,7 @@ from core.recovery_supervisor import NO_BS_DIRECTIVE, ROOT, _write_json
 
 def conversation_lesson() -> str:
     lesson = json.loads((ROOT / "core" / "capability_packs" / "conversation.coordinator.v1.json").read_text())
-    if lesson['id'] != 'conversation.coordinator' or lesson['version'] != '1.0.0':
+    if lesson['id'] != 'conversation.coordinator' or lesson['version'] != '1.1.0':
         raise ValueError("Invalid conversation.coordinator lesson identity/version")
     return "Repository-backed role guidance, not permission: " + json.dumps(lesson)
 
@@ -28,13 +28,28 @@ NOTICE = (
     "Operational tools are disabled. The original database has not been replaced.]"
 )
 ID_FLOOR = 1 << 48
-# This bootstrap policy grants text inference only, not normal agent tools.
-RECOVERY_AGENTS = (
-    {"name": "qwen", "model": "qwen2.5-coder:7b", "tier": "local", "label": "Qwen"},
-    {"name": "gemma", "model": "gemma3:12b", "tier": "local", "label": "Gemma"},
-    {"name": "llama", "model": "llama3.2:latest", "tier": "local", "label": "LLaMA"},
-    {"name": "mistral", "model": "mistral:latest", "tier": "local", "label": "Mistral"},
+
+# Chat lane states surfaced to the UI. `ok` = primary storage + APEX healthy,
+# `recovery` = storage exception (continuity journal in use),
+# `offline` = APEX endpoint unreachable / timed out.
+STATE_OK = "ok"
+STATE_RECOVERY = "recovery"
+STATE_OFFLINE = "offline"
+
+# APEX (gpt-oss:20B on the externally owned llama-server) is the only routing
+# target for local chat. The registry name maps to the service's api_model
+# alias; no Gemma/Qwen/LLaMA/Mistral fallback exists on this lane.
+APEX_AGENT = {"name": "apex", "model": "gpt-oss:20b", "tier": "local", "label": "APEX"}
+
+_OFFLINE_MARKERS = (
+    "unavailable", "timeout", "timed out", "connection", "refused",
+    "unreachable", "disconnected", "no route", "name or service not known",
+    "max retries", "server_alive", "not alive",
 )
+
+
+class ApexOffline(RuntimeError):
+    """APEX endpoint could not be reached or did not answer in time."""
 
 
 def strip_notice_prefix(text: str) -> str:
@@ -44,14 +59,60 @@ def strip_notice_prefix(text: str) -> str:
     return text
 
 
-def recovery_roster() -> list[dict]:
-    """Known local bootstrap identities; configuration is not inference readiness."""
-    return [{**agent, "enabled": True, "status": "on_demand",
-             "available": True, "storage_degraded": True,
-             "role": "Local recovery chat; no operational tools", "roles": ["recovery-chat"],
+def classify_runtime_error(error: str) -> str:
+    """Map a runtime failure string to a lane state; transport faults are `offline`."""
+    lowered = str(error or "").lower()
+    if any(marker in lowered for marker in _OFFLINE_MARKERS):
+        return STATE_OFFLINE
+    return "error"
+
+
+def call_apex(call_model, model: str, messages: list[dict]) -> tuple[str, int]:
+    """Invoke APEX and convert transport/timeout failures into ApexOffline."""
+    try:
+        text, tokens = call_model(model, messages)
+    except ApexOffline:
+        raise
+    except Exception as exc:  # network layer raised instead of returning an error marker
+        error = str(exc) or exc.__class__.__name__
+        if classify_runtime_error(error) == STATE_OFFLINE:
+            raise ApexOffline(error) from exc
+        raise RuntimeError(error) from exc
+    text = strip_notice_prefix(str(text or ""))
+    if not text.strip() or text.startswith("[local runtime error:"):
+        error = text or "Local runner returned no content"
+        if classify_runtime_error(error) == STATE_OFFLINE:
+            raise ApexOffline(error)
+        raise RuntimeError(error)
+    return text, int(tokens or 0)
+
+
+def apex_roster(*, storage_degraded: bool = False) -> list[dict]:
+    """Single-entry roster; DB-independent so routing never depends on the agents table."""
+    role = "Local recovery chat; no operational tools" if storage_degraded else "Sole local chat target; no operational tools"
+    return [{**APEX_AGENT, "enabled": True, "status": "on_demand",
+             "available": True, "storage_degraded": storage_degraded,
+             "role": role, "roles": ["recovery-chat"] if storage_degraded else ["apex-chat"],
              "availability_reason": "", "eta_seconds": 90, "temperature": 0.2,
-             "api_key_var": "", "api_key_set": None, "system_prompt": NO_BS_DIRECTIVE}
-            for agent in RECOVERY_AGENTS]
+             "api_key_var": "", "api_key_set": None, "system_prompt": NO_BS_DIRECTIVE}]
+
+
+def recovery_roster() -> list[dict]:
+    """Known local bootstrap identity; configuration is not inference readiness."""
+    return apex_roster(storage_degraded=True)
+
+
+def apex_system_prompt(agent: dict, *, recovery: bool) -> str:
+    base = (
+        f"You are {agent.get('label') or agent['name']}, the local DEOS chat agent for JD.\n"
+        + NO_BS_DIRECTIVE + "\n" + conversation_lesson()
+        + "\nNo tools are attached. Never claim to have read files, repaired storage, "
+        "or executed commands. Ask for missing context. Do not echo wrapper status text."
+    )
+    if recovery:
+        base += ("\nThe current recovery thread is available; original database memories are unavailable. "
+                 "Use only this recovery thread; unavailable memories must not be invented.")
+    return base
 
 
 def storage_fault(connect) -> str | None:
@@ -140,24 +201,21 @@ class ContinuityChat:
                 model = str(agent.get("model") or "")
                 if not model or agent.get("tier") != "local":
                     raise ValueError("Recovery dispatch requires a registered local model")
-                messages = [{"role": "system", "content":
-                             f"You are {agent['name']}, a local DEOS agent for JD.\n"
-                             + NO_BS_DIRECTIVE + "\n" + conversation_lesson()
-                             + "\nThe current recovery thread is available; original database memories are unavailable. Do not echo wrapper status text."
-                             + "\nNo tools are attached. Never claim to have read files, repaired storage, "
-                             "or executed commands. Ask for missing context. "
-                             "Use only this recovery thread; unavailable memories must not be invented."}]
+                if model != APEX_AGENT["model"]:
+                    raise ValueError("Recovery dispatch permits only the APEX model")
+                messages = [{"role": "system", "content": apex_system_prompt(agent, recovery=True)}]
                 for item in previous:
                     messages.append({"role": "user" if item["sender"] == "user" else "assistant",
                                      "content": item['content'] if item['sender'] == 'user' else strip_notice_prefix(item['content'])})
                 messages.append({"role": "user", "content": data["message"].strip()})
-                text, tokens = call_model(model, messages)
-                text = strip_notice_prefix(text)
-                if not text.strip() or text.startswith("[local runtime error:"):
-                    error = text or "Local runner returned no content"
-                    thread["last_error"] = {"agent": agent["name"], "model": model, "error": error}
+                try:
+                    text, tokens = call_apex(call_model, model, messages)
+                except RuntimeError as exc:
+                    state = STATE_OFFLINE if isinstance(exc, ApexOffline) else "error"
+                    thread["last_error"] = {"agent": agent["name"], "model": model,
+                                            "error": str(exc), "state": state}
                     _write_json(path, thread)
-                    raise RuntimeError(error)
+                    raise
                 content = NOTICE + "\n\n" + text
                 thread["messages"].append(self._message(thread, agent["name"], content))
                 _write_json(path, thread)
@@ -165,7 +223,7 @@ class ContinuityChat:
                                   "tokens": tokens, "elapsed_ms": int((time.monotonic() - started) * 1000),
                                   "pending": False, "model": model, "runtime_class": "local"})
             return {
-                "ok": True, "mode": "local_recovery", "storage_degraded": True,
+                "ok": True, "mode": "local_recovery", "state": STATE_RECOVERY, "storage_degraded": True,
                 "storage_error": fault, "conversation_id": thread["id"],
                 "recovered_from_conversation_id": thread["original_conversation_id"],
                 "agent": responses[0]["agent"], "response": responses[0]["response"],

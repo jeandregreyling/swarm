@@ -41,6 +41,42 @@ database memories or execute operational skills. Healthy storage keeps the
 normal path; recovery threads retain their separate history. Historical
 conversations are unavailable, not silently replaced with empty records.
 
+### APEX-only local chat lane
+
+Every `local_only` `/api/chat` request (both the chat tile and home chat always
+send `local_only: true`) now routes to a single target: `apex` →
+`gpt-oss:20b`, the externally owned llama-server registered in
+`ops/llm_registry.yaml`. The former Gemma/Qwen/LLaMA/Mistral bootstrap roster
+is gone; `core/chat_continuity.py` exposes `APEX_AGENT`, `apex_roster()` and a
+`recovery_roster()` that is the same single entry flagged `storage_degraded`.
+The lane never reads the `agents` table and never imports per-agent modules.
+Requested agents are preserved in the response as `routed_from`; relays are
+refused with HTTP 400. Non-local traffic during a storage fault returns 503.
+
+Responses carry an explicit `state`:
+
+| `state`    | Meaning                                              | HTTP |
+|------------|------------------------------------------------------|------|
+| `ok`       | primary SQLite healthy, APEX answered                 | 200  |
+| `recovery` | `storage_fault()` saw SQLite corruption; continuity journal used | 200 / 503 |
+| `offline`  | APEX endpoint unreachable or timed out (`ApexOffline`) | 503  |
+| `error`    | APEX returned a non-transport runtime error           | 500  |
+
+Transport/timeout classification lives in `classify_runtime_error()`; the user
+message is always persisted (primary row or continuity journal) before the
+model call, so an offline APEX never loses input. The UIs show the state in
+`#home-chat-status` and `#chat-lane-state` ("Offline" / "Recovery") and no
+longer poll: thread, pending-job and runtime refreshes are driven by the
+`chat` SSE channel from `frontend/blueprints/sse.py`.
+
+The memory panel's `/api/memory` retrieval uses the fixed `memory_apex` table,
+not registry `memory_table` identifiers. Omitted or `apex` agent selections are
+accepted; explicit non-APEX selections return HTTP 400. Search, importance,
+archived filtering, ordering and limit bounds are retained. Local notes are
+restricted to the APEX sandpit. Stored author labels are preserved, including
+historical Fred-authored entries in the APEX table. Legacy storage and registry
+records are not rewritten; existing write/delete APIs remain separate.
+
 The continuity scaffold was instructor-authored earlier. Local Qwen authored
 the subsequently applied authorization preflight and dedicated Studio evidence
 connection; local Gemma authored the visible teaching ledger in Studio.

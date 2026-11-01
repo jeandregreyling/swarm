@@ -1231,7 +1231,7 @@
             <div id="chat-mention-menu" class="chat-mention-menu" role="listbox" aria-label="Agent mentions"></div>
             <div id="chat-attachments"></div>
             <div id="chat-spell-helper" style="display:none; margin-top:0; font-size:11px; color: var(--text-dim);"></div>
-            <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span><span id="chat-dictionary-inline">Dictionary: 0</span></div>
+            <div id="chat-composer-meta"><span id="chat-composer-left">0 chars · 0 words</span><span id="chat-composer-right">0 agents on</span><span id="chat-lane-state" data-lane-state="ok" title="Chat lane state">Ready</span><span id="chat-dictionary-inline">Dictionary: 0</span></div>
           </div>
         </div>
         <div id="chat-thread-runtime" class="chat-thread-runtime"><div class="chat-thread-runtime-head"><div class="chat-thread-runtime-title idle">Thread Runtime · idle</div></div></div>
@@ -1656,23 +1656,11 @@
     <div style="padding:10px 14px 0;border-bottom:1px solid var(--border);background:var(--window-header);flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <span style="font-size:13px;font-weight:700;"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="vertical-align:-1px"><path d="M6 4a2 2 0 0 0-3 1.7v1.8A2.5 2.5 0 0 0 4.8 10H6m4-6a2 2 0 0 1 3 1.7v1.8A2.5 2.5 0 0 1 11.2 10H10M6 4v8m4-8v8M6 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Memory Browser</span>
-        <input type="text" id="memory-search" placeholder="Search all memories..." style="flex:1;padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
+        <input type="text" id="memory-search" placeholder="Search APEX memories..." style="flex:1;padding:5px 10px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;">
         <span id="memory-count" style="font-size:10px;color:var(--text-dim);white-space:nowrap;"></span>
       </div>
       <div id="memory-agent-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
-        <button class="mem-tab active" data-agent="" onclick="_memTab(this,'')">All</button>
-        <button class="mem-tab" data-agent="gemma"     onclick="_memTab(this,'gemma')">1 · Gemma3</button>
-        <button class="mem-tab" data-agent="llama"     onclick="_memTab(this,'llama')">2 · LlaMA</button>
-        <button class="mem-tab" data-agent="qwen"      onclick="_memTab(this,'qwen')">4 · Qwen</button>
-        <button class="mem-tab" data-agent="librarian" onclick="_memTab(this,'librarian')">5 · Librarian</button>
-        <button class="mem-tab" data-agent="eight"     onclick="_memTab(this,'eight')">8 · Eight</button>
-        <button class="mem-tab" data-agent="nine"      onclick="_memTab(this,'nine')">9 · Groq</button>
-        <button class="mem-tab" data-agent="ten"       onclick="_memTab(this,'ten')">10 · Ten</button>
-        <button class="mem-tab" data-agent="eleven"    onclick="_memTab(this,'eleven')">11 · Grok</button>
-        <button class="mem-tab" data-agent="twelve"    onclick="_memTab(this,'twelve')">12 · Claude</button>
-        <button class="mem-tab" data-agent="thirteen"  onclick="_memTab(this,'thirteen')">13 · HF</button>
-        <button class="mem-tab" data-agent="twenty"  onclick="_memTab(this,'twenty')">7 · Twenty</button>
-        <button class="mem-tab" data-agent="fred"  onclick="_memTab(this,'fred')">21 · Fred</button>
+        <button class="mem-tab active" data-agent="apex" onclick="_memTab(this,'apex')">APEX</button>
       </div>
       <div id="memory-source-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding-bottom:8px;">
         <button class="mem-tab active" data-source="all" onclick="_memSourceTab(this,'all')">All Sources</button>

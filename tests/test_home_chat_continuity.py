@@ -67,6 +67,37 @@ def test_home_chat_refreshes_history_without_resetting_the_view():
     assert '_hcConversations.slice(0, 30)' not in source
 
 
+def test_chat_surfaces_are_sse_driven_and_expose_lane_state():
+    views = Path(__file__).resolve().parents[1] / 'frontend/static/js/views'
+    home = (views / 'home-chat.js').read_text()
+    tile = (views / 'chat.js').read_text()
+    template = (Path(__file__).resolve().parents[1] / 'frontend/templates/terminal_base.html').read_text()
+
+    # No 2s polling loops remain on either chat surface.
+    assert 'setInterval' not in home
+    assert 'setTimeout(poll' not in home and 'maxPolls' not in home
+    for retired in ('window.__fridaysThreadRuntimePollTimer = setInterval',
+                    'window.__fridaysChatLiveSyncTimer = setInterval',
+                    'window.__fridaysChatLiveSyncThreadRefreshTimer = setInterval',
+                    'maxTicks'):
+        assert retired not in tile, retired
+    # Pending-job tracking is an SSE tick handle, not an interval.
+    assert 'tick() { if (!this.stopped && !inFlight) tick(); }' in tile
+    assert 'clearInterval(window.__fridaysChatPendingPollTimer)' not in tile
+
+    # Both surfaces subscribe to the backend SSE chat channel.
+    assert "document.addEventListener('sse:chat'" in home
+    assert tile.count("document.addEventListener('sse:chat'") >= 3
+
+    # Offline / Recovery lane state is surfaced from the backend `state` field.
+    for surface in (home, tile):
+        assert "offline: 'Offline'" in surface and "recovery: 'Recovery'" in surface
+    assert '_hcApplyLaneResponse(data)' in home
+    assert "_setChatLaneState(data && data.state" in tile
+    assert 'id="chat-lane-state"' in template
+    assert 'id="home-chat-status"' in template
+
+
 def test_seven_failed_turn_does_not_dump_swarm_state(monkeypatch):
     monkeypatch.setattr(seven_agent, '_read_state', lambda: {'local_agents': ['Gemma'], 'open_tickets': 6})
     monkeypatch.setattr(seven_agent, '_load_memory', lambda *a, **k: [])

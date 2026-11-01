@@ -53,12 +53,36 @@ except ImportError:
     _CB_AVAILABLE = False
 
 
+def _sse_module():
+    """Resolve the SSE module instance whose blueprint the running app registered.
+
+    terminal.py registers `blueprints.sse` (frontend/ on sys.path) while tests
+    import `frontend.blueprints.sse`; those are distinct module objects with
+    separate subscriber lists, so publishing to the wrong one reaches nobody.
+    """
+    import importlib
+    import sys
+
+    try:
+        from flask import current_app
+        registered = current_app.blueprints.get('sse')
+    except Exception:
+        registered = None
+    if registered is not None:
+        mod = sys.modules.get(registered.import_name)
+        if mod is not None and hasattr(mod, 'publish_chat_update'):
+            return mod
+    for name in ('blueprints.sse', 'frontend.blueprints.sse'):
+        mod = sys.modules.get(name)
+        if mod is not None and hasattr(mod, 'publish_chat_update'):
+            return mod
+    return importlib.import_module('frontend.blueprints.sse')
+
+
 def _sse_chat(conversation_id, agent, status, **extra):
     """Lazy SSE publish to avoid cross-blueprint import at module load."""
     try:
-        import importlib
-        sse_mod = importlib.import_module('frontend.blueprints.sse')
-        sse_mod.publish_chat_update(conversation_id, agent, status, **extra)
+        _sse_module().publish_chat_update(conversation_id, agent, status, **extra)
     except Exception:
         pass
 
@@ -1693,27 +1717,41 @@ def api_chat():
 
     if not message:
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
-    from core.chat_continuity import ContinuityChat, recovery_roster, storage_fault
+    from core.chat_continuity import (
+        STATE_OFFLINE, STATE_OK, STATE_RECOVERY, APEX_AGENT, ApexOffline, ContinuityChat,
+        apex_roster, apex_system_prompt, call_apex, recovery_roster, storage_fault,
+    )
 
-    if data.get("local_only") is True:
-        if requested_agents and isinstance(requested_agents, list):
-            requested_names = requested_agents
+    apex_lane = data.get("local_only") is True
+    routed_from = []
+    if apex_lane:
+        # APEX is the sole local routing target. Record what the UI asked for
+        # so the response is honest about the override, then force the lane.
+        if isinstance(requested_agents, list):
+            routed_from = [str(item or '').strip().lower() for item in requested_agents if str(item or '').strip()]
         elif explicit_agent_field:
-            requested_names = [explicit_agent_field]
-        else:
-            requested_names = []
-
-        roster = _reg_routable()
-        roster_dict = {item["name"].lower(): item for item in roster}
-        for name in requested_names:
-            normalized_name = str(name or "").strip().lower()
-            if normalized_name in roster_dict and roster_dict[normalized_name]['tier'] != 'local':
-                return jsonify({"ok": False, "response": "Local chat cannot dispatch to a non-local agent."}), 400
+            routed_from = [explicit_agent_field]
+        if relay_from:
+            return jsonify({
+                'ok': False, 'state': STATE_OK,
+                'response': 'APEX is the only local routing target; agent relays are disabled.',
+            }), 400
+        requested_agents = [APEX_AGENT['name']]
+        explicit_agent_field = APEX_AGENT['name']
+        agent = APEX_AGENT['name']
 
     primary_chat_fault = storage_fault(get_connection)
-    routable_rows = recovery_roster() if primary_chat_fault else _reg_routable()
-    if primary_chat_fault and not explicit_agent_field and not requested_agents:
-        agent = 'qwen'
+    if apex_lane:
+        routable_rows = recovery_roster() if primary_chat_fault else apex_roster()
+    elif primary_chat_fault:
+        # Non-local or relayed traffic cannot be served while primary storage is faulted;
+        # say so explicitly instead of failing agent validation against the APEX-only roster.
+        return jsonify({
+            'ok': False, 'state': STATE_RECOVERY, 'storage_degraded': True,
+            'response': 'Primary chat storage is unavailable. Recovery chat permits local-only, non-relayed messages.',
+        }), 503
+    else:
+        routable_rows = _reg_routable()
 
     # Force parallel dispatch when user explicitly selects multiple agents.
     # Sequential stalling is for relay chains, not multi-agent fan-out.
@@ -2624,27 +2662,47 @@ def api_chat():
         continuity = ContinuityChat()
         continuing_recovery = continuity.owns_id(requested_conv_id)
         fault = primary_chat_fault
+        from core import llm
+
+        def apex_model(model, messages):
+            return llm.chat_via_gateway(
+                model, messages, temperature=0.2, idle_timeout_s=60, absolute_timeout_s=180,
+                options={'num_ctx': 8192, 'num_predict': 1800},
+            )
+
+        def _offline_response(exc, conversation_id=None, *, recovery=False):
+            _LOG.error('APEX offline: %s', exc)
+            payload = {
+                'ok': False, 'state': STATE_OFFLINE, 'agent': APEX_AGENT['name'],
+                'model': APEX_AGENT['model'], 'storage_degraded': bool(recovery),
+                'response': f"APEX is offline: {exc}",
+                'routed_from': routed_from,
+            }
+            if conversation_id is not None:
+                payload['conversation_id'] = conversation_id
+            return jsonify(payload), 503
+
         if fault or continuing_recovery:
             if data.get('local_only') is not True or relay_from:
                 return jsonify({
-                    'ok': False, 'storage_degraded': True,
+                    'ok': False, 'state': STATE_RECOVERY, 'storage_degraded': True,
                     'response': 'Primary chat storage is unavailable. Recovery chat permits local-only, non-relayed messages.',
                 }), 503
             rows = {row['name'].lower(): row for row in routable_rows}
             selected = [rows[name] for name in normalized_agents if name in rows]
             if len(selected) != len(normalized_agents) or not selected:
-                return jsonify({'ok': False, 'response': 'No registered local recovery agent available.'}), 503
-            from core import llm
+                return jsonify({'ok': False, 'state': STATE_RECOVERY, 'response': 'No registered local recovery agent available.'}), 503
 
-            def recovery_model(model, messages):
-                return llm.chat_via_gateway(
-                    model, messages, temperature=0.2, idle_timeout_s=60, absolute_timeout_s=180,
-                    options={'num_ctx': 8192, 'num_predict': 1800},
-                )
-
-            return jsonify(continuity.send(
-                data, selected, identity['effective_user'],
-                fault or 'Continuing a separately persisted recovery thread.', recovery_model))
+            try:
+                result = continuity.send(
+                    data, selected, identity['effective_user'],
+                    fault or 'Continuing a separately persisted recovery thread.', apex_model)
+            except ApexOffline as exc:
+                return _offline_response(exc, recovery=True)
+            result['routed_from'] = routed_from
+            _sse_chat(result['conversation_id'], APEX_AGENT['name'], 'completed',
+                      state=STATE_RECOVERY, model=APEX_AGENT['model'])
+            return jsonify(result)
         conv_id = None
         if requested_conv_id is not None:
             try:
@@ -2783,6 +2841,49 @@ def api_chat():
         else:
             thread_rows = _fetch_chat_thread_rows(conv_id, limit=60)
         history = _chat_history_from_rows(thread_rows)
+
+        if apex_lane:
+            # Healthy primary storage: dispatch straight to APEX via the gateway and
+            # persist to the primary thread. No per-agent module, no fallback model.
+            apex_row = next(row for row in routable_rows if row['name'] == APEX_AGENT['name'])
+            messages = [{'role': 'system', 'content': apex_system_prompt(apex_row, recovery=False)}]
+            messages.extend(history)
+            if not history or history[-1]['role'] != 'user':
+                messages.append({'role': 'user', 'content': message})
+            started = time.monotonic()
+            _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=APEX_AGENT['model'])
+            try:
+                response_text, tokens_used = call_apex(apex_model, APEX_AGENT['model'], messages)
+            except ApexOffline as exc:
+                _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state=STATE_OFFLINE, error=str(exc))
+                return _offline_response(exc, conv_id)
+            except RuntimeError as exc:
+                _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state='error', error=str(exc))
+                _LOG.error('APEX runtime error: %s', exc)
+                return jsonify({
+                    'ok': False, 'state': 'error', 'agent': APEX_AGENT['name'],
+                    'model': APEX_AGENT['model'], 'conversation_id': conv_id,
+                    'response': f'APEX error: {exc}', 'routed_from': routed_from,
+                }), 500
+            elapsed_ms = int((time.monotonic() - started) * 1000)
+            log_message(conv_id, APEX_AGENT['name'], response_text, to_agent='user',
+                        message_type='response', tokens_used=tokens_used)
+            _sse_chat(conv_id, APEX_AGENT['name'], 'completed', state=STATE_OK, tokens=tokens_used)
+            entry = {
+                'agent': APEX_AGENT['name'], 'response': response_text, 'tokens': tokens_used,
+                'elapsed_ms': elapsed_ms, 'runtime_class': 'local', 'eta_seconds': 0,
+                'pending': False, 'job_id': None, 'model': APEX_AGENT['model'],
+            }
+            return jsonify({
+                'ok': True, 'state': STATE_OK, 'mode': 'apex', 'storage_degraded': False,
+                'agent': APEX_AGENT['name'], 'model': APEX_AGENT['model'],
+                'response': response_text, 'tokens': tokens_used, 'responses': [entry],
+                'pending_jobs': [], 'agents': normalized_agents, 'routed_from': routed_from,
+                'history_mode': history_mode,
+                'history_limit': history_limit if history_mode == 'recent' else None,
+                'conversation_id': conv_id,
+            })
+
         transcript = _thread_transcript_from_rows(thread_rows[-12:])
         reply_contexts = {
             selected_agent: _conversation_reply_context_from_rows(thread_rows, selected_agent)

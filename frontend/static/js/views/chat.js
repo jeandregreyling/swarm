@@ -688,21 +688,57 @@ function pollActiveThreadRuntime(force = false) {
     });
 }
 
-// Thread runtime polling — intentional SSE fallback.
-// The swarm uses polling (not SSE/WebSockets) for thread runtime status because:
-// 1. Polling is simpler and more reliable behind reverse proxies and on mobile.
-// 2. The 2-second interval is sufficient for the relay queue UI.
-// 3. SSE connections would need per-conversation multiplexing — complexity with no UX gain.
-// This is a deliberate architecture choice, not a TODO.
+// Thread runtime refresh — SSE-driven, no interval.
+// `/api/events` publishes a `chat` event (running/completed/failed) whenever a
+// job state changes; see frontend/blueprints/sse.py. We refresh the runtime
+// panel on that signal plus explicit force calls, so no 2s polling loop runs.
+window.__fridaysThreadRuntimeSseBound = window.__fridaysThreadRuntimeSseBound || false;
 function startThreadRuntimePolling() {
   if (window.__fridaysThreadRuntimePollTimer) {
     clearInterval(window.__fridaysThreadRuntimePollTimer);
     window.__fridaysThreadRuntimePollTimer = null;
   }
   pollActiveThreadRuntime(true);
-  window.__fridaysThreadRuntimePollTimer = setInterval(() => {
-    pollActiveThreadRuntime(false);
-  }, 2000);
+  if (window.__fridaysThreadRuntimeSseBound) return;
+  window.__fridaysThreadRuntimeSseBound = true;
+  document.addEventListener('sse:chat', (e) => {
+    const d = (e && e.detail) || {};
+    const convId = window.__fridaysChatConversationId;
+    if (!convId) return;
+    if (d.conversation_id && String(d.conversation_id) !== String(convId)) return;
+    if (d.state) _setChatLaneState(d.state, d.error || '');
+    pollActiveThreadRuntime(true);
+  });
+}
+
+// ── Lane state surface: ok | recovery | offline | error ─────────────────────
+// `recovery` = primary storage exception (continuity journal in use).
+// `offline`  = APEX endpoint unreachable / timed out.
+window.__fridaysChatLaneState = window.__fridaysChatLaneState || 'ok';
+const _CHAT_LANE_LABEL = { ok: 'Ready', recovery: 'Recovery', offline: 'Offline', error: 'Error' };
+function _setChatLaneState(state, detail) {
+  const next = String(state || 'ok').toLowerCase();
+  const resolved = _CHAT_LANE_LABEL[next] ? next : 'error';
+  window.__fridaysChatLaneState = resolved;
+  const root = document.getElementById('chat-layout');
+  if (root) root.dataset.laneState = resolved;
+  const pill = document.getElementById('chat-lane-state');
+  if (pill) {
+    pill.textContent = _CHAT_LANE_LABEL[resolved];
+    pill.dataset.laneState = resolved;
+    pill.title = detail ? String(detail) : _CHAT_LANE_LABEL[resolved];
+  }
+  return resolved;
+}
+
+// Stop tracking pending jobs for the chat tile (replaces clearInterval on the
+// old 2s poll timer; the handle is now an SSE tick object).
+function _clearPendingChatTracking() {
+  const handle = window.__fridaysChatPendingPollTimer;
+  if (handle && typeof handle.stop === 'function') {
+    try { handle.stop(); } catch (_) {}
+  }
+  window.__fridaysChatPendingPollTimer = null;
 }
 
 function _humanBytes(bytes) {
@@ -5059,8 +5095,7 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
   if (!conversationId || !Array.isArray(jobIds) || !jobIds.length) return;
   const sameConv = Number(window.__fridaysChatPendingConversationId || 0) === Number(conversationId || 0);
   if (!sameConv && window.__fridaysChatPendingPollTimer) {
-    clearInterval(window.__fridaysChatPendingPollTimer);
-    window.__fridaysChatPendingPollTimer = null;
+    _clearPendingChatTracking();
     window.__fridaysChatPendingJobIds = [];
     window.__fridaysChatPendingLoadCtls = [];
   }
@@ -5073,12 +5108,18 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
   }
   if (window.__fridaysChatPendingPollTimer) return;
 
-  let ticks = 0;
-  const maxTicks = 180; // ~6 minutes at 2s interval
-  const timer = setInterval(() => {
-    ticks += 1;
+  // SSE-driven: `tick` runs once per `sse:chat` signal for this conversation
+  // (see the document listener below) instead of on a 2s interval.
+  let inFlight = false;
+  const timer = {
+    stopped: false,
+    stop() { this.stopped = true; },
+    tick() { if (!this.stopped && !inFlight) tick(); },
+  };
+  const tick = () => {
     const ids = (window.__fridaysChatPendingJobIds || []).slice();
     if (!ids.length) return;
+    inFlight = true;
     const q = encodeURIComponent(ids.join(','));
     fetch('/api/chat/jobs/status?conversation_id=' + encodeURIComponent(conversationId) + '&job_ids=' + q)
       .then(r => r.json())
@@ -5090,8 +5131,8 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
         _renderThreadRuntimePanel(jobs, 'live');
         _syncThinkingBubbles(jobs);
         const done = jobs.every(j => j.status === 'completed' || j.status === 'failed' || j.status === 'cancelled');
-        if (done || ticks >= maxTicks) {
-          clearInterval(timer);
+        if (done) {
+          timer.stop();
           if (window.__fridaysChatPendingPollTimer === timer) {
             window.__fridaysChatPendingPollTimer = null;
             window.__fridaysChatPendingJobIds = [];
@@ -5174,28 +5215,14 @@ function _pollPendingChatJobs(conversationId, jobIds, loadingCtl) {
         }
       })
       .catch(() => {
-        if (ticks >= maxTicks) {
-          clearInterval(timer);
-          if (window.__fridaysChatPendingPollTimer === timer) {
-            window.__fridaysChatPendingPollTimer = null;
-            window.__fridaysChatPendingJobIds = [];
-            window.__fridaysChatPendingConversationId = null;
-            const loadCtls = (window.__fridaysChatPendingLoadCtls || []).slice();
-            window.__fridaysChatPendingLoadCtls = [];
-            loadCtls.forEach(ctl => {
-              try { ctl.stop([]); } catch (_) {}
-            });
-          }
-          _appendChatBubble('system', 'Stopped waiting for background response status (timeout).');
-          window.__fridaysRuntimeLoadingAgents = [];
-          pollActiveThreadRuntime(true);
-          notifyDesktop('Fridays Chat', 'Background run timed out while polling status.', {
-            tag: 'fridays-chat-timeout-' + String(conversationId || 'none')
-          });
-        }
-      });
-  }, 2000);
+        // Keep tracking; the next `sse:chat` signal retries the status fetch.
+        _setChatLaneState('offline', 'job status fetch failed');
+      })
+      .finally(() => { inFlight = false; });
+  };
   window.__fridaysChatPendingPollTimer = timer;
+  // One immediate fetch covers the window between the ack and SSE attach.
+  tick();
 }
 
 async function stopPendingAgents() {
@@ -5226,10 +5253,7 @@ async function stopPendingAgents() {
     const hardKillOk = hardKills.filter(item => item && item.ok).length;
     const suffix = hardKillOk > 0 ? ` · hard-killed ${hardKillOk} local runtime${hardKillOk === 1 ? '' : 's'}` : '';
     showToast(count > 0 ? `Stopped ${count} agent run(s)${suffix}` : 'No running jobs were stoppable', count > 0 ? 'success' : 'info');
-    if (window.__fridaysChatPendingPollTimer) {
-      clearInterval(window.__fridaysChatPendingPollTimer);
-      window.__fridaysChatPendingPollTimer = null;
-    }
+    _clearPendingChatTracking();
     const loadCtls = (window.__fridaysChatPendingLoadCtls || []).slice();
     window.__fridaysChatPendingLoadCtls = [];
     loadCtls.forEach(ctl => {
@@ -5957,6 +5981,11 @@ function loadConversationMessages(convId, options = {}) {
     });
 }
 
+// Live sync — SSE-driven, no interval. The backend publishes a `chat` SSE
+// event when a message is committed (completed/failed); we reload the active
+// thread on that signal, and refresh the thread list on the same event plus
+// `swarm:conversation-changed`.
+window.__fridaysChatLiveSyncSseBound = window.__fridaysChatLiveSyncSseBound || false;
 function startChatLiveSyncService() {
   if (window.__fridaysChatLiveSyncTimer) {
     clearInterval(window.__fridaysChatLiveSyncTimer);
@@ -5974,12 +6003,21 @@ function startChatLiveSyncService() {
   };
 
   syncNow();
-  window.__fridaysChatLiveSyncTimer = setInterval(syncNow, 1800);
-  window.__fridaysChatLiveSyncThreadRefreshTimer = setInterval(() => {
+  if (window.__fridaysChatLiveSyncSseBound) return;
+  window.__fridaysChatLiveSyncSseBound = true;
+  document.addEventListener('sse:chat', (e) => {
+    const d = (e && e.detail) || {};
     const convId = Number(window.__fridaysChatConversationId || 0);
     if (!convId) return;
+    if (d.conversation_id && Number(d.conversation_id) !== convId) return;
+    if (d.status !== 'completed' && d.status !== 'failed') return;
+    syncNow();
     refreshChatThreadList(convId);
-  }, 15000);
+  });
+  window.addEventListener('swarm:conversation-changed', () => {
+    const convId = Number(window.__fridaysChatConversationId || 0);
+    if (convId) refreshChatThreadList(convId);
+  });
 }
 
 function refreshChatThreadList(preferredId = null) {
@@ -6418,13 +6456,15 @@ function sendMessage(source = 'user', relayMeta = null) {
   })
   .then(r => r.json())
   .then(data => {
+    // Backend lane state: ok | recovery | offline | error.
+    const laneState = _setChatLaneState(data && data.state, data && data.response);
     if (!data || data.ok === false) {
       loadingCtl.stop([]);
       if (optimisticJobId) _removeThinkingBubbleById(optimisticJobId);
       window.__fridaysChatPendingJobIds = [];
       window.__fridaysChatPendingConversationId = null;
       const err = (data && (data.error || data.response)) || 'Request failed.';
-      _appendChatBubble('system', err);
+      _appendChatBubble('system', laneState === 'offline' ? `Offline — ${err}` : err);
       messages.scrollTop = messages.scrollHeight;
       return;
     }
@@ -6546,10 +6586,7 @@ function sendMessage(source = 'user', relayMeta = null) {
       loadingCtl.stop(allResponses);
       window.__fridaysChatPendingJobIds = [];
       window.__fridaysChatPendingConversationId = null;
-      if (window.__fridaysChatPendingPollTimer) {
-        clearInterval(window.__fridaysChatPendingPollTimer);
-        window.__fridaysChatPendingPollTimer = null;
-      }
+      _clearPendingChatTracking();
       if (data && data.conversation_id) {
         loadConversationMessages(data.conversation_id);
       }
@@ -6563,11 +6600,10 @@ function sendMessage(source = 'user', relayMeta = null) {
     if (optimisticJobId) _removeThinkingBubbleById(optimisticJobId);
     window.__fridaysChatPendingJobIds = [];
     window.__fridaysChatPendingConversationId = null;
-    if (window.__fridaysChatPendingPollTimer) {
-      clearInterval(window.__fridaysChatPendingPollTimer);
-      window.__fridaysChatPendingPollTimer = null;
-    }
-    _appendChatBubble('system', 'Error: ' + e.message);
+    _clearPendingChatTracking();
+    // A transport failure between the browser and the backend is Offline.
+    _setChatLaneState('offline', e && e.message);
+    _appendChatBubble('system', 'Offline — ' + e.message);
   })
   .finally(() => {
     _renderChatRelayControls();
@@ -6576,8 +6612,8 @@ function sendMessage(source = 'user', relayMeta = null) {
 }
 
 // ── SSE real-time chat updates ──────────────────────────────────────────────
-// When an async job status changes via SSE, trigger an immediate poll so the
-// UI updates without waiting for the next 2s tick.
+// When an async job status changes via SSE, run the pending-job tick for the
+// active conversation. This is the only trigger — there is no interval.
 document.addEventListener('sse:chat', function(e) {
   try {
     const d = e.detail || {};
@@ -6589,7 +6625,12 @@ document.addEventListener('sse:chat', function(e) {
     if (!pendingIds.length) return;
     // If we have a job_id, check it's one we're tracking
     if (d.job_id && !pendingIds.includes(d.job_id)) return;
-    // Trigger an immediate status fetch (reuses the existing poll endpoint)
+    const handle = window.__fridaysChatPendingPollTimer;
+    if (handle && typeof handle.tick === 'function') {
+      handle.tick();
+      return;
+    }
+    // No tracking handle (e.g. page reloaded mid-run): fetch status once.
     const q = encodeURIComponent(pendingIds.join(','));
     fetch('/api/chat/jobs/status?conversation_id=' + encodeURIComponent(convId) + '&job_ids=' + q)
       .then(r => r.json())

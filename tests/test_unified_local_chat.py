@@ -86,21 +86,35 @@ def test_executor_reports_backend_results_not_model_claims(monkeypatch):
     assert receipts == [{'skill': 'file_read', 'status': 'failed'}]
 
 
-def test_local_only_chat_rejects_cloud_before_identity_or_execution(monkeypatch):
+def test_local_only_chat_never_dispatches_cloud_and_routes_to_apex(monkeypatch, tmp_path):
     from flask import Flask
     from frontend.blueprints import chat
+    import core.chat_continuity
+    from core import llm
 
-    monkeypatch.setattr(chat, '_reg_routable', lambda: [
-        {'name': 'gemma', 'tier': 'local'},
-        {'name': 'ten', 'tier': 'paid'},
-    ])
+    # The APEX lane must not consult the agents table at all.
+    monkeypatch.setattr(chat, '_reg_routable', lambda: pytest.fail('APEX lane must not read the agents table'))
     monkeypatch.setattr(chat, '_resolve_identity_or_response',
-                        lambda *a, **kw: pytest.fail('must reject before identity or dispatch'))
+                        lambda *a, **kw: ({'effective_user': 'ghost'}, None))
+    monkeypatch.setattr(chat, 'get_current_user', lambda: None)
+    monkeypatch.setattr(core.chat_continuity, 'storage_fault', lambda _connect: 'database disk image is malformed')
+    store = core.chat_continuity.ContinuityChat(tmp_path)
+    monkeypatch.setattr(core.chat_continuity, 'ContinuityChat', lambda: store)
+    models = []
+
+    def gateway(model, *_a, **_k):
+        models.append(model)
+        return 'APEX reply', 2
+
+    monkeypatch.setattr(llm, 'chat_via_gateway', gateway)
     app = Flask(__name__)
     app.register_blueprint(chat.chat_bp)
     with app.test_client() as client:
         response = client.post('/api/chat', json={
-            'message': 'Open a program', 'agents': ['ten'], 'local_only': True,
+            'message': 'Open a program', 'agents': ['ten'], 'local_only': True, 'new_thread': True,
         })
-    assert response.status_code == 400
-    assert response.get_json()['response'] == 'Local chat cannot dispatch to a non-local agent.'
+    assert response.status_code == 200, response.get_json()
+    data = response.get_json()
+    assert data['agent'] == 'apex' and data['agents'] == ['apex']
+    assert data['routed_from'] == ['ten']
+    assert models == ['gpt-oss:20b']
