@@ -46,6 +46,7 @@
 
     _source.onopen = function() {
       _retryMs = 2000;
+      document.dispatchEvent(new CustomEvent('sse:connected'));
       if (window.__SWARM_DEBUG) console.debug('[SSE] connected');
     };
 
@@ -58,7 +59,7 @@
     };
 
     // Listen for typed events
-    ['chat', 'agent', 'bus'].forEach(function(type) {
+    ['chat', 'agent', 'bus', 'tool_approval_pending'].forEach(function(type) {
       _source.addEventListener(type, function(e) {
         try {
           var data = JSON.parse(e.data);

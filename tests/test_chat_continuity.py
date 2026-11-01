@@ -411,6 +411,91 @@ def test_apex_legacy_skill_execution_is_disabled(healthy_route, monkeypatch):
     assert calls == []
 
 
+@pytest.mark.parametrize("decision", [True, False])
+def test_chat_suspends_then_approval_route_resumes_same_thread(healthy_route, monkeypatch, tmp_path, decision):
+    from frontend.blueprints import chat
+    from core import llm, tool_approval
+    from core.apex_tools import ReadOnlyRepository
+    import subprocess
+    import threading
+    import time
+
+    client, connect, _ = healthy_route
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    (root / "probe.py").write_text("value = 1\n")
+    subprocess.run(["git", "-C", str(root), "add", "--", "probe.py"], check=True)
+    repository = ReadOnlyRepository(root)
+    store = tool_approval.ApprovalStore()
+    monkeypatch.setattr(tool_approval, "APPROVALS", store)
+    monkeypatch.setattr(chat, "get_current_user", lambda: {"username": "ghost", "role": "owner"})
+    monkeypatch.setattr(chat, "can_user_invoke_skill", lambda *_args, **_kw: True)
+    monkeypatch.setattr("core.apex_tools.ReadOnlyRepository", lambda: repository)
+    published = threading.Event()
+
+    class Publisher:
+        def publish(self, name, payload, **kwargs):
+            if name == "tool_approval_pending":
+                published.set()
+
+        def publish_chat_update(self, *args, **kwargs):
+            pass
+
+    monkeypatch.setattr(chat, "_sse_module", lambda: Publisher())
+    models = []
+    outputs = iter([
+        json.dumps({"tool_calls": [{"name": "propose_write_file",
+                                   "arguments": {"path": "probe.py", "content": "# comment\nvalue = 1\n"}}],
+                    "answer": ""}),
+        json.dumps({"tool_calls": [], "answer": "The backend decision is recorded."}),
+    ])
+
+    def model(name, messages, **kwargs):
+        models.append((name, list(messages)))
+        return next(outputs), 2
+
+    monkeypatch.setattr(llm, "chat_via_gateway", model)
+    results = []
+
+    def send():
+        with client.application.test_client() as sender:
+            sender.set_cookie("friday_session", "session-cookie")
+            response = sender.post("/api/chat", json={
+                "message": "Propose adding a comment", "local_only": True, "new_thread": True,
+            })
+            results.append((response.status_code, response.get_json()))
+
+    thread = threading.Thread(target=send)
+    thread.start()
+    try:
+        assert published.wait(5), "No pending proposal event"
+        time.sleep(0.05)
+        assert len(models) == 1 and not results
+        assert (root / "probe.py").read_text() == "value = 1\n"
+        client.set_cookie("friday_session", "session-cookie")
+        pending = client.get("/api/tool-approval").get_json()["pending"][0]
+        response = client.post("/api/tool-approval", json={
+            "transaction_id": pending["transaction_id"], "decision": decision,
+        }, headers={"X-Tool-Approval-CSRF": pending["csrf_token"]})
+        assert response.status_code == 200
+        thread.join(timeout=5)
+        assert not thread.is_alive()
+        assert results[0][0] == 200, results
+        body = results[0][1]
+        assert len(models) == 2
+        assert body["tool_receipts"][0]["status"] == ("succeeded" if decision else "denied")
+        assert ("Approved write completed" if decision else "User Denied Execution") in models[1][1][-1]["content"]
+        with connect() as conn:
+            row = conn.execute("SELECT content FROM messages WHERE message_type='tool_result'").fetchone()
+        assert pending["transaction_id"] in row["content"]
+        assert (root / "probe.py").read_text() == ("# comment\nvalue = 1\n" if decision else "value = 1\n")
+    finally:
+        for transaction in list(store._pending.values()):
+            store.cancel(transaction, "test cleanup")
+        thread.join(timeout=5)
+
+
 def test_healthy_storage_routes_every_local_request_to_apex_and_persists_primary(healthy_route):
     client, connect, gateway_calls = healthy_route
     response = client.post("/api/chat", json={

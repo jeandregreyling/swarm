@@ -102,7 +102,7 @@ def recovery_roster() -> list[dict]:
     return apex_roster(storage_degraded=True)
 
 
-def apex_system_prompt(agent: dict, *, recovery: bool) -> str:
+def apex_system_prompt(agent: dict, *, recovery: bool, proposals: bool = False) -> str:
     directive = NO_BS_DIRECTIVE if recovery else (
         "Reasoning: low\nNever guess paths or results. Discover workspace facts with attached "
         "read-only tools; ask for context only when discovery is unavailable or insufficient."
@@ -119,6 +119,9 @@ def apex_system_prompt(agent: dict, *, recovery: bool) -> str:
     else:
         from core.apex_tools import TOOL_GUIDANCE
         base += TOOL_GUIDANCE
+        if proposals:
+            from core.apex_tools import PROPOSAL_GUIDANCE
+            base += PROPOSAL_GUIDANCE
     return base
 
 

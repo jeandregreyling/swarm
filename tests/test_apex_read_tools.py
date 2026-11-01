@@ -218,7 +218,50 @@ def test_call_limit_rejects_batch_before_any_read(repository, monkeypatch):
 
 
 def test_transport_schema_requires_integer_line_arguments():
-    args = TURN_FORMAT["json_schema"]["schema"]["properties"]["tool_calls"]["items"]["properties"]["arguments"]
+    args = TURN_FORMAT["json_schema"]["schema"]["oneOf"][0]["properties"]["tool_calls"]["items"]["properties"]["arguments"]
     assert args["properties"]["start"] == {"type": "integer", "minimum": 1}
     assert args["properties"]["end"] == {"type": "integer", "minimum": 1}
     assert args["additionalProperties"] is False
+
+
+def test_raw_read_preserves_blank_lines_and_final_newline(repository):
+    text = "value = 1\n\n\n# comment\n"
+    repository.root.joinpath("sample.py").write_text(text)
+    assert repository.call("read_file", {"path": "sample.py", "raw": True}) == text
+    with pytest.raises(ValueError, match="boolean"):
+        repository.call("read_file", {"path": "sample.py", "raw": "true"})
+
+
+def test_inspection_reads_one_mebibyte_files_and_refuses_larger(repository):
+    from core.apex_tools import MAX_FILE_BYTES
+    assert MAX_FILE_BYTES >= 1024 * 1024
+    path = repository.root / "sample.py"
+    path.write_text("a" * (MAX_FILE_BYTES - 1) + "\n")
+    assert repository.call("read_file", {"path": "sample.py"}).startswith("1: a")
+    path.write_text("a" * (MAX_FILE_BYTES + 1))
+    with pytest.raises(ValueError, match="limit"):
+        repository.call("read_file", {"path": "sample.py"})
+
+
+def test_get_diff_is_paginated_and_real_index_stays_unchanged(repository):
+    repository._git("config", "user.name", "Test")
+    repository._git("config", "user.email", "test@example.invalid")
+    repository._git("commit", "-m", "baseline")
+    repository.root.joinpath("new.py").write_text("".join(f"line {i}\n" for i in range(600)))
+    before = repository._git("ls-files", "--stage", "-z")
+    offset, pages = 0, []
+    while offset is not None:
+        result = json.loads(repository.call("get_diff", {"path": "new.py", "offset": offset}))
+        pages.append(result["diff"])
+        offset = result["next_offset"]
+    assert len(pages) > 1
+    assert "new file mode" in "".join(pages)
+    assert "+line 599" in "".join(pages)
+    assert repository._git("ls-files", "--stage", "-z") == before
+    assert "new.py" not in repository._tracked()
+
+
+@pytest.mark.parametrize("path", [".env", "data.db", "runtime/artifact.txt", "../outside.py"])
+def test_get_diff_cannot_read_protected_files(repository, path):
+    with pytest.raises(PermissionError):
+        repository.call("get_diff", {"path": path})

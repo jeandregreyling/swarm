@@ -43,19 +43,92 @@ conversations are unavailable, not silently replaced with empty records.
 
 ### APEX-only local chat lane
 
-Healthy APEX chat now uses a bounded read-only repository bridge instead of
+#### Human-in-the-loop proposal bridge
+
+Authenticated owner sessions may additionally use `propose_write_file` (one
+existing tracked UTF-8 file with complete replacement content, still limited to
+256,000 bytes) and
+`propose_commit` (a nonempty explicit array of at most 20 tracked or explicitly
+selected non-ignored untracked source file paths
+and a message). These tools propose work; they never authorize themselves.
+Anonymous/agent-key callers and recovery threads cannot attach proposal tools.
+Protected repository paths remain unavailable. New files and deletion are
+deliberately not part of this initial write capability.
+
+Each proposal reserves its target paths, records SHA-256 snapshots including
+file modes, and creates a one-use transaction UUID bound to the actual
+`friday_session` owner login. The inference loop waits without additional model
+calls until approval, rejection, or a 15-minute expiry. Waiting does not consume
+the inference time budget. Transactions are process-local: restarting the
+terminal invalidates pending UUIDs; nothing executes or resumes automatically.
+
+`tool_approval_pending` SSE carries the UUID, exact preview, target paths and
+hashes only to that session's subscribers. The shared approval panel also
+retrieves outstanding proposals after reload/reconnect through authenticated
+`GET /api/tool-approval`. Previews use plain text, not HTML. An explicit Approve
+or Reject click sends a boolean decision to `POST /api/tool-approval` with a
+per-transaction CSRF token. Body identities, proxy names and agent headers
+cannot authenticate this route. A fresh active owner session and current tool
+permissions are required at decision time.
+
+Approval rechecks file hashes (and HEAD/staging-index state for commits).
+Drift, failed permission checks and execution errors are explicit receipts.
+Rejection injects `User Denied Execution`; expiry denies execution. UUIDs are
+consumed on the first valid decision under the transaction lock, including
+failed execution, so retries never repeat mutations.
+
+Approved writes preserve file modes and atomically replace only the approved
+target. Approved commits build a temporary index based on the proposed HEAD,
+add only the approved paths, keep configured Git hooks, include the Copilot
+trailer, and refresh only approved entries in the real index. Other staged and
+working-tree modifications are preserved. There is no `git commit -a`, force
+push, arbitrary command or web capability.
+
+The in-process reservation prevents competing APEX proposals on the same
+paths; it is not an operating-system lock against arbitrary external editors.
+State is checked immediately before replacement/commit. Operators should not
+edit targets or run Git mutations while an approved operation is executing.
+
+Live acceptance in conversation **2820** verified a proposal targeting
+`tests/test_chat_sequential_local_guard.py`. The file hash remained unchanged
+while the transaction was pending and APEX made no further model call. The
+operator clicked Approve in the browser; the backend applied the displayed
+blank line and comment, persisted a success receipt linked to the transaction,
+and resumed APEX. A repeated decision on the consumed UUID returned HTTP 409.
+Commit scope, rejection, drift, session/CSRF isolation and parallel replay are
+covered by disposable repository tests; this acceptance did not perform a live
+agent commit.
+
+Commit previews also stage the explicit paths into a disposable index, so new
+untracked files appear as additions in the exact diff. The real index never
+changes during preview, waiting, rejection, expiry or failed validation; the
+temporary index is removed immediately after preview. This avoids an unstage
+operation that might disturb the operator's existing staged changes. Commit
+snapshots accept bounded source files up to 1 MiB, and complete approval diffs
+are limited to 4 MiB and never silently truncated. Execution regenerates and
+compares the staged diff with the approved preview before committing.
+
+#### Read-only inspection bridge
+
+Healthy APEX chat uses a bounded read-only repository bridge instead of
 one-shot inference. The existing text gateway carries whole-response JSON
 `tool_calls`/`answer` envelopes constrained by a JSON response schema; this is
 not native OpenAI tool-call transport. Empty `tool_calls` denotes a final answer.
-Only `git_status`, `list_files`, `read_file`, and literal `grep_repo` are
+Only `git_status`, `list_files`, `read_file`, literal `grep_repo` and `get_diff` are
 attached. The backend validates every envelope and checks the active operator's
 `fs_readonly` permission and agent runtime policy before each call. Permission
 lookup failures stop execution; no permissions or live schema are rewritten.
-Writes, arbitrary commands, web access, and legacy `SKILL` dispatch are not
-available on this lane. Recovery remains text-only.
+Direct writes, arbitrary commands, web access, and legacy `SKILL` dispatch are
+not available on this lane. Owner-approved proposals are separate as described
+above. Recovery remains text-only.
 
 File reads are restricted to bounded tracked UTF-8 source/documentation,
 excluding symlinks, secrets, databases, private sandpits and runtime contents.
+Inspection reads accept files up to 1 MiB while output remains bounded.
+`get_diff` accepts one explicit tracked or non-ignored untracked source path,
+returning a paginated HEAD-to-worktree patch with `next_offset`; callers must
+follow all pages before treating inspection as complete. It uses the same
+protected-path and text validation and a disposable index, not keyword search.
 Git status uses one fixed non-mutating command with optional locks disabled,
 allowing untracked runtime names to be discovered without reading their data.
 Each result is persisted as a `tool_result` in the originating conversation;

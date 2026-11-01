@@ -89,6 +89,68 @@ def _sse_chat(conversation_id, agent, status, **extra):
 chat_bp = Blueprint('chat', __name__)
 _LOG = logging.getLogger('fridays.chat')
 
+
+def _tool_operator():
+    """No body identity, proxy, network-origin or agent-key authentication fallback."""
+    from core.tool_approval import session_identity
+    if request.headers.get('X-Agent-Key') or request.headers.get('X-Agent-Id'):
+        return None
+    user = get_current_user()
+    token = request.cookies.get('friday_session', '')
+    if not user or user['role'] != 'owner' or not token:
+        return None
+    return user['username'], session_identity(token)
+
+
+@chat_bp.route('/api/tool-approval', methods=['GET', 'POST'])
+def api_tool_approval():
+    from core.tool_approval import APPROVALS, ApprovalConflict
+    from sqlite3 import DatabaseError
+    try:
+        operator = _tool_operator()
+        if not operator:
+            return jsonify({'ok': False, 'error': 'Authenticated owner session required'}), 401
+        owner, session_id = operator
+        if request.method == 'GET':
+            response = jsonify({'ok': True, 'pending': APPROVALS.list_for(owner, session_id)})
+            response.headers['Cache-Control'] = 'no-store'
+            return response
+        data = request.get_json(silent=True)
+        if (not isinstance(data, dict) or set(data) != {'transaction_id', 'decision'}
+                or not isinstance(data['transaction_id'], str) or type(data['decision']) is not bool):
+            return jsonify({'ok': False, 'error': 'UUID and boolean decision required'}), 400
+        import uuid
+        try:
+            if str(uuid.UUID(data['transaction_id'])) != data['transaction_id']:
+                raise ValueError
+        except ValueError:
+            return jsonify({'ok': False, 'error': 'Canonical transaction UUID required'}), 400
+        # Same-origin JSON plus a per-transaction secret fetched by the owning session.
+        from urllib.parse import urlsplit
+        origin = request.headers.get('Origin', '')
+        if origin and (urlsplit(origin).scheme, urlsplit(origin).netloc) != (
+                request.scheme, request.host):
+            return jsonify({'ok': False, 'error': 'Cross-origin approval refused'}), 403
+
+        def authorize(tool):
+            permission = 'fs_write' if tool == 'propose_write_file' else 'git_commit'
+            return can_user_invoke_skill(owner, permission, default_allow=True)
+
+        result = APPROVALS.decide(
+            data['transaction_id'], data['decision'], owner, session_id,
+            request.headers.get('X-Tool-Approval-CSRF', ''), authorize)
+        return jsonify({'ok': result['status'] != 'failed', 'receipt': result}), (
+            409 if result['status'] == 'failed' else 200)
+    except PermissionError as exc:
+        _LOG.warning('Tool approval refused: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 403
+    except ApprovalConflict as exc:
+        _LOG.warning('Tool approval conflict: %s', exc)
+        return jsonify({'ok': False, 'error': str(exc)}), 409
+    except DatabaseError:
+        _LOG.exception('Tool approval authentication storage unavailable')
+        return jsonify({'ok': False, 'error': 'Approval authentication unavailable'}), 503
+
 def _chat_execution_breakdown(receipts, runtime_nudges):
     counts = {
         status: sum(1 for receipt in receipts if receipt.get('status') == status)
@@ -2857,7 +2919,9 @@ def api_chat():
             from core.apex_tools import run_apex_tools, receipt_text
 
             apex_row = next(row for row in routable_rows if row['name'] == APEX_AGENT['name'])
-            messages = [{'role': 'system', 'content': apex_system_prompt(apex_row, recovery=False)}]
+            operator = _tool_operator()
+            messages = [{'role': 'system', 'content': apex_system_prompt(
+                apex_row, recovery=False, proposals=operator is not None)}]
             messages.extend(history)
             if not history or history[-1]['role'] != 'user':
                 messages.append({'role': 'user', 'content': message})
@@ -2882,9 +2946,31 @@ def api_chat():
                 _sse_chat(conv_id, APEX_AGENT['name'], 'tool_receipt',
                           receipt={key: receipt[key] for key in ('id', 'tool', 'status', 'truncated')})
 
+            def propose_tool(repository, tool, args):
+                from core.tool_approval import APPROVALS, ApprovalConflict
+                if not operator or _tool_operator() != operator:
+                    raise PermissionError('Authenticated owner session required for proposals')
+                owner, session_id = operator
+                try:
+                    transaction = APPROVALS.propose(repository, tool, args, owner, session_id, conv_id)
+                except ApprovalConflict as exc:
+                    raise ValueError(str(exc)) from exc
+                waiting = time.monotonic()
+                try:
+                    _sse_module().publish('tool_approval_pending', transaction.public(), audience=session_id)
+                    result = APPROVALS.wait(transaction)
+                except Exception:
+                    APPROVALS.cancel(transaction, 'Proposal delivery failed; no execution authorized')
+                    raise
+                finally:
+                    nonlocal apex_deadline
+                    apex_deadline += time.monotonic() - waiting
+                return result
+
             try:
                 response_text, tokens_used, tool_receipts = run_apex_tools(
-                    apex_model, messages, authorize_inspection, record_tool_receipt)
+                    apex_model, messages, authorize_inspection, record_tool_receipt,
+                    proposal_handler=propose_tool if operator else None)
             except ApexOffline as exc:
                 _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state=STATE_OFFLINE, error=str(exc))
                 return _offline_response(exc, conv_id)
