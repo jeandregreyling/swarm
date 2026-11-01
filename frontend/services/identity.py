@@ -140,6 +140,9 @@ def _local_agent_runtime_state(agent_name):
     entry = registry.get(model)
     if entry and entry.driver == 'llamacpp':
         from core.seven_llm.llama_server import default_binary
+        if entry.endpoint:
+            from core.seven_llm.llama_server import _server_alive
+            return _server_alive(entry.endpoint), 'External llama-server offline'
         if not entry.path or not os.path.isfile(entry.path):
             return False, 'Direct GGUF missing'
         binary = (entry.options or {}).get('server') or default_binary()

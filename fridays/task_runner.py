@@ -1322,59 +1322,23 @@ def _row_value(row, key, default=''):
 
 
 def _email_research_update(*, topic, session_id, summary, evidence, recipient, agent, historical_refs=None):
-    """Send a concise research update email. Returns True/False."""
+    """Send the edited HTML newsletter and its matching text edition."""
     try:
         from config import GHOST_EMAIL
         to_address = GHOST_EMAIL if recipient in ('', 'ghost') else recipient
-        historical_refs = historical_refs or []
-        review_url = _tasker_review_url(topic)
-        lines = [
-            f'Watched topic: {topic}',
-            f'Research session: {session_id}',
-            f'Collecting agent: {agent}',
-            f'Review in Studio: {review_url}',
-            '',
-            'Why this email:',
-            '- These findings passed the current quality/novelty/date gate.',
-            '- Older material is kept in Knowledge/Studio evidence review as historical reference.',
-            '- Use Studio Tasker evidence review to promote, ignore, or mark findings as emailed.',
-            '',
-            'Current and relevant evidence:',
-        ]
-        for i, row in enumerate(evidence[:10], 1):
-            title = (_row_value(row, 'title') or 'Untitled').strip()
-            url = (_row_value(row, 'source_url') or '').strip()
-            snippet = (_row_value(row, 'snippet') or '').strip().replace('\n', ' ')[:300]
-            lines.append(f'{i}. {title}')
-            if _row_value(row, 'combined_score', None) is not None:
-                lines.append(
-                    '   '
-                    f"score={float(_row_value(row, 'combined_score', 0)):.2f} "
-                    f"quality={float(_row_value(row, 'quality_score', 0)):.2f} "
-                    f"novelty={float(_row_value(row, 'novelty_score', 0)):.2f} "
-                    f"recency={float(_row_value(row, 'recency_score', 0)):.2f} "
-                    f"date={_row_value(row, 'recency_label', 'undated') or 'undated'}"
-                )
-            if url:
-                lines.append(f'   {url}')
-            if snippet:
-                lines.append(f'   {snippet}')
-        if historical_refs:
-            lines.extend(['', 'Historical reference / fun fact from long ago:'])
-            for i, row in enumerate(historical_refs[:3], 1):
-                title = (_row_value(row, 'title') or 'Untitled').strip()
-                url = (_row_value(row, 'source_url') or '').strip()
-                label = _row_value(row, 'recency_label', '') or _row_value(row, 'evidence_date', '') or 'older reference'
-                lines.append(f'{i}. {title} ({label})')
-                if url:
-                    lines.append(f'   {url}')
-        lines.extend(['', 'Summary:', (summary or '').strip()[:3000]])
-
+        from core.watched_topics import compose_interest_newsletter, edit_interest_evidence
+        edited = edit_interest_evidence(topic, [dict(row) for row in evidence])
+        edition = compose_interest_newsletter(
+            topic, edited,
+            review_url=_tasker_review_url(topic),
+            historical_refs=[dict(row) for row in (historical_refs or [])],
+        )
         from lib.email.email_handler import send_reply
         return bool(send_reply(
             to_address=to_address,
-            subject=f'[Swarm Research] Current update: {topic}',
-            body='\n'.join(lines),
+            subject=edition['subject'],
+            body=edition['plain'],
+            html_body=edition['html'],
         ))
     except Exception as e:
         logger.warning(f'[interest_research_update] email failed: {e}')
@@ -1473,7 +1437,7 @@ def _task_vortex_heartbeat(**kwargs):
     """
     from datetime import UTC, datetime
     import json
-    from core.time_machine import _vortex_maybe_git_sync, time_wizard
+    from core.time_machine import time_wizard
 
     full_state = time_wizard.capture_workflow_state()
     safe_name = f"vortex-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}-heartbeat"
@@ -1494,12 +1458,7 @@ def _task_vortex_heartbeat(**kwargs):
         'checkpoint_created',
         f'{safe_name} | agent=tasker | counts={json.dumps(full_state.get("counts", {}), ensure_ascii=True)}',
     )
-    git_sync = _vortex_maybe_git_sync(agent='tasker', reason='vortex_heartbeat')
-    if git_sync.get('status') in {'synced', 'commit-only', 'blocked'}:
-        time_wizard._write_activity_log(
-            'git_sync',
-            json.dumps(git_sync, ensure_ascii=True),
-        )
+    git_sync = {'status': 'disabled', 'reason': 'checkpoints-do-not-publish-source'}
     r = {
         'checkpoint_id': checkpoint_id,
         'checkpoint_name': safe_name,

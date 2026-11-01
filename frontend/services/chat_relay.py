@@ -57,7 +57,7 @@ _RELAY_LINE_PATTERNS = re.compile(
 )
 
 
-def _infer_reply_target_from_text(response_text):
+def _infer_reply_target_from_text(response_text, exclude=''):
     text = str(response_text or '').strip()
     if not text:
         return ''
@@ -78,8 +78,11 @@ def _infer_reply_target_from_text(response_text):
         candidate = m.group(1).strip()
         if candidate.lower().rstrip(':,') in _ignore_labels:
             return ''
-        return _normalize_chat_participant(candidate) or ''
+        target = _normalize_chat_participant(candidate) or ''
+        # Agents often label their own reply ("Gemma: ..."); that is not a handoff.
+        return '' if target and target == excluded else target
 
+    excluded = _normalize_chat_participant(exclude) if exclude else ''
     # Check first line (legacy format: relay at start)
     first_line = text.splitlines()[0].strip()
     target = _match_line(first_line)
@@ -94,12 +97,19 @@ def _infer_reply_target_from_text(response_text):
         target = _match_line(line)
         if target:
             return target
+    # Inline "@agent:" handoff at the end of a closing sentence (matches the
+    # browser relay extractor), e.g. "... sounds good. @qwen: your view?"
+    for line in reversed(tail_lines):
+        for m in reversed(list(re.finditer(r'(?:^|\s)@([A-Za-z][A-Za-z0-9_.-]{0,30})\s*[:,]', line))):
+            target = _normalize_chat_participant(m.group(1)) or ''
+            if target and target != excluded:
+                return target
     return ''
 
 
 def _resolve_chat_reply_target(selected_agent, response_text, reply_context):
-    explicit = _infer_reply_target_from_text(response_text)
     selected = _normalize_chat_participant(selected_agent)
+    explicit = _infer_reply_target_from_text(response_text, exclude=selected)
     if explicit and explicit != selected and explicit != 'fridays':
         return explicit
 
@@ -178,7 +188,8 @@ def _strip_auto_relay_banner(text: str) -> str:
 
 
 # Models sometimes copy the prompt's "AgentName: <question>" template verbatim.
-_PLACEHOLDER_RELAY_LINE = re.compile(r'^\s*agent\s*name\s*:', re.IGNORECASE)
+_PLACEHOLDER_RELAY_LINE = re.compile(r'^\s*(?:\w+\s*->\s*\w+\s*:\s*)?agent\s*name\s*:', re.IGNORECASE)
+PLACEHOLDER_ECHO_NOTICE = '(No answer: the model echoed the relay template instead of replying. Please ask again.)'
 
 
 def _strip_placeholder_relay(text: str) -> str:
@@ -186,7 +197,7 @@ def _strip_placeholder_relay(text: str) -> str:
     if not text:
         return text
     kept = [ln for ln in text.splitlines() if not _PLACEHOLDER_RELAY_LINE.match(ln)]
-    return '\n'.join(kept).strip() or text
+    return '\n'.join(kept).strip() or PLACEHOLDER_ECHO_NOTICE
 
 
 def _strip_relay_routing(text: str) -> str:

@@ -28,7 +28,7 @@ def test_vortex_heartbeat_checkpoint_does_not_write_git(monkeypatch, tmp_path):
     assert git_calls == []
 
 
-def test_vortex_non_heartbeat_checkpoint_still_writes_git(monkeypatch, tmp_path):
+def test_vortex_non_heartbeat_checkpoint_never_commits_shared_worktree(monkeypatch, tmp_path):
     from core import time_machine
 
     root = tmp_path / 'repo'
@@ -54,8 +54,9 @@ def test_vortex_non_heartbeat_checkpoint_still_writes_git(monkeypatch, tmp_path)
 
     result = tm.create_workflow_checkpoint('before-real-change', agent='vortex')
 
-    assert result['git_tags']['prod'].endswith('-prod')
-    assert [call[0][0] for call in git_calls] == ['add', 'commit', 'tag']
+    assert result['git_tags'] == {}
+    assert git_calls == []
+    assert time_machine._vortex_should_write_git('before-real-change') is False
 
 
 def test_vortex_git_sync_skips_below_threshold(monkeypatch, tmp_path):
@@ -82,6 +83,20 @@ def test_vortex_git_sync_skips_below_threshold(monkeypatch, tmp_path):
     assert result['change_count'] == 2
     assert ['add', '-A'] not in git_calls
     assert ['push'] not in git_calls
+
+
+def test_vortex_heartbeat_does_not_invoke_source_publishing(monkeypatch):
+    from core import time_machine
+    from fridays import task_runner
+
+    monkeypatch.setattr(time_machine.time_wizard, 'capture_workflow_state', lambda: {'counts': {}})
+    monkeypatch.setattr(time_machine.time_wizard, 'create_checkpoint', lambda *a: 1)
+    monkeypatch.setattr(time_machine.time_wizard, 'record_event', lambda **k: None)
+    monkeypatch.setattr(time_machine.time_wizard, '_write_activity_log', lambda *a: None)
+    calls = []
+    monkeypatch.setattr(time_machine, '_vortex_maybe_git_sync', lambda **k: calls.append(k))
+    assert 'git_sync=disabled' in task_runner._task_vortex_heartbeat()
+    assert calls == []
 
 
 def test_vortex_git_sync_commits_and_pushes_at_threshold(monkeypatch, tmp_path):

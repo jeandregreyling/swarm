@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Vortex (Time Machine) Service API Contract",
-  "description": "Checkpoint/restore, timeline, sessions, decision history. Domain: Vortex.",
-  "version": "1.0.0",
+  "description": "Workflow history, verified full-memory backups, offline recovery previews, timeline and sessions. Domain: Vortex.",
+  "version": "1.1.0",
   "base_path": "/api/time",
   "auth": "session cookie",
   "endpoints": [
@@ -30,25 +30,27 @@
     {
       "method": "POST",
       "path": "/api/time/checkpoints",
-      "description": "Create a new checkpoint.",
+      "description": "Create a manual checkpoint with a verified full SQLite memory backup. Automatic workflow checkpoints do not include full backups. Backups expire after 30 days; source files are not committed or restored.",
       "request": {
         "type": "object",
         "properties": {
-          "name": {"type": "string"},
+          "label": {"type": "string"},
           "agent": {"type": "string"},
           "description": {"type": "string"}
         },
-        "required": ["name", "agent"]
+        "required": []
       }
     },
     {
       "method": "POST",
       "path": "/api/time/restore",
-      "description": "Restore to a checkpoint. Uses git revert.",
+      "description": "Preview workflow drift and retained memory backup metadata. dry_run defaults to true. Online apply is disabled (409 after approval gating): recover with python -m core.vortex_backup restore MANIFEST --output NEW_DATABASE, then verify before an offline database switch.",
       "request": {
         "type": "object",
         "properties": {
-          "checkpoint_name": {"type": "string"}
+          "checkpoint_name": {"type": "string"},
+          "dry_run": {"type": "boolean", "default": true},
+          "actor": {"type": "string"}
         },
         "required": ["checkpoint_name"]
       }

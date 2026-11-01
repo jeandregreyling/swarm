@@ -513,6 +513,13 @@ def api_agents_config_get():
     """Full agent config for the Agents tile — includes system_prompt, api_key_var, tier."""
     import json
     import os
+    from core.chat_continuity import recovery_roster, storage_fault
+
+    fault = storage_fault(get_connection)
+    if fault:
+        response = jsonify(recovery_roster())
+        response.headers['X-Fridays-Storage-Status'] = 'degraded; local-bootstrap-roster'
+        return response
 
     try:
         conn = get_connection()

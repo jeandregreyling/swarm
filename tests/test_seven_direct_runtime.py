@@ -630,3 +630,37 @@ def test_direct_chat_converts_ollama_images_to_content_parts():
     assert content[0] == {"type": "text", "text": "describe"}
     assert content[1]["image_url"]["url"] == "data:image/jpeg;base64,QUJD"
     assert "images" not in payload["messages"][0]
+
+
+def test_direct_runtime_ttl_override_is_persisted_and_used_for_reaping(tmp_path, monkeypatch):
+    _register_direct(tmp_path, "pytest-ttl-direct", ram_gb=2.0, ttl_seconds=30)
+    state_path = tmp_path / "llama-state.json"
+    monkeypatch.setattr(llama_server, "STATE_PATH", str(state_path))
+    assert llama_server.set_ttl("pytest-ttl-direct", 5) == 5
+    state = llama_server._load_state()
+    state["pytest-ttl-direct"]["last_used"] = 1.0
+    stopped = []
+    monkeypatch.setattr(llama_server, "_load_state", lambda: state)
+    monkeypatch.setattr(llama_server, "_residents", lambda: [{"model": "pytest-ttl-direct", "pid": 42, "own": False}])
+    monkeypatch.setattr(llama_server, "_stop_resident", lambda resident: stopped.append(resident["model"]))
+
+    llama_server._reap_idle(state, keep="")
+
+    assert stopped == ["pytest-ttl-direct"]
+
+
+def test_chat_payload_alternates_roles_for_strict_templates():
+    payload = llama_server._chat_payload('gemma3:12b', [
+        {'role': 'system', 'content': 'sys a'},
+        {'role': 'system', 'content': 'sys b'},
+        {'role': 'assistant', 'content': 'qwen: hi'},
+        {'role': 'assistant', 'content': 'llama: hey'},
+        {'role': 'system', 'content': 'relay note'},
+        {'role': 'user', 'content': 'go', 'images': ['AAAA']},
+    ], temperature=0, options={})
+    msgs = payload['messages']
+    assert [m['role'] for m in msgs] == ['system', 'user', 'assistant', 'user']
+    assert msgs[0]['content'] == 'sys a\n\nsys b'
+    assert msgs[2]['content'] == 'qwen: hi\n\nllama: hey'
+    assert msgs[3]['content'][0] == {'type': 'text', 'text': 'relay note\n\ngo'}
+    assert msgs[3]['content'][1]['type'] == 'image_url'

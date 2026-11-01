@@ -90,6 +90,8 @@ SAP_AU_DOC_PREFIX = "SAP_AU_MONTHLY_NEWSLETTER"
 SAP_AU_TASK_NAME = "sap_au_monthly_newsletter"
 
 _SAP_AU_DEFAULT_FEEDS: tuple[tuple[str, str], ...] = (
+    ("SAP HCM Australia", "https://news.google.com/rss/search?q=SAP+HCM+Australia+OR+SuccessFactors+Australia&hl=en-AU&gl=AU&ceid=AU:en"),
+    ("Australian payroll", "https://news.google.com/rss/search?q=Australia+payroll+ATO+OR+superannuation&hl=en-AU&gl=AU&ceid=AU:en"),
     ("SAP News", "https://news.sap.com/feed/"),
     ("Google News \u2014 SAP Australia", "https://news.google.com/rss/search?q=SAP+Australia&hl=en-AU&gl=AU&ceid=AU:en"),
     ("Google News \u2014 SAP S/4HANA", "https://news.google.com/rss/search?q=SAP+S%2F4HANA&hl=en-AU&gl=AU&ceid=AU:en"),
@@ -310,6 +312,8 @@ def _feed_source_name(sub: dict[str, Any]) -> str:
 
 
 def _score_sap_au(item: dict[str, Any]) -> int:
+    from core.watched_topics import newsletter_section
+
     blob = (str(item.get("title") or "") + " " + str(item.get("summary") or "")).lower()
     score = 0
     high = (
@@ -323,6 +327,11 @@ def _score_sap_au(item: dict[str, Any]) -> int:
     for w in med:
         if w in blob:
             score += 1
+    section = newsletter_section(item)
+    if section == "Australia: HCM & payroll":
+        score += 40
+    elif section == "SAP HCM & people systems: wider context":
+        score += 15
     return score
 
 
@@ -348,8 +357,12 @@ def _collect_sap_au_articles(max_feeds: int = 6, per_feed: int = 8, exclude_link
     seen_links: set[str] = set()
     subs = _feeds.list_subscriptions("seven")
     enabled = [s for s in subs if bool(s.get("enabled")) and s.get("kind") in ("rss", "atom")]
-    if not enabled:
-        enabled = [{"title": t, "url": u, "kind": "rss", "enabled": True} for t, u in _SAP_AU_DEFAULT_FEEDS]
+    # General subscriptions must not crowd out the specialised SAP/AU desk.
+    defaults = [{"title": t, "url": u, "kind": "rss", "enabled": True} for t, u in _SAP_AU_DEFAULT_FEEDS]
+    disabled_urls = {s.get("url") for s in subs if not s.get("enabled")}
+    enabled = [s for s in defaults if s["url"] not in disabled_urls] + [
+        s for s in enabled if s.get("url") not in {d["url"] for d in defaults}
+    ]
 
     for sub in enabled[:max_feeds]:
         url = str(sub.get("url") or "").strip()
@@ -387,14 +400,17 @@ def _collect_sap_au_articles(max_feeds: int = 6, per_feed: int = 8, exclude_link
 
 
 def _bottom_up(item: dict[str, Any]) -> dict[str, str]:
+    from core.watched_topics import newsletter_section
+
     lead = item.get("summary") or item.get("title") or ""
     if len(lead) > 240:
         lead = lead[:237].rstrip() + "..."
+    australian = newsletter_section(item) == "Australia: HCM & payroll"
     return {
         "signal": lead,
-        "system": "This changes either compliance pressure, operating cost, or delivery risk in the SAP landscape.",
-        "stack": "For SAP Australia teams this shifts rollout sequencing, payroll/tax controls, and support backlog priorities.",
-        "action": "Pick one measurable action this month: control uplift, automation cutover, or risk burn-down with owner/date.",
+        "system": "Australian HCM/payroll coverage; check the original for scope and effective dates." if australian else "Wider industry context; Australian applicability is not established.",
+        "stack": "Review relevance to your SAP HCM or SuccessFactors configuration before changing payroll.",
+        "action": item.get("editorial_note") or "Verify the primary source and effective date with your payroll owner; do not infer a compliance obligation from a headline.",
     }
 
 
@@ -1141,7 +1157,7 @@ def compose_money_hub_email(now: datetime | None = None) -> dict[str, str]:
     }
 
 
-def compose_sap_au_monthly_newsletter(now: datetime | None = None) -> dict[str, str]:
+def compose_sap_au_monthly_newsletter(now: datetime | None = None) -> dict[str, Any]:
     """Compose a rich monthly SAP Australia newsletter.
 
     Includes article-backed cards, bottom-up explanations, and visual trend
@@ -1154,6 +1170,22 @@ def compose_sap_au_monthly_newsletter(now: datetime | None = None) -> dict[str, 
     trading = payload["trading"]
     business = payload["business"]
     articles, issues = _collect_sap_au_articles(exclude_links=_load_sent_links())
+    from core.watched_topics import compose_interest_newsletter, edit_interest_evidence
+
+    selected = [
+        {**item, "source_url": item.get("link"), "snippet": item.get("summary"),
+         "evidence_date": item.get("published")}
+        for item in articles[:8]
+    ]
+    edited = edit_interest_evidence("SAP HCM & payroll Australia", selected) if selected else []
+    edition = compose_interest_newsletter(
+        f"SAP HCM & payroll Australia | {now.strftime('%B %Y')}",
+        edited, review_url=_abs_link("/ui?view=tasker"),
+    )
+    articles = [
+        {**item, "title": item["editorial_headline"], "summary": item["editorial_summary"]}
+        for item in edited
+    ]
 
     topic_counts: dict[str, int] = {}
     cards_html: list[str] = []
@@ -1282,6 +1314,9 @@ def compose_sap_au_monthly_newsletter(now: datetime | None = None) -> dict[str, 
         "doc_name": f"{SAP_AU_DOC_PREFIX}_{month}.html",
         "content": html_doc,
         "content_md": md_doc,
+        "email_html": edition["html"],
+        "email_plain": edition["plain"],
+        "articles": articles,
     }
 
 
@@ -1372,7 +1407,7 @@ def send_money_hub_daily_newsletter(now: datetime | None = None) -> dict[str, An
     return {"ok": ok, "doc_name": written["doc_name"], "subject": email_doc["subject"], "to": GHOST_EMAIL}
 
 
-def write_sap_au_monthly_newsletter(now: datetime | None = None) -> dict[str, str]:
+def write_sap_au_monthly_newsletter(now: datetime | None = None) -> dict[str, Any]:
     """Write monthly SAP Australia newsletter to Studio + Knowledge."""
     doc = compose_sap_au_monthly_newsletter(now)
     conn = get_connection()
@@ -1598,48 +1633,18 @@ def send_sap_au_monthly_newsletter(now: datetime | None = None) -> dict[str, Any
 
     written = write_sap_au_monthly_newsletter(now)
 
-    conn = get_connection()
-    try:
-        primary = conn.execute(
-            "SELECT id, doc_name, content, tags, updated_at FROM project_docs WHERE doc_name=? ORDER BY id DESC LIMIT 1",
-            (written["doc_name"],),
-        ).fetchone()
-        recent = conn.execute(
-            "SELECT id, doc_name, tags, updated_at FROM project_docs ORDER BY id DESC LIMIT 8"
-        ).fetchall()
-    finally:
-        conn.close()
-
-    primary_dict = dict(primary) if primary else {
-        "id": 0,
-        "doc_name": written["doc_name"],
-        "content": written["content"],
-        "tags": "sap,australia,newsletter,monthly,insights",
-        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-    }
-    recent_dicts = [dict(r) for r in recent]
-
-    plain, wrapped_html = _sap_kc_gossip_email_html(primary_dict, recent_dicts)
     now_dt = now or datetime.now(timezone.utc)
-    if now_dt.month == 12:
-        outlook_dt = now_dt.replace(year=now_dt.year + 1, month=1, day=1)
-    else:
-        outlook_dt = now_dt.replace(month=now_dt.month + 1, day=1)
-    subject = f"Swarm KC \u2014 SAP Australia {outlook_dt.strftime('%B %Y')} Outlook (issued {now_dt.strftime('%d %b %Y')})"
+    subject = f"Fridays | SAP HCM Australia | {now_dt.strftime('%B %Y')}"
     ok = bool(send_reply(
         GHOST_EMAIL,
         subject,
-        plain,
-        html_body=wrapped_html,
+        written["email_plain"],
+        html_body=written["email_html"],
         sender_name="Swarm KC",
     ))
 
     if ok:
-        try:
-            sent_articles, _ = _collect_sap_au_articles(exclude_links=_load_sent_links())
-            _record_sent_links(sent_articles[:6])
-        except Exception:
-            pass
+        _record_sent_links(written["articles"])
 
     return {
         "ok": ok,

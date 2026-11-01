@@ -9,7 +9,7 @@ Seven project key is used first. Falls back to generic key if it fails.
 """
 
 import sys
-sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[2]))
 
 import requests
 from config import SERPER_API_KEY, SERPER_API_KEY_GENERIC

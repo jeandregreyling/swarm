@@ -35,7 +35,7 @@ def test_email_route_only_reports_acceptance_after_smtp(monkeypatch):
     monkeypatch.setattr(config, 'GMAIL_ADDRESS', 'sender@example.test')
     monkeypatch.setattr(config, 'GMAIL_PASSWORD', 'test-only')
     monkeypatch.setattr(mail, 'log_activity', lambda *_args: None)
-    monkeypatch.setattr('lib.email.email_handler._record_delivery', lambda *_args: None)
+    monkeypatch.setattr('lib.email.email_handler._record_delivery', lambda *_args, **_kw: None)
     delivered = []
 
     class SMTP:

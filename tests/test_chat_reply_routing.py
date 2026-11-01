@@ -22,6 +22,16 @@ def test_infer_reply_target_from_salutation():
     assert target == 'ten', f'expected ten, got {target!r}'
 
 
+
+def test_self_label_does_not_mask_inline_handoff():
+    text = 'Gemma: I like SafeHaven for the name. @qwen: What are your thoughts?'
+    assert term._resolve_chat_reply_target('gemma', text, {'default_reply_target': 'user'}) == 'qwen'
+
+
+def test_self_label_alone_replies_to_user():
+    assert term._resolve_chat_reply_target('gemma', 'Gemma: Done.', {'default_reply_target': 'user'}) == 'user'
+
+
 def test_reply_context_tracks_prior_agent_but_defaults_to_latest_sender():
     rows = [
         {'from_agent': 'user', 'to_agent': 'nine,ten', 'content': 'Lets test each agent.'},

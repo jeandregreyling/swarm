@@ -15,6 +15,15 @@ from database import get_connection
 
 interests_bp = Blueprint('interests', __name__)
 
+
+def _saved_interests(conn, username):
+    return [dict(row) for row in conn.execute(
+        "SELECT topic, category, score, source, source_agent, updated_at "
+        "FROM user_interests WHERE active = 1 AND username = ? "
+        "ORDER BY score DESC, topic COLLATE NOCASE",
+        (username,),
+    ).fetchall()]
+
 # ── Stop words (excluded from topic extraction) ─────────────────────────────
 _STOP_WORDS = frozenset(
     'a about above after again against all also am an and any are as at be '
@@ -93,6 +102,11 @@ def get_interests():
     username = (request.args.get('username') or 'seven').strip() or 'seven'
 
     conn = get_connection()
+    if request.args.get('saved_only') == '1':
+        try:
+            return jsonify({'saved_interests': _saved_interests(conn, username)})
+        finally:
+            conn.close()
 
     # 1. Recent user messages from messages table + queue
     rows = conn.execute(
@@ -171,22 +185,7 @@ def get_interests():
     # 5b. Saved user interests from onboarding / manual entry
     saved_interests = []
     try:
-        saved_rows = conn.execute(
-            "SELECT topic, category, score, source, source_agent FROM user_interests "
-            "WHERE active = 1 AND username = ? "
-            "ORDER BY score DESC, created_at DESC LIMIT 30",
-            (username,)
-        ).fetchall()
-        saved_interests = [
-            {
-                'topic': r['topic'],
-                'category': r['category'],
-                'score': r['score'],
-                'source': r['source'] or 'user',
-                'source_agent': r['source_agent'] or '',
-            }
-            for r in saved_rows
-        ]
+        saved_interests = _saved_interests(conn, username)
     except Exception:
         pass  # Table may not exist yet
 
@@ -330,27 +329,29 @@ def seed_interests():
 
     conn = get_connection()
     saved = []
-    for topic in topics:
-        # Determine category from onboarding data
-        category = 'general'
-        topic_lower = topic.lower()
-        for cat in _ONBOARDING_CATEGORIES:
-            if any(t.lower() == topic_lower for t in cat['topics']):
-                category = cat['id']
-                break
-        try:
+    try:
+        for topic in topics:
+            category = 'general'
+            topic_lower = topic.lower()
+            for cat in _ONBOARDING_CATEGORIES:
+                if any(t.lower() == topic_lower for t in cat['topics']):
+                    category = cat['id']
+                    break
             conn.execute(
                 "INSERT INTO user_interests (username, topic, category, source, score) "
                 "VALUES (?, ?, ?, 'user', 10.0) "
                 "ON CONFLICT(username, topic) DO UPDATE SET "
-                "active = 1, score = MAX(score, 10.0), updated_at = datetime('now')",
+                "active = 1, source = 'user', source_agent = '', "
+                "score = MAX(score, 10.0), updated_at = datetime('now')",
                 (username, topic, category),
             )
             saved.append(topic)
-        except Exception:
-            pass
-    conn.commit()
-    conn.close()
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
     return jsonify({'ok': True, 'saved': saved, 'count': len(saved)})
 
 

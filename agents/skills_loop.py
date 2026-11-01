@@ -356,6 +356,12 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
         return f'[skills] import error: {e}'
 
     parts = []
+    def record_receipt(skill_name, status):
+        emit_fn('execution_receipt:' + json.dumps({
+            'skill': skill_name,
+            'status': status,
+        }))
+
     for skill_name, skill_args in cmds:
         emit_fn(f'executing skill: {skill_name}')
 
@@ -366,6 +372,7 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
                 'Read-only agent profile: tool execution is disabled.'
             )
             _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] SKIPPED — read-only profile')
+            record_receipt(skill_name, 'denied')
             continue
 
         # Log the skill invocation to the timeline
@@ -385,6 +392,7 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
                 'Turn policy denied skill execution.'
             )
             _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] SKIPPED — turn policy')
+            record_receipt(skill_name, 'denied')
             continue
 
         # Optional per-agent permission check (non-fatal if missing)
@@ -393,6 +401,7 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
             if not can_user_invoke_skill(agent_name, skill_name, default_allow=True):
                 parts.append(f'[skill:{skill_name}] FAILED\nNot authorized for agent {agent_name}')
                 _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] FAILED — not authorized')
+                record_receipt(skill_name, 'denied')
                 continue
         except Exception:
             pass
@@ -400,6 +409,7 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
         try:
             if skill_name == 'alm_create_proposal' and _is_duplicate_proposal(agent_name, source_conv_id, skill_args):
                 parts.append(f'[skill:{skill_name}] OK\nAlready created in this thread; not creating a duplicate.')
+                record_receipt(skill_name, 'skipped')
                 continue
             # Pass source_conv_id for proposal skills so Duck can notify the chat thread
             _conv_id = source_conv_id if skill_name == 'alm_create_proposal' else None
@@ -407,6 +417,7 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
         except Exception as exc:
             parts.append(f'[skill:{skill_name}] ERROR\n{exc}')
             _tl(source_conv_id, agent_name, 'skill_result', f'[{skill_name}] ERROR: {exc}')
+            record_receipt(skill_name, 'failed')
             continue
 
         try:
@@ -416,6 +427,7 @@ def _execute_skill_cmds(cmds, agent_name, emit_fn, max_chars=None, source_conv_i
             pass
         preview = str(out or '')[:char_limit]
         status = 'OK' if ok else 'FAILED'
+        record_receipt(skill_name, 'succeeded' if ok else 'failed')
         parts.append(f"[skill:{skill_name}] {status}\n{preview}")
         # Log first 800 chars of result to keep timeline readable
         _tl(source_conv_id, agent_name, 'skill_result',
@@ -520,6 +532,26 @@ def run_skill_loop(
             logger.info(f'[{agent_name}] turn policy: read-only phrase {m.group(0)!r}' if m else f'[{agent_name}] turn policy: read-only')
     elif not isinstance(allowed_skill_names, set):
         allowed_skill_names = set(allowed_skill_names)
+    if not no_tools_requested:
+        from core.capability_packs import repository_inspection_pack
+
+        pack = repository_inspection_pack(_latest_operator_text(messages))
+        if pack:
+            # Guidance narrows turn policy; dispatcher authorization still applies.
+            allowed_skill_names = (
+                {'fs_readonly'} if allowed_skill_names is None
+                else set(allowed_skill_names) & {'fs_readonly'}
+            )
+            strict_skill_allowlist = True
+            messages = [dict(message) for message in messages]
+            system = next((m for m in messages if m.get('role') == 'system'), None)
+            if system is None:
+                messages.insert(0, {'role': 'system', 'content': pack['guidance']})
+            else:
+                system['content'] = str(system.get('content', '')) + pack['guidance']
+            emit_fn('capability_pack:' + json.dumps({
+                key: value for key, value in pack.items() if key != 'guidance'
+            }))
     # Track the baseline message count so we can trim accumulated turns later.
     baseline_len = len(messages)
     working_messages = list(messages)

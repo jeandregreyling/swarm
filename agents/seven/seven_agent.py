@@ -648,6 +648,32 @@ def _try_inline_curiosity_answer(message):
     return int(m.group(1)), m.group(2).strip()
 
 
+def _live_web_block(message, emit=None):
+    """Live search results for outside-world questions; empty when not needed or offline."""
+    try:
+        from lib.search.internet import needs_web_lookup, web_context_block
+        if not needs_web_lookup(message):
+            return ''
+        if emit:
+            emit('searching web · Serper/Tavily')
+        return web_context_block(message, max_results=3, max_chars=2000)
+    except Exception:
+        logger.exception('[Seven] live web lookup failed')
+        return ''
+
+
+def _downloads_answer(message):
+    """Answer qBittorrent questions from live Web API data instead of the LLM."""
+    from utils.qbit_bridge import downloads_snapshot, format_downloads_report, is_downloads_question
+    if not is_downloads_question(message):
+        return None
+    snapshot = downloads_snapshot()
+    report = format_downloads_report(snapshot)
+    if not snapshot.get('ok'):
+        report += '\nI am read-only, so I cannot launch qBittorrent myself.'
+    return report
+
+
 def _compose(message, state, memories):
     msg = (message or '').strip()
     intro = random.choice(_INTROS)
@@ -789,7 +815,7 @@ def _compose(message, state, memories):
         return '\n'.join(parts), 0
 
     # Agent / team query — fast deterministic path
-    if _is_about(msg, ['agent', 'team', 'who is', 'list', 'agents', 'roster']):
+    if re.search(r'\b(?:agents?|team|roster)\b', msg, re.IGNORECASE):
         return (
             f"{intro}\n\n"
             f"Local agents I coordinate: {agents}\n\n"
@@ -1375,7 +1401,9 @@ def chat(message, conversation_history=None, stage_cb=None, conversation_id=None
 
     _emit('synthesising response')
     compose_message = latest_user_msg or message
-    answer, tokens = _compose(compose_message, state, memories)
+    answer, tokens = _downloads_answer(compose_message), 0
+    if answer is None:
+        answer, tokens = _compose(compose_message, state, memories)
 
     # Fast deterministic paths returned an answer (status/identity/roster).
     # Anything else → Seven's merged LLM.
@@ -1408,6 +1436,9 @@ def chat(message, conversation_history=None, stage_cb=None, conversation_id=None
         _emit('thinking · seven merged model')
         llm_history = [] if runtime_question else (conversation_history or [])
         llm_message = (latest_user_msg or message) + sch_context
+        web_block = _live_web_block(latest_user_msg or message, _emit)
+        if web_block:
+            llm_message += '\n\n' + web_block
         llm_text, llm_tokens = _llm_chat(llm_message, state, memories, llm_history, stage_cb)
         llm_text = _clean_outward_response(llm_text)
         sch_drifted = bool(
@@ -1427,15 +1458,13 @@ def chat(message, conversation_history=None, stage_cb=None, conversation_id=None
             if creative_fallback:
                 answer, tokens = creative_fallback, 0
             else:
-                # Last-resort fallback: simple state read (prevents a silent fail).
-                intro = random.choice(_INTROS)
-                state_block = _format_state_block(state)
-                agents = ', '.join(state.get('local_agents', [])) or 'none listed'
+                # Last-resort fallback: say plainly that no answer was produced instead of
+                # dumping the swarm state, which reads as an unrelated canned reply.
                 answer = json.dumps({
                     'kind': 'error',
                     'summary': (
-                    f"{intro}\n\n{state_block}\n\nLocal agents: {agents}\n\n"
-                    "My model is offline right now; this is a read-only state report."
+                        "I couldn't produce an answer to that just now — my model returned nothing usable. "
+                        "Please ask again, or select Gemma or Qwen for this one."
                     ),
                     'evidence': [],
                     'proposed_changes': [],
@@ -1457,9 +1486,9 @@ def chat(message, conversation_history=None, stage_cb=None, conversation_id=None
     try:
         from core import witness
         if witness.is_enabled():
-            user_report = witness.review_user_msg(message or '', save=not is_read_only_agent(AGENT_NAME))
+            user_report = witness.review_user_msg(latest_user_msg or message or '', save=not is_read_only_agent(AGENT_NAME))
             seven_report = witness.review_seven_response(answer or '',
-                                                         user_msg=message or '',
+                                                         user_msg=latest_user_msg or message or '',
                                                          save=not is_read_only_agent(AGENT_NAME))
             footer_parts = []
             if user_report.callouts:

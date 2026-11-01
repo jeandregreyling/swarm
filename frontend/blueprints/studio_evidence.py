@@ -37,13 +37,21 @@ CREATE INDEX IF NOT EXISTS idx_studio_evidence_conv
 """
 
 
-def _db() -> sqlite3.Connection:
-    override = os.environ.get("SWARM_DB")
+def _db():
+    from pathlib import Path
+    import os
+    import sqlite3
+
+    override = os.environ.get('SWARM_DB')
     if override:
         conn = sqlite3.connect(override)
     else:
-        from utils.db._connection import get_connection
-        conn = get_connection()
+        repo_root = Path(__file__).resolve().parents[2]
+        runtime_dir = repo_root / 'runtime'
+        runtime_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        db_path = runtime_dir / 'studio-evidence.sqlite'
+        conn = sqlite3.connect(db_path)
+        os.chmod(db_path, 0o600)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     return conn

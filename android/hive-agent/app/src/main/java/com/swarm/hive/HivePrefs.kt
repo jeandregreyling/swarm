@@ -50,6 +50,13 @@ class HivePrefs(ctx: Context) {
         get() = sp.getString(K_LAST_JOB_SUMMARY, "") ?: ""
         set(v) = sp.edit().putString(K_LAST_JOB_SUMMARY, v).apply()
 
+    /** Stable APEX conversation session; generated on first use. */
+    val apexSessionId: String
+        get() = sp.getString(K_APEX_SESSION_ID, null)
+            ?: java.util.UUID.randomUUID().toString().also {
+                sp.edit().putString(K_APEX_SESSION_ID, it).apply()
+            }
+
     /** True once the user has at least set a leader URL. */
     val isConfigured: Boolean
         get() = leader.isNotBlank()
@@ -82,5 +89,6 @@ class HivePrefs(ctx: Context) {
         private const val K_LAST_TELEMETRY_SUMMARY = "last_telemetry_summary"
         private const val K_LAST_JOB_TS = "last_job_ts"
         private const val K_LAST_JOB_SUMMARY = "last_job_summary"
+        private const val K_APEX_SESSION_ID = "apex_session_id"
     }
 }

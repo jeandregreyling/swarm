@@ -1,4 +1,10 @@
 /* views/chat.css — extracted from terminal_base.html */
+#chat-right-dock,
+#chat-dock-resizer,
+#chat-dock-restore-btn {
+  display: none !important;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    CONTENT STYLES
    ───────────────────────────────────────────────────────────────────────── */

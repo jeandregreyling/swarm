@@ -127,7 +127,7 @@ async function localaiRuntimeHealthRefresh(badgeId, warningsId) {
     if (ws.length || stuck.length) {
       warnEl.style.display = '';
       const lines = ws.map(w => `⚠ ${_escapeHtml(w)}`);
-      if (status === 'down') lines.push('Start Ollama with: <code>ollama serve</code>');
+      if (status === 'down') lines.push('No local inference runtime is available. Check the configured llama-server or Ollama installation.');
       stuck.forEach(name => {
         const safe = _escapeHtml(name);
         lines.push(`<button type="button" class="knowledge-btn" style="margin-top:4px;font-size:11px;padding:2px 8px;" onclick="localaiRuntimeForceUnload('${safe.replace(/'/g, "\\'")}', '${badgeId || ''}', '${warningsId || ''}')">Force unload ${safe}</button>`);

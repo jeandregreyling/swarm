@@ -110,6 +110,9 @@ WHITELIST = [
     (r'^ollama\s+list$',                                 2, 'ollama model list'),
     (r'^ollama\s+ps$',                                   2, 'ollama running models'),
 
+    # Local Swarm status API (services, loaded llama-server models) — Level 0
+    (r'^curl\s+-s\s+http://(127\.0\.0\.1|localhost):5050/api/(services|health)$', 0, 'swarm service status'),
+
     # Network fetch — Level 4 (Ghost notified — outbound requests)
     (r'^curl\s+-s\s+https?://\S+$',                      4, 'http fetch'),
     (r'^wget\s+-q\s+-O\s+-\s+https?://\S+$',             4, 'wget fetch'),

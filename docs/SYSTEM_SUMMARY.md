@@ -1,5 +1,104 @@
 # System summary (written after reading the repo, 2026-10-19)
 
+## Single-service APEX and Android hive (2026-11-01)
+
+- Android hive-agent uses APEX (`gpt-oss:20B`) at
+  `http://100.95.226.88:8080/v1/chat/completions`, with the default leader
+  `http://100.95.226.88:5050`. SQLite retains conversation state; requests
+  contain the fixed system prompt first and at most five stored messages.
+- `apex-direct:20b` and `gpt-oss:20b` in `ops/llm_registry.yaml` connect to
+  the same persistent service at `http://127.0.0.1:8080`. `api_model` selects
+  its exact alias `gpt-oss:20B`. External endpoints bypass local GGUF checks,
+  spawning, admission and eviction, including caller CLI-mode overrides.
+  Unavailable endpoints raise an error, never load a replacement model.
+- The Vulkan service is externally owned: pool unload cannot stop it.
+  `deploy/systemd/apex-server-user.service` is installed as the user unit
+  `apex-server.service`; enable it with `systemctl --user enable --now
+  apex-server`. With user linger enabled it starts without an interactive
+  login. Do not run the system unit and user unit together on port 8080.
+- Build with JDK 17 and Android SDK 34 using
+  `./gradlew assembleDebug` from the hive-agent directory.
+  Updating an existing tablet install requires the same signing key.
+
+## Unified local chat and evidence (2026-10-23)
+
+- Embedded home chat renders before workspace, help and system tiles inside
+  `home-content`. Tile markup is captured with Jinja and rendered after chat;
+  a premature container closing tag was removed. Home-chat initialization also
+  moves the original nodes in older cached shells, preserving input state.
+- Local Qwen coder authored the corrected layout patterns after supervised
+  instruction. Rendered-DOM tests and browser checks at 1920x1080, 1280x720
+  and 390x844 verified order and resize handles; fixture checks verified node
+  identity, input value, idempotence and safe missing-element handling.
+- The lesson and corrections are saved through the canonical KC record store:
+  `N-LOCAL-CHAT-FIRST-20261023`, attached to project `P-64B2C1CBF6`. Exact
+  file readback passed. Its database index is still pending because the
+  normal KC note write failed and a rolled-back diagnostic reported
+  `database is locked`. This is not a verified indexed KC entry.
+- Home and full chat hide the agent sidebar and use an available local agent,
+  preferring Gemma, without requiring manual toggles. Explicit local mentions
+  remain supported in full chat. Agent administration remains in Agents.
+- Both surfaces send `local_only: true`; chat rejects non-local recipients
+  and disables automatic relays for these requests.
+- Local responses append backend-counted tool outcomes, runtime guidance
+  counts, and an explicit "no teaching recorded for this turn" statement when
+  there is no instructor event. Tool success is not full-task verification;
+  independent contribution is not inferred from tool counts.
+- This does not implement an always-running Copilot instructor or program
+  launcher. The live shared database currently fails SQLite integrity checks;
+  main-chat persistence and end-to-end execution remain blocked until recovery
+  is approved and verified. No database reset or recovery was performed.
+- Supervised local Gemma teach-backs passed file-content-based Wine/native
+  dispatch, unified local-chat behavior, and numerical evidence attribution
+  after correction. These are session exercises, not durable memory writes
+  or model-weight training. The post-change unavailable-agent exercise failed
+  twice despite correction; generalization and retained learning are not
+  established. The running Python backend has not been restarted to load these
+  changes.
+
+## Fridays game installs through Bottles (2026-10-23)
+
+- Fridays agents can install Windows games from `~/Downloads` into an existing Bottles bottle (default `Fridays`) with `game_installers` (read-only listing), `game_install` and `game_register`. Code: `fridays/game_installer.py`; tests: `tests/test_game_installer.py`.
+- Each install needs a proposal owned by the calling agent, approved by Ghost in `governance_log` (Duck or agent approvals are refused), whose title or description names the exact installer file. Paths outside Downloads, symlink escapes and missing bottles are refused.
+- ISOs are unpacked with 7z to `~/Downloads/.fridays-staging`. Setup opens on Ghost's desktop through `systemd-run --user`; Ghost clicks through it. `game_register` then adds the new executable to Bottles and verifies the listing. Jobs are recorded in `runtime/game_installs.json`.
+- Bottles' Flatpak sandbox limits Windows programs to read-only Downloads, unlike the Lutris Flatpak's full home access. Installer provenance is not checked; untrusted repacks remain a risk. Registration does not prove the game launches.
+
+## Vortex memory restore points (2026-10-22)
+
+- Automatic workflow checkpoints are lightweight history. They do not stage,
+  commit, tag or publish source files. The heartbeat no longer invokes Git sync.
+- Manual UI checkpoints, `SKILL alm_vortex`, and the daily
+  `swarm-vortex-backup.timer` save the entire SQLite memory database, including
+  private agent memory and all other tables. Online SQLite backup includes
+  committed WAL data. SHA-256, a full SQLite integrity check, private permissions,
+  and atomic publication protect each restore point. This does not back up
+  model weights, source files, external vector stores or attachments.
+- Backups live at `/mnt/archive/vortex/memory-backups` and expire after 30 days;
+  the newest verified copy is retained even if older. The archive must be mounted.
+  `SWARM_VORTEX_BACKUP_ROOT` overrides the destination; tests use isolated storage.
+  The older full-workspace tarball backup and verification scripts also resolve
+  their checkout from the script location instead of the previous machine's home.
+- Install the user units in `ops/swarm-vortex-backup.{service,timer}` under
+  `~/.config/systemd/user`, then run
+  `systemctl --user daemon-reload` and
+  `systemctl --user enable --now swarm-vortex-backup.timer`.
+  The units expect the checkout at `~/swarm`. Persistent scheduling catches up
+  at user-manager startup; enable user lingering if backups must run logged out.
+- Create now: `.venv/bin/python -m core.vortex_backup create --label manual-memory`.
+  Verify: `.venv/bin/python -m core.vortex_backup verify /path/to/manifest.json`.
+  Recover: `.venv/bin/python -m core.vortex_backup restore /path/to/manifest.json
+  --output /path/to/new-memory.sqlite`. Recovery refuses an existing file or the
+  live database. Check recovered content before stopping **all** database writers
+  and switching `SWARM_DB_PATH` to the recovered database. Preserve the old
+  database and its WAL/SHM files; do not replace a database while Swarm is running.
+- UI dry runs distinguish full-memory backups from workflow-only history and
+  display the backup manifest. Online step-back is disabled: the legacy restore
+  treated summaries limited to 200 rows as complete and could delete older
+  records. Historical summaries cannot reconstruct missing memory.
+- The direct Gemma and LLaMA registry entries now use this machine's
+  `/mnt/archive/models/blobs` files; Gemma includes its vision projector and its
+  RAM estimate reflects the installed model rather than the old 1B model.
+
 ## Agent-led maintenance training (2026-10-22)
 
 - Project `P-64B2C1CBF6` records the improvement backlog, role assignments,

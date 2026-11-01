@@ -101,6 +101,38 @@ def test_runtime_health_endpoint_shape():
     assert data["status"] in {"healthy", "degraded", "down"}
 
 
+def test_runtime_health_prefers_llamacpp_when_ollama_is_offline(monkeypatch, tmp_path):
+    from flask import Flask
+    from types import SimpleNamespace
+
+    from core.seven_llm import llama_server, registry
+    from frontend.blueprints import ollama as ollama_mod
+
+    binary = tmp_path / "llama-server"
+    binary.touch()
+    model = tmp_path / "gemma.gguf"
+    model.touch()
+    monkeypatch.setattr(gw, "ollama_health", lambda: {
+        "ok": False, "status": "down", "models": [], "warnings": ["ollama unreachable"],
+    })
+    monkeypatch.setattr(registry, "list_models", lambda: [
+        SimpleNamespace(driver="llamacpp", path=str(model)),
+    ])
+    monkeypatch.setattr("core.seven_llm.llama_server.default_binary", lambda: str(binary))
+    monkeypatch.setattr(llama_server, "resource_snapshot", lambda: {
+        "residents": [{"model": "gemma3:latest", "pid": 42}],
+    })
+
+    app = Flask(__name__)
+    app.register_blueprint(ollama_mod.ollama_bp)
+    result = app.test_client().get("/api/ollama/runtime/health").get_json()
+
+    assert result["ok"] is True
+    assert result["status"] == "healthy"
+    assert result["provider"] == "llamacpp"
+    assert result["models"][0]["name"] == "gemma3:latest"
+
+
 def test_localai_template_has_runtime_badge_slots():
     html = (REPO / "frontend" / "templates" / "terminal_base.html").read_text()
     # Local AI tile

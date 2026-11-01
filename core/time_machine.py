@@ -64,17 +64,8 @@ def _git_remote_name(cwd=None) -> str:
 
 
 def _vortex_should_write_git(label: str) -> bool:
-    """Return whether this workflow checkpoint should create git commits/tags.
-
-    Heartbeat checkpoints are operational telemetry, not source changes. Letting
-    them commit/tag every few minutes makes normal project publishing unusable.
-    Keep the DB/Vortex checkpoint, but only write heartbeat git artifacts when
-    explicitly enabled for a debugging session.
-    """
-    safe = str(label or '').strip().lower()
-    if 'heartbeat' in safe:
-        return os.environ.get('SWARM_VORTEX_GIT_HEARTBEAT', '').strip().lower() in {'1', 'true', 'yes', 'on'}
-    return True
+    """Checkpoints never mutate the shared Git worktree."""
+    return False
 
 
 def _vortex_sync_threshold() -> int:
@@ -519,6 +510,7 @@ class TimeMachine:
             'rollback_points': state.get('rollback_points') if isinstance(state.get('rollback_points'), list) else [],
             'git': state.get('git') if isinstance(state.get('git'), dict) else {},
             'git_tags': state.get('git_tags') if isinstance(state.get('git_tags'), dict) else {},
+            'memory_backup': state.get('memory_backup') if isinstance(state.get('memory_backup'), dict) else None,
         }
 
         # Legacy bootstrap checkpoints stored scalar counts in top-level keys.
@@ -781,6 +773,9 @@ class TimeMachine:
                 item['checkpoint_name'] = item['name']
             if not item.get('timestamp') and item.get('created_at'):
                 item['timestamp'] = item['created_at']
+            state = json.loads(item.get('full_state') or '{}')
+            item['checkpoint_kind'] = state.get('checkpoint_kind', 'workflow')
+            item['memory_backup'] = state.get('memory_backup')
             # Keep list payloads lightweight; detailed state is available via get_checkpoint().
             item.pop('full_state', None)
             item.pop('state_snapshot', None)
@@ -843,31 +838,21 @@ class TimeMachine:
 
         return state
 
-    def create_workflow_checkpoint(self, label: str, agent: str = 'twelve', description: str = '') -> dict:
+    def create_workflow_checkpoint(self, label: str, agent: str = 'twelve', description: str = '',
+                                   *, backup_memory: bool = False) -> dict:
         safe_label = re.sub(r'[^a-z0-9]+', '-', (label or 'checkpoint').lower()).strip('-')[:48] or 'checkpoint'
-        timestamp = datetime.now(UTC).strftime('%Y%m%d-%H%M%S')
+        timestamp = datetime.now(UTC).strftime('%Y%m%d-%H%M%S-%f')
         checkpoint_name = f'vortex-{timestamp}-{safe_label}'
         full_state = self.capture_workflow_state()
 
-        # ── Git commit + tag for each active worktree (A.1.3) ─────────────
+        # A checkpoint observes source state; it must never stage or commit
+        # unrelated work in a shared worktree.
         git_tags = {}
-        if _vortex_should_write_git(label):
-            for wt_label, root in [('prod', _SWARM_PROD_ROOT), ('uat', _SWARM_UAT_ROOT), ('dev', _SWARM_DEV_ROOT)]:
-                if os.path.isdir(os.path.join(root, '.git')) or os.path.isfile(os.path.join(root, '.git')):
-                    tag_name = f'{checkpoint_name}-{wt_label}'
-                    # Stage all changes and commit (no-op if working tree is clean)
-                    _git_cmd(['add', '-A'], cwd=root)
-                    commit_msg = f'[vortex] {checkpoint_name}\n\nAgent: {agent}\n{description or ""}'.strip()
-                    out_c, rc_c = _git_cmd(['commit', '-m', commit_msg, '--allow-empty'], cwd=root)
-                    if rc_c != 0 and 'nothing to commit' not in (out_c or '').lower():
-                        print(f'[Vortex] git commit warning for {wt_label}: {out_c}')
-                    # Tag the current HEAD (whether we just committed or not)
-                    out, rc = _git_cmd(['tag', tag_name], cwd=root)
-                    if rc == 0:
-                        git_tags[wt_label] = tag_name
-                    else:
-                        print(f'[Vortex] git tag failed for {wt_label}: {out}')
         full_state['git_tags'] = git_tags
+        full_state['checkpoint_kind'] = 'memory' if backup_memory else 'workflow'
+        if backup_memory:
+            from core.vortex_backup import create_backup
+            full_state['memory_backup'] = create_backup(DB_PATH, checkpoint_name)
 
         checkpoint_id = self.create_checkpoint(checkpoint_name, agent, description, full_state)
         self.record_event(
@@ -888,6 +873,8 @@ class TimeMachine:
             'counts': full_state.get('counts', {}),
             'git': full_state.get('git', {}),
             'git_tags': git_tags,
+            'checkpoint_kind': full_state['checkpoint_kind'],
+            'memory_backup': full_state.get('memory_backup'),
         }
 
     def preview_restore(self, checkpoint_name: str) -> dict:
@@ -988,6 +975,10 @@ class TimeMachine:
                     'current_agent': current.get('agent'),
                 })
 
+        memory_backup = checkpoint_state.get('memory_backup')
+        memory_available = bool(
+            memory_backup and Path(memory_backup.get('manifest_path', '')).is_file()
+        )
         return {
             'checkpoint_name': checkpoint.get('checkpoint_name') or checkpoint_name,
             'checkpoint_timestamp': checkpoint.get('timestamp'),
@@ -996,11 +987,21 @@ class TimeMachine:
             'checkpoint_git': checkpoint_state.get('git', {}),
             'checkpoint_git_tags': checkpoint_state.get('git_tags', {}),
             'current_git': current_state.get('git', {}),
+            'memory_backup': memory_backup,
+            'memory_backup_available': memory_available,
+            'restore_mode': 'offline-memory' if memory_available else 'workflow-history-only',
+            'restore_instructions': (
+                'Recover the full database using python -m core.vortex_backup restore MANIFEST '
+                '--output NEW_DATABASE. Verify it before replacing live memory with all Swarm writers stopped.'
+                if memory_available else
+                'This checkpoint has no retained full memory backup. Workflow summaries are history, not safe restore points.'
+            ),
             'summary': {
                 'proposal_changes': len(proposal_changes),
                 'decision_changes': len(decision_changes),
                 'queue_changes': len(queue_changes),
-                'restorable': bool(proposal_changes or decision_changes or queue_changes),
+                'restorable': memory_available,
+                'online_restore_allowed': False,
                 'has_git_tags': bool(checkpoint_state.get('git_tags')),
             },
             'changes': {
@@ -1014,6 +1015,11 @@ class TimeMachine:
         preview = self.preview_restore(checkpoint_name)
         if not preview:
             raise ValueError(f'checkpoint not found: {checkpoint_name}')
+        if not dry_run:
+            raise RuntimeError(
+                'Online step-back is disabled: workflow summaries may be truncated and do not '
+                'contain memory. ' + preview['restore_instructions']
+            )
 
         self.record_event(
             agent=actor,
@@ -1026,162 +1032,7 @@ class TimeMachine:
             'restore_preview' if dry_run else 'restore_apply_requested',
             f'checkpoint={checkpoint_name} | actor={actor} | summary={json.dumps(preview.get("summary", {}), ensure_ascii=True)}'
         )
-        if dry_run:
-            return {'ok': True, 'dry_run': True, **preview}
-
-        safety = self.create_workflow_checkpoint(f'pre-restore-{checkpoint_name}', actor, f'Safety checkpoint before restoring {checkpoint_name}')
-        checkpoint = self.get_checkpoint(checkpoint_name)
-        saved_state = self._normalize_workflow_state(checkpoint.get('full_state') or {})
-
-        conn = sqlite3.connect(DB_PATH)
-        restored = {'work_proposals': 0, 'decisions': 0, 'queue': 0, 'deleted_work_proposals': 0, 'deleted_decisions': 0, 'deleted_queue': 0}
-        try:
-            saved_proposal_ids = {row.get('proposal_id') for row in saved_state.get('work_proposals', []) if row.get('proposal_id')}
-            saved_decision_ids = {row.get('decision_id') for row in saved_state.get('decisions', []) if row.get('decision_id') is not None}
-            saved_queue_ids = {row.get('id') for row in saved_state.get('queue', []) if row.get('id') is not None}
-
-            if saved_proposal_ids:
-                placeholders = ','.join('?' for _ in saved_proposal_ids)
-                cursor = conn.execute(
-                    f"DELETE FROM work_proposals WHERE proposal_id NOT IN ({placeholders})",
-                    tuple(saved_proposal_ids)
-                )
-            else:
-                cursor = conn.execute("DELETE FROM work_proposals")
-            restored['deleted_work_proposals'] = cursor.rowcount
-
-            if saved_decision_ids:
-                placeholders = ','.join('?' for _ in saved_decision_ids)
-                cursor = conn.execute(
-                    f"DELETE FROM decisions WHERE decision_id NOT IN ({placeholders})",
-                    tuple(saved_decision_ids)
-                )
-            else:
-                cursor = conn.execute("DELETE FROM decisions")
-            restored['deleted_decisions'] = cursor.rowcount
-
-            if saved_queue_ids:
-                placeholders = ','.join('?' for _ in saved_queue_ids)
-                cursor = conn.execute(
-                    f"DELETE FROM queue WHERE id NOT IN ({placeholders})",
-                    tuple(saved_queue_ids)
-                )
-            else:
-                cursor = conn.execute("DELETE FROM queue")
-            restored['deleted_queue'] = cursor.rowcount
-
-            for row in saved_state.get('work_proposals', []):
-                # Route through governance with singleton bypass (system restore op)
-                try:
-                    import sys as _sys
-                    import os as _os_tm
-                    _utils = _os_tm.path.join(
-                        _os_tm.environ.get('SWARM_ROOT') or _os_tm.path.dirname(
-                            _os_tm.path.dirname(_os_tm.path.abspath(__file__))
-                        ),
-                        'utils',
-                    )
-                    if _utils not in _sys.path:
-                        _sys.path.insert(0, _utils)
-                    from governance import transition_proposal, GovernanceError
-                    transition_proposal(
-                        row.get('proposal_id'), row.get('status', 'pending'),
-                        'vortex', actor='vortex_restore',
-                        note=f'restore from checkpoint {checkpoint_name}',
-                        conn=conn, _skip_singleton=True,
-                    )
-                    restored['work_proposals'] += 1
-                except GovernanceError:
-                    # Fallback: direct update for illegal transitions during restore
-                    cursor = conn.execute(
-                        "UPDATE work_proposals SET status=?, ticket_number=?, updated_at=datetime('now') WHERE proposal_id=?",
-                        (row.get('status', 'pending'), row.get('ticket_number', ''), row.get('proposal_id'))
-                    )
-                    restored['work_proposals'] += cursor.rowcount
-                except Exception:
-                    cursor = conn.execute(
-                        "UPDATE work_proposals SET status=?, ticket_number=?, updated_at=datetime('now') WHERE proposal_id=?",
-                        (row.get('status', 'pending'), row.get('ticket_number', ''), row.get('proposal_id'))
-                    )
-                    restored['work_proposals'] += cursor.rowcount
-
-            for row in saved_state.get('decisions', []):
-                cursor = conn.execute(
-                    "UPDATE decisions SET test_status=?, commit_hash=? WHERE decision_id=?",
-                    (row.get('test_status', 'PENDING'), row.get('commit_hash', ''), row.get('decision_id'))
-                )
-                restored['decisions'] += cursor.rowcount
-
-            for row in saved_state.get('queue', []):
-                cursor = conn.execute(
-                    "UPDATE queue SET status=?, priority=?, agent=? WHERE id=?",
-                    (row.get('status', 'queued'), row.get('priority', 5), row.get('agent', ''), row.get('id'))
-                )
-                restored['queue'] += cursor.rowcount
-
-            conn.commit()
-        finally:
-            conn.close()
-
-        # ── Git-level restore: revert worktrees to checkpoint tags (A.1.3) ──
-        import os
-        git_tags = saved_state.get('git_tags', {})
-        git_restored = {}
-        for wt_label, tag_name in git_tags.items():
-            root_map = {'prod': _SWARM_PROD_ROOT, 'uat': _SWARM_UAT_ROOT, 'dev': _SWARM_DEV_ROOT}
-            root = root_map.get(wt_label)
-            if root and os.path.isdir(root):
-                # Verify tag exists before reverting
-                out, rc = _git_cmd(['tag', '-l', tag_name], cwd=root)
-                if rc == 0 and tag_name in out:
-                    # Safe revert: undo commits between tag and HEAD
-                    out2, rc2 = _git_cmd(
-                        ['revert', '--no-commit', f'{tag_name}..HEAD'],
-                        cwd=root
-                    )
-                    if rc2 == 0:
-                        # Commit the revert
-                        revert_msg = (
-                            f'[vortex-restore] Revert to {checkpoint_name}\n\n'
-                            f'Actor: {actor}\n'
-                            f'Tag: {tag_name}\n'
-                            f'Safety checkpoint: {safety.get("checkpoint_name", "none")}'
-                        )
-                        out3, rc3 = _git_cmd(['commit', '-m', revert_msg, '--allow-empty'], cwd=root)
-                        git_restored[wt_label] = {
-                            'tag': tag_name, 'ok': True, 'method': 'revert',
-                            'output': (out3 or out2)[:200],
-                        }
-                    else:
-                        # Revert failed (conflicts etc) — abort and fall back to reset
-                        _git_cmd(['revert', '--abort'], cwd=root)
-                        out4, rc4 = _git_cmd(['reset', '--hard', tag_name], cwd=root)
-                        git_restored[wt_label] = {
-                            'tag': tag_name, 'ok': rc4 == 0, 'method': 'reset_fallback',
-                            'output': (out4 or out2)[:200],
-                        }
-                else:
-                    git_restored[wt_label] = {'tag': tag_name, 'ok': False, 'output': 'tag not found'}
-
-        self.record_event(
-            agent=actor,
-            action='restore_workflow_state',
-            event_type='restore',
-            target=checkpoint_name,
-            details={'restored': restored, 'git_restored': git_restored, 'safety_checkpoint': safety['checkpoint_name']}
-        )
-        self._write_activity_log(
-            'restore_applied',
-            f'checkpoint={checkpoint_name} | actor={actor} | restored={json.dumps(restored, ensure_ascii=True)} | git={json.dumps(git_restored, ensure_ascii=True)} | safety={safety.get("checkpoint_name", "")}'
-        )
-        return {
-            'ok': True,
-            'dry_run': False,
-            'restored': restored,
-            'git_restored': git_restored,
-            'safety_checkpoint': safety,
-            **preview,
-        }
+        return {'ok': True, 'dry_run': True, **preview}
     
     def get_temporal_stats(self, agent: str) -> dict:
         """Get statistics about an agent's temporal activity."""

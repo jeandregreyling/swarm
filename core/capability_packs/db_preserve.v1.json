@@ -1,0 +1,32 @@
+{
+  "id": "db_preserve",
+  "version": "1.0.0",
+  "goal": "Preserve evidence and prepare a separate candidate without changing live history.",
+  "commands": [
+    "SKILL recovery preserve",
+    "SKILL recovery diagnose",
+    "SKILL recovery snapshot",
+    "SKILL recovery recover"
+  ],
+  "procedure": [
+    "Request preserve first. It copies original DB and present WAL/SHM, hashes them and reports observed stability.",
+    "If preservation fails or reports changing source, stop SQL work and report uncertainty.",
+    "Only after preserved-copy checks pass request diagnose.",
+    "Request snapshot once: SQLite backup produces a consistent separate copy including committed WAL.",
+    "Only under operator-approved candidate policy request recover.",
+    "Report integrity, every readable-table mismatch and every unreadable-source uncertainty separately."
+  ],
+  "boundaries": [
+    "Live file copies are not an atomic grouped snapshot; never claim otherwise.",
+    "Never overwrite the source, activate a candidate, delete history, or restore an old backup automatically.",
+    "Recovery import is OS-sandboxed with no network and only candidate-directory writes.",
+    "A valid SQLite integrity check is not proof of preservation or successful application-level recovery."
+  ],
+  "acceptance": [
+    "Raw evidence is retained before SQL diagnostics.",
+    "Separate candidate integrity passes.",
+    "Readable source tables match by columns, count and row-multiset hash.",
+    "Unreadable source tables remain explicit uncertainties requiring operator review.",
+    "Live activation and conversation/KC/Studio write-read gates are separate and not provided by this pack."
+  ]
+}

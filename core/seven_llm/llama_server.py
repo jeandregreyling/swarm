@@ -15,7 +15,8 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
+from urllib.parse import urlsplit
 
 import requests
 
@@ -62,6 +63,11 @@ def default_binary() -> str:
     configured = os.environ.get("SEVEN_LLAMA_SERVER")
     if configured:
         return configured
+    # The Vulkan build (RX 6800 via RADV) is the only working pipeline; the
+    # older HIP builds fail on the missing libhipblas.so.2.
+    vulkan_build = os.path.expanduser("~/llama.cpp/build-vulkan/bin/llama-server")
+    if os.path.isfile(vulkan_build):
+        return vulkan_build
     repo_build = os.path.join(_root(), "agents", "seven", "llama.cpp", "build", "bin", "llama-server")
     if os.path.isfile(repo_build):
         return repo_build
@@ -235,6 +241,21 @@ def _save_state(state: dict[str, dict[str, Any]]) -> None:
             os.unlink(tmp)
 
 
+def set_ttl(model: str, seconds: int) -> int:
+    """Persist a per-model idle timeout override for the local runtime."""
+    entry = registry.get(model)
+    if not entry or entry.driver != "llamacpp":
+        raise RuntimeError(f"no direct GGUF model registered for '{model}'")
+    ttl = max(1, min(int(seconds), 86400))
+    with _LOCK, _cross_process_lock():
+        state = _load_state()
+        state.setdefault(entry.name, {})["ttl_seconds"] = ttl
+        _save_state(state)
+        if _load_state().get(entry.name, {}).get("ttl_seconds") != ttl:
+            raise OSError(f"failed to persist idle timeout for '{entry.name}'")
+    return ttl
+
+
 def _residents() -> list[dict[str, Any]]:
     """Every running llama-server of this user, ours and other processes'."""
     out = [
@@ -310,7 +331,7 @@ def _reap_idle(state: dict[str, dict[str, Any]], *, keep: str) -> None:
             continue
         info = state.setdefault(name, {"last_used": now})
         entry = registry.get(name)
-        ttl = int(entry.ttl_seconds or 0) if entry else 0
+        ttl = int(info.get("ttl_seconds") or (entry.ttl_seconds if entry else 0) or 0)
         if ttl > 0 and now - float(info.get("last_used") or now) > ttl:
             _stop_resident(resident)
             running.discard(name)
@@ -416,13 +437,93 @@ def _set_oom_score(pid: int) -> None:
             fh.write(str(OOM_SCORE_ADJ))
 
 
-def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
+def _placement_from_log(path: str) -> dict[str, Any]:
+    """Report confirmed layer offload, not requested GPU settings."""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(max(0, os.fstat(fh.fileno()).st_size - 65536))
+            text = fh.read().decode("utf-8", errors="replace")
+    except FileNotFoundError:
+        return {"placement": "unknown"}
+    matches = re.findall(r"offloaded (\d+)/(\d+) layers to GPU", text)
+    if not matches:
+        return {"placement": "unknown"}
+    gpu, total = map(int, matches[-1])
+    return {
+        "placement": "ram" if gpu == 0 else ("gpu" if gpu == total else "gpu+ram"),
+        "gpu_layers": gpu,
+        "total_layers": total,
+    }
+
+
+def _placement_from_process(pid: int) -> dict[str, Any]:
+    """AMD DRM fdinfo reports dedicated VRAM and GPU-accessible system RAM."""
+    seen: set[str] = set()
+    vram_kib = host_kib = 0
+    for path in glob.glob(f"/proc/{pid}/fdinfo/*"):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+        except (FileNotFoundError, PermissionError):
+            continue
+        client = re.search(r"^drm-client-id:\s*(\S+)", text, re.MULTILINE)
+        if not client or client[1] in seen:
+            continue
+        seen.add(client[1])
+        for pool in ("vram", "gtt"):
+            match = re.search(rf"^drm-resident-{pool}:\s*(\d+)\s+KiB", text, re.MULTILINE)
+            if match:
+                if pool == "vram":
+                    vram_kib += int(match[1])
+                else:
+                    host_kib += int(match[1])
+    if not vram_kib and not host_kib:
+        return {}
+    return {
+        "placement": "gpu+ram" if host_kib else "gpu",
+        "placement_source": "kernel",
+        "vram_gb": round(vram_kib / 1024 ** 2, 2),
+        "gpu_host_ram_gb": round(host_kib / 1024 ** 2, 2),
+    }
+
+
+def ensure(
+    model: str, *, timeout_s: int = STARTUP_TIMEOUT_S,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+) -> ServerHandle:
     entry = registry.get(model)
-    if not entry or entry.driver != "llamacpp" or not entry.path:
+    if not entry or entry.driver != "llamacpp":
+        raise RuntimeError(f"no direct GGUF model registered for '{model}'")
+    if entry.endpoint:
+        endpoint = entry.endpoint.rstrip("/")
+        if not _server_alive(endpoint):
+            raise RuntimeError(f"External llama-server unavailable for '{entry.name}': {endpoint}")
+        if progress:
+            progress({"stage": "ready", "model": entry.name, "endpoint": endpoint, "external": True})
+        # Externally owned services never enter the pool, admission, or eviction paths.
+        port = urlsplit(endpoint).port or (443 if endpoint.startswith("https://") else 80)
+        return ServerHandle(entry.name, endpoint, port, 0, time.time())
+    if not entry.path:
         raise RuntimeError(f"no direct GGUF model registered for '{model}'")
     if not os.path.isfile(entry.path):
         raise RuntimeError(f"GGUF path missing for '{model}': {entry.path}")
     model = entry.name
+    log_path = os.path.join("/tmp", f"seven-llama-server-{model.replace(':', '_').replace('/', '_')}.log")
+
+    def report(stage: str, **details: Any) -> None:
+        if progress:
+            progress({"stage": stage, "model": model, **details})
+
+    def placement(pid: int) -> dict[str, Any]:
+        if not _uses_gpu(entry):
+            return {"placement": "ram"}
+        return {**_placement_from_log(log_path), **_placement_from_process(pid)}
+
+    def ready(pid: int) -> None:
+        if progress:
+            report("ready", **placement(pid))
+
+    report("queued")
 
     with _LOCK, _cross_process_lock():
         state = _load_state()
@@ -444,6 +545,7 @@ def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
                 if _server_alive(endpoint):
                     _PORTS[model] = foreign["port"]
                     touch()
+                    ready(foreign["pid"])
                     return ServerHandle(model, endpoint, foreign["port"], foreign["pid"], time.time())
                 # Same model but unresponsive (stuck or half-started): replace it.
                 _kill_pid(foreign["pid"], timeout=5)
@@ -451,14 +553,26 @@ def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
         endpoint = f"http://{HOST}:{port}"
         if proc is not None and proc.poll() is None and _server_alive(endpoint):
             touch()
+            ready(proc.pid)
             return ServerHandle(model, endpoint, port, proc.pid, time.time())
 
         if proc is not None and proc.poll() is None:
             _stop_locked(model, timeout=5)
 
         _reap_idle(state, keep=model)
+        report("checking_memory")
         charge = _admit(model, state)
         _save_state(state)
+        free_vram = _vram_free_gb()
+        report(
+            "loading", host_ram_gb=round(charge, 2),
+            vram_free_gb=round(free_vram, 2) if free_vram is not None else None,
+            placement_estimate=(
+                "ram" if not _uses_gpu(entry) else
+                "unknown" if free_vram is None else
+                ("gpu+ram" if charge > min(float(entry.ram_gb or 4), 1.0) else "gpu")
+            ),
+        )
 
         binary = str((entry.options or {}).get("server") or default_binary())
         if not os.path.isfile(binary):
@@ -477,7 +591,6 @@ def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
             "--parallel", str(slots),
             "--no-webui",
             "--no-slots",
-            "--log-disable",
             # Read weights into anonymous memory so MemAvailable reflects what
             # the model really holds (mmap'd weights look reclaimable).
             "--load-mode", str(opts.get("load_mode") or "none"),
@@ -496,17 +609,16 @@ def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
         if bool(opts.get("embedding")):
             cmd.append("--embedding")
 
-        log_path = os.path.join("/tmp", f"seven-llama-server-{model.replace(':', '_').replace('/', '_')}.log")
-        log_fh = open(log_path, "a", encoding="utf-8")
-        proc = subprocess.Popen(
-            _launcher_prefix(model, port) + cmd,
-            stdout=log_fh,
-            stderr=subprocess.STDOUT,
-            text=True,
-            close_fds=True,
-            start_new_session=True,
-            env=_server_environment(binary),
-        )
+        with open(log_path, "w", encoding="utf-8") as log_fh:
+            proc = subprocess.Popen(
+                _launcher_prefix(model, port) + cmd,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+                text=True,
+                close_fds=True,
+                start_new_session=True,
+                env=_server_environment(binary),
+            )
         _PROCS[model] = proc
         _set_oom_score(proc.pid)
 
@@ -520,6 +632,7 @@ def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
                 raise RuntimeError(f"llama-server exited during startup for {model}; see {log_path}")
             if _server_alive(endpoint):
                 touch(charge)
+                ready(proc.pid)
                 return ServerHandle(model, endpoint, port, proc.pid, time.time())
             time.sleep(1)
         _stop_locked(model, timeout=5)
@@ -528,8 +641,8 @@ def ensure(model: str, *, timeout_s: int = STARTUP_TIMEOUT_S) -> ServerHandle:
 
 def _chat_payload(model: str, messages: list[dict], *, temperature: float | None, options: dict) -> dict[str, Any]:
     payload: dict[str, Any] = {
-        "model": model,
-        "messages": [_openai_message(m) for m in messages],
+        "model": str(options.get("api_model") or model),
+        "messages": [_openai_message(m) for m in _alternate_roles(messages)],
         "stream": False,
         "max_tokens": int(options.get("num_predict") or options.get("max_tokens") or 2048),
         "temperature": float(temperature if temperature is not None else (
@@ -541,6 +654,45 @@ def _chat_payload(model: str, messages: list[dict], *, temperature: float | None
     if options.get("response_format") is not None:
         payload["response_format"] = _openai_response_format(options["response_format"])
     return payload
+
+
+def _alternate_roles(messages: list[dict]) -> list[dict]:
+    """Shape history so strict chat templates (Gemma, Mistral) accept it.
+
+    Multi-agent threads produce consecutive same-role turns and mid-thread
+    system notes; Ollama tolerated that but llama-server's Jinja templates
+    raise "Conversation roles must alternate". Leading system messages are
+    merged, later ones become user turns, and same-role runs are joined.
+    """
+    system: list[str] = []
+    turns: list[dict] = []
+    for raw in messages or []:
+        if not isinstance(raw, dict):
+            continue
+        msg = dict(raw)
+        role = str(msg.get("role") or "user")
+        if role == "system":
+            if not turns:
+                system.append(str(msg.get("content") or ""))
+                continue
+            msg["role"] = role = "user"
+        if role not in {"user", "assistant"}:
+            turns.append(msg)
+            continue
+        prev = turns[-1] if turns else None
+        if prev is not None and prev.get("role") == role and isinstance(prev.get("content", ""), str) \
+                and isinstance(msg.get("content", ""), str):
+            prev["content"] = "\n\n".join(x for x in (prev.get("content") or "", msg.get("content") or "") if x)
+            if msg.get("images"):
+                prev["images"] = list(prev.get("images") or []) + list(msg["images"])
+            continue
+        turns.append(msg)
+    if turns and turns[0].get("role") == "assistant":
+        turns.insert(0, {"role": "user", "content": "(conversation so far)"})
+    out: list[dict] = []
+    if system:
+        out.append({"role": "system", "content": "\n\n".join(x for x in system if x)})
+    return out + turns
 
 
 def _openai_message(message: dict) -> dict:
@@ -636,6 +788,8 @@ def chat(
     if entry:
         model = entry.name
         opts = {**dict(entry.options or {}), **opts}
+        if entry.endpoint:
+            opts["api_model"] = (entry.options or {}).get("api_model") or entry.name
         messages = _with_default_system(messages, str(opts.get("default_system") or ""))
     if entry and (entry.options or {}).get("raw_completion"):
         return _retry_if_evicted(model, opts, lambda handle: _raw_completion_chat(
@@ -676,7 +830,7 @@ def embeddings(model: str, prompt: str, *, options: dict | None = None) -> list[
     def call(handle: ServerHandle) -> Any:
         resp = requests.post(
             handle.endpoint.rstrip("/") + "/v1/embeddings",
-            json={"model": model, "input": str(prompt or "")},
+            json={"model": str((entry.options if entry else {}).get("api_model") or model), "input": str(prompt or "")},
             timeout=int(opts.get("timeout") or 120),
         )
         resp.raise_for_status()
@@ -712,6 +866,8 @@ def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int,
                 f"{resp.status_code} Client Error for {resp.url}: {detail}",
                 response=resp,
             )
+        # SSE responses carry no charset; requests would fall back to ISO-8859-1.
+        resp.encoding = "utf-8"
         for raw_line in resp.iter_lines(decode_unicode=True):
             if not raw_line:
                 continue
@@ -768,6 +924,25 @@ def snapshot() -> list[dict]:
         return out
 
 
+def resident_models() -> list[dict[str, Any]]:
+    """Every loaded llama-server of this user (any process), for status panels."""
+    state = _load_state()
+    now = time.time()
+    out = []
+    for resident in _residents():
+        info = state.get(resident["model"]) or {}
+        last = info.get("last_used")
+        out.append({
+            "model": resident["model"],
+            "pid": resident["pid"],
+            "port": resident.get("port"),
+            "gpu": info.get("gpu"),
+            "ram_gb": round(_charged_gb(resident, state), 2),
+            "idle_seconds": int(now - float(last)) if last else None,
+        })
+    return sorted(out, key=lambda r: r["model"])
+
+
 def _stop_locked(name: str, *, timeout: int = 10) -> bool:
     proc = _PROCS.pop(name, None)
     if not proc:
@@ -786,6 +961,8 @@ def stop(model: str | None = None) -> int:
     with _LOCK:
         if model:
             entry = registry.get(model)
+            if entry and entry.endpoint:
+                return 0
             model = entry.name if entry else model
         targets = [model] if model else list(_PROCS)
         stopped = 0

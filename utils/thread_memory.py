@@ -149,6 +149,11 @@ def carry_over_block(agent, conversation_id, message=''):
 _current_conversation = contextvars.ContextVar('mind_conversation', default=None)
 
 
+def current_conversation():
+    """Conversation ID of the chat turn being handled, or None outside a chat."""
+    return _current_conversation.get()
+
+
 def run_in_conversation(conversation_id, fn, *args, **kwargs):
     """Run fn with the conversation ID visible to fact recording (works in worker threads)."""
     token = _current_conversation.set(conversation_id)

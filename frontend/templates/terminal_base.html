@@ -24,6 +24,22 @@
     }
     return html;
   };
+  /* Read-only agents reply with a JSON review envelope; show it as prose. */
+  window.agentEnvelopeToMarkdown = function(text){
+    const src = String(text == null ? '' : text);
+    const trimmed = src.trim();
+    if (!trimmed.startsWith('{') || trimmed.indexOf('"human_review_required"') === -1) return src;
+    let data;
+    try { data = JSON.parse(trimmed); } catch (e) { return src; }
+    if (!data || typeof data !== 'object' || typeof data.summary !== 'string') return src;
+    const parts = [data.summary.trim()];
+    const evidence = Array.isArray(data.evidence) ? data.evidence.filter(e => e && (e.finding || e.source)) : [];
+    if (evidence.length) parts.push('**Evidence**\n' + evidence.map(e => `- ${e.source ? `*${e.source}:* ` : ''}${e.finding || ''}`).join('\n'));
+    const changes = Array.isArray(data.proposed_changes) ? data.proposed_changes.filter(c => c && (c.change || c.path)) : [];
+    if (changes.length) parts.push('**Proposed changes** (need your review)\n' + changes.map(c => `- ${c.path ? `\`${c.path}\` ` : ''}${c.change || ''}`).join('\n'));
+    if (data.blocked_tool) parts.push(`_Blocked tool request: ${data.blocked_tool}_`);
+    return parts.filter(Boolean).join('\n\n');
+  };
 })();
 </script>
 <style>
@@ -85,7 +101,7 @@
 <link rel="stylesheet" href="/static/css/components.css?v=6">
 <link rel="stylesheet" href="/static/css/windows.css">
 <link rel="stylesheet" href="/static/css/taskbar.css?v=31-themepicker">
-<link rel="stylesheet" href="/static/css/views/chat.css?v=4">
+<link rel="stylesheet" href="/static/css/views/chat.css?v=5">
 <link rel="stylesheet" href="/static/css/modals.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/library.css">
 <link rel="stylesheet" href="/static/css/diamond.css?v={{ ASSET_VERSION }}">
@@ -93,8 +109,9 @@
 <link rel="stylesheet" href="/static/css/views/agents.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/views/localai.css?v=2">
 <link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
+<link rel="stylesheet" href="/static/css/views/downloads.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/responsive.css">
-<link rel="stylesheet" href="/static/css/home-chat.css?v=32">
+<link rel="stylesheet" href="/static/css/home-chat.css?v=33">
 <link rel="stylesheet" href="/static/css/login.css?v=28">
 <link rel="stylesheet" href="/static/css/skills.css?v=27">
 <link rel="stylesheet" href="/static/css/views/tasker.css?v=1">
@@ -104,7 +121,7 @@
   // Pass ENV_STAGE from Flask to JS for the banner
   window.ENV_STAGE = "{{ ENV_STAGE }}";
 </script>
-<script src="/static/js/env-banner.js?v=2"></script>
+<script src="/static/js/env-banner.js?v=3"></script>
 <script src="/static/js/hive-parallax.js?v=1"></script>
 </head>
 <body>
@@ -735,7 +752,8 @@
 
   <div id="home-content">
 
-    <!-- ═══ Quick Access tiles (Phase-5 SMALL: moved back above chat) ═══ -->
+    {% set home_tiles %}
+    <!-- ═══ Workspace and system tools, rendered below chat ═══ -->
     <div class="home-section home-tiles-section">
       <!-- Y.49: First-run orientation card. Hidden by default; orientation_card.js
            shows it when /api/orientation/seen returns seen=false. Points the user
@@ -867,6 +885,10 @@
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Email</span></div>
           <div class="card-desc">Inbox &amp; compose</div>
         </div>
+        <div class="home-card home-card-lab" data-win-id="downloads" data-win-title="Downloads" data-win-template="view-downloads">
+          <div class="card-title"><span>Downloads</span></div>
+          <div class="card-desc">qBittorrent search, seeds &amp; download controls</div>
+        </div>
         <div class="home-card home-card-lab" data-win-id="feeds" data-win-title="Feeds" data-win-template="view-feeds">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
           <div class="card-desc">Social &amp; developer feeds</div>
@@ -891,7 +913,7 @@
         </div>
       </details>
       </div>
-    </div>
+    {% endset %}
 
     <!-- ═══ Home Chat — primary interaction surface ═══ -->
     <div class="home-section home-chat-section home-chat-prominent">
@@ -940,7 +962,7 @@
               <div class="home-welcome-content">
                 <div class="home-welcome-greeting" id="home-welcome-greeting"></div>
                 <div class="home-welcome-tagline">Ask the swarm anything</div>
-                <div class="home-welcome-subtitle">Auto-routed to the best agent — or pick one manually</div>
+                <div class="home-welcome-subtitle">One chat, handled by your local assistants</div>
                 <div class="home-interests-row" id="home-interests-row"></div>
                 <div class="home-onboarding" id="home-onboarding" style="display:none;">
                   <div class="home-onboarding-header">
@@ -960,7 +982,7 @@
           </div>
           <div id="home-chat-input-area">
             <div class="home-chat-compose">
-              <textarea id="home-chat-input" placeholder="Ask Seven (start with ?) · or @duck @gemma @ten…" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
+              <textarea id="home-chat-input" placeholder="Ask Fridays to help with a program, game, or task…" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
               <button id="home-chat-fav-btn" class="voice-mic-btn" title="Save current input as favourite shortcut" onclick="homeChatToggleFavourite()" aria-label="Favourites">
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M8 2.5l1.7 3.5 3.8.5-2.8 2.7.7 3.8L8 11.2 4.6 13l.7-3.8L2.5 6.5l3.8-.5L8 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
               </button>
@@ -1006,6 +1028,8 @@
            aria-label="Resize chat from bottom edge — drag, double-click to reset"
            tabindex="0" title="Drag bottom edge to resize"></div>
     </div>
+
+    {{ home_tiles }}
 
     <!-- Y.59 — legacy standalone resizer kept for any third-party code that
          queries it by id, but hidden via CSS. The new edge handles inside
@@ -1732,10 +1756,17 @@
     <!-- P4-S37: interests pulled forward from the (i) modal so they're discoverable -->
     <div id="kn-interests-strip" style="margin:0 10px 8px;padding:7px 10px;border:1px dashed color-mix(in srgb,var(--accent) 40%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--accent) 4%,var(--card));display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;">
       <svg viewBox="0 0 16 16" width="13" height="13" fill="none" style="color:var(--accent);flex-shrink:0;"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <strong style="color:var(--text);">Tell the swarm what you're into</strong>
-      <span style="color:var(--text-dim);">— Librarian/Scholar/Seeker will look out for these topics and surface them in Library.</span>
-      <span id="kn-interests-list" style="color:var(--text-dim);font-style:italic;">loading…</span>
-      <button onclick="knowledgeOpenInfo()" style="margin-left:auto;background:var(--accent);color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:10.5px;font-weight:700;cursor:pointer;">Edit interests</button>
+      <strong style="color:var(--text);">Your interest map</strong>
+      <span style="color:var(--text-dim);">Click a node to search or remove it. Only saved interests appear here.</span>
+      <form class="kn-interest-add" onsubmit="event.preventDefault();knowledgeAddInterest();">
+        <label for="kn-interest-input">Add interests</label>
+        <input id="kn-interest-input" maxlength="1000" placeholder="SAP HCM, Australian payroll..." required>
+        <button type="submit" id="kn-interest-add-button">Add</button>
+      </form>
+      <div id="kn-interest-status" role="status" aria-live="polite"></div>
+      <div id="kn-interests-list" class="kn-interest-map">Loading...</div>
+      <div id="kn-interest-detail" class="kn-interest-detail" hidden></div>
+      <small style="flex-basis:100%;color:var(--text-dim);">Saved interests guide discovery. Research email schedules are managed separately in Tasker.</small>
     </div>
     <div id="kn-brain-health" class="kn-brain-health">
       <span class="kn-brain-health-title">Brain</span>
@@ -3002,6 +3033,9 @@
 <template id="view-media">
   {% include 'views/media.html' %}
 </template>
+<template id="view-downloads">
+  {% include 'views/downloads.html' %}
+</template>
 
 <template id="view-trace">
   <div class="content-view" id="trace-view" style="display:flex;flex-direction:column;height:100%;">
@@ -3274,6 +3308,7 @@
 <script src="/static/js/core/toast.js?v=2"></script>
 <script src="/static/js/core/icons.js"></script>
 <script src="/static/js/core/swarm-chat.js"></script>
+<script src="/static/js/core/agent-loader.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/core/seven-panel.js?v=1"></script>
 <script src="/static/js/core/record-shortcuts.js?v=1"></script>
 <script src="/static/js/core/app.js?v={{ ASSET_VERSION }}-taskbar2"></script>
@@ -3292,6 +3327,7 @@
 <script src="/static/js/views/tasker.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/tickets.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/email.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/downloads.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/studio.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/studio-media.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/studio-testlab.js?v={{ ASSET_VERSION }}"></script>
@@ -3300,8 +3336,8 @@
 <script src="/static/js/views/projects.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/traced.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/core/trace-bus.js?v=30"></script>
-<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-chat-trace4"></script>
-<script src="/static/js/views/services.js?v={{ ASSET_VERSION }}-services2"></script>
+<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-local-chat6"></script>
+<script src="/static/js/views/services.js?v={{ ASSET_VERSION }}-services3"></script>
 <script src="/static/js/views/ollama.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/time-wizard.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/access.js?v={{ ASSET_VERSION }}-agent-chat1"></script>
@@ -3327,7 +3363,7 @@
 <script src="/static/js/views/home_banner.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/orientation_card.js?v={{ ASSET_VERSION }}"></script>
 
-<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}-hc-local-team1"></script>
+<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}-hc-local-chat4"></script>
 <script src="/static/js/friday-auth.js?v=28"></script>
 <script src="/static/js/core/aig_focus.js?v={{ ASSET_VERSION }}"></script>
 <!-- Init (must be last — depends on all above) -->

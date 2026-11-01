@@ -2,11 +2,66 @@
 import os
 import re
 import time
+import json
+import logging
+import queue
+import threading
 import requests
 from flask import Blueprint, request, Response, jsonify, send_file
 from services import *
+from services.auth import require_owner
 
 ollama_bp = Blueprint('ollama', __name__)
+_LOAD_LOG = logging.getLogger(__name__)
+
+
+@ollama_bp.post('/api/agents/<agent>/load')
+@require_owner
+def api_agent_load(agent, current_user):
+    """Warm an enabled local agent with streamed, factual runtime stages."""
+    from utils.db.registry import get_agent_models
+    from core import llm
+    from core.seven_llm import llama_server
+    from urllib.parse import urlparse
+
+    origin = request.headers.get('Origin')
+    if request.headers.get('Sec-Fetch-Site') == 'cross-site' or (
+        origin and urlparse(origin).netloc != request.host
+    ):
+        return jsonify(ok=False, error='Cross-site model loading is not allowed'), 403
+    model = get_agent_models(local_only=True).get(agent)
+    if not model:
+        return jsonify(ok=False, error='Enabled local agent not found'), 404
+    direct = llm._direct_model(model)
+    if not direct:
+        return jsonify(ok=False, error='No local llama.cpp model is installed for this agent'), 409
+    events = queue.Queue()
+
+    def load():
+        try:
+            llama_server.ensure(direct, progress=events.put)
+        except Exception as exc:
+            _LOAD_LOG.exception('Agent model load failed: %s', agent)
+            events.put({'stage': 'error', 'error': str(exc), 'model': direct})
+        finally:
+            events.put(None)
+
+    def stream():
+        threading.Thread(target=load, daemon=True).start()
+        yield json.dumps({'stage': 'requested', 'agent': agent, 'model': direct}) + '\n'
+        while True:
+            try:
+                event = events.get(timeout=2)
+            except queue.Empty:
+                yield json.dumps({'stage': 'waiting', 'model': direct}) + '\n'
+                continue
+            if event is None:
+                break
+            yield json.dumps(event) + '\n'
+
+    return Response(stream(), mimetype='application/x-ndjson', headers={
+        'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no',
+    })
 
 # Cache /api/ollama/show responses for 5 minutes.
 # Model metadata (family, quantisation, capabilities) is static at runtime, and
@@ -86,13 +141,19 @@ def api_ollama_library():
 
 @ollama_bp.route('/api/ollama/load', methods=['POST'])
 def api_ollama_load():
-    """Load (warm) a model into memory permanently."""
+    """Load (warm) a model into the configured local runtime."""
     import requests as _requests
     data = request.get_json(silent=True) or {}
     model = (data.get('model') or '').strip()
     if not model:
         return jsonify({'ok': False, 'error': 'model required'}), 400
     try:
+        from core import llm as _llm
+        direct = _llm._direct_model(model)
+        if direct:
+            from core.seven_llm import llama_server
+            handle = llama_server.ensure(direct)
+            return jsonify({'ok': True, 'model': direct, 'runtime': 'llamacpp', 'pid': handle.pid})
         resp = _requests.post(
             'http://localhost:11434/api/generate',
             json={'model': model, 'prompt': ' ', 'keep_alive': 300},
@@ -117,6 +178,12 @@ def api_ollama_unload():
     if not model:
         return jsonify({'ok': False, 'error': 'model required'}), 400
     try:
+        from core import llm as _llm
+        direct = _llm._direct_model(model)
+        if direct:
+            from core.seven_llm import llama_server
+            stopped = llama_server.stop(direct)
+            return jsonify({'ok': True, 'model': direct, 'runtime': 'llamacpp', 'stopped': stopped})
         resp = _requests.post(
             'http://localhost:11434/api/generate',
             json={'model': model, 'prompt': ' ', 'keep_alive': 0},
@@ -129,7 +196,7 @@ def api_ollama_unload():
 
 @ollama_bp.route('/api/ollama/keepalive', methods=['POST'])
 def api_ollama_keepalive():
-    """Set per-model keep-alive (seconds). Sends a noop generate to refresh Ollama's TTL."""
+    """Set per-model idle lifetime (seconds), or refresh its current runtime lease."""
     import requests as _requests
     data = request.get_json(silent=True) or {}
     model = (data.get('model') or '').strip()
@@ -141,6 +208,22 @@ def api_ollama_keepalive():
     if not model:
         return jsonify({'ok': False, 'error': 'model required'}), 400
     try:
+        from core import llm as _llm
+        direct = _llm._direct_model(model)
+        if direct:
+            from core.seven_llm import llama_server
+            if seconds == 0:
+                llama_server.stop(direct)
+                effective_seconds = 0
+            else:
+                effective_seconds = llama_server.set_ttl(direct, seconds)
+                llama_server.ensure(direct)
+            return jsonify({
+                'ok': True,
+                'model': direct,
+                'runtime': 'llamacpp',
+                'seconds': effective_seconds,
+            })
         _requests.post(
             'http://localhost:11434/api/generate',
             json={'model': model, 'prompt': ' ', 'keep_alive': seconds},
@@ -175,9 +258,40 @@ def api_ollama_ps():
 
 @ollama_bp.route('/api/ollama/runtime/health')
 def api_ollama_runtime_health():
-    """Fridays runtime-gateway health snapshot for local models."""
+    """Report the local inference runtime, preferring registered llama.cpp models."""
     from core.model_runtime_gateway import ollama_health
-    return jsonify(ollama_health())
+    snapshot = ollama_health()
+    if snapshot.get('ok'):
+        return jsonify(snapshot)
+    try:
+        from core.seven_llm import llama_server, registry
+        from core.seven_llm.llama_server import default_binary
+
+        direct_models = [
+            entry for entry in registry.list_models()
+            if entry.driver == 'llamacpp' and entry.path and os.path.isfile(entry.path)
+        ]
+        if direct_models and os.path.isfile(default_binary()):
+            models = [
+                {
+                    'name': str(item.get('model') or ''),
+                    'state': 'loaded',
+                    'runtime': 'llamacpp',
+                    'pid': item.get('pid'),
+                }
+                for item in llama_server.resource_snapshot().get('residents') or []
+                if item.get('model')
+            ]
+            return jsonify({
+                'ok': True,
+                'status': 'healthy',
+                'models': models,
+                'warnings': [],
+                'provider': 'llamacpp',
+            })
+    except Exception as exc:
+        snapshot.setdefault('warnings', []).append(f'llama.cpp health check failed: {exc}')
+    return jsonify(snapshot)
 
 
 @ollama_bp.route('/api/ollama/runtime/json-normalize', methods=['POST'])
@@ -216,17 +330,22 @@ def api_ollama_show(model):
     if cached and (now - cached[0]) < _SHOW_TTL:
         return jsonify(cached[1])
     try:
-        resp = requests.post('http://localhost:11434/api/show', json={'model': model}, timeout=30)
-        resp.raise_for_status()
-        result = resp.json() or {}
-        details = result.get('details') or {}
+        from core import llm as _llm
+        result = _llm.show(model)
+        details = getattr(result, 'details', None)
+        details = details if isinstance(details, dict) else {
+            'family': getattr(details, 'family', '') or '',
+            'format': getattr(details, 'format', '') or '',
+            'parameter_size': getattr(details, 'parameter_size', '') or '',
+            'quantization_level': getattr(details, 'quantization_level', '') or '',
+        }
         payload = {
             'ok': True,
             'model': model,
-            'modelfile':    result.get('modelfile') or '',
-            'parameters':   result.get('parameters') or '',
-            'template':     result.get('template') or '',
-            'capabilities': list(result.get('capabilities') or []),
+            'modelfile':    getattr(result, 'modelfile', '') or '',
+            'parameters':   getattr(result, 'parameters', '') or '',
+            'template':     getattr(result, 'template', '') or '',
+            'capabilities': list(getattr(result, 'capabilities', None) or []),
             'details': {
                 'family':              details.get('family') or '',
                 'format':              details.get('format') or '',
@@ -269,13 +388,18 @@ def api_ollama_pull():
 @ollama_bp.route('/api/ollama/delete', methods=['POST'])
 def api_ollama_delete():
     """Delete a locally installed model. Refuses if the model is currently loaded."""
-    import ollama as _ollama
     from core import llm as _llm
     data  = request.get_json(silent=True) or {}
     model = (data.get('model') or '').strip()
     if not model:
         return jsonify({'ok': False, 'error': 'model required'}), 400
     try:
+        if _llm._direct_model(model):
+            return jsonify({
+                'ok': False,
+                'error': 'This model is registered with the local llama.cpp runtime; deleting it here could remove shared model files.',
+            }), 409
+        import ollama as _ollama
         # Guard: refuse if model is resident in RAM
         loaded_names = []
         try:

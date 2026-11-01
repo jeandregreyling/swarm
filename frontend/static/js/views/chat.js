@@ -18,6 +18,14 @@ let CHAT_AGENT_OPTIONS = [
 // Temperature-capable agents (UI controls only). DB drives everything else.
 const _TEMP_CAPABLE = new Set(['gemma','llama','mistral','qwen','duck','sniffles','eight','ten','twenty']);
 
+function getAutomaticLocalChatAgents() {
+  const candidates = CHAT_AGENT_OPTIONS.filter(agent =>
+    agent.tier === 'local' && agent.available !== false && agent.value !== 'seven'
+  );
+  const coordinator = candidates.find(agent => agent.value === 'gemma') || candidates[0];
+  return coordinator ? [coordinator.value] : [];
+}
+
 // Fetch agent registry from DB and REBUILD CHAT_AGENT_OPTIONS (DB wins every field).
 function _loadAgentRegistry() {
   fetch('/api/agents/config')
@@ -274,6 +282,7 @@ function onChatAgentToggleChange(input) {
   _onManualAgentToggle();
   persistThreadAgentSelection();
   updateComposerMeta();
+  if (input.checked) window.warmChatAgent(input.value);
 }
 
 function _setActiveThreadId(convId) {
@@ -4376,7 +4385,8 @@ function _appendChatBubble(sender, text, opts = {}) {
   const visibleText = parsedSkill.text || (parsedSkill.events.length ? 'Executed skill run(s):' : extracted.text);
   const bubbleAttachments = Array.isArray(opts.attachments) && opts.attachments.length ? opts.attachments : extracted.attachments;
   // User messages: plain escaped text. Agent messages: rendered markdown.
-  const bodyHtml = isUser ? `<span style="white-space:pre-wrap;">${_escapeHtml(visibleText)}</span>` : _renderMarkdown(visibleText);
+  const bodyHtml = isUser ? `<span style="white-space:pre-wrap;">${_escapeHtml(visibleText)}</span>` : _renderMarkdown(
+    typeof window.agentEnvelopeToMarkdown === 'function' ? window.agentEnvelopeToMarkdown(visibleText) : visibleText);
   const attachmentsHtml = _renderBubbleAttachments(bubbleAttachments);
   const eventsHtml = isUser ? '' : _renderSkillEvents(parsedSkill.events, sender);
   const relayCandidates = isUser ? [] : _extractAgentDirectedQuestions(visibleText, senderIdentity.key);
@@ -5318,7 +5328,7 @@ function renderChatAgentToggles() {
           <span class="agent-sel-icon">${agentIcon}</span>
           <span class="agent-sel-name">${_escapeHtml(agent.label)}</span>
         </label>
-        <span class="agent-sel-state" style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;">${_escapeHtml(availabilityLabel)}</span>
+        <span class="agent-sel-state" role="status" data-agent-load-status="${_escapeHtml(agent.value)}" style="font-size:9px;color:var(--text-dim);letter-spacing:.04em;max-width:240px;white-space:normal;">${_escapeHtml(window.agentLoadState(agent.value)?.text || availabilityLabel)}</span>
         ${tempPart}
         <input class="agent-sel-swatch" type="color" value="${_escapeHtml(bubbleColor)}"
           title="${_escapeHtml(agent.label)} bubble color" oninput="setActorBubbleColor('${agent.value}',this.value)">
@@ -6258,7 +6268,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   const msg = input.value.trim();
   let selectedAgents = (source === 'relay' && relayMeta?.target)
     ? [String(relayMeta.target).toLowerCase()]
-    : getEnabledChatAgents();
+    : getAutomaticLocalChatAgents();
   let convId = window.__fridaysChatConversationId || null;
   if (!convId && !window.__fridaysChatForceNewThread) {
     const first = (window._chatConversations || [])[0];
@@ -6280,7 +6290,9 @@ function sendMessage(source = 'user', relayMeta = null) {
     renderChatAgentToggles();
     window.__fridaysLastMentionedAgents = mentionedAgents.slice(0, 4);
     persistThreadAgentSelection();
-    selectedAgents = getEnabledChatAgents();
+    selectedAgents = mentionedAgents.filter(name =>
+      CHAT_AGENT_OPTIONS.some(agent => agent.value === name && agent.tier === 'local' && agent.available !== false)
+    );
     window.__fridaysLastMentionedAgents = mentionedAgents.slice(0, 4);
   }
   const userIntentRelayHandoffs = source === 'user'
@@ -6292,7 +6304,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   }
   if (!msg && !hasAttachments) return Promise.resolve(false);
   if (!selectedAgents.length) {
-    showToast('Turn on at least one agent toggle', 'error');
+    showToast('No local agent is available. Check the local runtime in Agents.', 'error');
     return Promise.resolve(false);
   }
   if (source === 'user') {
@@ -6391,11 +6403,12 @@ function sendMessage(source = 'user', relayMeta = null) {
     body: JSON.stringify({
       message: wireMsgWithAttachments,
       agents: selectedAgents,
+      local_only: true,
       conversation_id: convId,
       new_thread: !!window.__fridaysChatForceNewThread,
       history_mode: contextCfg.historyMode,
       history_limit: contextCfg.historyMode === 'recent' ? contextCfg.historyLimit : undefined,
-      auto_relay: !!window.__fridaysChatRelayAuto,
+      auto_relay: false,
       parallel_mode: !_isSequentialExecMode(),
       exec_mode: String(window.__fridaysChatExecMode || 'sequential'),
       flow_mode: String(window.__fridaysChatFlowMode || 'both_seq'),

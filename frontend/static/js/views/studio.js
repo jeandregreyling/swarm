@@ -20,6 +20,90 @@ function loadStudioData(win) {
     catch (_) { window._studioTab = 'projects'; }
   }
   studioSetTab(window._studioTab);
+  loadStudioTeachingLedger();
+}
+
+function loadStudioTeachingLedger() {
+  const host = document.getElementById("studio-content");
+
+  if (!host) {
+    console.warn("Element with ID 'studio-content' not found. Ledger will not load.");
+    return;
+  }
+
+  const hostElement = host.parentElement;
+
+  let details = document.getElementById("studio-teaching-ledger");
+  if (!details) {
+    details = document.createElement("details");
+    details.id = "studio-teaching-ledger";
+  } else {
+    while (details.firstChild) {
+      details.removeChild(details.firstChild);
+    }
+  }
+
+  const summary = document.createElement("summary");
+  summary.textContent = "Local agent teaching and repair receipts";
+
+  const refreshButton = document.createElement("button");
+  refreshButton.textContent = "Refresh";
+  refreshButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    loadStudioTeachingLedger();
+  });
+
+  summary.appendChild(refreshButton);
+  details.appendChild(summary);
+
+  const body = document.createElement("div");
+
+  const fetchError = document.createElement("div");
+  fetchError.id = "fetch-error";
+  fetchError.style.color = "red";
+  fetchError.style.display = "none";
+
+  details.appendChild(body);
+  details.appendChild(fetchError);
+
+  fetch("/api/studio/evidence?limit=100")
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (!data || !data.ok || !Array.isArray(data.items)) {
+        throw new Error("Invalid API response format.");
+      }
+
+      const filteredData = data.items.filter(item => item.job_id === "local-fridays-repair-20261024");
+
+      filteredData.forEach(item => {
+        const detail = document.createElement("details");
+        const summaryText = `${item.agent} - ${item.status} - ${item.stage}`;
+        const detailSummary = document.createElement("summary");
+        detailSummary.textContent = summaryText;
+        detail.appendChild(detailSummary);
+
+        const payloadPre = document.createElement("pre");
+        payloadPre.textContent = JSON.stringify(item.payload, null, 2);
+        payloadPre.style.whiteSpace = "pre-wrap";
+
+        detail.appendChild(payloadPre);
+        body.appendChild(detail);
+      });
+    })
+    .catch(error => {
+      fetchError.textContent = `Error loading ledger: ${error.message}`;
+      fetchError.style.display = "block";
+    })
+    .finally(() => {
+      details.open = true;
+    });
+
+  hostElement.insertBefore(details, hostElement.firstChild);
 }
 
 // Handler for New Proposal button in Studio header

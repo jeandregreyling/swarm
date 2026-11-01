@@ -15,7 +15,7 @@ Install: pip3 install tavily-python --break-system-packages
 
 import re
 import sys
-sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[2]))
 
 from config import TAVILY_API_KEY, TAVILY_API_KEY_GENERIC
 

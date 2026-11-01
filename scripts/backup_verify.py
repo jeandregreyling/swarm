@@ -28,7 +28,7 @@ import tempfile
 import time
 from pathlib import Path
 
-REPO = Path(os.environ.get("SWARM_ROOT", "/home/seven/swarm"))
+REPO = Path(os.environ.get("SWARM_ROOT") or Path(__file__).resolve().parents[1])
 LOG_FILE = REPO / "runtime" / "backups" / "log.jsonl"
 LOCAL_DEST = Path.home() / "swarm-backups"
 RECENT_MAX_AGE_S = int(os.environ.get("SWARM_BACKUP_MAX_AGE_S", str(25 * 3600)))

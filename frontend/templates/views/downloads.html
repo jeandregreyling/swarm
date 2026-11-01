@@ -1,0 +1,34 @@
+<div class="downloads-panel" style="padding:16px;overflow:auto;height:100%;box-sizing:border-box;">
+  <h2>Downloads <small style="color:var(--text-dim);">via qBittorrent</small></h2>
+  <p data-dl="connection" role="status">Connecting...</p>
+  <button type="button" data-dl="open-qbittorrent">Open qBittorrent</button>
+  <p data-dl="launch-status" role="status"></p>
+  <p>Save location: <strong data-dl="path">~/Downloads</strong>.
+    Torrent search uses your enabled qBittorrent engines; results and seed counts are not guarantees.</p>
+  <p data-dl="error" role="alert" style="color:var(--danger,#e66);"></p>
+  <form data-dl="add-form" style="display:flex;gap:8px;flex-wrap:wrap;">
+    <label>Magnet link <input name="magnet" type="text" placeholder="magnet:?xt=urn:btih:..." size="38"></label>
+    <button type="submit">Add magnet</button>
+  </form>
+  <form data-dl="upload-form" style="margin:12px 0;">
+    <label>Torrent file <input name="torrent" type="file" accept=".torrent" required></label>
+    <button type="submit">Add .torrent</button>
+  </form>
+  <button type="button" data-dl="refresh">Refresh downloads</button>
+  <div data-dl="torrents" style="overflow:auto;margin:12px 0;"></div>
+  <pre data-dl="trackers" style="white-space:pre-wrap;"></pre>
+  <hr>
+  <h3>Find torrents</h3>
+  <p data-dl="engines"></p>
+  <form data-dl="search-form" style="display:flex;gap:8px;flex-wrap:wrap;">
+    <label>Search <input name="query" minlength="2" maxlength="200" placeholder="e.g. Ubuntu" required></label>
+    <button type="submit">Search</button>
+    <button type="button" data-dl="cancel" disabled>Cancel search</button>
+  </form>
+  <p data-dl="search-status" role="status"></p>
+  <div data-dl="results" style="overflow:auto;"></div>
+  <hr>
+  <h3>Files in Downloads</h3>
+  <button type="button" data-dl="files-button">Refresh file list</button>
+  <ul data-dl="files"></ul>
+</div>

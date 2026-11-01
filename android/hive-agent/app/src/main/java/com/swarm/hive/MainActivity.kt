@@ -10,12 +10,9 @@ import android.view.View
 import android.view.ViewParent
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ScrollView
-import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -45,7 +42,7 @@ import kotlin.concurrent.thread
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        private const val DEFAULT_LEADER = "http://100.87.66.45:5050"
+        private const val DEFAULT_LEADER = "http://100.95.226.88:5050"
         private const val SAMSUNG_POTATO_NODE_ID = "potato-2"
     }
 
@@ -63,15 +60,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var modelSummaryView: TextView
     private lateinit var chatInput: EditText
     private lateinit var chatResponseView: TextView
-    private lateinit var modelsButton: Button
-    private lateinit var modelSpinner: Spinner
     private lateinit var sendChatButton: Button
     private lateinit var runChatProofButton: Button
-    private val leaderModels = mutableListOf<String>()
-    private val modelDisplayNames = mutableListOf<String>()
-    private var selectedModelIndex = 0
-    private var updatingModelSpinner = false
-    private var sharedConversationId: Int? = null
+    private lateinit var apex: ApexNode
 
     private val notifPermLauncher =
         registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {
@@ -105,6 +96,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         prefs = HivePrefs(this)
+        apex = ApexNode(this, prefs)
 
         leaderField = findViewById(R.id.field_leader)
         nodeIdField = findViewById(R.id.field_node_id)
@@ -119,8 +111,6 @@ class MainActivity : AppCompatActivity() {
         modelSummaryView = findViewById(R.id.model_summary)
         chatInput = findViewById(R.id.chat_input)
         chatResponseView = findViewById(R.id.chat_response)
-        modelsButton = findViewById(R.id.btn_models)
-        modelSpinner = findViewById(R.id.model_spinner)
         sendChatButton = findViewById(R.id.btn_send_chat)
         runChatProofButton = findViewById(R.id.btn_run_chat_proof)
 
@@ -137,18 +127,8 @@ class MainActivity : AppCompatActivity() {
         }
         refreshButton.setOnClickListener { refreshFarmStatus() }
         gpuProofButton.setOnClickListener { submitGpuProof() }
-        modelsButton.setOnClickListener { refreshModels() }
-        modelSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (updatingModelSpinner || position !in leaderModels.indices) return
-                selectedModelIndex = position
-                modelSummaryView.text = modelSummaryText()
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-            }
-        }
-        sendChatButton.setOnClickListener { sendLeaderChat() }
+        modelSummaryView.text = getString(R.string.model_summary_apex, ApexPayloadBuilder.MODEL_ID)
+        sendChatButton.setOnClickListener { sendApexChat() }
         runChatProofButton.setOnClickListener { runCleanChatProof() }
 
         // Wire keyboard return keys: leader's Next jumps to node id,
@@ -170,7 +150,7 @@ class MainActivity : AppCompatActivity() {
         chatInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) {
                 hideKeyboard()
-                sendLeaderChat()
+                sendApexChat()
                 true
             } else false
         }
@@ -195,9 +175,13 @@ class MainActivity : AppCompatActivity() {
         } else {
                 AgentLauncher.start(this)
                 refreshFarmStatus()
-                refreshModels()
                 scrollToChatPanel()
         }
+    }
+
+    override fun onDestroy() {
+        apex.close()
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: android.content.Intent?) {
@@ -255,7 +239,6 @@ class MainActivity : AppCompatActivity() {
                 setStatus(getString(R.string.status_running, res.nodeId), State.Live)
                 refreshRuntimeCard()
                 refreshFarmStatus()
-                refreshModels()
                 scrollToChatPanel()
             }
         }
@@ -357,95 +340,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshModels() {
-        val leader = prefs.leader.ifBlank { normalizeLeaderUrl(leaderField.text.toString()) }
-        if (leader.isBlank()) {
-            modelSummaryView.text = getString(R.string.model_summary_empty)
-            return
-        }
-        modelsButton.isEnabled = false
-        modelSummaryView.text = "Refreshing shared Seven models..."
-        thread(name = "hive-models") {
-            val summary = try {
-                val modelsJson = getJson(leader, "/api/localai/mobile/models")
-                val models = modelsJson.optJSONArray("models") ?: JSONArray()
-                leaderModels.clear()
-                for (i in 0 until models.length()) {
-                    val item = models.optJSONObject(i)
-                    val name = item?.optString("id")
-                        ?: item?.optString("name")
-                        ?: models.optString(i)
-                    if (name.isNotBlank()) leaderModels.add(name)
-                }
-                val defaultModel = modelsJson.optString("default_model", "seven-direct:daily")
-                val defaultIndex = leaderModels.indexOfFirst { it.equals(defaultModel, ignoreCase = true) }
-                val sevenIndex = leaderModels.indexOfFirst { it.equals("seven-direct:daily", ignoreCase = true) }
-                selectedModelIndex = when {
-                    defaultIndex >= 0 -> defaultIndex
-                    sevenIndex >= 0 -> sevenIndex
-                    selectedModelIndex in leaderModels.indices -> selectedModelIndex
-                    else -> 0
-                }
-                modelSummaryText()
-            } catch (e: Exception) {
-                "Models unavailable: ${e.message}"
-            }
-            runOnUiThread {
-                updateModelSpinner()
-                modelSummaryView.text = summary
-                modelsButton.isEnabled = true
-            }
-        }
-    }
-
-    private fun modelSummaryText(): String {
-        if (leaderModels.isEmpty()) return "No shared local models available."
-        val selected = leaderModels[selectedModelIndex]
-        val visibleCount = 6
-        val list = leaderModels.take(visibleCount).joinToString(", ")
-        val more = if (leaderModels.size > visibleCount) " +${leaderModels.size - visibleCount}" else ""
-        return "Shared Fridays chat · ${modelDisplayName(selected)} · Models: $list$more"
-    }
-
-    private fun updateModelSpinner() {
-        updatingModelSpinner = true
-        modelDisplayNames.clear()
-        modelDisplayNames.addAll(leaderModels.map { modelDisplayName(it) })
-        val adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            modelDisplayNames.toList(),
-        ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
-        modelSpinner.adapter = adapter
-        modelSpinner.isEnabled = leaderModels.isNotEmpty()
-        if (leaderModels.isNotEmpty()) {
-            selectedModelIndex = selectedModelIndex.coerceIn(0, leaderModels.lastIndex)
-            modelSpinner.setSelection(selectedModelIndex)
-        }
-        updatingModelSpinner = false
-    }
-
-    private fun modelDisplayName(model: String): String {
-        val lower = model.lowercase()
-        return when {
-            lower == "seven-direct:daily" -> "$model - Seven Runtime"
-            lower.startsWith("seven-direct:") -> "$model - direct GGUF"
-            lower == "qwen:latest" -> "$model - Ollama fallback"
-            lower.contains("26b") || lower.contains("36") -> "$model - large / slow"
-            lower.contains("embed") -> "$model - embeddings only"
-            else -> "$model - chat"
-        }
-    }
-
-    private fun sendLeaderChat() {
-        val leader = prefs.leader.ifBlank { normalizeLeaderUrl(leaderField.text.toString()) }
+    private fun sendApexChat() {
         val prompt = chatInput.text.toString().trim()
-        if (leader.isBlank()) {
-            Toast.makeText(this, R.string.toast_leader_required, Toast.LENGTH_SHORT).show()
-            return
-        }
         if (prompt.isBlank()) {
             chatResponseView.text = "Type a message first."
             scrollToChatOutput()
@@ -453,65 +349,28 @@ class MainActivity : AppCompatActivity() {
         }
         hideKeyboard()
         chatInput.clearFocus()
-        val model = leaderModels.getOrNull(selectedModelIndex) ?: "seven-direct:daily"
-        appendLocalTranscript("You", prompt)
         chatInput.setText("")
-        sendChatPrompt(leader, model, prompt)
+        sendApexPrompt(prompt)
     }
 
     private fun runCleanChatProof() {
-        val leader = prefs.leader.ifBlank { normalizeLeaderUrl(leaderField.text.toString()) }
-        if (leader.isBlank()) {
-            Toast.makeText(this, R.string.toast_leader_required, Toast.LENGTH_SHORT).show()
-            return
-        }
-        val model = preferredProofModel()
         val token = "ANDROIDHIVEPROOF${System.currentTimeMillis()}"
-        val prompt = "Return exactly this token and no other words: $token"
-        appendLocalTranscript("You", prompt)
-        sendChatPrompt(leader, model, prompt)
+        sendApexPrompt("Return exactly this token and no other words: $token")
     }
 
-    private fun preferredProofModel(): String {
-        val sevenIndex = leaderModels.indexOfFirst { it.equals("seven-direct:daily", ignoreCase = true) }
-        if (sevenIndex >= 0) {
-            selectedModelIndex = sevenIndex
-            modelSpinner.setSelection(selectedModelIndex)
-            modelSummaryView.text = modelSummaryText()
-            return leaderModels[sevenIndex]
-        }
-        return leaderModels.getOrNull(selectedModelIndex) ?: "seven-direct:daily"
-    }
-
-    private fun sendChatPrompt(leader: String, model: String, prompt: String) {
+    private fun sendApexPrompt(prompt: String) {
         sendChatButton.isEnabled = false
         runChatProofButton.isEnabled = false
         setStatus(getString(R.string.status_chatting), State.Working)
-        appendLocalTranscript("Fridays", "Sending to ${modelDisplayName(model)}...")
-        thread(name = "hive-chat") {
-            val result = try {
-                val res = postJson(
-                    leader,
-                    "/api/localai/shared-chat",
-                    JSONObject().apply {
-                        put("model", model)
-                        put("message", prompt)
-                        put("node_id", prefs.nodeId.ifBlank { nodeIdField.text.toString().trim() }.ifBlank { "android" })
-                        sharedConversationId?.let { put("conversation_id", it) }
-                    },
-                    readTimeoutMs = 120_000,
-                )
-                sharedConversationId = res.optInt("conversation_id", 0).takeIf { it > 0 } ?: sharedConversationId
-                buildSharedTranscript(res.optJSONArray("messages"), res.optString("model", model))
-            } catch (e: Exception) {
-                "Chat failed: ${e.message}"
-            }
+        appendLocalTranscript("You", prompt)
+        val sessionId = prefs.apexSessionId
+        thread(name = "apex-chat") {
+            val reply = apex.handle(sessionId, prompt)
             runOnUiThread {
-                if (result.isNotBlank()) chatResponseView.text = result
+                appendLocalTranscript("APEX", reply)
                 sendChatButton.isEnabled = true
                 runChatProofButton.isEnabled = true
                 refreshStatus()
-                scrollToChatOutput()
             }
         }
     }
@@ -524,24 +383,6 @@ class MainActivity : AppCompatActivity() {
         val next = listOf(current, "$sender\n$content").filter { it.isNotBlank() }.joinToString("\n\n")
         chatResponseView.text = next
         scrollToChatOutput()
-    }
-
-    private fun buildSharedTranscript(messages: JSONArray?, fallbackModel: String): String {
-        val lines = mutableListOf<String>()
-        if (messages != null) {
-            for (i in 0 until messages.length()) {
-                val item = messages.optJSONObject(i) ?: continue
-                val sender = item.optString("sender", "").ifBlank { item.optString("from_agent", "") }
-                val content = item.optString("content", "").trim()
-                if (content.isBlank()) continue
-                val label = when (sender.lowercase()) {
-                    "user" -> "You"
-                    else -> if (sender.isBlank()) fallbackModel else sender
-                }
-                lines.add("$label\n$content")
-            }
-        }
-        return lines.joinToString("\n\n")
     }
 
     private fun scrollToChatOutput() {

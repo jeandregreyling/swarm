@@ -1,0 +1,11 @@
+[Unit]
+Description=Verified Swarm Vortex memory restore point
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/swarm
+ExecStart=%h/swarm/.venv/bin/python -m core.vortex_backup create --label daily-memory
+UMask=0077
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle

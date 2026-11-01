@@ -1316,7 +1316,7 @@ function agentsShowDetail(agent) {
       try {
         const r = await fetch('/api/ollama/keepalive', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ model: agent.model || '', seconds }) });
         const j = await r.json();
-        if (statusEl) statusEl.textContent = j.ok ? `Keep-alive set to ${seconds}s` : `Error: ${j.error || 'unknown'}`;
+        if (statusEl) statusEl.textContent = j.ok ? `Keep-alive set to ${j.seconds ?? seconds}s` : `Error: ${j.error || 'unknown'}`;
       } catch (err) {
         if (statusEl) statusEl.textContent = `Error: ${err.message}`;
       }

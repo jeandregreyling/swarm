@@ -47,6 +47,8 @@ _TEST_DB.close()
 
 os.environ["SWARM_DB_PATH"] = _TEST_DB.name
 os.environ["SWARM_VORTEX_LEDGER_DISABLED"] = "1"
+_TEST_VORTEX_BACKUPS = tempfile.TemporaryDirectory(prefix="swarm_test_vortex_")
+os.environ["SWARM_VORTEX_BACKUP_ROOT"] = _TEST_VORTEX_BACKUPS.name
 
 
 _TEST_LLAMA_LOCK = os.path.join(tempfile.gettempdir(), f"swarm_test_llama_{os.getpid()}.lock")

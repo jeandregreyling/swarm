@@ -24,6 +24,31 @@ def test_health_snapshot_is_standalone_direct_runtime():
     assert "direct" in snap
 
 
+def test_model_operator_inventory_includes_registered_direct_residents(monkeypatch):
+    from types import SimpleNamespace
+
+    from core.seven_runtime import model_operator
+    from core.seven_llm import llama_server, registry
+
+    monkeypatch.setattr(model_operator.gateway, "ollama_health", lambda: {
+        "ok": False, "models": [], "warnings": ["ollama unreachable"],
+    })
+    monkeypatch.setattr(registry, "list_models", lambda: [
+        SimpleNamespace(name="gemma3:latest", driver="llamacpp", role="general",
+                        path="/tmp/gemma.gguf", options={}),
+    ])
+    monkeypatch.setattr(llama_server, "resource_snapshot", lambda: {
+        "residents": [{"model": "gemma3:latest", "pid": 123}],
+    })
+
+    result = model_operator.inventory()
+
+    assert result["ok"] is True
+    direct = next(row for row in result["models"] if row["name"] == "gemma3:latest")
+    assert direct["resident"] is True
+    assert any(item["runtime"] == "llamacpp" for item in result["resident"])
+
+
 def test_standalone_http_health_and_models():
     from core.seven_runtime import service
 

@@ -1199,6 +1199,13 @@ def test_email_research_update_includes_interactive_date_and_historical_sections
 
     monkeypatch.setenv("SWARM_UI_URL", "http://studio.local/ui")
     monkeypatch.setattr(email_handler, "send_reply", fake_send_reply)
+    from core import watched_topics
+    monkeypatch.setattr(watched_topics, "edit_interest_evidence", lambda topic, rows: [
+        {**row, "editorial_headline": row["title"],
+         "editorial_summary": "Australian payroll guidance needs a scope review.",
+         "editorial_note": "Confirm the applicable product and effective date."}
+        for row in rows
+    ])
 
     ok = task_runner._email_research_update(
         topic="SAP payroll Australia",
@@ -1225,13 +1232,13 @@ def test_email_research_update_includes_interactive_date_and_historical_sections
 
     assert ok is True
     assert len(sent) == 1
-    assert sent[0]["subject"] == "[Swarm Research] Current update: SAP payroll Australia"
+    assert sent[0]["subject"] == "Fridays briefing | SAP payroll Australia"
     body = sent[0]["body"]
-    assert "Review in Studio: http://studio.local/ui?view=tasker&watch_topic=SAP%20payroll%20Australia" in body
-    assert "promote, ignore, or mark findings as emailed" in body
-    assert "Current and relevant evidence:" in body
+    assert "http://studio.local/ui?view=tasker&watch_topic=SAP%20payroll%20Australia" in body
+    assert "AUSTRALIA: HCM & PAYROLL" in body
     assert "Employee Central Payroll Australia" in body
-    assert "recency=0.98" in body
-    assert "date=current 2026" in body
-    assert "Historical reference / fun fact from long ago:" in body
-    assert "long-ago 2003" in body
+    assert "score=" not in body and "recency=" not in body
+    assert "current 2026" in body
+    assert "HISTORICAL CONTEXT" in body
+    assert "archive 2003" in body
+    assert "Australian payroll guidance needs a scope review." in sent[0]["html_body"]

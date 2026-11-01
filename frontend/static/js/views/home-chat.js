@@ -18,6 +18,8 @@
   let _hcConvId = null;
   let _hcConversations = [];
   let _hcSending = false;
+  let _hcInitialized = false;
+  let _hcViewVersion = 0;
   const _hcEnv = (window.ENV_STAGE || 'PROD').toUpperCase();
 
   // localStorage keys. Home-chat keeps its own active-thread state; it only
@@ -34,14 +36,25 @@
   }
 
   // ── Initialization ───────────────────────────────────────────────────────
+  function _hcEnsureChatFirst() {
+    const content = document.getElementById('home-content');
+    const chat = document.querySelector('.home-chat-section');
+    const tiles = document.querySelector('.home-tiles-section');
+    if (!content || !chat || !tiles) return;
+    // Older running servers may still serve the pre-fix cached template.
+    if (content.firstElementChild !== chat) content.prepend(chat);
+    if (chat.nextElementSibling !== tiles) chat.insertAdjacentElement('afterend', tiles);
+  }
+
   window.initHomeChat = function () {
-    // B17-adjacent: every refresh must start on a fresh thread. Wipe the
-    // active-thread marker and local state BEFORE anything else so the UI
-    // never flashes the stale conversation while the fetch is in flight.
-    try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
-    _hcConvId = null;
-    _hcClearMessages();
-    _hcShowWelcome(true);
+    _hcEnsureChatFirst();
+    if (_hcInitialized) {
+      _hcLoadThreadsListOnly();
+      return;
+    }
+    _hcInitialized = true;
+    const savedThread = Number(localStorage.getItem(HC_ACTIVE_THREAD_KEY));
+    _hcConvId = Number.isSafeInteger(savedThread) && savedThread > 0 ? savedThread : null;
 
     _hcSetEnvBadge();
     _hcBindEvents();
@@ -55,17 +68,8 @@
 	    _hcPruneStaleAgentToggles();
 	    _hcLoadProofTrail();
 
-    // Handle browser bfcache restore (back/forward) — re-reset to a new thread.
     window.addEventListener('pageshow', (ev) => {
-      if (ev.persisted) {
-        try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
-        _hcConvId = null;
-        _hcClearMessages();
-        _hcShowWelcome(true);
-        const sel = document.getElementById('home-chat-thread-select');
-        if (sel) sel.value = '';
-        _hcLoadThreads();
-      }
+      if (ev.persisted) _hcLoadThreadsListOnly();
     });
   };
 
@@ -91,9 +95,9 @@
       _hcLoadThreadsListOnly();
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') _hcLoadThreads();
+      if (document.visibilityState === 'visible') _hcLoadThreadsListOnly();
     });
-    window.addEventListener('focus', () => _hcLoadThreads());
+    window.addEventListener('focus', () => _hcLoadThreadsListOnly());
   }
 
   // ── Environment badge ────────────────────────────────────────────────────
@@ -165,44 +169,39 @@
   }
 
   // ── Load threads ─────────────────────────────────────────────────────────
-  // Y.58 fix: split into two paths. The init/refresh path wipes the active
-  // thread and clears messages so we land on a fresh canvas. The list-only
-  // path simply refreshes the dropdown without touching messages — used
-  // after sending the first message in a new thread, where wiping bubbles
-  // is exactly the bug the user has been seeing ("Hi disappears").
   function _hcLoadThreadsListOnly() {
     return fetch('/api/conversations')
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('Cannot load conversation history');
+        return r.json();
+      })
       .then(data => {
         _hcConversations = Array.isArray(data) ? data : [];
         _hcRenderThreadSelect();
       })
-      .catch(() => {});
+      .catch(err => {
+        if (typeof showToast === 'function') showToast(err.message, 'error');
+      });
   }
 
   function _hcLoadThreads() {
-    fetch('/api/conversations')
-      .then(r => r.json())
-      .then(data => {
-        _hcConversations = Array.isArray(data) ? data : [];
-        _hcRenderThreadSelect();
-
-        // Init/refresh path only: do NOT call this from inside _hcSend after
-        // a successful turn — that wipes the just-rendered user/agent bubbles.
-        try { localStorage.removeItem(HC_ACTIVE_THREAD_KEY); } catch (e) {}
-        _hcConvId = null;
-        _hcClearMessages();
-        _hcShowWelcome(true);
-        _hcRenderAgentPills();
-        _hcUpdateMeta();
-      })
-      .catch(() => {});
+    _hcLoadThreadsListOnly();
+    if (_hcConvId) {
+      _hcLoadMessages(_hcConvId);
+      _hcStartLiveSync();
+    } else {
+      _hcShowWelcome(true);
+    }
   }
 
   function _hcRenderThreadSelect() {
     const sel = document.getElementById('home-chat-thread-select');
     if (!sel) return;
     const current = _hcConvId;
+    const threads = [..._hcConversations];
+    if (current && !threads.some(c => Number(c.id) === Number(current))) {
+      threads.unshift({ id: current, title: 'Saved conversation' });
+    }
     const fmtTs = (s) => {
       if (!s) return '';
       try {
@@ -214,10 +213,10 @@
       } catch (e) { return ''; }
     };
     sel.innerHTML = '<option value="">New conversation</option>' +
-      _hcConversations.slice(0, 30).map(c => {
+      threads.map(c => {
         const title = _hcEsc(String(c.title || '(untitled)')).slice(0, 44);
         const ts = fmtTs(c.timestamp || c.created_at || c.updated_at || '');
-        const isSel = c.id === current ? ' selected' : '';
+        const isSel = Number(c.id) === Number(current) ? ' selected' : '';
         const tsBit = ts ? ' · ' + ts : '';
         return `<option value="${c.id}"${isSel}>#${c.id} · ${title}${tsBit}</option>`;
       }).join('');
@@ -233,13 +232,16 @@
   }
 
   function _hcSilentRefresh(convId) {
+    const viewVersion = _hcViewVersion;
     fetch(`/api/conversations/${convId}/messages`)
       .then(r => r.json())
       .then(data => {
+        if (_hcSending || _hcConvId !== convId || _hcViewVersion !== viewVersion) return;
         const msgs = data.messages || [];
         if (!msgs.length) return;
         const container = document.getElementById('home-chat-messages');
         if (!container) return;
+        if (container.querySelector('.hc-pending')) return;
         // Check if there are new messages vs what's rendered
         const rendered = container.querySelectorAll('.hc-bubble[data-message-id]');
         const lastRenderedId = rendered.length
@@ -264,6 +266,7 @@
 
   // ── Switch thread ────────────────────────────────────────────────────────
   function _hcSwitchThread(convId) {
+    _hcViewVersion += 1;
     _hcConvId = convId;
     localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(convId));
     _hcRenderThreadSelect();
@@ -273,6 +276,7 @@
   }
 
   function _hcNewThread() {
+    _hcViewVersion += 1;
     _hcConvId = null;
     localStorage.removeItem(HC_ACTIVE_THREAD_KEY);
     const sel = document.getElementById('home-chat-thread-select');
@@ -285,9 +289,25 @@
 
   // ── Load messages ────────────────────────────────────────────────────────
   function _hcLoadMessages(convId) {
+    const viewVersion = _hcViewVersion;
     fetch(`/api/conversations/${convId}/messages`)
-      .then(r => r.json())
+      .then(r => {
+        if (r.status === 404) return null;
+        if (!r.ok) throw new Error('Cannot load this conversation');
+        return r.json();
+      })
       .then(data => {
+        if (_hcConvId !== convId || _hcViewVersion !== viewVersion) return;
+        if (data === null) {
+          // Saved thread was deleted elsewhere — drop the stale marker and start fresh.
+          _hcNewThread();
+          _hcRenderThreadSelect();
+          return;
+        }
+        if (data.conv && !_hcConversations.some(c => Number(c.id) === Number(convId))) {
+          _hcConversations.push(data.conv);
+          _hcRenderThreadSelect();
+        }
         const msgs = data.messages || [];
         _hcClearMessages();
         if (msgs.length === 0) {
@@ -298,7 +318,9 @@
         msgs.forEach(m => _hcAppendBubble(m));
         _hcScrollBottom();
       })
-      .catch(() => {});
+      .catch(err => {
+        if (typeof showToast === 'function') showToast(err.message, 'error');
+      });
   }
 
   // ── Render bubbles ───────────────────────────────────────────────────────
@@ -572,6 +594,9 @@
   }
 
   function _hcRenderContent(text) {
+    if (typeof window !== 'undefined' && typeof window.agentEnvelopeToMarkdown === 'function') {
+      text = window.agentEnvelopeToMarkdown(text);
+    }
     // Use shared safeMarkdown (marked + DOMPurify) when available to prevent XSS.
     if (typeof window !== 'undefined' && typeof window.safeMarkdown === 'function') {
       return window.safeMarkdown(text);
@@ -681,14 +706,26 @@
         ? `<span class="agent-num-badge" style="font-size:9px;font-weight:700;background:rgba(0,0,0,0.35);color:#fff;border-radius:8px;padding:1px 5px;margin-right:4px;">${num}</span>`
         : '';
       return `<button class="home-chat-agent-pill${active}" draggable="true" data-agent="${_hcEsc(a.value)}" title="${_hcEsc(a.label)}">` +
-        `${numBadge}<span class="agent-dot ${tierClass}"></span>${_hcEsc(a.label)}</button>`;
+        `${numBadge}<span class="agent-dot ${tierClass}"></span>${_hcEsc(a.label)}` +
+        `<small role="status" data-agent-load-status="${_hcEsc(a.value)}" style="display:block;font-size:10px;white-space:normal;">${_hcEsc(window.agentLoadState(a.value)?.text || '')}</small></button>`;
     }).join('');
 
     host.querySelectorAll('.home-chat-agent-pill').forEach(btn => {
       btn.addEventListener('click', () => {
-        btn.classList.toggle('active');
+        const wasAuto = localStorage.getItem(HC_MANUAL_KEY) !== '1';
+        if (wasAuto) {
+          host.querySelectorAll('.home-chat-agent-pill').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          const manual = document.getElementById('home-chat-manual-override');
+          if (manual) manual.checked = true;
+          localStorage.setItem(HC_MANUAL_KEY, '1');
+          window.onHomeChatManualOverrideToggle();
+        } else {
+          btn.classList.toggle('active');
+        }
         _hcSaveEnabledAgents();
         _hcUpdateMeta();
+        if (btn.classList.contains('active')) window.warmChatAgent(btn.dataset.agent);
       });
       // P4-M29: HTML5 drag-and-drop reorder
       btn.addEventListener('dragstart', e => {
@@ -856,6 +893,7 @@
     if (!input) return;
     const text = input.value.trim();
     if (!text) return;
+    const viewVersion = _hcViewVersion;
 
     // Seven Ask short-circuit — leading "?" routes to /api/seven/explain +
     // /decide, renders a Seven assistant bubble inline, no agent fan-out.
@@ -873,22 +911,10 @@
       return;
     }
 
-    const isManual = localStorage.getItem(HC_MANUAL_KEY) === '1';
-    const enabled = [];
-    if (isManual) {
-      document.querySelectorAll('#home-chat-agents .home-chat-agent-pill.active').forEach(p => {
-        enabled.push(p.dataset.agent);
-      });
-      if (enabled.length === 0) {
-        if (typeof showToast === 'function') showToast('Manual mode: select at least one agent', 'warning');
-        return;
-      }
-    } else {
-      // Auto mode: send all active as hints but let backend decide
-      document.querySelectorAll('#home-chat-agents .home-chat-agent-pill.active').forEach(p => {
-        enabled.push(p.dataset.agent);
-      });
-      // If none selected in auto mode, that's fine — backend will pick
+    const enabled = getAutomaticLocalChatAgents();
+    if (!enabled.length) {
+      if (typeof showToast === 'function') showToast('No local agent is available. Check the local runtime in Agents.', 'error');
+      return;
     }
 
     // Show user bubble immediately
@@ -927,7 +953,8 @@
 
     const body = {
       message: text,
-      agents: isManual ? enabled : [],
+      agents: enabled,
+      local_only: true,
       conversation_id: _hcConvId || null,
       new_thread: !_hcConvId,
       history_mode: 'recent',
@@ -942,13 +969,15 @@
     })
       .then(r => r.json())
       .then(data => {
-        if (data.conversation_id && !_hcConvId) {
+        if (viewVersion !== _hcViewVersion) return;
+        if (data.conversation_id && String(data.conversation_id) !== String(_hcConvId)) {
           _hcConvId = data.conversation_id;
           localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(_hcConvId));
           _hcSaveEnabledAgents();
           // Refresh thread dropdown only — must NOT reset _hcConvId or wipe
           // messages here (Y.58 fix for the "Hi disappears" race).
           _hcLoadThreadsListOnly();
+          _hcStartLiveSync();
           // Session 28: notify other chat surfaces.
           try {
             window.dispatchEvent(new CustomEvent('swarm:conversation-changed', {
@@ -1022,6 +1051,7 @@
         _hcScrollBottom();
       })
       .catch(err => {
+        if (viewVersion !== _hcViewVersion) return;
         // Remove pre-send placeholder thinking bubble on error
         const _hcTmpBubbleErr = document.getElementById('home-chat-messages')?.querySelector(`.hc-bubble[data-pending-job-id="${CSS.escape(_hcTempJobId)}"]`);
         if (_hcTmpBubbleErr) _hcTmpBubbleErr.remove();
@@ -1098,11 +1128,15 @@
   // ── Poll pending jobs ────────────────────────────────────────────────────
   function _hcPollJobs(jobIds) {
     if (!jobIds || jobIds.length === 0) return;
+    const convId = _hcConvId;
+    const viewVersion = _hcViewVersion;
+    const finishedJobs = new Set();
     const statusEl = document.getElementById('home-chat-status');
     let pollCount = 0;
     const maxPolls = 600; // ~20 minutes at 2s interval (enough for slow local models)
 
     const poll = () => {
+      if (_hcConvId !== convId || _hcViewVersion !== viewVersion) return;
       pollCount += 1;
       if (pollCount > maxPolls) {
         if (statusEl) statusEl.textContent = 'Timed out waiting for agents';
@@ -1111,11 +1145,14 @@
       fetch('/api/chat/jobs/status?job_ids=' + encodeURIComponent(jobIds.join(',')) + (_hcConvId ? '&conversation_id=' + encodeURIComponent(_hcConvId) : ''))
         .then(r => r.json())
         .then(data => {
+          if (_hcConvId !== convId || _hcViewVersion !== viewVersion) return;
           const jobs = data.jobs || [];
           let allDone = true;
 
           jobs.forEach(job => {
+            if (finishedJobs.has(job.job_id)) return;
             if (job.status === 'completed' && job.response) {
+              finishedJobs.add(job.job_id);
               // Remove the thinking bubble and replace with real response
               const container = document.getElementById('home-chat-messages');
               if (container) {
@@ -1131,6 +1168,7 @@
               });
               _hcScrollBottom();
             } else if (job.status === 'failed') {
+              finishedJobs.add(job.job_id);
               const container = document.getElementById('home-chat-messages');
               if (container) {
                 const pending = container.querySelector(`.hc-bubble[data-pending-job-id="${CSS.escape(String(job.job_id))}"]`);

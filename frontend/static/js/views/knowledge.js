@@ -188,26 +188,121 @@ function _knAge(hours) {
   return `${Math.round(n / 24)}d`;
 }
 
-// P4-S37 — populate the interests strip in the Knowledge header
+let _knSavedInterests = [];
+
 function knowledgeRefreshInterestStrip() {
   const list = document.getElementById('kn-interests-list');
   if (!list) return;
-  window.fridayInterestUsername().then(username => fetch('/api/interests?username=' + encodeURIComponent(username))).then(r => r.json()).then(d => {
-    const items = (d && (d.interests || d.topics || d.items)) || [];
-    if (!Array.isArray(items) || !items.length) {
-      list.textContent = 'no topics yet — click "Edit interests" to add a few.';
+  return window.fridayInterestUsername().then(username => fetch('/api/interests?saved_only=1&username=' + encodeURIComponent(username))).then(r => {
+    if (!r.ok) throw new Error('Could not load interests (' + r.status + ')');
+    return r.json();
+  }).then(d => {
+    _knSavedInterests = d.saved_interests || [];
+    list.replaceChildren();
+    const hub = document.createElement('strong');
+    hub.className = 'kn-interest-hub';
+    hub.textContent = 'My interests · ' + _knSavedInterests.length;
+    list.appendChild(hub);
+    const groups = new Map();
+    _knSavedInterests.forEach(item => {
+      const category = item.category || 'general';
+      if (!groups.has(category)) groups.set(category, []);
+      groups.get(category).push(item);
+    });
+    for (const [category, items] of groups) {
+      const branch = document.createElement('section');
+      branch.className = 'kn-interest-branch';
+      const label = document.createElement('strong');
+      label.textContent = category.replace(/_/g, ' ');
+      branch.appendChild(label);
+      items.forEach(item => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'kn-interest-node';
+        button.textContent = item.topic;
+        button.title = 'View interest: ' + item.topic;
+        button.addEventListener('click', () => knowledgeSelectInterest(item));
+        branch.appendChild(button);
+      });
+      list.appendChild(branch);
+    }
+    if (!groups.size) {
+      const empty = document.createElement('span');
+      empty.textContent = 'Add your first interest above.';
+      list.appendChild(empty);
+    }
+    knowledgeRefreshSuggestions();
+  }).catch(err => { list.textContent = 'Unable to load interests: ' + err.message; });
+}
+
+function knowledgeSelectInterest(item) {
+  const detail = document.getElementById('kn-interest-detail');
+  if (!detail) return;
+  detail.hidden = false;
+  detail.replaceChildren();
+  const title = document.createElement('strong');
+  title.textContent = item.topic;
+  const provenance = document.createElement('span');
+  provenance.textContent = item.source === 'user' ? 'Added by you' : 'From ' + (item.source_agent || item.source || 'discovery');
+  const search = document.createElement('button');
+  search.textContent = 'Search knowledge';
+  search.onclick = () => {
+    document.getElementById('kn-quick-query-input').value = item.topic;
+    knowledgeRunQuery();
+  };
+  const remove = document.createElement('button');
+  remove.textContent = 'Remove interest';
+  remove.onclick = async () => {
+    if (remove.dataset.confirm !== 'yes') {
+      remove.dataset.confirm = 'yes';
+      remove.textContent = 'Confirm removal';
       return;
     }
-    const labels = items.slice(0, 10).map(it => typeof it === 'string' ? it : (it.topic || it.label || it.name)).filter(Boolean);
-    list.innerHTML = labels.map(l =>
-      `<span style="display:inline-block;background:var(--card);border:1px solid var(--border);border-radius:999px;padding:1px 8px;margin-right:4px;color:var(--text);font-style:normal;font-size:10.5px;">${_knEsc(l)}</span>`
-    ).join('') + (items.length > labels.length ? `<span style="color:var(--text-dim);">+${items.length - labels.length} more</span>` : '');
-  }).catch(() => { list.textContent = '(unable to load)'; });
-  // STEP-KC-INTERESTS-GENERAL-KNOWLEDGE-SUGGESTIONS-20260430 — render
-  // adjacency-based suggestions next to the existing topics so the user can
-  // approve/ignore optional general-knowledge additions with a one-click
-  // surface. Each suggestion shows *why* it was suggested.
-  knowledgeRefreshSuggestions();
+    remove.disabled = true;
+    try {
+      await knowledgeWriteInterest('/api/interests/remove', {topic: item.topic});
+      detail.hidden = true;
+      await knowledgeRefreshInterestStrip();
+    } catch (err) {
+      document.getElementById('kn-interest-status').textContent = err.message;
+      remove.disabled = false;
+    }
+  };
+  detail.append(title, provenance, search, remove);
+}
+
+async function knowledgeWriteInterest(url, data) {
+  const response = await fetch(url, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({...data, username: await window.fridayInterestUsername()}),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.ok) throw new Error(result.error || 'Could not save interests');
+  return result;
+}
+
+async function knowledgeAddInterest() {
+  const input = document.getElementById('kn-interest-input');
+  const status = document.getElementById('kn-interest-status');
+  const button = document.getElementById('kn-interest-add-button');
+  const topics = input.value.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
+  if (!topics.length) { status.textContent = 'Enter at least one interest.'; return; }
+  if (topics.length > 30 || topics.some(t => t.length > 100)) {
+    status.textContent = 'Use up to 30 interests, at most 100 characters each.';
+    return;
+  }
+  button.disabled = true;
+  status.textContent = 'Saving...';
+  try {
+    const result = await knowledgeWriteInterest('/api/interests/seed', {topics});
+    input.value = '';
+    status.textContent = 'Saved ' + result.count + ' interest(s).';
+    await knowledgeRefreshInterestStrip();
+  } catch (err) {
+    status.textContent = err.message;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function knowledgeRefreshSuggestions() {
@@ -246,11 +341,7 @@ function knowledgeRefreshSuggestions() {
 }
 
 function knowledgeApproveSuggestion(topic, category) {
-  fetch('/api/library/topics', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ topic, category: category || 'general', source: 'suggestion' }),
-  }).then(r => r.json()).then(d => {
+  knowledgeWriteInterest('/api/interests/seed', {topics: [topic]}).then(d => {
     if (d && d.ok) {
       if (typeof showToast === 'function') showToast(`Added "${topic}" to your topics`, 'success');
       knowledgeRefreshInterestStrip();

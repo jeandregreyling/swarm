@@ -29,7 +29,8 @@
 
 set -u
 
-REPO="${SWARM_ROOT:-/home/seven/swarm}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO="${SWARM_ROOT:-$(dirname -- "$SCRIPT_DIR")}"
 LOG_DIR="$REPO/runtime/backups"
 LOG_FILE="$LOG_DIR/log.jsonl"
 EXCLUDES="$REPO/scripts/backup_excludes.txt"
@@ -59,7 +60,7 @@ Targets:
   all     every reachable target above
 
 Env:
-  SWARM_ROOT               (default: /home/seven/swarm)
+  SWARM_ROOT               (default: parent of this script's directory)
   SWARM_BACKUP_RETENTION   (default: 14)
 
 Exit:

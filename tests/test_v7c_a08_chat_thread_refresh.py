@@ -25,35 +25,27 @@ def test_r1_chat_js_wipes_stale_thread_on_load():
     assert "__fridaysChatForceNewThread = window.__fridaysChatForceNewThread ?? true" in src
 
 
-# R2 FUNCTIONAL — home-chat resets its own conv id before paint
-def test_r2_home_chat_resets_conv_before_paint():
+# R2 FUNCTIONAL — home-chat restores its saved thread instead of wiping it
+def test_r2_home_chat_restores_saved_thread_on_init():
     src = HOME_CHAT_JS.read_text()
-    # initHomeChat must null the home-chat convId before _hcClearMessages/_hcShowWelcome
-    # without clearing the main chat window's active thread.
     init_idx = src.find("window.initHomeChat = function")
     assert init_idx >= 0
-    # Carve out just the init body to reason about it.
-    body = src[init_idx:init_idx + 2000]
-    for needle in [
-        "localStorage.removeItem(HC_ACTIVE_THREAD_KEY)",
-        "_hcConvId = null",
-        "_hcClearMessages()",
-        "_hcShowWelcome(true)",
-    ]:
-        assert needle in body, f"init must call {needle}"
+    body = src[init_idx:src.find("// ── Session 28", init_idx)]
+    assert "localStorage.getItem(HC_ACTIVE_THREAD_KEY)" in body
+    assert "localStorage.removeItem(HC_ACTIVE_THREAD_KEY)" not in body
+    assert "_hcClearMessages()" not in body
     assert "window.__fridaysChatConversationId = null" not in body
 
 
-# R3 BFCACHE — back/forward restore also resets
-def test_r3_bfcache_pageshow_resets():
+# R3 BFCACHE — back/forward restore keeps the visible thread and only refreshes history
+def test_r3_bfcache_pageshow_keeps_thread():
     src = HOME_CHAT_JS.read_text()
     idx = src.find("pageshow")
     assert idx >= 0
-    end = src.find("document.addEventListener('visibilitychange'", idx)
-    block = src[idx:end]
+    block = src[idx:src.find("});", idx)]
     assert "ev.persisted" in block
-    assert "_hcConvId = null" in block
-    assert "_hcShowWelcome(true)" in block
+    assert "_hcLoadThreadsListOnly()" in block
+    assert "_hcConvId = null" not in block
 
 
 # R4 CROSS-SURFACE — deletion of current conv falls back to new thread
@@ -70,13 +62,16 @@ def test_r4_delete_current_conv_falls_back():
     assert "_hcLoadThreads();" not in block
 
 
-# R5 THREAD LOAD — load also wipes stale marker
-def test_r5_thread_load_wipes_stale_marker():
+# R5 THREAD LOAD — a deleted saved thread drops its stale marker
+def test_r5_missing_saved_thread_starts_fresh():
     src = HOME_CHAT_JS.read_text()
-    idx = src.find("function _hcLoadThreads")
+    idx = src.find("function _hcLoadMessages")
     assert idx >= 0
-    block = src[idx:idx + 800]
-    assert "localStorage.removeItem(HC_ACTIVE_THREAD_KEY)" in block
+    block = src[idx:src.find("// ── Render bubbles", idx)]
+    assert "r.status === 404" in block
+    assert "_hcNewThread()" in block
+    new_thread = src[src.find("function _hcNewThread"):]
+    assert "localStorage.removeItem(HC_ACTIVE_THREAD_KEY)" in new_thread[:600]
     assert "window.__fridaysChatConversationId = null" not in block
 
 
@@ -111,20 +106,8 @@ def test_home_chat_fresh_canvas_defaults_to_seven_not_stale_global_agent():
     assert block.find("return ['seven']") < block.find("const global = localStorage.getItem(HC_GLOBAL_AGENTS_KEY)")
 
 
-# R7 REGRESSION GUARD — load path must wipe, not read, the active thread key
-def test_r7_load_path_never_reads_active_thread_key():
-    """The key may legitimately be written during a session (so floating chat
-    can latch onto the active thread), but on LOAD it must only ever be
-    removed — never read to hydrate state. Any `getItem(active-thread)` at
-    module scope or in init flows would re-introduce the 'refresh restores
-    old thread' bug."""
-    for p in (CHAT_JS, HOME_CHAT_JS):
-        src = p.read_text()
-        for forbidden in [
-            "localStorage.getItem('fridays-chat-active-thread')",
-            "localStorage.getItem(HC_ACTIVE_THREAD_KEY)",
-        ]:
-            assert forbidden not in src, (
-                f"{p.name} reads the active-thread key ({forbidden}). "
-                "On reload this would restore the old thread — A08 violation."
-            )
+# R7 REGRESSION GUARD — the main chat window still starts fresh on load.
+# The home chat tile intentionally restores its own saved thread (see R2).
+def test_r7_main_chat_load_path_never_reads_active_thread_key():
+    src = CHAT_JS.read_text()
+    assert "localStorage.getItem('fridays-chat-active-thread')" not in src

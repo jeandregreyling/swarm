@@ -65,6 +65,22 @@ def _sse_chat(conversation_id, agent, status, **extra):
 chat_bp = Blueprint('chat', __name__)
 _LOG = logging.getLogger('fridays.chat')
 
+def _chat_execution_breakdown(receipts, runtime_nudges):
+    counts = {
+        status: sum(1 for receipt in receipts if receipt.get('status') == status)
+        for status in ('succeeded', 'failed', 'denied', 'skipped')
+    }
+    return (
+        '\n\n### Execution and teaching evidence\n'
+        f'- Local tool receipts: {counts["succeeded"]} succeeded, '
+        f'{counts["failed"]} failed, {counts["denied"]} denied, '
+        f'{counts["skipped"]} skipped.\n'
+        f'- Runtime guidance prompts: {runtime_nudges} (not instructor teaching).\n'
+        '- Instructor teaching: no teaching recorded for this turn.\n'
+        '- Independent contribution: not measured; tool counts are not an autonomy percentage.\n'
+        '- Verification: these counts confirm tool outcomes only, not that the whole task succeeded.'
+    )
+
 
 def _record_vortex_action(action_type, *, source_agent='', target_agent='', status='recorded',
                           context_parts=(), thread_id=None, details=None, source='fridays.execution'):
@@ -179,6 +195,15 @@ def _chat_response_echoes_prompt(prompt_text, response_text):
     if response_norm == prompt_norm:
         return True
     response_words = response_norm.split()
+    # "QWEN -> USER: CORRECT. ..." picks one of the options the prompt offered;
+    # reusing the prompt's words is then the answer, not an echo.
+    body = re.sub(r'^\w+\s*->\s*\w+\s*:\s*', '', str(response_text or '').strip())
+    body_words = re.sub(r'\W+', ' ', body.lower()).split()
+    if body_words and body_words[0] in {
+        'correct', 'incorrect', 'approve', 'approved', 'reject', 'rejected', 'yes', 'no',
+        'pass', 'fail', 'true', 'false', 'agree', 'disagree',
+    } and body_words[0] in prompt_norm.split():
+        return False
     # Short answers may legitimately reuse a couple of prompt words; only a
     # substantial reply can be a real echo.
     if len(response_words) >= 5 and len(response_norm) <= len(prompt_norm) + 12 and (
@@ -231,6 +256,43 @@ def _chat_extract_explicit_agent_mentions(text, allowed_agents=None):
                 matches.append(agent)
                 break
     return matches
+
+
+WEB_LOOKUP_AGENTS = frozenset({'gemma', 'qwen', 'llama', 'mistral'})
+
+
+def _chat_followup_agents(conversation_id, allowed_agents):
+    """Continue with the last agent speaking to the user, not the default agent."""
+    try:
+        conv_id = int(conversation_id)
+    except (TypeError, ValueError):
+        return []
+    if conv_id <= 0:
+        return []
+    for row in reversed(_fetch_chat_thread_rows(conv_id, limit=30)):
+        sender = str(row.get('from_agent') or '').strip().lower()
+        targets = [name.strip().lower() for name in str(row.get('to_agent') or '').split(',')]
+        if sender in allowed_agents and 'user' in targets:
+            return [sender]
+        if sender == 'user':
+            return [name for name in targets if name in allowed_agents]
+    return []
+
+
+def _with_live_web_context(prompt, message, stage=None, eta=None):
+    """Prepend live search results when the user's message needs outside facts."""
+    try:
+        from lib.search.internet import needs_web_lookup, web_context_block
+        from utils.local_runtime_policy import is_explicitly_no_tools_request
+        if not needs_web_lookup(message) or is_explicitly_no_tools_request(message):
+            return prompt
+        if stage:
+            stage('searching web · Serper/Tavily', eta)
+        block = web_context_block(message)
+    except Exception:
+        _LOG.exception('Live web lookup failed')
+        return prompt
+    return f'{block}\n\n{prompt}' if block else prompt
 
 
 def _chat_user_prompt_is_informational(text):
@@ -1420,10 +1482,10 @@ def _build_project_context_block(text):
     )
 
 
-def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context, conv_id=None):
+def _build_local_agent_prompt(selected_agent, threaded_prompt, latest_message, reply_context, conv_id=None, auto_relay=True):
     memory_block = _build_local_memory_block(selected_agent, latest_message)
     knowledge_block = _build_knowledge_broadcast_block(selected_agent, latest_message)
-    handoff_block = _build_chat_handoff_block(selected_agent, reply_context)
+    handoff_block = _build_chat_handoff_block(selected_agent, reply_context, auto_relay=auto_relay)
     project_block = _build_project_context_block(f'{latest_message}\n{threaded_prompt[-4000:]}')
     if is_worker_agent(selected_agent):
         # The worker runs on a 4096-token context: only carry project context when asked about it.
@@ -1631,6 +1693,27 @@ def api_chat():
 
     if not message:
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
+    from core.chat_continuity import ContinuityChat, recovery_roster, storage_fault
+
+    if data.get("local_only") is True:
+        if requested_agents and isinstance(requested_agents, list):
+            requested_names = requested_agents
+        elif explicit_agent_field:
+            requested_names = [explicit_agent_field]
+        else:
+            requested_names = []
+
+        roster = _reg_routable()
+        roster_dict = {item["name"].lower(): item for item in roster}
+        for name in requested_names:
+            normalized_name = str(name or "").strip().lower()
+            if normalized_name in roster_dict and roster_dict[normalized_name]['tier'] != 'local':
+                return jsonify({"ok": False, "response": "Local chat cannot dispatch to a non-local agent."}), 400
+
+    primary_chat_fault = storage_fault(get_connection)
+    routable_rows = recovery_roster() if primary_chat_fault else _reg_routable()
+    if primary_chat_fault and not explicit_agent_field and not requested_agents:
+        agent = 'qwen'
 
     # Force parallel dispatch when user explicitly selects multiple agents.
     # Sequential stalling is for relay chains, not multi-agent fan-out.
@@ -1648,7 +1731,7 @@ def api_chat():
 
     # Routable view: excludes Ghost (human tier), Scholar + Seeker (silent-api
     # services used by local agents for internet access), disabled agents.
-    allowed_agents = {a['name'].lower() for a in _reg_routable()}
+    allowed_agents = {a['name'].lower() for a in routable_rows}
 
     explicit_agent_selection = bool(explicit_agent_field or (isinstance(requested_agents, list) and requested_agents))
     if isinstance(requested_agents, list) and requested_agents:
@@ -1661,8 +1744,15 @@ def api_chat():
             return jsonify({'ok': False, 'response': 'No agents selected'}), 400
     else:
         mentioned_agents = _chat_extract_explicit_agent_mentions(message, allowed_agents)
+        followup_agents = (
+            _chat_followup_agents(requested_conv_id, allowed_agents)
+            if not explicit_agent_selection and not mentioned_agents and not force_new_thread and not relay_from
+            else []
+        )
         if not explicit_agent_field and mentioned_agents:
             normalized_agents = mentioned_agents
+        elif followup_agents:
+            normalized_agents = followup_agents
         elif not explicit_agent_selection and _chat_prompt_needs_clarification(message):
             normalized_agents = ['watchdog']
         else:
@@ -1673,6 +1763,18 @@ def api_chat():
         bad_agents = []
     if bad_agents:
         return jsonify({'ok': False, 'response': f"Unsupported agent(s): {', '.join(bad_agents)}"}), 400
+
+    if data.get('local_only') is True:
+        local_agents = {
+            row['name'].lower() for row in routable_rows
+            if str(row.get('tier') or '').lower() == 'local'
+        }
+        if any(name not in local_agents for name in normalized_agents):
+            return jsonify({
+                'ok': False,
+                'response': 'Local chat cannot dispatch to a non-local agent.',
+            }), 400
+        auto_relay = False
 
     identity, err = _resolve_identity_or_response(data)
     if err:
@@ -1999,6 +2101,9 @@ def api_chat():
         return answer, tokens, None
 
     def _run_single_agent(selected_agent, prompt, history, reply_context, persistent_mode=False, stage_cb=None):
+        execution_receipts = []
+        runtime_nudges = 0
+
         def _duck_fast_check(text):
             t = (text or '').strip()
             if not t:
@@ -2015,8 +2120,25 @@ def api_chat():
             return 'Duck quick sanity: ' + '; '.join(cues) + '.'
 
         def _stage(text, eta_seconds=None):
+            nonlocal runtime_nudges
             now = time.time()
             text_s = str(text or '')
+            if text_s.startswith('execution_receipt:'):
+                try:
+                    receipt = json.loads(text_s.partition(':')[2])
+                    if (
+                        isinstance(receipt, dict)
+                        and isinstance(receipt.get('skill'), str)
+                        and receipt.get('status') in {'succeeded', 'failed', 'denied', 'skipped'}
+                    ):
+                        execution_receipts.append(receipt)
+                    else:
+                        _LOG.error('Invalid execution receipt from %s', selected_agent)
+                except (TypeError, ValueError):
+                    _LOG.exception('Could not parse execution receipt from %s', selected_agent)
+                return
+            if text_s.startswith('nudging for '):
+                runtime_nudges += 1
             lower = text_s.lower()
             active_cues = (
                 'generating',
@@ -2178,7 +2300,7 @@ def api_chat():
         def _agent_stage_cb(stage_text, eta_seconds=None):
             _stage(stage_text, est_eta if eta_seconds is None else eta_seconds)
 
-        effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context, conv_id=conv_id)
+        effective_prompt = _build_local_agent_prompt(selected_agent, prompt, message, reply_context, conv_id=conv_id, auto_relay=auto_relay)
         effective_prompt = apply_local_chat_profile(
             agent_name=selected_agent,
             base_prompt=effective_prompt,
@@ -2188,15 +2310,9 @@ def api_chat():
             execution_confirmation=_is_execution_confirmation(message),
         )
         _stage('queued', est_eta)
-        # Tavily web research for Mistral (same service Qwen used) — injected before model call
-        if selected_agent == 'mistral' and _TAVILY_OK and _tavily_search:
-            try:
-                _stage('searching web · Tavily', est_eta)
-                _web = _tavily_search(message)
-                if _web and not _web.startswith('[Tavily search unavailable'):
-                    effective_prompt = '[Mistral / Tavily]\n' + _web + '\n\n' + effective_prompt
-            except Exception:
-                pass
+        # Live web lookup for factual/current questions so local models cite sources instead of guessing.
+        if selected_agent in WEB_LOOKUP_AGENTS:
+            effective_prompt = _with_live_web_context(effective_prompt, message, _stage, est_eta)
 
         # ── Resource gate — one Ollama model at a time, Eight exclusive ──────────
         if selected_agent in _local_ollama_chat_agents():
@@ -2473,6 +2589,8 @@ def api_chat():
         # (Gemma, LLaMA) and bleeds into creative output. Never user-facing.
         response_text = _strip_auto_relay_banner(response_text)
         response_text = _strip_placeholder_relay(response_text)
+        if data.get('local_only') is True:
+            response_text += _chat_execution_breakdown(execution_receipts, runtime_nudges)
 
         elapsed_ms = int((time.time() - started_at) * 1000)
         if _CB_AVAILABLE:
@@ -2503,6 +2621,30 @@ def api_chat():
         return response_text, tokens_used, elapsed_ms
 
     try:
+        continuity = ContinuityChat()
+        continuing_recovery = continuity.owns_id(requested_conv_id)
+        fault = primary_chat_fault
+        if fault or continuing_recovery:
+            if data.get('local_only') is not True or relay_from:
+                return jsonify({
+                    'ok': False, 'storage_degraded': True,
+                    'response': 'Primary chat storage is unavailable. Recovery chat permits local-only, non-relayed messages.',
+                }), 503
+            rows = {row['name'].lower(): row for row in routable_rows}
+            selected = [rows[name] for name in normalized_agents if name in rows]
+            if len(selected) != len(normalized_agents) or not selected:
+                return jsonify({'ok': False, 'response': 'No registered local recovery agent available.'}), 503
+            from core import llm
+
+            def recovery_model(model, messages):
+                return llm.chat_via_gateway(
+                    model, messages, temperature=0.2, idle_timeout_s=60, absolute_timeout_s=180,
+                    options={'num_ctx': 8192, 'num_predict': 1800},
+                )
+
+            return jsonify(continuity.send(
+                data, selected, identity['effective_user'],
+                fault or 'Continuing a separately persisted recovery thread.', recovery_model))
         conv_id = None
         if requested_conv_id is not None:
             try:
@@ -3131,6 +3273,7 @@ def api_chat():
             'conversation_id': conv_id,
         })
     except Exception as exc:
+        _LOG.exception('Live chat request failed')
         return jsonify({'ok': False, 'response': f'Error: {str(exc)}'}), 500
 
 

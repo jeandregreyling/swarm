@@ -1,0 +1,24 @@
+.downloads-panel { font-size:12px; line-height:1.5; }
+.downloads-panel h2 { margin:0 0 10px; }
+.downloads-panel h3 { margin:14px 0 8px; }
+.downloads-panel small { font-size:12px; font-weight:normal; }
+.downloads-panel p { color:var(--text-dim); }
+.downloads-panel [data-dl="connection"] { color:var(--accent); }
+.downloads-panel button,
+.downloads-panel input {
+  font:inherit; color:var(--text); background:var(--card);
+  border:1px solid var(--border); border-radius:6px; padding:6px 9px;
+}
+.downloads-panel input { max-width:100%; box-sizing:border-box; }
+.downloads-panel input[type="text"] { width:280px; }
+.downloads-panel input[type="file"] { width:270px; }
+.downloads-panel button { cursor:pointer; margin:2px; }
+.downloads-panel button:hover { border-color:var(--accent); }
+.downloads-panel button:disabled { opacity:.5; cursor:default; }
+.downloads-panel button:focus-visible,
+.downloads-panel input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.downloads-panel td { vertical-align:top; overflow-wrap:anywhere; min-width:70px; }
+.downloads-panel th { color:var(--text-dim); padding:6px; }
+.downloads-panel a { color:var(--accent); }
+.downloads-panel hr { border:0; border-top:1px solid var(--border); margin:20px 0; }
+.downloads-panel pre { font-size:11px; overflow-wrap:anywhere; }

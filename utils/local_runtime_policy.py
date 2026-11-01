@@ -316,8 +316,14 @@ def normalize_read_only_response(agent_name: Any, content: Any) -> str:
     text = str(content or "").strip()
     requested_tools = [match.group(1).lower() for match in _TOOL_REQUEST_RE.finditer(text)]
     blocked_tool = None
+    trailing = ""
+    candidate = re.sub(r"^```(?:json)?\s*", "", text)
     try:
-        payload = json.loads(text)
+        if not candidate.startswith("{"):
+            payload, end = json.loads(text), len(candidate)
+        else:
+            payload, end = json.JSONDecoder().raw_decode(candidate)
+        trailing = re.sub(r"^\s*```", "", candidate[end:]).strip()
     except json.JSONDecodeError:
         payload = {
             "kind": "error" if _ERROR_RESPONSE_RE.match(text) else "analysis",
@@ -359,6 +365,8 @@ def normalize_read_only_response(agent_name: Any, content: Any) -> str:
     if not summary.strip():
         kind = "error"
         summary = "The agent returned an empty response."
+    if trailing and not blocked_tool:
+        summary = f"{summary.rstrip()}\n\n{trailing}"
 
     evidence = payload.get("evidence")
     if not isinstance(evidence, list):

@@ -29,8 +29,18 @@ _SERVICE_REGISTRY = [
     {'id': 'swarm-sniffer.service', 'label': 'Sniffer', 'env': 'SHARED', 'kind': 'io'},
     {'id': 'swarm-housekeeping.service', 'label': 'Housekeeping', 'env': 'SHARED', 'kind': 'maintenance'},
     {'id': 'swarm-prewarm.service', 'label': 'Model Prewarm', 'env': 'SHARED', 'kind': 'runtime'},
-    {'id': 'ollama.service', 'label': 'Ollama Runtime', 'env': 'RUNTIME', 'kind': 'runtime'},
+    {'id': 'swarm-vortex-backup.timer', 'label': 'Vortex Memory Backup (daily)', 'env': 'SHARED',
+     'kind': 'maintenance', 'scope': 'user'},
+    {'id': 'ollama.service', 'label': 'Ollama Runtime (unused)', 'env': 'RUNTIME', 'kind': 'runtime'},
 ]
+
+# Units that run inside this process; restarting them must not block the request.
+_SELF_UNITS = {'swarm-terminal.service'}
+_SYSTEMCTL = '/usr/bin/systemctl'
+_SUDO_HINT = (
+    'passwordless restart is not set up for system services. '
+    'Run once in a terminal: sudo scripts/install_service_sudoers.sh'
+)
 
 
 def _service_by_id(service_id):
@@ -41,45 +51,87 @@ def _service_by_id(service_id):
     return None
 
 
-def _run_systemctl(args, timeout=20):
+def _user_bus_env():
+    env = dict(_os.environ)
+    runtime_dir = env.get('XDG_RUNTIME_DIR') or f'/run/user/{_os.getuid()}'
+    env['XDG_RUNTIME_DIR'] = runtime_dir
+    env.setdefault('DBUS_SESSION_BUS_ADDRESS', f'unix:path={runtime_dir}/bus')
+    return env
+
+
+def _run_systemctl(args, timeout=20, scope='system'):
+    """Run systemctl for a registry unit. System units go through `sudo -n` so a
+    missing sudoers rule fails immediately instead of waiting for a password."""
     import subprocess as _sp
-    cmd = ['sudo', 'systemctl'] + list(args)
-    result = _sp.run(cmd, capture_output=True, text=True, timeout=timeout)
+    if scope == 'user':
+        cmd, env = [_SYSTEMCTL, '--user'] + list(args), _user_bus_env()
+    else:
+        cmd, env = ['sudo', '-n', _SYSTEMCTL] + list(args), None
+    result = _sp.run(cmd, capture_output=True, text=True, timeout=timeout, env=env)
     output = (result.stdout + result.stderr).strip() or '(done)'
+    if result.returncode != 0 and scope != 'user' and 'password is required' in output:
+        output = _SUDO_HINT
     return result.returncode == 0, output
 
 
-def _systemctl_is_enabled(unit):
+def _unit_state(unit, scope='system'):
     import subprocess as _sp
+    cmd = [_SYSTEMCTL] + (['--user'] if scope == 'user' else []) + [
+        'show', unit, '-p', 'LoadState,ActiveState,SubState,UnitFileState']
     try:
-        r = _sp.run(['systemctl', 'is-enabled', unit], capture_output=True, text=True, timeout=3)
-        return r.stdout.strip() or r.stderr.strip() or 'unknown'
+        r = _sp.run(cmd, capture_output=True, text=True, timeout=4,
+                    env=_user_bus_env() if scope == 'user' else None)
+        props = dict(line.split('=', 1) for line in r.stdout.splitlines() if '=' in line)
     except Exception:
-        return 'unknown'
-
-
-def _systemctl_is_active(unit):
-    import subprocess as _sp
-    try:
-        r = _sp.run(['systemctl', 'is-active', unit], capture_output=True, text=True, timeout=3)
-        status = r.stdout.strip() or r.stderr.strip() or 'unknown'
-        return status == 'active', status
-    except Exception:
-        return False, 'error'
+        props = {}
+    return props
 
 
 def _service_payload(svc):
-    active, status = _systemctl_is_active(svc['id'])
-    enabled = _systemctl_is_enabled(svc['id'])
+    scope = svc.get('scope', 'system')
+    props = _unit_state(svc['id'], scope)
+    installed = props.get('LoadState') == 'loaded'
+    active_state = props.get('ActiveState') or 'unknown'
+    status = active_state if installed else 'not installed'
+    if installed and props.get('SubState') and props['SubState'] not in {active_state, 'running', 'dead'}:
+        status = f"{active_state} ({props['SubState']})"
     return {
+        'scope': scope,
         **svc,
-        'active': active,
+        'active': installed and active_state == 'active',
         'status': status,
-        'enabled': enabled,
-        'installed': status not in {'not-found', 'unknown'} or enabled not in {'not-found', 'unknown'},
-        'can_restart': True,
-        'can_hard_restart': True,
+        'enabled': props.get('UnitFileState') or ('not-found' if not installed else 'static'),
+        'installed': installed,
+        'can_restart': installed,
+        'can_hard_restart': installed and svc['id'].endswith('.service'),
     }
+
+
+def _restart_unit(svc, hard=False):
+    """Returns (ok, output, action)."""
+    scope = svc.get('scope', 'system')
+    unit = svc['id']
+    if unit in _SELF_UNITS:
+        # This process is inside the unit: queue the job and answer before systemd kills us.
+        ok, out = _run_systemctl(['restart', '--no-block', unit], timeout=10, scope=scope)
+        return ok, out, 'service_self_restart'
+    if hard:
+        kill_ok, kill_out = _run_systemctl(['kill', '-s', 'SIGKILL', unit], timeout=12, scope=scope)
+        start_ok, start_out = _run_systemctl(['start', unit], timeout=20, scope=scope)
+        return start_ok, f'kill={kill_ok}: {kill_out}\nstart={start_ok}: {start_out}', 'service_hard_restart'
+    ok, out = _run_systemctl(['restart', unit], timeout=20, scope=scope)
+    return ok, out, 'service_restart'
+
+
+def _llama_resident_rows():
+    try:
+        from core.seven_llm import llama_server
+        rows = []
+        for item in llama_server.resident_models():
+            rows.append({k: item.get(k) for k in ('model', 'port', 'pid', 'gpu', 'ram_gb', 'idle_seconds')})
+        return rows
+    except Exception:
+        return []
 
 
 def _ollama_runner_rows():
@@ -177,16 +229,10 @@ def api_service_restart(service_id):
         return jsonify({'ok': False, 'error': 'Invalid service id'}), 400
     data = request.get_json(silent=True) or {}
     hard = str(data.get('mode') or '').strip().lower() in {'hard', 'kill', 'force'}
+    if not _service_payload(svc)['installed']:
+        return jsonify({'ok': False, 'output': f"{svc['id']} is not installed on this machine"}), 404
     try:
-        if hard:
-            kill_ok, kill_out = _run_systemctl(['kill', '-s', 'SIGKILL', svc['id']], timeout=12)
-            start_ok, start_out = _run_systemctl(['start', svc['id']], timeout=20)
-            ok = start_ok
-            output = f'kill={kill_ok}: {kill_out}\nstart={start_ok}: {start_out}'
-            action = 'service_hard_restart'
-        else:
-            ok, output = _run_systemctl(['restart', svc['id']], timeout=20)
-            action = 'service_restart'
+        ok, output, action = _restart_unit(svc, hard)
         from database import log_activity
         log_activity('terminal', action, svc['id'])
         _log_watchdog_service_action(action, f'{svc["id"]}: {output}', 'ok' if ok else 'error')
@@ -199,21 +245,56 @@ def api_service_restart(service_id):
 def api_services_status():
     """Return status for managed PROD/DEV/UAT/shared services plus Ollama runners."""
     result = [_service_payload(svc) for svc in _SERVICE_REGISTRY]
+    residents = _llama_resident_rows()
     result.append({
-        'id': 'ollama-runners',
-        'label': 'Ollama Runners',
+        'id': 'llama-server',
+        'label': 'Local models (llama-server)',
         'env': 'RUNTIME',
         'kind': 'runtime',
-        'active': bool(_ollama_runner_rows()),
-        'status': f'{len(_ollama_runner_rows())} runner(s)',
-        'enabled': 'runtime',
+        'scope': 'user',
+        'active': True,
+        'status': f'{len(residents)} loaded',
+        'enabled': 'on demand',
         'installed': True,
         'can_restart': False,
         'can_hard_restart': False,
-        'can_kill': True,
-        'runners': _ollama_runner_rows(),
+        'can_stop_models': True,
+        'models': residents,
     })
+    runners = _ollama_runner_rows()
+    if runners:
+        result.append({
+            'id': 'ollama-runners',
+            'label': 'Ollama Runners',
+            'env': 'RUNTIME',
+            'kind': 'runtime',
+            'active': True,
+            'status': f'{len(runners)} runner(s)',
+            'enabled': 'runtime',
+            'installed': True,
+            'can_restart': False,
+            'can_hard_restart': False,
+            'can_kill': True,
+            'runners': runners,
+        })
     return jsonify(result)
+
+
+@exec_bp.route('/api/services/llama/stop', methods=['POST'])
+def api_llama_stop():
+    """Unload one llama-server model (or all when no model is given)."""
+    data = request.get_json(silent=True) or {}
+    model = str(data.get('model') or '').strip() or None
+    try:
+        from core.seven_llm import llama_server
+        if model:
+            stopped = llama_server.stop(model)
+        else:
+            stopped = sum(llama_server.stop(row['model']) for row in llama_server.resident_models())
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+    _log_watchdog_service_action('llama_stop', f'model={model or "all"} stopped={stopped}')
+    return jsonify({'ok': True, 'stopped': stopped, 'remaining': _llama_resident_rows()})
 
 
 @exec_bp.route('/api/services/restart-all', methods=['POST'])
@@ -224,19 +305,14 @@ def api_services_restart_all():
     hard = bool(data.get('hard'))
     if env not in {'PROD', 'DEV', 'UAT', 'SHARED', 'RUNTIME'}:
         return jsonify({'ok': False, 'error': 'Invalid env'}), 400
-    targets = [svc for svc in _SERVICE_REGISTRY if svc['env'] == env]
-    if env == 'RUNTIME':
-        targets = [svc for svc in _SERVICE_REGISTRY if svc['id'] == 'ollama.service']
+    targets = [svc for svc in _SERVICE_REGISTRY if svc['env'] == env and _service_payload(svc)['installed']]
+    # Restart ourselves last so the other results are collected first.
+    targets.sort(key=lambda svc: svc['id'] in _SELF_UNITS)
     results = []
     for svc in targets:
         try:
-            if hard:
-                kill_ok, kill_out = _run_systemctl(['kill', '-s', 'SIGKILL', svc['id']], timeout=12)
-                start_ok, start_out = _run_systemctl(['start', svc['id']], timeout=20)
-                results.append({'id': svc['id'], 'ok': start_ok, 'output': f'kill={kill_ok}: {kill_out}\nstart={start_ok}: {start_out}'})
-            else:
-                ok, output = _run_systemctl(['restart', svc['id']], timeout=20)
-                results.append({'id': svc['id'], 'ok': ok, 'output': output})
+            ok, output, _action = _restart_unit(svc, hard)
+            results.append({'id': svc['id'], 'ok': ok, 'output': output})
         except Exception as exc:
             results.append({'id': svc['id'], 'ok': False, 'output': str(exc)})
     ok_all = all(item['ok'] for item in results)

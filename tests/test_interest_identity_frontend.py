@@ -171,7 +171,7 @@ function context(user, {authStatus = 200, failAuth = false, invalidJson = false}
     c.interestTest.save();
     await flush(); await flush();
     assert.equal(requests.filter(r => r.url.startsWith('/api/interests')).length, 0);
-    assert.equal(node('kn-interests-list').textContent, '(unable to load)');
+    assert.match(node('kn-interests-list').textContent, /^Unable to load interests:/);
     assert.match(node('kn-seed-status').textContent, /^Error:/);
     assert.ok(errors.length > 0);
     assert.ok(toasts.some(t => t[1] === 'error'));

@@ -154,8 +154,12 @@ async function _loadEmailInbox(account) {
     const data = await resp.json();
     const emails = data.emails || [];
 
+    if (_emailActiveFolder === 'sent') {
+      _renderEmailSent(inner, emails);
+      return;
+    }
     if (!emails.length) {
-      inner.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:20px;text-align:center;">No emails found</div>';
+      inner.innerHTML = `<div style="color:var(--text-dim);font-size:12px;padding:20px;text-align:center;">${_escHtml(data.note || 'No emails found')}</div>`;
       return;
     }
 
@@ -208,6 +212,58 @@ async function _loadEmailInbox(account) {
     _emailOnRowCheck();
   } catch (e) {
     inner.innerHTML = `<div style="color:#f44;font-size:12px;padding:12px;">Error: ${_escHtml(e.message)}</div>`;
+  }
+}
+
+// Sent folder: every email the swarm sent, from email_delivery_log.
+function _renderEmailSent(inner, emails) {
+  if (!emails.length) {
+    inner.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:20px;text-align:center;">Nothing sent yet</div>';
+    return;
+  }
+  inner.innerHTML = `<div style="font-size:10px;color:var(--text-dim);margin-bottom:8px;">Sent by the swarm — ${emails.length} shown</div>` +
+    emails.map(e => {
+      const ok = e.status === 'ok';
+      const color = ok ? '#4caf50' : '#f44336';
+      return `<div class="email-row email-sent-row" onclick="_emailOpenSent(${Number(e.id)})"
+        style="padding:10px;border-radius:4px;margin-bottom:6px;border-left:3px solid ${color};background:var(--card);cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;gap:6px;">
+          <span style="font-size:10px;font-family:monospace;color:${color};font-weight:700;">${ok ? 'SENT' : 'FAILED'}</span>
+          <span style="font-size:9px;color:var(--text-dim);">${_escHtml((e.swarm_account || '').split('@')[0])}</span>
+        </div>
+        <div style="font-size:11px;font-weight:600;margin:3px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml((e.subject || '(no subject)').slice(0, 80))}</div>
+        <div style="font-size:10px;color:var(--text-dim);">to ${_escHtml(e.to_address || '')} · ${_escHtml(String(e.sent_at || '').slice(0, 16))} UTC</div>
+      </div>`;
+    }).join('');
+  inner.querySelectorAll('.email-sent-row').forEach(el => {
+    el.addEventListener('mouseenter', () => el.style.background = 'var(--hover, #ffffff10)');
+    el.addEventListener('mouseleave', () => el.style.background = 'var(--card)');
+  });
+}
+
+async function _emailOpenSent(logId) {
+  const panel = document.getElementById('email-thread-panel');
+  if (!panel) return;
+  panel.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:20px;text-align:center;">Loading from Gmail Sent Mail…</div>';
+  try {
+    const data = await (await fetch(`/api/email/sent/${encodeURIComponent(logId)}`)).json();
+    if (!data.ok) throw new Error(data.error || 'not found');
+    const e = data.email || {};
+    const look = e.body_lookup || {};
+    const body = look.found
+      ? `<pre style="white-space:pre-wrap;font-size:11px;line-height:1.5;background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px;margin:0;">${_escHtml(look.body || '(empty body)')}</pre>`
+      : `<div style="font-size:11px;color:var(--text-dim);padding:10px;border:1px dashed var(--border);border-radius:4px;">Body not available${look.error ? ' — ' + _escHtml(look.error) : ' (not found in Gmail Sent Mail)'}.</div>`;
+    panel.innerHTML = `
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">${_escHtml(e.subject || '(no subject)')}</div>
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.7;margin-bottom:10px;">
+        <div><b>From:</b> ${_escHtml(e.sender || '')}</div>
+        <div><b>To:</b> ${_escHtml(e.to_address || '')}${e.cc ? ' · <b>Cc:</b> ' + _escHtml(e.cc) : ''}</div>
+        <div><b>Sent:</b> ${_escHtml(String(e.sent_at || ''))} UTC · <b>Status:</b> ${_escHtml(e.status || '')}${Number(e.attempts) > 1 ? ' after ' + Number(e.attempts) + ' attempts' : ''}</div>
+        ${e.error ? `<div style="color:#f44336;"><b>Error:</b> ${_escHtml(e.error)}</div>` : ''}
+      </div>
+      ${body}`;
+  } catch (err) {
+    panel.innerHTML = `<div style="color:#f44;font-size:12px;padding:12px;">Error: ${_escHtml(err.message)}</div>`;
   }
 }
 

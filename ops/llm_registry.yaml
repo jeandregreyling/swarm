@@ -9,7 +9,7 @@ models:
     ttl_seconds: 600
     options:
       mode: server
-      server: /home/jd/llama.cpp/llama-b11756/llama-server
+      server: /home/jd/llama.cpp/build-vulkan/bin/llama-server
       profile: qwen
       slots: 1
 
@@ -23,19 +23,18 @@ models:
     ttl_seconds: 600
     options:
       mode: server
-      server: /home/jd/llama.cpp/llama-b11756/llama-server
+      server: /home/jd/llama.cpp/build-vulkan/bin/llama-server
       profile: llama3
       ngl: 0
       threads: 4
       slots: 1
 
-  # Apex's brain, served straight from the Ollama-store GGUF blob by our own
-  # Vulkan llama-server (RX 6800 via RADV) — no Ollama middleware in the loop.
-  # No fixed ngl: llama-server's auto-fit offloads what fits in free VRAM and
-  # keeps the rest in ordinary RAM. ngl 999 forced the overflow into pinned
-  # GTT memory, which RAM accounting cannot see (OOM, 2026-10-22).
+  # Both 20B names use the persistent APEX Vulkan service, not the model pool.
+  # Endpoint failure is explicit: never spawn a second 13GB model copy.
+  # api_model maps registry names to the service's case-sensitive API alias.
   - name: apex-direct:20b
     driver: llamacpp
+    endpoint: http://127.0.0.1:8080
     role: general
     path: /mnt/archive/models/blobs/sha256-8ecb5d4ad6172c63f9cbf1a07a04e525985a8a11a6e516da02b674c4010de716
     ctx: 8192
@@ -44,16 +43,15 @@ models:
     ttl_seconds: 600
     options:
       mode: server
-      server: /home/jd/llama.cpp/llama-b11756/llama-server
+      api_model: gpt-oss:20B
       slots: 1
-      chat_template_file: /home/jd/llama.cpp/harmony-gptoss.jinja
+      chat_template_file: /home/jd/llama.cpp/models/templates/openai-gpt-oss-120b.jinja
       raw_completion: false
 
-  # Same blob under its Ollama name: Ollama-store models are discovered
-  # automatically (core/seven_llm/registry.py); gpt-oss only needs the harmony
-  # template override.
+  # Override Ollama-store discovery with the same externally owned service.
   - name: gpt-oss:20b
     driver: llamacpp
+    endpoint: http://127.0.0.1:8080
     role: general
     path: /mnt/archive/models/blobs/sha256-8ecb5d4ad6172c63f9cbf1a07a04e525985a8a11a6e516da02b674c4010de716
     ctx: 8192
@@ -62,29 +60,31 @@ models:
     ttl_seconds: 1800
     options:
       mode: server
+      api_model: gpt-oss:20B
       slots: 1
       temperature: 1.0
-      chat_template_file: /home/jd/llama.cpp/harmony-gptoss.jinja
+      chat_template_file: /home/jd/llama.cpp/models/templates/openai-gpt-oss-120b.jinja
       raw_completion: false
 
   - name: gemma-direct:3
     driver: llamacpp
     role: general
-    path: /home/seven/swarm/agents/seven/models/peers/gemma-3-1b-it-Q4_K_M.gguf
+    path: /mnt/archive/models/blobs/sha256-f06e91e18fc74295d0c781bf91622508c75655e2c18ed869d52447ffe1e667e1
     ctx: 8192
     quant: Q4_K_M
-    ram_gb: 2.0
+    ram_gb: 3.9
     ttl_seconds: 0
     options:
       mode: server
       profile: gemma
+      mmproj: /mnt/archive/models/blobs/sha256-7a50f9607a47389c028f2598c1f2d3e23b61913b4ce3c4a9eaaca62de1b9e098
       slots: 1
       threads: 6
 
   - name: llama-direct:3.2
     driver: llamacpp
     role: general
-    path: /mnt/llm/.ollama/models/blobs/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff
+    path: /mnt/archive/models/blobs/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff
     ctx: 8192
     quant: Q4_K_M
     ram_gb: 3.0

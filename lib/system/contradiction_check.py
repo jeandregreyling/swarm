@@ -1,6 +1,12 @@
 import sys
 import asyncio
-sys.path.insert(0, '/home/seven/swarm')
+from pathlib import Path
+
+_SWARM_ROOT = Path(__file__).resolve().parents[2]
+for _path in (_SWARM_ROOT, _SWARM_ROOT / 'utils', _SWARM_ROOT / 'lib' / 'email'):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
 from database import get_connection
 from config import GHOST_EMAIL
 from email_handler import send_reply
@@ -8,9 +14,7 @@ from datetime import datetime
 
 
 async def _check_async(new_content, verified_content):
-    """Single contradiction check via AsyncClient with 30s timeout."""
-    import ollama
-    client = ollama.AsyncClient()
+    """Run one contradiction check through the shared local model runtime."""
     prompt = (
         'You are a fact checker. Compare these two statements about the same topic.\n\n'
         'Statement A (verified): ' + verified_content + '\n\n'
@@ -19,11 +23,17 @@ async def _check_async(new_content, verified_content):
         'Reply with CONTRADICTION or NO_CONTRADICTION followed by one sentence explaining why.'
     )
     try:
-        response = await asyncio.wait_for(
-            client.chat(model='gemma3:latest', messages=[{'role': 'user', 'content': prompt}]),
+        from core import llm
+        content, _tokens = await asyncio.wait_for(
+            asyncio.to_thread(
+                llm.chat,
+                'gemma3:latest',
+                [{'role': 'user', 'content': prompt}],
+                options={'timeout': 30, 'num_predict': 256},
+            ),
             timeout=30.0,
         )
-        return response['message']['content']
+        return content
     except asyncio.TimeoutError:
         return 'NO_CONTRADICTION (timeout — skipped)'
     except Exception as e:

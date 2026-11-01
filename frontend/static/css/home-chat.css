@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   HOME CHAT — embedded chat surface below tile grid
+   HOME CHAT — primary surface above workspace and system tiles
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Body: flex row containing main + right panel ────────────────────────── */
@@ -579,6 +579,12 @@
 }
 
 /* ── Collapsible right agent panel ────────────────────────────────────────── */
+#home-chat-agents-panel,
+#home-chat-agents-toggle,
+#home-chat-agent-count {
+  display: none !important;
+}
+
 .home-chat-agents-panel {
   width: 200px;
   max-width: 200px;

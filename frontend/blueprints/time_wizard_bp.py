@@ -81,7 +81,9 @@ def api_time_create_checkpoint():
     agent = str(data.get('agent') or 'terminal_ui').strip()
 
     try:
-        checkpoint = time_wizard.create_workflow_checkpoint(label=label, agent=agent, description=description)
+        checkpoint = time_wizard.create_workflow_checkpoint(
+            label=label, agent=agent, description=description, backup_memory=True,
+        )
         return jsonify({'ok': True, 'checkpoint': checkpoint}), 201
     except ValueError as e:
         # Domain-layer rejection (e.g. label collision) — 400 not 500
@@ -118,6 +120,8 @@ def api_time_restore():
         return jsonify(result)
     except ValueError as e:
         return jsonify({'ok': False, 'error': str(e)}), 404
+    except RuntimeError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 409
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
@@ -184,6 +188,4 @@ def api_time_decision_history(decision_id):
         })
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
-
-
 

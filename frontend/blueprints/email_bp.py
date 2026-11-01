@@ -108,6 +108,12 @@ def get_email_inbox():
     """
     account_filter = request.args.get('account', '')
     limit = min(int(request.args.get('limit', 50)), 200)
+    folder = (request.args.get('folder') or 'inbox').strip().lower()
+    if folder == 'sent':
+        return jsonify(_sent_folder(account_filter, limit))
+    if folder in {'drafts', 'trash'}:
+        return jsonify({'ok': True, 'emails': [], 'count': 0, 'folder': folder,
+                        'note': f'{folder.title()} is not synced from Gmail yet.'})
 
     conn = get_connection()
     rows = conn.execute("""
@@ -135,6 +141,128 @@ def get_email_inbox():
         emails.append(d)
 
     return jsonify({'ok': True, 'emails': emails, 'count': len(emails)})
+
+
+def _sent_folder(account_filter: str, limit: int) -> dict:
+    """Every email the swarm sent (or tried to send), newest first."""
+    conn = get_connection()
+    try:
+        sql = ("SELECT id, sender, to_address, cc, subject, in_reply_to, sent_at, status, attempts, error "
+               "FROM email_delivery_log")
+        args: list = []
+        if account_filter:
+            sql += " WHERE lower(sender) = lower(?)"
+            args.append(account_filter)
+        sql += " ORDER BY sent_at DESC, id DESC LIMIT ?"
+        args.append(limit)
+        rows = [dict(r) for r in conn.execute(sql, args).fetchall()]
+    finally:
+        conn.close()
+    for r in rows:
+        r['swarm_account'] = r.get('sender') or 'sevenpotato9@gmail.com'
+    return {'ok': True, 'emails': rows, 'count': len(rows), 'folder': 'sent'}
+
+
+def _message_text(msg) -> str:
+    html = ''
+    for part in msg.walk():
+        if part.get_content_maintype() == 'multipart' or part.get('Content-Disposition', '').startswith('attachment'):
+            continue
+        try:
+            payload = part.get_payload(decode=True) or b''
+            text = payload.decode(part.get_content_charset() or 'utf-8', errors='replace')
+        except Exception:
+            continue
+        if part.get_content_type() == 'text/plain':
+            return text
+        if part.get_content_type() == 'text/html' and not html:
+            html = text
+    if html:
+        import re as _re
+        return _re.sub(r'<[^>]+>', '', _re.sub(r'(?i)<br\s*/?>|</p>', '\n', html))
+    return ''
+
+
+def _norm_subject(value: str) -> str:
+    import re as _re
+    text = ' '.join((value or '').split())
+    return _re.sub(r'^(?:(?:re|fwd?)\s*:\s*)+', '', text, flags=_re.IGNORECASE).lower()
+
+
+def _imap_sent_body(account: str, password: str, to_addr: str, subject: str, sent_at: str) -> dict:
+    """Find one sent message in Gmail's Sent Mail by recipient, day and subject."""
+    try:
+        day = datetime.strptime(sent_at[:10], '%Y-%m-%d')
+    except Exception:
+        return {'found': False, 'error': 'bad sent_at'}
+    from datetime import timedelta
+    mail = imaplib.IMAP4_SSL('imap.gmail.com', timeout=15)
+    try:
+        mail.login(account, password)
+        mail.select('"[Gmail]/Sent Mail"', readonly=True)
+        criteria = ['SINCE', (day - timedelta(days=1)).strftime('%d-%b-%Y'),
+                    'BEFORE', (day + timedelta(days=2)).strftime('%d-%b-%Y')]
+        if to_addr:
+            criteria += ['TO', '"' + to_addr.split(',')[0].strip().replace('"', '') + '"']
+        _, data = mail.search(None, *criteria)
+        want = _norm_subject(subject)
+        try:
+            target = datetime.strptime(sent_at[:19], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+        except Exception:
+            target = day.replace(tzinfo=timezone.utc)
+        best = None
+        for uid in (data[0] or b'').split():
+            _, hdr = mail.fetch(uid, '(BODY.PEEK[HEADER.FIELDS (SUBJECT DATE)])')
+            head = _email_lib.message_from_bytes(hdr[0][1])
+            if _norm_subject(_decode_header(head.get('Subject', ''))) != want:
+                continue
+            try:
+                gap = abs((email.utils.parsedate_to_datetime(head.get('Date', '')) - target).total_seconds())
+            except Exception:
+                gap = float('inf')
+            if best is None or gap < best[0]:
+                best = (gap, uid)
+        if best is None:
+            return {'found': False}
+        _, full = mail.fetch(best[1], '(BODY.PEEK[])')
+        msg = _email_lib.message_from_bytes(full[0][1])
+        return {'found': True, 'body': _message_text(msg)[:200000],
+                'date': msg.get('Date', ''), 'message_id': msg.get('Message-ID', '')}
+    finally:
+        try:
+            mail.logout()
+        except Exception:
+            pass
+
+
+@email_bp.route('/api/email/sent/<int:log_id>', methods=['GET'])
+def get_sent_email(log_id):
+    """One delivery-log row plus its body from the sender's Gmail Sent Mail."""
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT * FROM email_delivery_log WHERE id = ?", (log_id,)).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return jsonify({'ok': False, 'error': 'not found'}), 404
+    item = dict(row)
+    sender = item.get('sender') or ''
+    try:
+        from config import GMAIL_ADDRESS, GMAIL_PASSWORD, NINE_EMAIL, NINE_PASSWORD
+        password = {GMAIL_ADDRESS: GMAIL_PASSWORD, NINE_EMAIL: NINE_PASSWORD}.get(sender)
+    except ImportError:
+        password = None
+    if item.get('status') != 'ok':
+        item['body_lookup'] = {'found': False, 'error': 'not delivered'}
+    elif not password:
+        item['body_lookup'] = {'found': False, 'error': 'no password for sender'}
+    else:
+        try:
+            item['body_lookup'] = _imap_sent_body(sender, password, item.get('to_address') or '',
+                                                  item.get('subject') or '', str(item.get('sent_at') or ''))
+        except Exception as exc:
+            item['body_lookup'] = {'found': False, 'error': str(exc)[:300]}
+    return jsonify({'ok': True, 'email': item})
 
 
 @email_bp.route('/api/email/live', methods=['GET'])
@@ -287,6 +415,8 @@ def send_email():
                 raise smtplib.SMTPRecipientsRefused(refused)
     except Exception as exc:
         log_activity('email', 'send_error', f'to={to_addr} err={exc}')
+        from lib.email.email_handler import _record_delivery
+        _record_delivery(to_addr, [], subject, '', 'failed', 1, str(exc), sender=sender)
         return jsonify({'ok': False, 'error': f'SMTP error: {exc}'}), 502
 
     log_activity(
@@ -295,6 +425,6 @@ def send_email():
         f'from={sender} to={to_addr} subj={subject[:60]}',
     )
     from lib.email.email_handler import _record_delivery
-    _record_delivery(to_addr, [], subject, '', 'ok', 1, '')
+    _record_delivery(to_addr, [], subject, '', 'ok', 1, '', sender=sender)
     return jsonify({'ok': True, 'message': 'Accepted by SMTP server', 'smtp_accepted': True,
                     'message_id': msg['Message-ID'], 'attachments': attachments, 'internal_test': internal_test})

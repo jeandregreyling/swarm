@@ -1,0 +1,34 @@
+{
+  "id": "bootstrap_dispatcher",
+  "version": "1.0.0",
+  "goal": "Receive and execute a scoped local recovery assignment without the primary database.",
+  "prerequisites": ["An operator-created file queue task with an explicit tool allowlist"],
+  "commands": [
+    "SKILL recovery <authorized-tool> [argument]",
+    "SKILL deos request_context \"reason\"",
+    "SKILL deos escalate \"reason\""
+  ],
+  "procedure": [
+    "Read the queued assignment and authorized tool names.",
+    "Emit exactly one complete command on its own line.",
+    "Wait for the actual backend receipt before choosing the next command.",
+    "Use the measured result or exact error in the report."
+  ],
+  "boundaries": [
+    "A pack never grants permissions; the task allowlist and backend are authoritative.",
+    "No arbitrary shell, paths, online consultation, service actions or activation.",
+    "After three failed operations halt for local handoff.",
+    "No successful execution or recovery claim without an actual receipt.",
+    "If you do not have the exact file path, stop and ask.",
+    "If the terminal receipt does not contain the answer, stop and ask.",
+    "Never guess, never assume, and do not make shit up.",
+    "Undefined required parameters or unrecognized receipts require request_context, not inference."
+  ],
+  "acceptance": [
+    "Primary database deliberately unavailable in isolation.",
+    "Local model receives assignment and invokes a permitted diagnostic.",
+    "Queue, full model turns and actual receipt persist outside primary SQLite.",
+    "Answer accuracy is reviewed separately from tool execution.",
+    "A valid request_context or escalate produces a successful safe-stop receipt, no tool dispatch or retry, and awaiting_operator rather than task success."
+  ]
+}

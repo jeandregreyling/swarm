@@ -427,7 +427,8 @@ function _renderMonitorServices(win) {
   fetch('/api/services')
     .then(r => r.json())
     .then(services => {
-      if (!services || !services.length) {
+      services = (Array.isArray(services) ? services : []).filter(s => s.installed !== false);
+      if (!services.length) {
         el.innerHTML = '<div style="font-weight:600;margin-bottom:6px;">Service Health</div><div style="font-size:11px;color:var(--text-dim);">No services found.</div>';
         return;
       }

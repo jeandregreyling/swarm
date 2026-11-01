@@ -161,13 +161,29 @@ def inventory() -> dict[str, Any]:
         warnings.append(f"direct inventory unavailable: {exc}")
 
     resident = gateway.ollama_health()
-    resident_names = {str(row.get("name") or "") for row in resident.get("models") or []}
+    resident_models = list(resident.get("models") or [])
+    try:
+        from core.seven_llm import llama_server
+        direct_residents = [
+            {
+                "name": str(item.get("model") or ""),
+                "state": "loaded",
+                "runtime": "llamacpp",
+                "pid": item.get("pid"),
+            }
+            for item in llama_server.resource_snapshot().get("residents") or []
+            if item.get("model")
+        ]
+        resident_models.extend(direct_residents)
+    except Exception as exc:
+        warnings.append(f"direct residency unavailable: {exc}")
+    resident_names = {str(row.get("name") or "") for row in resident_models}
     for row in installed:
         row["resident"] = row["name"] in resident_names
     return {
         "ok": bool(installed),
         "models": installed,
-        "resident": list(resident.get("models") or []),
+        "resident": resident_models,
         "warnings": warnings + list(resident.get("warnings") or []),
     }
 

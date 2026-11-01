@@ -15,10 +15,12 @@ import os
 import sys
 import sqlite3
 import datetime
+from pathlib import Path
 
 # Ensure project root on path
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'utils'))
 
 import pytest
 

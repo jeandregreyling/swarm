@@ -20,12 +20,45 @@ def _recent_conversations(limit=40):
 
 @conversations_bp.route('/api/conversations')
 def api_conversations():
-    return jsonify(_recent_conversations())
+    from core.chat_continuity import ContinuityChat, storage_fault
+
+    continuity = ContinuityChat()
+    fault = storage_fault(get_connection)
+    identity, error = _resolve_identity_or_response({})
+    if error:
+        return error
+    recovery_threads = continuity.recent(identity['effective_user'])
+    if fault:
+        response = jsonify(recovery_threads if recovery_threads else {
+            'ok': False, 'storage_degraded': True,
+            'error': 'Primary history unavailable; no recovery threads have been created yet.',
+        })
+        response.headers['X-Fridays-Storage-Status'] = 'degraded; recovery-threads-only'
+        return response, 200 if recovery_threads else 503
+    return jsonify(recovery_threads + _recent_conversations())
 
 
 
 @conversations_bp.route('/api/conversations/<int:conv_id>/messages')
 def api_conversation_messages(conv_id):
+    from core.chat_continuity import ContinuityChat
+
+    continuity = ContinuityChat()
+    if continuity.owns_id(conv_id):
+        identity, error = _resolve_identity_or_response({})
+        if error:
+            return error
+        try:
+            thread = continuity.read(conv_id, identity['effective_user'])
+        except FileNotFoundError:
+            return jsonify({'ok': False, 'error': 'Recovery conversation not found'}), 404
+        except PermissionError as exc:
+            return jsonify({'ok': False, 'error': str(exc)}), 403
+        return jsonify({
+            'conv': {key: thread[key] for key in ('id', 'title', 'source', 'created_at')},
+            'messages': thread['messages'], 'jobs': [], 'proposals': [], 'ticket': None,
+            'storage_degraded': True, 'mode': 'local_recovery',
+        })
     conn = get_connection()
     # Conversation metadata
     conv = conn.execute(
@@ -129,6 +162,10 @@ def api_conversation_messages(conv_id):
 @require_auth
 def api_conversation_message_patch(conv_id, msg_id, current_user=None):
     """Edit a single user-authored prompt message inside a conversation."""
+    from core.chat_continuity import ContinuityChat
+
+    if ContinuityChat().owns_id(conv_id):
+        return jsonify({'ok': False, 'error': 'Recovery journals are append-only; send a correction as a new message.'}), 409
     data = request.get_json() or {}
     new_content = str(data.get('content') or '').strip()
     if not new_content:
@@ -166,6 +203,10 @@ def api_conversation_message_patch(conv_id, msg_id, current_user=None):
 @conversations_bp.route('/api/conversations/<int:conv_id>/messages/<int:msg_id>', methods=['DELETE'])
 @require_auth
 def api_conversation_message_delete(conv_id, msg_id, current_user=None):
+    from core.chat_continuity import ContinuityChat
+
+    if ContinuityChat().owns_id(conv_id):
+        return jsonify({'ok': False, 'error': 'Recovery journals are preserved; message deletion is unavailable.'}), 409
     """Delete a single message inside a conversation."""
     conn = get_connection()
     row = conn.execute(
@@ -188,6 +229,10 @@ def api_conversation_message_delete(conv_id, msg_id, current_user=None):
 @conversations_bp.route('/api/conversations/<int:conv_id>', methods=['PATCH'])
 def api_conversation_patch(conv_id):
     """Update editable conversation fields (currently: title)."""
+    from core.chat_continuity import ContinuityChat
+
+    if ContinuityChat().owns_id(conv_id):
+        return jsonify({'ok': False, 'error': 'Recovery journals are preserved; renaming is unavailable.'}), 409
     data = request.get_json() or {}
     title = (data.get('title') or '').strip()
     if not title:
@@ -215,6 +260,10 @@ def api_conversation_patch(conv_id):
 @conversations_bp.route('/api/conversations/<int:conv_id>', methods=['DELETE'])
 def api_conversation_delete(conv_id):
     """Delete a conversation and all linked messages."""
+    from core.chat_continuity import ContinuityChat
+
+    if ContinuityChat().owns_id(conv_id):
+        return jsonify({'ok': False, 'error': 'Recovery journals are preserved; deletion is unavailable.'}), 409
     conn = get_connection()
     row = conn.execute("SELECT id FROM conversations WHERE id=?", (conv_id,)).fetchone()
     if not row:
@@ -357,4 +406,3 @@ def api_trace_conversation(conv_id):
     except Exception as e:
         conn.close()
         return jsonify({'error': str(e)}), 500
-

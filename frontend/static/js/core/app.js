@@ -216,6 +216,7 @@ function openWindow(id, title, templateId, options = {}) {
             else if (id === 'tickets') loadTicketsData && loadTicketsData(win);
             else if (id === 'studio' && typeof window.loadStudioData === 'function') window.loadStudioData(win);
             else if (id === 'email') loadEmailData && loadEmailData(win);
+            else if (id === 'downloads') loadDownloadsData(win);
             else if (id === 'library') libInit && libInit();
             else if (id === 'time-wizard') initTimeWizard && initTimeWizard();
             else if (id === 'ghost-brief') initGhostBrief && initGhostBrief();

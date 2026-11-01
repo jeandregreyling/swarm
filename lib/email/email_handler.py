@@ -1,5 +1,10 @@
 import sys
-sys.path.insert(0, '/home/seven/swarm')
+from pathlib import Path
+
+_SWARM_ROOT = Path(__file__).resolve().parents[2]
+if str(_SWARM_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SWARM_ROOT))
+
 from config import GMAIL_ADDRESS, GMAIL_PASSWORD, GHOST_NAME
 import imaplib
 import smtplib
@@ -104,7 +109,7 @@ def connect_smtp():
     server.login(GMAIL_ADDRESS, GMAIL_PASSWORD)
     return server
 
-def _record_delivery(to_address, cc_clean, subject, in_reply_to, status, attempts, error):
+def _record_delivery(to_address, cc_clean, subject, in_reply_to, status, attempts, error, sender=None):
     """2026-05-02 (S-90C2B45FAF) — append a row to email_delivery_log.
     Failure to record must NEVER crash the send path."""
     try:
@@ -118,7 +123,7 @@ def _record_delivery(to_address, cc_clean, subject, in_reply_to, status, attempt
                 (to_address or '', ', '.join(cc_clean or []),
                  (subject or '')[:300], in_reply_to or '',
                  status, int(attempts), str(error or '')[:1000],
-                 GMAIL_ADDRESS),
+                 sender or GMAIL_ADDRESS),
             )
             conn.commit()
         finally:

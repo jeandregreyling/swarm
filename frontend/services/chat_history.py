@@ -104,7 +104,22 @@ def _conversation_reply_context_from_rows(rows, selected_agent):
     }
 
 
-def _build_chat_handoff_block(selected_agent, reply_context):
+_RELAY_ROUTING_LINES = [
+    'RELAY ROUTING — how to pass work on:',
+    'To hand off to another agent, end your response with the relay syntax on its own line:',
+    '  AgentName: <your question or task for them>',
+    'Examples: "LLaMA: Can you search for the latest SAP release notes on this?" or "Qwen: What is your risk analysis of this approach?"',
+    'For multiple agents, one directive per line:',
+    '  LLaMA: Can you verify X online?',
+    '  Qwen: Can you reason through the implications?',
+    'Please skip phrases like "I will direct LLaMA to..." — the relay system only reads the AgentName: format.',
+    'Please speak only for yourself; when you hand off, stop and let them answer.',
+    '"AgentName" is only a placeholder; use a real agent name in a relay line, or no relay line at all.',
+    '',
+]
+
+
+def _build_chat_handoff_block(selected_agent, reply_context, auto_relay=True):
     latest_sender = _display_chat_participant_local(reply_context.get('latest_sender') or 'user')
     previous_participant = reply_context.get('previous_participant') or ''
     prior_agent = reply_context.get('prior_agent') or ''
@@ -118,6 +133,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
             f'Default reply target: {default_target}',
             'SKILLS (the SKILL line itself is plain text, never inside a fence; file content goes in a ``` fenced block right after it):',
             '  SKILL shell python3 scripts/db_query.py "select ... from ..."   (stored records and counts; ids are rows, not files)',
+            '  SKILL shell <command>   (the Fridays terminal: uptime, free -h, df -h, ps aux | grep <name>, systemctl status <unit>, curl -s http://127.0.0.1:5050/api/services for services and loaded models; restarts and git need Ghost approval)',
             '  SKILL fs_readonly read <full/path/to/file>   (files)',
             '  SKILL search_landscape <word>   (which file holds a UI element, JS view, route or table; use this before reading, never invent a path; if a read says Invalid file, ls the parent folder)',
             '  SKILL swarm_knowledge_search <query>   (Knowledge Center: decisions, docs, lessons)',
@@ -158,18 +174,9 @@ def _build_chat_handoff_block(selected_agent, reply_context):
         lines.append(f'Previous participant before that: {_display_chat_participant_local(previous_participant)}')
     if prior_agent:
         lines.append(f'Active collaborator already in thread: {_display_chat_participant_local(prior_agent)}')
+    if auto_relay:
+        lines.extend(_RELAY_ROUTING_LINES)
     lines.extend([
-        'RELAY ROUTING — how to pass work on:',
-        'To hand off to another agent, end your response with the relay syntax on its own line:',
-        '  AgentName: <your question or task for them>',
-        'Examples: "LLaMA: Can you search for the latest SAP release notes on this?" or "Qwen: What is your risk analysis of this approach?"',
-        'For multiple agents, one directive per line:',
-        '  LLaMA: Can you verify X online?',
-        '  Qwen: Can you reason through the implications?',
-        'Please skip phrases like "I will direct LLaMA to..." — the relay system only reads the AgentName: format.',
-        'Please speak only for yourself; when you hand off, stop and let them answer.',
-        '"AgentName" is only a placeholder; use a real agent name in a relay line, or no relay line at all.',
-        '',
         'CHAIN OF COMMAND:',
         '  1. Ghost One (human) decides. 2. Seven regulates and checks the swarm. 3. Watchdog guards routing and read-only rules. 4. Duck audits proposals.',
         '  Everyone else works inside that line. Answer only the latest request addressed to you; do not answer for, or talk over, another agent.',
@@ -178,6 +185,7 @@ def _build_chat_handoff_block(selected_agent, reply_context):
         'SKILLS (one command per line, plain text, never inside a code fence or brackets):',
         '  SKILL file_write <your-agent/filename.txt> <exact text>   (write a short own-sandpit note; text is inline without added quotation marks)',
         '  SKILL file_read <agent/filename.txt>   (read back a sandpit note)',
+        '  SKILL shell <command>   (the Fridays terminal: uptime, free -h, df -h, ps aux | grep <name>, systemctl status <unit>, curl -s http://127.0.0.1:5050/api/services for services and loaded models; restarts and git need Ghost approval)',
         '  SKILL fs_write <sandpits/your-agent/file.txt>   followed by a fenced block containing only the exact file text',
         '  SKILL fs_readonly lines docs/sample.md 1 20      (format example: use the file and lines you were asked about)',
         '  SKILL alm_create_proposal "<title>" "<description>"',

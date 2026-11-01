@@ -57,6 +57,7 @@ function _spPickIntent(q) {
 }
 
 const _SP_COMMANDS = [
+  { label: 'Downloads / qBittorrent', icon: _SP_SVG.files, hint: '', action: () => openWindow('downloads','Downloads','view-downloads') },
   { label: 'Chat',              icon: _SP_SVG.chat,      hint: 'Ctrl+J',     action: () => openWindow('chat','Chat','view-chat') },
   { label: 'Knowledge Center',  icon: _SP_SVG.knowledge, hint: 'Ctrl+B',     action: () => openWindow('knowledge','Knowledge','view-knowledge') },
   { label: 'Terminal',          icon: _SP_SVG.terminal,  hint: '',           action: () => openWindow('terminal','Terminal','view-terminal') },

@@ -1,0 +1,26 @@
+{
+  "legacy_eagerness_check": true,
+  "technical_awareness": "Evidence captured 2026-10-24 for JD's ordinary-chat execution request. Source inspection confirms repository editing tools already exist: fridays/skills.py registers fs_write, fs_patch and fs_patch_lines, and _skill_fs_write confines targets through _fs_safe_path and _fs_write_refusal. agents/qwen/qwen_agent.py calls run_skill_loop, but first loads context from database-backed functions. agents/skills_loop.py dispatches through fridays.skills.call and enforces turn allowlists. utils/local_runtime_policy.py currently lists only seven as a read-only profile; this does not prove Qwen's effective live grants. core/chat_continuity.py explicitly supplies no tools, bypassing that execution path. It was incorrect to imply that production editing tools do not exist at all. Existing capabilities are disconnected or dependent on unavailable storage. No production repair or permission change has been applied.",
+  "capability_pack": {
+    "pack_id": "chat.execution-evidence",
+    "prerequisites": [
+      "Goal: connect existing bounded capabilities to ordinary Fridays chat, with the operator never managing individual models or task IDs.",
+      "Observed command: .venv/bin/python -m pytest -q tests/test_chat_continuity.py tests/test_repository_inspection_pack.py. Actual result: 17 passed, exit 0. This verifies existing regression behavior, not live action capability.",
+      "Read agents/qwen/qwen_agent.py, agents/skills_loop.py, fridays/skills.py, core/chat_continuity.py and frontend/blueprints/chat.py through authorized tools before proposing edits. Preserve other worktree changes.",
+      "The teacher's deliverable is this evidence-backed assignment. Source implementation belongs to an authorized local development worker; teaching text grants no new permissions."
+    ],
+    "procedure": [
+      "Authorized command formats already registered in the normal wrapper include SKILL fs_readonly grep <path> <pattern>, SKILL fs_readonly lines <path> <start> <end>, SKILL fs_write <path> with a fenced body, and SKILL fs_patch <path> with exact old/new fenced bodies. Availability depends on effective permissions and turn allowlists. Do not send these commands to RecoverySupervisor, whose separate dispatcher does not implement them.",
+      "Trace the live recovery early return and Qwen's database-dependent context loading. Determine exactly which existing skill calls consult damaged SQLite for trust, authorization, logging, proposals or backups. Source presence is not a live execution receipt.",
+      "Inspect _trust_gate, _fs_write_refusal and call in fridays/skills.py. Do not treat default_allow or a swallowed database error as valid authorization. A degraded execution lane must use explicit operator-owned grants, not expand privileges because a lookup fails.",
+      "Use Qwen as candidate development worker, with exact permitted source files, existing tool contracts and focused tests. Establish an authorized database-independent assignment and evidence path before expecting it to edit production code; do not grant arbitrary shell or live activation.",
+      "Connect user request, owner, originating thread, selected worker, policy, pickup, real tool receipts and final result. Distinguish default UI model selection from explicit operator choice. Keep state durable and prevent duplicate actions.",
+      "First acceptance is a harmless read through the real chat, returned to the same thread without operator model selection. Follow with an authorized application discovery operation. Only then attempt a separately authorized Civilization launch using the actual discovered runner.",
+      "Require regression coverage for storage corruption, owner mismatch, unavailable policy, unknown tool, malformed request, quoted tool examples in final prose, fabricated receipts, timeout, worker failure and duplicate requests. Keep tool authorization distinct from statement correctness.",
+      "Train from the actual failing receipt one small task at a time. A completed guided call proves that call only; new-context retention and unseen application need separate evidence. Never modify tests to manufacture a pass.",
+      "Attach real backend receipts and test output to each claim. Record source findings, inferred causes, proposed edits, applied edits and live verification as separate states. Do not report this curriculum as a deployed repair."
+    ],
+    "failure_conditions": "Stop if effective authority cannot be established independently of damaged storage. Do not remove validation, fabricate observations, replace original data, silently install services, execute raw model shell text or label passing continuity tests a working game-launcher. No further unrelated fixture exercise counts as integration progress. A live fix requires a real ordinary-chat action and result in that same thread."
+  },
+  "prohibited_execution_code": null
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Swarm Vortex memory backup (30-day retention)
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=10min
+Unit=swarm-vortex-backup.service
+
+[Install]
+WantedBy=timers.target

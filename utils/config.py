@@ -512,10 +512,20 @@ def nine_email(subject: str, body: str, to: str = None, html_body: str = None) -
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as srv:
             srv.login(NINE_EMAIL, NINE_PASSWORD)
             srv.send_message(msg)
+        _nine_record_delivery(to_addr, subject, 'ok', '')
         return True
     except Exception as e:
         print(f'[Nine] Email send failed: {e}')
+        _nine_record_delivery(to_addr, subject, 'failed', e)
         return False
+
+
+def _nine_record_delivery(to_addr, subject, status, error):
+    try:
+        from lib.email.email_handler import _record_delivery
+        _record_delivery(to_addr, [], subject, '', status, 1, error, sender=NINE_EMAIL)
+    except Exception:
+        pass
 
 # ── Discord — Fridays bot (RL-023) ────────────────────────────────────────────
 # 1. discord.com/developers/applications → New Application → Bot → Reset Token

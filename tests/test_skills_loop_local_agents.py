@@ -901,3 +901,19 @@ def test_failed_last_file_edit_is_corrected_by_the_harness():
     assert note('[skill:fs_readonly] OK\nlooked only') == ''
     assert note('[skill:fs_insert_before] OK\ndone\n\n[skill:fs_readonly] OK\nread back') == ''
     assert 'fs_insert_before' in note('[skill:fs_patch_lines] OK\nok\n\n[skill:fs_insert_before] ERROR\nboom')
+
+
+def test_relay_template_only_offered_when_auto_relay_on():
+    from frontend.services.chat_history import _build_chat_handoff_block
+
+    assert 'AgentName: <your question' in _build_chat_handoff_block('gemma', {})
+    off = _build_chat_handoff_block('gemma', {}, auto_relay=False)
+    assert 'AgentName' not in off
+    assert 'CHAIN OF COMMAND' in off
+
+
+def test_echo_only_placeholder_reply_becomes_honest_notice():
+    from frontend.services.chat_relay import PLACEHOLDER_ECHO_NOTICE, _strip_placeholder_relay
+
+    assert _strip_placeholder_relay('GEMMA -> USER: AgentName: Restate the rule.') == PLACEHOLDER_ECHO_NOTICE
+    assert _strip_placeholder_relay('AgentName: Explain it.') == PLACEHOLDER_ECHO_NOTICE

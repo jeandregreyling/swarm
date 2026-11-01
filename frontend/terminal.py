@@ -66,6 +66,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.nine',           'nine_bp'),
     ('blueprints.ollama',         'ollama_bp'),
     ('blueprints.email_bp',       'email_bp'),
+    ('blueprints.downloads',      'downloads_bp'),
     ('blueprints.proposals',             'proposals_bp'),
     ('blueprints.proposals_git',         'proposals_git_bp'),
     ('blueprints.proposals_attachments', 'proposals_attachments_bp'),

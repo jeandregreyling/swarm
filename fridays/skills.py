@@ -12,6 +12,9 @@ Available skills:
   search     — run a DuckDuckGo web search and return snippets
   remind     — send Ghost a plain reminder email immediately
   schedule   — create a scheduled task (delegates to scheduler)
+  game_installers / game_install / game_register
+             — install Windows games from ~/Downloads into Bottles
+               (Ghost-approved proposal per installer; see game_installer.py)
 
 Ghost can invoke skills by email or Telegram:
   SKILL shell df -h
@@ -89,7 +92,7 @@ REGISTRY = {
         'example': 'SKILL file_write gemma/notes.txt Hello world',
     },
     'search': {
-        'description': 'DuckDuckGo web search. Returns top snippets.',
+        'description': 'Live web search (Serper/Google, then Tavily, then DuckDuckGo). Returns sources with URLs.',
         'trust_level': 0,
         'usage': 'SKILL search <query>',
         'example': 'SKILL search Python 3.13 new features',
@@ -396,6 +399,24 @@ REGISTRY = {
         'usage': 'SKILL check_models [new|update <model>]',
         'example': 'SKILL check_models new',
     },
+    'game_installers': {
+        'description': 'List game installers (.iso/.exe/.msi) in ~/Downloads, Bottles bottles, and recent Fridays game installs. Read-only; start here for any game install request.',
+        'trust_level': 0,
+        'usage': 'SKILL game_installers',
+        'example': 'SKILL game_installers',
+    },
+    'game_install': {
+        'description': 'Install a Windows game from ~/Downloads into a Bottles bottle (default Fridays). Unpacks ISOs and opens setup on Ghost\'s desktop for Ghost to click through. First create a proposal naming the exact installer file; it must be approved by Ghost, not Duck. Then run game_register.',
+        'trust_level': 1,
+        'usage': 'SKILL game_install <proposal_id> <file in ~/Downloads> [bottle=<name>]',
+        'example': 'SKILL game_install WP-0042 "Warcraft 3 The Frozen Throne v1.29.iso"',
+    },
+    'game_register': {
+        'description': 'After Ghost finishes a game_install setup, find the installed game executable and add it to Bottles as a program, then verify it is listed. Use exe=<hint> when several executables are found.',
+        'trust_level': 1,
+        'usage': 'SKILL game_register <proposal_id> <Program name> [exe=<file or folder hint>]',
+        'example': 'SKILL game_register WP-0042 "Warcraft III" exe=Frozen',
+    },
 }
 
 
@@ -655,9 +676,11 @@ def _skill_search(args, agent, **_):
     if not query:
         return False, 'No query provided. Usage: SKILL search <query>'
     try:
-        from internet import search_web
-        output = search_web(query, max_results=5)
-        return True, output or 'No results found.'
+        from internet import search_best
+        engine, output = search_best(query, max_results=5)
+        if not engine:
+            return False, 'Web search failed on Serper, Tavily and DuckDuckGo.'
+        return True, f'[{engine}]\n{output}'
     except Exception as e:
         return False, f'Search failed: {e}'
 
@@ -1521,7 +1544,8 @@ def _skill_alm_vortex(args, agent, **_):
         sys.path.insert(0, _SWARM_ROOT_STR)
         from core.time_machine import time_wizard
         result = time_wizard.create_workflow_checkpoint(label=label, agent=agent,
-                                                         description=f'Agent checkpoint: {label}')
+                                                         description=f'Agent checkpoint: {label}',
+                                                         backup_memory=True)
         return True, f'Vortex checkpoint created: {label} (result={result})'
     except Exception as e:
         return False, f'alm_vortex error: {e}'
@@ -2721,6 +2745,21 @@ def _skill_check_models(args, agent, **_):
     return False, f'Unknown mode: {mode!r}. Usage: SKILL check_models [new|update <model>]'
 
 
+def _skill_game_installers(args, agent, **kw):
+    from fridays.game_installer import skill_game_installers
+    return skill_game_installers(args, agent, **kw)
+
+
+def _skill_game_install(args, agent, **kw):
+    from fridays.game_installer import skill_game_install
+    return skill_game_install(args, agent, **kw)
+
+
+def _skill_game_register(args, agent, **kw):
+    from fridays.game_installer import skill_game_register
+    return skill_game_register(args, agent, **kw)
+
+
 _HANDLERS = {
     'email_ticket_reply': _skill_email_ticket_reply,
     'shell':          _skill_shell,
@@ -2784,6 +2823,10 @@ _HANDLERS = {
     'lmstudio':                _skill_lmstudio,
     'claude_code':             _skill_claude_code,
     'check_models':            _skill_check_models,
+    # Windows game installs through Bottles
+    'game_installers':         _skill_game_installers,
+    'game_install':            _skill_game_install,
+    'game_register':           _skill_game_register,
 }
 
 

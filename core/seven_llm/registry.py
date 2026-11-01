@@ -40,7 +40,7 @@ class ModelEntry:
     quant: str = "Q4_K_M"
     ram_gb: float = 6.0  # expected resident set
     ttl_seconds: int = 300  # warm-pool idle TTL before eviction
-    endpoint: Optional[str] = None  # for lmstudio/openai/ollama
+    endpoint: Optional[str] = None  # external HTTP server; llamacpp bypasses managed loading
     options: dict = field(default_factory=dict)
 
 

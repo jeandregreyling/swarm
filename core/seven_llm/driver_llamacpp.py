@@ -103,7 +103,10 @@ class LlamaCppDriver(Driver):
     def chat(self, model, messages, *, stream=False, temperature=None,
              options=None, keep_alive=None, on_token=None):
         opts = dict(options or {})
-        mode = str(opts.pop("mode", "") or (_reg.get(model).options or {}).get("mode") or os.environ.get("SEVEN_LLAMA_MODE", "server")).lower()
+        meta = _reg.get(model)
+        mode = str(opts.pop("mode", "") or (meta.options if meta else {}).get("mode") or os.environ.get("SEVEN_LLAMA_MODE", "server")).lower()
+        if meta and meta.endpoint:
+            mode = "server"
         if mode == "server":
             from . import llama_server
             return llama_server.chat(model, messages, temperature=temperature, options=opts, on_token=on_token)

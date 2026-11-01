@@ -9,7 +9,7 @@ function renderVortexHistory() {
 // MD-FEATURE-FBB9A817653C / MD-FEATURE-485CDCA789E8 — per-section "?" help popover
 // for the Vortex side rail. Each section explains what it shows + offers a KC link.
 const _TW_SECTION_HELP = {
-  history: { title: 'Vortex History', blurb: 'Snapshot checkpoints captured by the Vortex (formerly Time Wizard). Every agent tool action ships a [vortex] commit so you can roll the workspace back step-by-step. Select a checkpoint to inspect or restore.', kc: '/knowledge?topic=vortex-history' },
+  history: { title: 'Vortex History', blurb: 'Automatic checkpoints record workflow history without committing source files. Manual and daily checkpoints also save the complete memory database for verified offline recovery. Backups are retained for 30 days.', kc: '/knowledge?topic=vortex-history' },
   spine:   { title: 'Spine Feed', blurb: 'Live event stream from Seven\'s spine — every routing decision, queued ticket, and agent emit. The Open Traced button widens this into the full Traced window for filtering and audit.', kc: '/knowledge?topic=spine-feed' },
 };
 function twShowSectionHelp(key) {
@@ -66,7 +66,7 @@ function twOpenInfo() {
             <div style="color:var(--accent);font-weight:700;">Decisions</div><div>Proposals from agents or the user that change architecture. Status: <code style="font-size:10.5px;">PROPOSED</code> → <code style="font-size:10.5px;">TESTING</code> → <code style="font-size:10.5px;">EXECUTED</code>.</div>
             <div style="color:var(--accent);font-weight:700;">Checkpoints</div><div>Snapshots of the DB plus tracked files, captured manually with <strong>Capture Checkpoint</strong> or automatically by proposals.</div>
             <div style="color:var(--accent);font-weight:700;">Events</div><div>Fine-grained state transitions (proposal merged, config changed, migration applied). Useful for audit.</div>
-            <div style="color:var(--accent);font-weight:700;">Step-Back</div><div>Restores the DB and key files to a checkpoint. Always <strong>Dry Run</strong> first to see the diff.</div>
+            <div style="color:var(--accent);font-weight:700;">Recovery</div><div>Manual and daily checkpoints back up the full memory database. Dry Run shows the backup manifest. Recover to a separate database with the CLI; stop all Swarm writers before switching databases. Source files are not restored.</div>
           </div>
           <div style="padding:10px 12px;border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border));border-radius:8px;background:color-mix(in srgb,var(--warning) 9%,var(--card));margin:10px 0 12px;font-size:11px;color:var(--text);">
             <strong>Not the same as git.</strong> Git tracks code. Vortex tracks <em>state</em> — DB rows, attachments, chat history, proposal outcomes. Both can be used together; roll back Vortex for data, roll back git for code.
@@ -80,7 +80,7 @@ function twOpenInfo() {
             <div style="font-size:11px;color:var(--text-dim);">Spotlight searches proposals by ID or title — type <code style="font-size:10.5px;">PROP-</code> or a keyword to jump straight to one.</div>
           </div>
           <p style="margin:6px 0 0;font-size:11.5px;color:var(--text-dim);">
-            <strong style="color:var(--text);">Safety:</strong> apply-step-back is irreversible without another checkpoint — the system prompts you to capture one first if none exists within the last hour.
+            <strong style="color:var(--text);">Safety:</strong> online step-back is disabled. Lightweight workflow history and legacy 200-row summaries are not full memory restore points.
           </p>
         </div>
       </div>`;
@@ -420,8 +420,13 @@ function renderTwPreview(result) {
       <span style="padding:3px 8px;border-radius:12px;background:var(--bg);border:1px solid var(--border);color:var(--text);">Proposal drift: ${Number(summary.proposal_changes || 0)}</span>
       <span style="padding:3px 8px;border-radius:12px;background:var(--bg);border:1px solid var(--border);color:var(--text);">Decision drift: ${Number(summary.decision_changes || 0)}</span>
       <span style="padding:3px 8px;border-radius:12px;background:var(--bg);border:1px solid var(--border);color:var(--text);">Queue drift: ${Number(summary.queue_changes || 0)}</span>
-      <span style="padding:3px 8px;border-radius:12px;background:${summary.restorable ? '#4caf5022' : '#8882'};border:1px solid ${summary.restorable ? '#4caf5055' : 'var(--border)'};color:${summary.restorable ? '#4caf50' : 'var(--text-dim)'};">${summary.restorable ? 'Restorable' : 'No drift'}</span>
+      <span style="padding:3px 8px;border-radius:12px;background:${summary.restorable ? '#4caf5022' : '#8882'};border:1px solid ${summary.restorable ? '#4caf5055' : 'var(--border)'};color:${summary.restorable ? '#4caf50' : 'var(--text-dim)'};">${summary.restorable ? 'Offline recovery available' : 'History only'}</span>
       ${summary.has_git_tags ? '<span style="padding:3px 8px;border-radius:12px;background:#2563eb22;border:1px solid #2563eb55;color:#2563eb;">Git tags ✓</span>' : ''}
+    </div>
+    <div style="margin-bottom:10px;line-height:1.6;">
+      <strong>${result.memory_backup_available ? 'Full memory backup available (offline recovery)' : 'Workflow history only — no retained full memory backup'}</strong>
+      ${result.memory_backup ? `<div>Manifest: <code>${H(result.memory_backup.manifest_path || '')}</code></div>` : ''}
+      <div>${H(result.restore_instructions || '')}</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:10px;">
@@ -475,7 +480,7 @@ async function createTwCheckpoint() {
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    showToast(`Checkpoint created: ${data.checkpoint.checkpoint_name}`, 'success');
+    showToast(`Full memory backup created: ${data.checkpoint.checkpoint_name}`, 'success');
     await loadTimeWizardData();
   } catch (e) {
     showToast(`Checkpoint failed: ${e.message}`, 'error');
@@ -497,20 +502,18 @@ async function applyTwRestoreForCheckpoint(checkpoint, confirmText) {
     showToast('Checkpoint name unavailable', 'error');
     return;
   }
-  if (!confirm(confirmText || `Apply step-back to ${checkpointName}? A safety checkpoint will be created first.`)) return;
-
+  showToast('Online step-back is disabled. Dry Run shows full-memory backup and offline recovery instructions.', 'info');
   try {
     const res = await fetch('/api/time/restore', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ checkpoint_name: checkpointName, actor: 'terminal_ui', dry_run: false })
+      body: JSON.stringify({ checkpoint_name: checkpointName, actor: 'terminal_ui', dry_run: true })
     });
     const data = await res.json();
     if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
-    showToast(`Step-back applied. Safety checkpoint: ${data.safety_checkpoint?.checkpoint_name || 'created'}`, 'success');
-    await loadTimeWizardData();
+    renderTwPreview(data);
   } catch (e) {
-    showToast(`Restore failed: ${e.message}`, 'error');
+    showToast(`Recovery preview failed: ${e.message}`, 'error');
   }
 }
 
