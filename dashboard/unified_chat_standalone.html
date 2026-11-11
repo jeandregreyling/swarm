@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNIFIED CHAT - Standalone View</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f23;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+        header h1 {
+            font-size: 2em;
+            color: white;
+        }
+        header .subtitle {
+            color: #ccc;
+            margin-top: 10px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .controls button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            background: #667eea;
+            color: white;
+        }
+        .controls button:hover {
+            background: #764ba2;
+        }
+        .controls button.clear {
+            background: #f44336;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #1a1a2e;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-card .label {
+            color: #aaa;
+            font-size: 0.8em;
+        }
+        .chat-message {
+            background: #1a1a2e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .chat-message.user { border-color: #4CAF50; }
+        .chat-message.apex { border-color: #ff9800; }
+        .chat-message.mistral { border-color: #9c27b0; }
+        .chat-message.ghost { border-color: #00BCD4; }
+        .chat-message .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .chat-message .sender {
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .chat-message.user .sender { color: #4CAF50; }
+        .chat-message.apex .sender { color: #ff9800; }
+        .chat-message.mistral .sender { color: #9c27b0; }
+        .chat-message.ghost .sender { color: #00BCD4; }
+        .chat-message .time {
+            font-size: 0.75em;
+            color: #666;
+        }
+        .chat-message .content {
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #e0e0e0;
+        }
+        .chat-message .source {
+            font-size: 0.7em;
+            color: #444;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .filter-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .filter-section label {
+            color: #aaa;
+        }
+        .filter-section select {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            background: #0f0f23;
+            color: #e0e0e0;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+        .error {
+            color: #f44336;
+            padding: 20px;
+            background: #2a1a1a;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 UNIFIED CHAT VIEW</h1>
+            <div class="subtitle">One point of contact for User, APEX & Mistral Vibe</div>
+        </header>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number" id="total-count">0</div>
+                <div class="label">Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="user-count">0</div>
+                <div class="label">User</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="apex-count">0</div>
+                <div class="label">APEX</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="mistral-count">0</div>
+                <div class="label">Mistral</div>
+            </div>
+        </div>
+        
+        <div class="filter-section">
+            <label>Filter:</label>
+            <select id="filter-sender" onchange="loadMessages()">
+                <option value="all">All Senders</option>
+                <option value="user">User Only</option>
+                <option value="apex">APEX Only</option>
+                <option value="mistral-vibe">Mistral Vibe Only</option>
+                <option value="ghost">Ghost Only</option>
+            </select>
+            <button onclick="loadMessages()">🔄 Refresh</button>
+            <button class="clear" onclick="clearFilters()">🔍 Clear</button>
+        </div>
+        
+        <div id="chat-messages">
+            <div class="loading">Loading messages from SQLite databases...</div>
+        </div>
+    </div>
+    
+    <script>
+        // Fetch messages directly from Python script
+        async function fetchMessages() {
+            try {
+                const response = await fetch('/dashboard/fetch_messages.py');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch messages');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error:', error);
+                // Fallback: try to read from a local file or show error
+                return { ok: false, error: error.message, messages: [], stats: {} };
+            }
+        }
+        
+        // Display messages
+        function displayMessages(messages, stats) {
+            const container = document.getElementById('chat-messages');
+            
+            if (messages.length === 0) {
+                container.innerHTML = '<div class="loading">No messages found. The Python backend may not be running.</div>';
+                return;
+            }
+            
+            // Update stats
+            document.getElementById('total-count').textContent = stats.total || messages.length;
+            document.getElementById('user-count').textContent = stats.user || 0;
+            document.getElementById('apex-count').textContent = stats.apex || 0;
+            document.getElementById('mistral-count').textContent = stats.mistral || 0;
+            
+            // Get filter
+            const filterSender = document.getElementById('filter-sender').value;
+            const filtered = messages.filter(msg => {
+                if (filterSender === 'all') return true;
+                return msg.sender.toLowerCase() === filterSender.toLowerCase();
+            });
+            
+            // Generate HTML
+            container.innerHTML = filtered.map(msg => {
+                const senderClass = msg.sender.toLowerCase().replace(' ', '-');
+                const time = formatTime(msg.timestamp);
+                
+                return `
+                    <div class="chat-message ${senderClass}">
+                        <div class="header">
+                            <span class="sender">${msg.sender}</span>
+                            <span class="time">${time}</span>
+                        </div>
+                        <div class="content">${escapeHtml(msg.content || msg.body || '')}</div>
+                        <div class="source">Source: ${msg.source || 'unknown'}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Format timestamp
+        function formatTime(ts) {
+            if (!ts) return 'Unknown';
+            try {
+                const date = new Date(ts);
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            } catch {
+                return ts;
+            }
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Clear filters
+        function clearFilters() {
+            document.getElementById('filter-sender').value = 'all';
+            loadMessages();
+        }
+        
+        // Load messages
+        async function loadMessages() {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = '<div class="loading">Loading...</div>';
+            
+            const result = await fetchMessages();
+            
+            if (result.ok) {
+                displayMessages(result.messages || [], result.stats || {});
+            } else {
+                container.innerHTML = `<div class="error">Error: ${result.error || 'Unknown error'}</div>`;
+            }
+        }
+        
+        // Auto-refresh
+        setInterval(loadMessages, 5000);
+        
+        // Initial load
+        loadMessages();
+    </script>
+</body>
+</html>

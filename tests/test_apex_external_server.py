@@ -1,4 +1,5 @@
 import pytest
+from types import SimpleNamespace
 
 from core.seven_llm import llama_server, registry
 from core.seven_llm.driver_llamacpp import LlamaCppDriver
@@ -14,13 +15,31 @@ def external_only(monkeypatch):
     monkeypatch.setattr(llama_server.subprocess, "Popen", forbidden)
     monkeypatch.setattr(LlamaCppDriver, "_load", forbidden)
     monkeypatch.setattr(LlamaCppDriver, "_chat_cli", forbidden)
+    monkeypatch.setattr(llama_server.requests, "get", lambda *args, **kwargs: SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {"data": [{"id": "gpt-oss:20B"}, {"id": "qwen2.5:14b-instruct"}]},
+    ))
 
 
-@pytest.mark.parametrize("name", ["apex-direct:20b", "gpt-oss:20b"])
-def test_external_registry_routes_without_spawning(monkeypatch, external_only, name):
+def test_external_model_mismatch_never_mislabels_or_loads(monkeypatch, external_only):
+    monkeypatch.setattr(llama_server, "_server_alive", lambda endpoint: True)
+    monkeypatch.setattr(llama_server.requests, "get", lambda *args, **kwargs: SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {"data": [{"id": "qwen2.5:14b-instruct"}]},
+    ))
+    with pytest.raises(RuntimeError, match="does not serve 'gpt-oss:20B'; no fallback"):
+        LlamaCppDriver().chat("gpt-oss:20b", [{"role": "user", "content": "Hello"}])
+
+
+@pytest.mark.parametrize("name,api_model", [
+    ("apex-direct:20b", "gpt-oss:20B"),
+    ("gpt-oss:20b", "gpt-oss:20B"),
+    ("qwen2.5:14b-instruct", "qwen2.5:14b-instruct"),
+])
+def test_external_registry_routes_without_spawning(monkeypatch, external_only, name, api_model):
     entry = registry.get(name)
     assert entry.endpoint == "http://127.0.0.1:8080"
-    assert entry.options["api_model"] == "gpt-oss:20B"
+    assert entry.options["api_model"] == api_model
     assert entry.options["raw_completion"] is False
     monkeypatch.setattr(llama_server, "_server_alive", lambda endpoint: endpoint == entry.endpoint)
     stages = []
@@ -36,7 +55,7 @@ def test_external_registry_routes_without_spawning(monkeypatch, external_only, n
 
     def post(url, *, json, timeout):
         assert url == entry.endpoint + "/v1/chat/completions"
-        assert json["model"] == "gpt-oss:20B"
+        assert json["model"] == api_model
         assert json["messages"][0] == {"role": "system", "content": "You are APEX."}
         return Response()
 
@@ -49,7 +68,7 @@ def test_external_registry_routes_without_spawning(monkeypatch, external_only, n
     assert llama_server.stop(name) == 0
 
 
-@pytest.mark.parametrize("name", ["apex-direct:20b", "gpt-oss:20b"])
+@pytest.mark.parametrize("name", ["apex-direct:20b", "gpt-oss:20b", "qwen2.5:14b-instruct"])
 def test_external_server_offline_never_falls_back(monkeypatch, external_only, name):
     monkeypatch.setattr(llama_server, "_server_alive", lambda endpoint: False)
     with pytest.raises(RuntimeError, match="External llama-server unavailable"):

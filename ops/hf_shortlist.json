@@ -1,0 +1,61 @@
+{
+  "project_id": "P-D4A63CC845",
+  "step_id": "S-88AC472ABC",
+  "authorization": "JD explicit six-file shortlist renewed2026-11-08; messages10309/10314 and current Codex instruction",
+  "licenses": {
+    "HuggingFaceTB/smoltalk": null,
+    "google-research-datasets/mbpp": [
+      "cc-by-4.0"
+    ]
+  },
+  "files": [
+    {
+      "repo": "HuggingFaceTB/smoltalk",
+      "revision": "5feaf2fd3ffca7c237fc38d1861bc30365d48ffa",
+      "path": "data/apigen-80k/train-00000-of-00001.parquet",
+      "size": 49798856,
+      "source_hash": "e6d92ab86e12ba8680b2772fb7835617722a1a6088717cf3bc6c7e0582c7db75",
+      "source_hash_type": "sha256"
+    },
+    {
+      "repo": "HuggingFaceTB/smoltalk",
+      "revision": "5feaf2fd3ffca7c237fc38d1861bc30365d48ffa",
+      "path": "data/self-oss-instruct/train-00000-of-00001.parquet",
+      "size": 26248881,
+      "source_hash": "abe65a89872c6f3f5de8d0bce50050dbacda1dd3037aedfec755ada5c9d5ff53",
+      "source_hash_type": "sha256"
+    },
+    {
+      "repo": "HuggingFaceTB/smoltalk",
+      "revision": "5feaf2fd3ffca7c237fc38d1861bc30365d48ffa",
+      "path": "data/smol-constraints/train-00000-of-00001.parquet",
+      "size": 16862908,
+      "source_hash": "3369eaff911d3511ee21561a3b8607e1acfd773a6ade80f4759490ffdcce7ba4",
+      "source_hash_type": "sha256"
+    },
+    {
+      "repo": "HuggingFaceTB/smoltalk",
+      "revision": "5feaf2fd3ffca7c237fc38d1861bc30365d48ffa",
+      "path": "README.md",
+      "size": 9723,
+      "source_hash": "a6c7236d6b8dd179b84d48ea95a5a0c1115b4686",
+      "source_hash_type": "git-sha1"
+    },
+    {
+      "repo": "google-research-datasets/mbpp",
+      "revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
+      "path": "sanitized/train-00000-of-00001.parquet",
+      "size": 33854,
+      "source_hash": "d95f8ad6d2fff08fe4826122d6e3e31f75716825d0c5c340d297aca5e9e0de0e",
+      "source_hash_type": "sha256"
+    },
+    {
+      "repo": "google-research-datasets/mbpp",
+      "revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
+      "path": "README.md",
+      "size": 9058,
+      "source_hash": "476c2286e2ef2713058cade8be49c2f9c1514055",
+      "source_hash_type": "git-sha1"
+    }
+  ]
+}

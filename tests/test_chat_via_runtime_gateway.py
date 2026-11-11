@@ -151,9 +151,43 @@ def test_chat_via_gateway_default_timeouts_match_local_chat_policy(monkeypatch):
     assert content == "ok"
     assert tokens == 1
     assert captured["idle_timeout_s"] == llm.GATEWAY_CHAT_IDLE_TIMEOUT_S
-    assert captured["absolute_timeout_s"] == llm.GATEWAY_CHAT_ABSOLUTE_TIMEOUT_S
+    assert 0 < captured["absolute_timeout_s"] <= llm.GATEWAY_CHAT_ABSOLUTE_TIMEOUT_S
     assert captured["idle_timeout_s"] == gw.DEFAULT_IDLE_TIMEOUT_S
-    assert captured["absolute_timeout_s"] == gw.DEFAULT_ABSOLUTE_TIMEOUT_S
+    assert captured["absolute_timeout_s"] == pytest.approx(gw.DEFAULT_ABSOLUTE_TIMEOUT_S, abs=1)
+
+
+def test_busy_model_has_bounded_queue_wait_without_starting_inference(monkeypatch):
+    class Busy:
+        def acquire(self, *, timeout):
+            assert timeout == 1
+            return False
+
+        def release(self):
+            pytest.fail("An unacquired semaphore must not be released")
+
+    monkeypatch.setattr(llm, "_lock_for", lambda _: Busy())
+    monkeypatch.setattr(gw, "chat", lambda *a, **k: pytest.fail("Busy model must not be called"))
+    stages = []
+    answer, tokens = llm.chat_via_gateway(
+        "test-model", [], absolute_timeout_s=10, queue_timeout_s=1,
+        stage_cb=lambda text: stages.append(text))
+    assert "model busy" in answer and "inference not started" in answer
+    assert tokens == 0 and "failed" in stages[-1]
+
+
+def test_model_queue_time_is_subtracted_from_absolute_deadline(monkeypatch):
+    clock = iter([100.0, 103.0, 104.0])
+    monkeypatch.setattr(llm.time, "monotonic", lambda: next(clock))
+    captured = {}
+
+    def gateway(model, messages, **kwargs):
+        captured.update(kwargs)
+        return gw.RuntimeResult(ok=True, model=model, content="ok", tokens=1)
+
+    monkeypatch.setattr(gw, "chat", gateway)
+    assert llm.chat_via_gateway("deadline-test", [], absolute_timeout_s=10) == ("ok", 1)
+    assert captured["absolute_timeout_s"] == 7
+    assert captured["idle_timeout_s"] == 7
 
 
 def test_chat_via_gateway_can_prefer_generate(monkeypatch):

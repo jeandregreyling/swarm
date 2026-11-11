@@ -4,6 +4,54 @@ from services import *
 
 conversations_bp = Blueprint('conversations', __name__)
 
+
+@conversations_bp.route('/api/conversations/<int:conv_id>/resume', methods=['POST'])
+def api_resume_recovery_conversation(conv_id):
+    """The authenticated owner explicitly resumes history after storage recovery."""
+    import sqlite3
+    from core.chat_continuity import ContinuityChat
+    from core.recovery_resume import import_journal
+
+    try:
+        user = get_current_user()
+    except sqlite3.DatabaseError:
+        return jsonify({'ok': False, 'error': 'Authentication storage unavailable; recovery history preserved'}), 503
+    if not user or user.get('role') != 'owner':
+        return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+    if not request.is_json:
+        return jsonify({'ok': False, 'error': 'JSON request required'}), 415
+    origin = request.headers.get('Origin')
+    if origin and origin != request.host_url.rstrip('/'):
+        return jsonify({'ok': False, 'error': 'Same-origin request required'}), 403
+    continuity = ContinuityChat()
+    if not continuity.owns_id(conv_id):
+        return jsonify({'ok': False, 'error': 'Not a recovery conversation'}), 400
+    conn = None
+    try:
+        # Take the same lock as the writer so no in-flight reply is lost.
+        import fcntl
+        lock_path = continuity.path(conv_id).with_suffix('.lock')
+        if lock_path.is_symlink():
+            raise ValueError('Continuity lock cannot be a symlink')
+        with lock_path.open('a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            thread = continuity.read(conv_id, user['username'])
+            conn = get_connection()
+            result = import_journal(conn, thread, user['username'])
+        return jsonify({'ok': True, 'state': 'ok', 'resumed_from': conv_id, **result})
+    except FileNotFoundError:
+        return jsonify({'ok': False, 'error': 'Recovery conversation not found'}), 404
+    except PermissionError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 403
+    except (BlockingIOError, ValueError) as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 409
+    except sqlite3.DatabaseError as exc:
+        return jsonify({'ok': False, 'error': 'Storage verification failed; recovery history preserved: ' + str(exc)}), 503
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 def _recent_conversations(limit=40):
     conn = get_connection()
     try:
@@ -147,10 +195,14 @@ def api_conversation_messages(conv_id):
             item['stage_trace'] = []
         jobs.append(item)
 
+    from core.hb_workflow import visible_jobs
+    jobs.extend(visible_jobs(conn,conv_id))
+    from core import hb_tasks
+    messages=hb_tasks.enrich(conn,[dict(r) for r in rows])
     conn.close()
     return jsonify({
         'conv': dict(conv),
-        'messages': [dict(r) for r in rows],
+        'messages': messages,
         'jobs': jobs,
         'ticket': ticket_info,
         'proposals': linked_proposals,

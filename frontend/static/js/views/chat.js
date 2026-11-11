@@ -1,3 +1,199 @@
+// Stable task selection and evidence links shared by both HB chat surfaces.
+function hbTaskSelection(conversationId) {
+  try {
+    if (!localStorage.getItem('hb-explicit-task-selection-v2')) {
+      Object.keys(localStorage).filter(key=>/^hb-task:[0-9]+$/.test(key)).forEach(key=>localStorage.removeItem(key));
+      localStorage.setItem('hb-explicit-task-selection-v2','1');
+    }
+    const value = localStorage.getItem('hb-task:' + Number(conversationId));
+    return /^T-[A-F0-9]{12}$/.test(value || '') ? value : null;
+  } catch (_) { return null; }
+}
+function hbSelectTask(conversationId, taskId) {
+  if (!Number.isSafeInteger(Number(conversationId)) || Number(conversationId) <= 0) return;
+  if (taskId && !/^T-[A-F0-9]{12}$/.test(taskId)) return;
+  hbTaskSelection(conversationId); // Apply one-time migration before an explicit choice.
+  try {
+    if (taskId) localStorage.setItem('hb-task:' + Number(conversationId), taskId);
+    else localStorage.removeItem('hb-task:' + Number(conversationId));
+  } catch (_) { /* Selection still remains visible in the composer. */ }
+  document.querySelectorAll('[data-hb-task-room="' + Number(conversationId) + '"] select').forEach(el => { el.value = taskId || ''; });
+}
+function hbTaskBar(inputId, conversationId) {
+  const input = document.getElementById(inputId);
+  if (!input || !conversationId) return;
+  let bar = document.getElementById(inputId + '-tasks');
+  if (!bar) {
+    bar = document.createElement('div'); bar.id = inputId + '-tasks'; bar.className = 'hb-task-bar';
+    const row = input.closest('.home-chat-compose,.chat-compose-shell');
+    (row || input).insertAdjacentElement('beforebegin', bar);
+  }
+  bar.dataset.hbTaskRoom = String(Number(conversationId));
+  const index = (window.hbTaskIndex ||= {});
+  const room = (index[conversationId] ||= {});
+  const selected = hbTaskSelection(conversationId);
+  const options = Object.values(room).map(task => `<option value="${_escapeHtml(task.task_id)}" ${task.task_id === selected ? 'selected' : ''}>${_escapeHtml(task.title)} · ${_escapeHtml(task.state || 'active')}</option>`).join('');
+  const detail=room[selected];
+  const progress=detail ? `${detail.state || 'active'}${detail.round ? ' · Checkpoint '+detail.round.cycle+' · '+detail.round.handoffs+' handoffs recorded' : ''}${detail.budget ? ' · '+(detail.budget.used_tokens ?? 'unknown')+' recorded tokens' : ''}` : 'Start a separate task or select an existing task to continue';
+  const jobs=Object.values(room).flatMap(task=>task.jobs||[]).filter(job=>['queued','running'].includes(job.status)||Date.now()/1000-job.updated<300).slice(0,2);
+  const jobStatus=jobs.map(job=>`<span role="status" title="${_escapeHtml(job.job_id)}">${_escapeHtml(job.stage)}</span>`).join('');
+  bar.innerHTML = `<span>${_escapeHtml(progress)}</span>${jobStatus}<label>Task <select aria-label="Task for next message" onchange="hbSelectTask(${Number(conversationId)},this.value)"><option value="">New task</option>${options}</select></label><button type="button" onclick="hbSelectTask(${Number(conversationId)},null)">New task</button><button type="button" onclick="hbFilterTasks(null)">Show all tasks</button>${selected ? `<button type="button" onclick="hbTaskState(${Number(conversationId)},'paused')">Pause task</button><button type="button" onclick="hbTaskState(${Number(conversationId)},'active')">Resume task</button><button type="button" onclick="hbTaskState(${Number(conversationId)},'cancelled')">Cancel task</button>` : ''}`;
+  const loading = (window.hbTaskLoads ||= {});
+  if (!loading[conversationId] || Date.now()-loading[conversationId]>5000) {
+    loading[conversationId] = Date.now();
+    fetch('/api/peer/v1/conversations/' + Number(conversationId) + '/tasks')
+      .then(r => r.ok ? r.json() : null).then(data => {
+        if (!Array.isArray(data?.tasks)) return;
+        data.tasks.forEach(task => { room[task.task_id] = task; });
+        hbTaskBar(inputId, conversationId);
+      }).catch(() => { delete loading[conversationId]; });
+  }
+}
+function hbTaskState(conversationId,state) {
+  const taskId=hbTaskSelection(conversationId);
+  if(!taskId)return;
+  fetch('/api/peer/v1/tasks/'+encodeURIComponent(taskId)+'/state',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state})
+  }).then(r=>r.json()).then(data=>{
+    if(!data.ok)return;
+    delete (window.hbTaskLoads ||= {})[conversationId];
+    hbTaskBar('home-chat-input',conversationId);hbTaskBar('question-input',conversationId);
+  });
+}
+function hbFilterTasks(taskId) {
+  document.querySelectorAll('.chat-bubble,.hc-bubble').forEach(el => {
+    el.hidden = !!taskId && el.dataset.hbTaskId !== taskId;
+  });
+}
+function hbUsageLabel(usage, fallback) {
+  if (usage && usage.shared) return 'Same invocation';
+  if (usage && Number.isInteger(usage.total_tokens)) return Number(usage.total_tokens).toLocaleString() + ' tokens';
+  if (usage && Number.isInteger(usage.output_tokens)) return Number(usage.output_tokens).toLocaleString() + ' output tokens';
+  return Number(fallback) > 0 ? Number(fallback).toLocaleString() + ' tokens (legacy)' : 'Usage unavailable';
+}
+function hbTaskBadge(task, conversationId, parentId, messageId) {
+  if (!task) return '';
+  (window.hbTaskIndex ||= {})[conversationId] ||= {};
+  window.hbTaskIndex[conversationId][task.task_id] = {...window.hbTaskIndex[conversationId][task.task_id],...task};
+  const tid = _escapeHtml(task.task_id);
+  const parent = Number.isSafeInteger(Number(parentId)) && Number(parentId) > 0 ? `<button type="button" onclick="hbShowReply(${Number(parentId)})">↳ Reply to #${Number(parentId)}</button>` : '';
+  return `<div class="hb-task-link"><button type="button" data-task="${tid}" onclick="hbSelectTask(${Number(conversationId)},this.dataset.task)">${_escapeHtml(task.title)} · Select task</button><button type="button" data-task="${tid}" onclick="hbFilterTasks(this.dataset.task)">Focus task</button><button type="button" data-project="${_escapeHtml(task.project_id || '')}" onclick="hbOpenTaskProject(this.dataset.project)" title="Open linked Studio project">Studio ${_escapeHtml(task.project_id || '')} / ${_escapeHtml(task.step_id || '')}</button>${task.project_id?`<button type="button" data-project="${_escapeHtml(task.project_id)}" onclick="hbOpenTaskBoard(this.dataset.project,this.closest('.hc-bubble,.chat-bubble') || this.parentElement)">Workflow</button>`:''}${parent}</div>` + hbContinueControl(task,conversationId,messageId || task.root_message_id);
+}
+function hbContinueInner(task) {
+  const c=task.continuation || {mode:'auto',agent_choice:'on',agent:'apex',status:task.state || 'unknown',actor:'hummingbird'};
+  return `<span>Continue</span> ${['auto','on','off'].map(mode=>`<button type="button" aria-pressed="${c.mode===mode}" onclick="hbSetContinue(this,'${mode}')">${mode==='auto'?'Auto':mode==='on'?'On':'Off'}</button>`).join('')} <span role="status">${_escapeHtml(c.status)} · ${_escapeHtml(c.agent || 'agent')} ${_escapeHtml(c.agent_choice)} · ${_escapeHtml(c.actor)}</span>${(c.held_by_message_ids || []).map(id=>`<button type="button" onclick="hbShowReply(${Number(id)})">Review request #${Number(id)}</button>`).join('')}${c.reason?`<span title="${_escapeHtml(c.reason)}">ⓘ</span>`:''}<span class="hb-control-feedback" role="status"></span>`;
+}
+function hbContinueControl(task,room,messageId) {
+  if(!Number.isSafeInteger(Number(messageId)) || Number(messageId)<1 || !Number.isInteger(task.version))return '';
+  return `<div class="hb-bubble-controls" data-hb-task="${_escapeHtml(task.task_id)}" data-room="${Number(room)}" data-message="${Number(messageId)}" data-version="${task.version}" data-revision="${Number(task.continuation?.revision || 0)}">${hbContinueInner(task)}</div>`;
+}
+function hbUpdateContinue(task) {
+  document.querySelectorAll('.hb-bubble-controls').forEach(group=>{
+    if(group.dataset.hbTask!==task.task_id)return;
+    (window.hbTaskIndex ||= {})[group.dataset.room] ||= {};
+    window.hbTaskIndex[group.dataset.room][task.task_id]=task;
+    group.dataset.version=String(task.version);group.dataset.revision=String(task.continuation.revision);
+    group.innerHTML=hbContinueInner(task);
+  });
+}
+async function hbSetContinue(button,mode) {
+  const group=button.closest('.hb-bubble-controls');if(!group)return;
+  const body={mode,message_id:Number(group.dataset.message),version:Number(group.dataset.version),revision:Number(group.dataset.revision),command_id:crypto.randomUUID()};
+  group.querySelectorAll('button').forEach(b=>b.disabled=true);
+  group.querySelector('.hb-control-feedback').textContent=' Saving…';
+  try {
+    const response=await fetch('/api/peer/v1/tasks/'+encodeURIComponent(group.dataset.hbTask)+'/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const data=await response.json();if(!response.ok || !data.ok)throw new Error(data.error || 'Control was not saved');
+    hbUpdateContinue(data.task);
+  } catch(error) {group.querySelector('.hb-control-feedback').textContent=' '+error.message;}
+  finally {group.querySelectorAll('button').forEach(b=>b.disabled=false);}
+}
+function hbApprovalInner(control) {
+  const labels={approved:'Approved',needs_review:'Needs review',declined:'Declined',try_again:'Try again'};
+  const status=labels[control.decision] || (control.decision==='executed'?'Previous work executed':'No recorded decision');
+  return `<span>Request #${Number(control.message_id)}</span> ${Object.entries(labels).map(([key,label])=>`<button type="button" aria-pressed="${control.decision===key}" onclick="hbDecideRequest(this,'${key}')">${label}</button>`).join('')} <span role="status">${_escapeHtml(status)}${control.actor?' · '+_escapeHtml(control.actor):''}</span><span class="hb-control-feedback" role="status"></span>`;
+}
+function hbRequestControl(control,room) {
+  if(!control)return '';
+  return `<div class="hb-bubble-controls hb-request-controls" data-hb-request="${Number(control.message_id)}" data-request-task="${_escapeHtml(control.task_id)}" data-room="${Number(room)}" data-version="${Number(control.version)}" data-revision="${Number(control.revision)}" data-scope="${_escapeHtml(control.scope_hash)}">${hbApprovalInner(control)}</div>`;
+}
+function hbUpdateApproval(control) {
+  document.querySelectorAll('.hb-request-controls').forEach(group=>{
+    if(Number(group.dataset.hbRequest)!==control.message_id)return;
+    group.dataset.version=String(control.version);group.dataset.revision=String(control.revision);group.dataset.scope=control.scope_hash;
+    group.innerHTML=hbApprovalInner(control);
+  });
+}
+async function hbDecideRequest(button,decision) {
+  const group=button.closest('.hb-request-controls');if(!group)return;
+  const data={decision,message_id:Number(group.dataset.hbRequest),version:Number(group.dataset.version),revision:Number(group.dataset.revision),scope_hash:group.dataset.scope,command_id:crypto.randomUUID()};
+  group.querySelectorAll('button').forEach(b=>b.disabled=true);group.querySelector('.hb-control-feedback').textContent=' Saving…';
+  try {
+    const response=await fetch('/api/peer/v1/tasks/'+encodeURIComponent(group.dataset.requestTask)+'/requests/'+data.message_id+'/approval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const saved=await response.json();if(!response.ok || !saved.ok)throw new Error(saved.error || 'Approval was not saved');
+    hbUpdateContinue(saved.task);hbUpdateApproval(saved.request_control);
+  } catch(error) {group.querySelector('.hb-control-feedback').textContent=' '+error.message;}
+  finally {group.querySelectorAll('button').forEach(b=>b.disabled=false);}
+}
+if(typeof window!=='undefined' && typeof window.setInterval==='function')window.setInterval(async ()=>{
+  if(document.hidden)return;
+  const ids=new Set();
+  for(const group of document.querySelectorAll('.hb-bubble-controls[data-hb-task]')) {
+    const box=group.getBoundingClientRect();
+    if(box.bottom<0 || box.top>window.innerHeight || ids.has(group.dataset.hbTask) || ids.size>=6)continue;
+    if(group.querySelector('button:disabled'))continue;
+    ids.add(group.dataset.hbTask);
+    try {const response=await fetch('/api/peer/v1/tasks/'+encodeURIComponent(group.dataset.hbTask)+'/control');if(response.ok){const data=await response.json();if(data.ok)hbUpdateContinue(data.task);}}catch(_){/* Retain last saved state while disconnected. */}
+  }
+},5000);
+if(typeof window!=='undefined' && typeof window.setInterval==='function')window.setInterval(async ()=>{
+  if(document.hidden)return;
+  const seen=new Set();
+  for(const group of document.querySelectorAll('.hb-request-controls')) {
+    const box=group.getBoundingClientRect();
+    if(box.bottom<0 || box.top>window.innerHeight || seen.has(group.dataset.hbRequest) || seen.size>=6 || group.querySelector('button:disabled'))continue;
+    seen.add(group.dataset.hbRequest);
+    try {const response=await fetch('/api/peer/v1/tasks/'+encodeURIComponent(group.dataset.requestTask)+'/requests/'+group.dataset.hbRequest+'/approval');if(response.ok){const data=await response.json();if(data.ok){hbUpdateApproval(data.request_control);hbUpdateContinue(data.task);}}}catch(_){/* Saved decision remains visible offline. */}
+  }
+},5000);
+function hbOpenTaskProject(projectId) {
+  if (!/^P-[A-F0-9]{10}$/.test(projectId || '')) return;
+  if (typeof openWindow === 'function') openWindow('studio', 'Studio', 'view-studio');
+  setTimeout(() => {
+    if (typeof studioSetTab === 'function') studioSetTab('projects');
+    if (typeof projectsSelect === 'function') projectsSelect(projectId);
+  }, 180);
+}
+async function hbOpenTaskBoard(projectId,host) {
+  if(!/^P-[A-F0-9]{10}$/.test(projectId || '') || !host)return;
+  let panel=Array.from(host.children).find(el=>el.dataset?.hbProjectBoard===projectId);
+  if(!panel){panel=document.createElement('section');panel.dataset.hbProjectBoard=projectId;panel.className='hb-project-board';host.appendChild(panel);}
+  if(panel.querySelector('button:disabled'))return;
+  const filter=panel.querySelector('select')?.value || '';
+  try {
+    const response=await fetch('/api/peer/v1/projects/'+encodeURIComponent(projectId)+'/tasks?limit=100');
+    const data=await response.json();if(!response.ok || !data.ok)throw Error(data.error || 'Workflow unavailable');
+    const agents=Array.from(new Set(data.tasks.flatMap(t=>t.assigned_to))).sort();
+    panel.innerHTML=`<div><strong>Project workflow</strong> <button type="button" onclick="hbOpenTaskBoard(this.closest('[data-hb-project-board]').dataset.hbProjectBoard,this.closest('[data-hb-project-board]').parentElement)">Refresh</button> <label>Agent <select onchange="hbFilterTaskBoard(this)"><option value="">All agents</option>${agents.map(a=>`<option value="${_escapeHtml(a)}" ${a===filter?'selected':''}>${_escapeHtml(a)}</option>`).join('')}</select></label></div>`+
+      data.tasks.map(task=>`<article data-board-task="${_escapeHtml(task.task_id)}" data-agents="${_escapeHtml(task.assigned_to.join(','))}"><strong>${_escapeHtml(task.title)}</strong><div>${_escapeHtml(task.assigned_to.join(', '))} · ${_escapeHtml(task.state)} · ${_escapeHtml(task.step_id || '')}</div>${hbContinueControl(task,task.conversation_id,task.root_message_id)}<div>${_escapeHtml(task.detail)}</div>${task.dependencies.length?`<div>Depends on: ${task.dependencies.map(d=>_escapeHtml(d.title)+' ('+_escapeHtml(d.state)+')').join(', ')}</div>`:''}<div>${task.state==='completed'?'Verified component accepted':_escapeHtml(task.next_action)}</div>${task.last_evidence?`<small>Evidence #${Number(task.last_evidence.event_id)} · ${_escapeHtml(task.last_evidence.kind)} · ${_escapeHtml(new Date(task.last_evidence.created_at*1000).toLocaleString())}</small>`:''}<button type="button" data-task="${_escapeHtml(task.task_id)}" onclick="hbSelectTask(${Number(task.conversation_id)},this.dataset.task);hbShowReply(${Number(task.root_message_id)})">Open task in chat</button></article>`).join('')+
+      (data.next_offset!==null?'<p>First100 tasks shown. Older tasks remain in Studio.</p>':'');
+    hbFilterTaskBoard(panel.querySelector('select'));
+  }catch(error){panel.textContent=error.message;}
+}
+function hbFilterTaskBoard(select){
+  if(!select)return;
+  select.closest('[data-hb-project-board]').querySelectorAll('[data-board-task]').forEach(row=>{row.hidden=!!select.value && !row.dataset.agents.split(',').includes(select.value);});
+}
+if(typeof window!=='undefined' && typeof window.setInterval==='function')window.setInterval(()=>{
+  Array.from(document.querySelectorAll('[data-hb-project-board]')).filter(panel=>{
+    const box=panel.getBoundingClientRect();return box.bottom>0 && box.top<window.innerHeight;
+  }).slice(0,2).forEach(panel=>hbOpenTaskBoard(panel.dataset.hbProjectBoard,panel.parentElement));
+},5000);
+function hbShowReply(messageId) {
+  const el = document.querySelector('[data-message-id="' + Number(messageId) + '"],[data-msg-id="' + Number(messageId) + '"]');
+  if (el) { el.hidden = false; el.scrollIntoView({block: 'center', behavior: 'smooth'}); }
+}
+
 // Chat engine — bubbles, relay, dispatch, compose, threads
 // Extracted from terminal_base.html
 
@@ -60,7 +256,421 @@ function _loadAgentRegistry() {
       window.dispatchEvent(new CustomEvent('fridays:agent-registry-loaded', { detail: { agents: next } }));
       if (typeof renderChatAgentToggles === 'function') renderChatAgentToggles();
       if (typeof _hcRenderAgentPills === 'function') _hcRenderAgentPills();
+      refreshChatParticipants();
     });
+}
+
+const CHAT_SHARED_THREAD_KEY = 'hummingbird-shared-conversation';
+let chatPeerPrincipals = [];
+let chatPeerStatus = 'Checking service access...';
+
+function getChatPeerTargets(text) {
+  const aliases = { 
+    apex: 'apex',
+    instructor: 'copilot-instructor', 
+    copilot: 'copilot-instructor', 
+    gemini: 'gemini-advisor', 
+    codex: 'codex-instructor',
+    'tiered-assistant': 'tiered-assistant',
+    tiered: 'tiered-assistant',
+    'mistral-vibe': 'mistral-vibe',
+    mistral: 'mistral-vibe',
+    vibe: 'mistral-vibe'
+  };
+  return [...new Set(Array.from(String(text || '').matchAll(
+    /(?<![\w@])@(apex|instructor|copilot|gemini|codex|tiered(-assistant)?|mistral(-vibe)?|vibe)\b/gi
+  ), match => aliases[match[1].toLowerCase()]))];
+}
+
+function getChatDispatchAgents(text) {
+  // Explicit addressing reaches the instructor or APEX directly without making APEX answer for it.
+  if (/^\s*@(apex|codex|gemini|instructor|copilot|tiered(-assistant)?|mistral(-vibe)?|vibe)\b/i.test(String(text || ''))) return getChatPeerTargets(text);
+  if (getAutomaticLocalChatAgents().length) return ['apex'];
+  return getChatPeerTargets(text);
+}
+
+function chatRecipientSummary(text, labelOf) {
+  const peers = getChatPeerTargets(text);
+  const label = labelOf || (id => id);
+  const dispatch = getChatDispatchAgents(text);
+  if (!dispatch.includes('apex')) return dispatch.length ? dispatch.map(label).join(', ') : 'nobody (APEX offline)';
+  return peers.length ? `APEX (local) · addressed: ${peers.map(label).join(', ')}` : 'APEX (local)';
+}
+
+function chatRecipientText(text, mention) {
+  const draft = String(text || '').replace(/^@(instructor|copilot|gemini|codex|tiered(-assistant)?|mistral(-vibe)?|vibe|apex)\b[ \t]*/i, '');
+  return `@${mention} ${draft}`;
+}
+
+function getSharedChatThreadId() {
+  const id = Number(localStorage.getItem(CHAT_SHARED_THREAD_KEY));
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function renderHummingbirdChatBody(text, messageType, render) {
+  const raw = String(text || '');
+  const match = raw.match(/^\[tool:([a-z_]+)\] (\w+) \(receipt ([^)]+)\)/);
+  if (messageType === 'tool_result' || match) {
+    const labels = { knowledge_search: 'Searched the Knowledge Centre', knowledge_read: 'Read a Knowledge Centre source', alm_step_get: 'Read the saved task', studio_resume: 'Retrieved saved context',
+      read_file: 'Read source', grep_repo: 'Searched source', git_status: 'Checked workspace changes',
+      run_tests: 'Ran tests', ask_instructor: 'Requested instructor help', studio_handoff: 'Saved a handoff' };
+    const status = match?.[1] === 'ask_instructor' && match[2] === 'succeeded' ? 'Queued' : match ? ({ succeeded: 'Completed', failed: 'Failed', denied: 'Permission needed' }[match[2]] || match[2]) : 'Recorded';
+    const label = match ? (labels[match[1]] || 'Tool activity') : 'Tool activity';
+    return `<details class="chat-tool-evidence"><summary>${_escapeHtml(label)} · ${_escapeHtml(status)}</summary><pre>${_escapeHtml(raw)}</pre></details>`;
+  }
+  try {
+    const envelope = JSON.parse(raw);
+    if (envelope && typeof envelope === 'object' && Array.isArray(envelope.tool_calls)
+        && typeof envelope.answer === 'string' && Object.keys(envelope).every(k => ['tool_calls','answer'].includes(k))) {
+      if (!envelope.tool_calls.length && envelope.answer.trim()) return render(envelope.answer);
+      return `<details class="chat-tool-evidence"><summary>Tool request · awaiting a backend result</summary><pre>${_escapeHtml(raw)}</pre></details>`;
+    }
+  } catch (_) { /* ordinary prose or intentionally shown code */ }
+  const readable = raw.replace(/^\[DISPATCH: @(codex|gemini|instructor)\] (.+)$/gm,
+    (_, peer, question) => `Help requested from ${{codex:'Codex',gemini:'Gemini',instructor:'VS Code Instructor'}[peer]}: ${question}`);
+  return render(readable);
+}
+
+function renderChatRuntime(runtime) {
+  const esc = _escapeHtml;
+  const apex = runtime?.apex || {};
+  const archive = runtime?.archive || {};
+  const agents = runtime?.agents || [];
+  const stack = `<div class="chat-live-stack">
+    <strong>APEX / inference</strong>
+    <span data-runtime-state="${esc(apex.state || 'unknown')}">${esc(apex.state || 'unknown')}</span>
+    ${apex.selection === 'per_question' ? '<small>HB selects a local model for each question. Online agents join only when tagged.</small>' : ''}
+    <small>${apex.selection === 'per_question' ? 'Default server: ' : ''}${esc(apex.model || apex.expected_model || 'Model identity unavailable')}
+      ${apex.context_tokens ? `/ ${Number(apex.context_tokens).toLocaleString()} context` : ''}
+      ${apex.backend ? `/ ${esc(apex.backend)}` : ''}</small>
+  </div>`;
+  const archivePercent = archive.bytes_expected
+    ? Math.min(100, Math.floor(100 * archive.bytes_present / archive.bytes_expected))
+    : 0;
+  const archiveDetail = archive.state === 'unavailable'
+    ? 'Volume or verified plan unavailable'
+    : archive.state === 'verified'
+      ? 'Files verified; library indexing is separate'
+      : `${archive.active_repository || 'Waiting for next repository'} / ${archivePercent}% staged`;
+  const archiveCard = `<div class="chat-live-stack">
+    <strong>Archive / ${esc(archive.state || 'unknown')}</strong>
+    <small>${esc(archive.mount || 'Archive mount unavailable')} / ${esc(archiveDetail)}
+      ${archive.downloader_pid ? `/ downloader ${Number(archive.downloader_pid)}` : ''}</small>
+    ${archive.bytes_expected ? `<progress max="100" value="${archivePercent}" aria-label="Archive progress">${archivePercent}%</progress>` : ''}
+  </div>`;
+  const peers = agents.map(agent => `<div class="chat-live-stack">
+    <strong>${esc(_chatAgentLabel(agent.id))} / bridge</strong>
+    <span>${esc(agent.state || 'not recently observed')}</span>
+    <small>${agent.last_contact ? `Last authenticated contact ${Math.max(0, Math.floor(Date.now() / 1000 - agent.last_contact))}s ago` : 'No authenticated contact observed'}</small>
+  </div>`).join('');
+  const ram = runtime?.host_available_ram_gib;
+  return `<section class="chat-live-stacks" aria-label="Live runtime stacks">
+    <div class="chat-live-heading"><strong>LIVE / runtime stacks</strong>
+      <small>${ram == null ? 'Host RAM unavailable' : `${Number(ram).toFixed(1)} GiB host RAM available`}</small></div>
+    ${stack}${archiveCard}${peers}
+  </section>`;
+}
+
+function renderChatRuntimeSummary(runtime, taskCount) {
+  const apex = runtime?.apex || {};
+  const archive = runtime?.archive || {};
+  const percent = archive.bytes_expected
+    ? ` / ${Math.min(100, Math.floor(100 * archive.bytes_present / archive.bytes_expected))}% staged`
+    : '';
+  const items = [
+    `APEX: ${apex.state || 'unknown'}`,
+    `Archive: ${archive.state || 'unknown'}${archive.state === 'verified' ? ' / not indexed' : percent}`,
+    ...(runtime?.agents || []).filter(agent => agent.id !== 'apex').map(agent =>
+      `${_chatAgentLabel(agent.id)}: ${agent.state || 'not recently observed'}`),
+    `Studio: ${taskCount} saved tasks`,
+  ];
+  return items.map(item => `<span>${_escapeHtml(item)}</span>`).join('');
+}
+
+function chatPeerProgressJob(detail, conversationId) {
+  if (!detail || !(detail.peer === true || (detail.agent === 'apex' && detail.runtime_class === 'local')) || !conversationId
+      || Number(detail.conversation_id) !== Number(conversationId)
+      || !['queued', 'running', 'completed', 'failed'].includes(detail.status)) return null;
+  const agent = String(detail.agent || '').toLowerCase();
+  if (!/^[a-z][a-z0-9_-]{0,63}$/.test(agent)) return null;
+  const suffix = Number.isSafeInteger(detail.request_id) && detail.request_id > 0
+    ? `-request-${detail.request_id}` : (typeof detail.activity_id === 'string'
+      && /^[a-z0-9-]{1,80}$/.test(detail.activity_id) ? `-activity-${detail.activity_id}` : '');
+  return {job_id: `peer-${Number(conversationId)}-${agent}${suffix}`, agent,
+    status: detail.status, stage: String(detail.stage || (detail.status === 'queued'
+      ? 'Queued: waiting for the attached agent' : detail.status))};
+}
+
+function applyChatPeerProgress(detail, conversationId) {
+  const job = chatPeerProgressJob(detail, conversationId);
+  if (!job) return false;
+  if (['queued', 'running'].includes(job.status)) _upsertThinkingBubble(job);
+  else _removeThinkingBubbleById(job.job_id);
+  return true;
+}
+
+function renderChatParticipants() {
+  const sharedId = getSharedChatThreadId();
+  const participants = [
+    { id: 'apex', mention: 'apex', label: 'APEX', role: 'Local execution agent; HB selects its model for each question' },
+    { id: 'codex-instructor', mention: 'codex', label: 'Codex', role: 'Codex instructor / connected terminal session' },
+    { id: 'copilot-instructor', mention: 'instructor', label: 'VS Code Instructor', role: 'Instructor / reviewer' },
+    { id: 'gemini-advisor', mention: 'gemini', label: 'Gemini', role: 'Architecture advisor with its own agent login' },
+    { id: 'tiered-assistant', mention: 'tiered-assistant', label: 'Tiered Assistant', role: 'Online help when explicitly tagged by you or APEX' },
+    { id: 'mistral-vibe', mention: 'mistral-vibe', label: 'Mistral Vibe', role: 'External teacher - helps APEX with system access patterns and complex reasoning - LIVE interaction' },
+  ];
+  document.querySelectorAll('[data-chat-participants]').forEach(host => {
+    const optionsOpen = host.querySelector('[data-chat-options]')?.open === true;
+    const previousBoard = host.querySelector('[data-chat-live-board]');
+    const previousTaskScroll = previousBoard?.querySelector('ol')?.scrollTop || 0;
+    const home = host.dataset.chatParticipants === 'home';
+    const currentId = home
+      ? Number(document.getElementById('home-chat-thread-select')?.value || 0)
+      : Number(window.__fridaysChatConversationId || 0);
+    host.closest('.floating-window')?.classList.toggle('chat-shared-room', currentId === sharedId);
+    host.dataset.conversationId = String(currentId || '');
+    host.innerHTML = `
+      <div class="chat-team-people"><strong>APEX</strong><span>Your assistant</span></div>
+      <details class="chat-support-team"><summary>Support team</summary><div class="chat-team-people">${participants.slice(1).map(person => {
+        const principal = chatPeerPrincipals.find(p => p.id === person.id);
+        const enabled = person.id === 'apex' ? getAutomaticLocalChatAgents().length > 0 : principal?.enabled === true;
+        const state = person.id === 'apex' ? 'Local' : principal ? (enabled ? 'Enabled' : 'Disabled') : 'Access unverified';
+        return `<button type="button" data-recipient="${person.mention}" ${enabled ? '' : 'disabled'}
+          title="${_escapeHtml(person.role)} / ${state}">
+          <strong>${person.label}</strong></button>`;
+      }).join('')}</div><small>Instructors support APEX. Continue your conversation with APEX in the main chat.</small></details>
+      <section class="chat-live-board" data-chat-live-board aria-label="Live team activity and Studio tasks"></section>
+      <details data-chat-options ${optionsOpen ? 'open' : ''}><summary>Conversation options</summary>
+      <div class="chat-team-actions">
+        <button type="button" data-shared-open ${sharedId ? '' : 'disabled'}>${sharedId ? `Open shared conversation #${sharedId}` : 'No shared conversation pinned'}</button>
+        <button type="button" data-shared-pin ${currentId ? '' : 'disabled'}>Use this conversation as shared</button>
+        ${sharedId ? '<button type="button" data-shared-unpin>Unpin</button>' : ''}
+        <button type="button" data-peer-refresh>Refresh access</button>
+        ${currentId >= 2 ** 48 ? '<button type="button" data-recovery-resume>Resume with tools</button>' : ''}
+      </div>
+      <small role="status">${_escapeHtml(chatPeerStatus)} Select a participant to address your message; nothing is sent until Send. Gemini uses the attached VS Code session and shared browser tab.</small></details>`;
+    if (previousBoard) {
+      host.querySelector('[data-chat-live-board]').replaceWith(previousBoard);
+      const tasks = previousBoard.querySelector('ol');
+      if (tasks) tasks.scrollTop = previousTaskScroll;
+    }
+    host.querySelectorAll('[data-recipient]').forEach(button => {
+      button.addEventListener('click', () => {
+        const input = document.getElementById(home ? 'home-chat-input' : 'question-input');
+        if (!input) {
+          showToast('Chat composer is not available.', 'error');
+          return;
+        }
+        input.value = chatRecipientText(input.value, button.dataset.recipient);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+      });
+    });
+    host.querySelector('[data-shared-open]').addEventListener('click', openSharedChatThread);
+    host.querySelector('[data-shared-pin]').addEventListener('click', () => {
+      if (!Number.isSafeInteger(currentId) || currentId <= 0) return;
+      localStorage.setItem(CHAT_SHARED_THREAD_KEY, String(currentId));
+      openSharedChatThread();
+    });
+    host.querySelector('[data-shared-unpin]')?.addEventListener('click', () => {
+      localStorage.removeItem(CHAT_SHARED_THREAD_KEY);
+      renderChatParticipants();
+    });
+    host.querySelector('[data-peer-refresh]').addEventListener('click', refreshChatParticipants);
+    host.querySelector('[data-recovery-resume]')?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const response = await fetch(`/api/conversations/${currentId}/resume`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+          signal: AbortSignal.timeout(20000),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok) throw new Error(result.error || `Resume failed (HTTP ${response.status})`);
+        localStorage.setItem(CHAT_SHARED_THREAD_KEY, String(result.conversation_id));
+        openSharedChatThread();
+        showToast(`Recovery history preserved; resumed conversation #${result.conversation_id}`, 'success');
+      } catch (error) {
+        showToast(error.message || 'Recovery resume failed', 'error');
+        button.disabled = false;
+      }
+    });
+    refreshChatLiveBoard(host);
+    if (home && typeof window.homeFitLiveRoom === 'function') window.homeFitLiveRoom();
+  });
+  startChatLiveBoard();
+}
+
+async function refreshChatLiveBoard(host) {
+  const board = host.querySelector('[data-chat-live-board]');
+  const convId = Number(host.dataset.conversationId);
+  if (!board || !convId) {
+    if (board) board.textContent = 'Choose a conversation to see its live team and task list.';
+    return;
+  }
+  let state = host._chatLiveBoard;
+  if (!state || state.convId !== convId) {
+    state = host._chatLiveBoard = { convId, offset: 0, revision: null, busy: false };
+    board.textContent = `Loading live activity for thread ${convId}...`;
+  }
+  if (state.busy) return;
+  state.busy = true;
+  board.querySelectorAll('[data-task-page]').forEach(button => { button.disabled = true; });
+  try {
+    const query = new URLSearchParams({ offset: String(state.offset) });
+    if (state.offset && state.revision) query.set('revision', state.revision);
+    const response = await fetch(`/api/peer/v1/conversations/${convId}/activity?${query}`,
+      { signal: AbortSignal.timeout(5000) });
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      if (response.status === 401 || response.status === 403) {
+        window.dispatchEvent(new Event('hummingbird:auth-required'));
+      }
+      if (response.status === 409) { state.offset = 0; state.revision = null; }
+      throw new Error(data.error || `Live activity unavailable (HTTP ${response.status})`);
+    }
+    if (!host.isConnected || host._chatLiveBoard !== state || Number(host.dataset.conversationId) !== convId) return;
+    const tasks = data.board;
+    state.revision = tasks.revision;
+    const esc = _escapeHtml;
+    const people = data.participants.map(person => {
+      const latest = person.latest;
+      const delivery = (data.peer_workers || []).find(worker => worker.agent === person.id);
+      const contact = person.last_contact
+        ? `Bridge contact ${Math.max(0, Math.floor(Date.now() / 1000 - person.last_contact))}s ago`
+        : person.id === 'gemini-advisor' ? 'Via attached instructor relay' : 'Public activity';
+      return `<div class="chat-live-person"><strong>${esc(_chatAgentLabel(person.id))}</strong>
+        <small>${esc(contact)}${person.queued_for_delivery ? ` / ${person.queued_for_delivery} queued for delivery` : ''}</small>
+        ${delivery ? `<small>HB delivery: ${esc(delivery.state)} / ${esc(delivery.detail)}</small>` : ''}
+        <div class="chat-live-excerpt">${esc(latest?.excerpt || 'No message in this conversation yet.')}</div>
+        ${latest ? `<button type="button" data-live-message="${latest.message_id}">Show message ${latest.message_id}</button>` : ''}
+      </div>`;
+    }).join('');
+    const runtimeStacks = renderChatRuntime(data.runtime);
+    const taskRows = tasks.tasks.map(task => `<li>
+      <span class="chat-live-task-state">${esc(task.status)}</span>
+      <span>${esc(task.title)}<small>${esc(task.step_id)} / ${esc(task.owner || 'unassigned')}</small></span>
+    </li>`).join('');
+    const taskScroll = board.querySelector('ol')?.scrollTop || 0;
+    if (!board.querySelector('[data-chat-live-details]')) {
+      board.innerHTML = `<details data-chat-live-details>
+        <summary aria-label="Live status; expand runtime, team and Studio details">
+          <strong>Live status</strong><span data-chat-live-summary></span>
+        </summary><div data-chat-live-content></div></details>`;
+    }
+    board.querySelector('[data-chat-live-error]')?.remove();
+    board.querySelector('[data-chat-live-summary]').innerHTML = renderChatRuntimeSummary(data.runtime, tasks.total);
+    board.querySelector('[data-chat-live-content]').innerHTML = `<div class="chat-live-heading">
+      <small>Replies and tool receipts remain in the conversation below.</small></div>
+    ${runtimeStacks}
+    <div class="chat-live-people">${people}</div>
+      <div class="chat-live-tasks">
+        <div class="chat-live-heading"><strong>Studio task list (${tasks.total})</strong>
+          <small>${tasks.project ? `${esc(tasks.project.project_id)} / ${esc(tasks.project.status)}` : 'No Studio project saved for this conversation'}</small>
+        </div>
+        ${taskRows ? `<ol>${taskRows}</ol>` : '<small>No saved tasks. This is not a completed-work claim.</small>'}
+        <div class="chat-live-pages">
+          <button type="button" data-task-page="${Math.max(0, state.offset - 20)}" ${state.offset ? '' : 'disabled'}>Previous</button>
+          <small>${tasks.total ? `${tasks.offset + 1}-${tasks.offset + tasks.tasks.length} of ${tasks.total}` : '0 tasks'} / recorded status, not permission</small>
+          <button type="button" data-task-page="${tasks.next_offset ?? 0}" ${tasks.next_offset === null ? 'disabled' : ''}>Next</button>
+        </div>
+      </div>`;
+    const taskList = board.querySelector('ol');
+    if (taskList) taskList.scrollTop = taskScroll;
+    board.querySelectorAll('[data-task-page]').forEach(button => button.addEventListener('click', () => {
+      if (state.busy) return;
+      state.offset = Number(button.dataset.taskPage);
+      refreshChatLiveBoard(host);
+    }));
+    board.querySelectorAll('[data-live-message]').forEach(button => button.addEventListener('click', () => {
+      const selector = host.dataset.chatParticipants === 'home' ? '#home-chat-messages' : '#chat-messages';
+      const bubble = document.querySelector(`${selector} [data-message-id="${CSS.escape(button.dataset.liveMessage)}"]`);
+      if (bubble) bubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      else showToast('Message is not rendered yet; the transcript is reconnecting.', 'error');
+    }));
+  } catch (error) {
+    if (host._chatLiveBoard !== state || !host.isConnected) return;
+    console.error('Live conversation board:', error);
+    let notice = board.querySelector('[data-chat-live-error]');
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.dataset.chatLiveError = '';
+      notice.setAttribute('role', 'status');
+      board.prepend(notice);
+    }
+    notice.textContent = `Live activity unavailable: ${error.message}. Any displayed status is stale. Retrying automatically.`;
+  } finally {
+    state.busy = false;
+  }
+}
+
+let chatLiveBoardTimer = null;
+let chatLiveBoardEventTimer = null;
+function startChatLiveBoard() {
+  if (chatLiveBoardTimer) return;
+  let lastTranscriptSync = 0;
+  const refresh = () => {
+    if (document.visibilityState !== 'visible') return;
+    const ids = new Set();
+    document.querySelectorAll('[data-chat-participants]').forEach(host => {
+      if (!host.getClientRects().length) return;
+      refreshChatLiveBoard(host);
+      if (host.dataset.conversationId) ids.add(Number(host.dataset.conversationId));
+    });
+    if (Date.now() - lastTranscriptSync >= 15000) {
+      lastTranscriptSync = Date.now();
+      ids.forEach(id => document.dispatchEvent(new CustomEvent('hummingbird:chat-sync',
+        { detail: { conversation_id: id } })));
+    }
+  };
+  chatLiveBoardTimer = setInterval(refresh, 5000);
+  document.addEventListener('sse:chat', () => {
+    clearTimeout(chatLiveBoardEventTimer);
+    chatLiveBoardEventTimer = setTimeout(refresh, 150);
+  });
+  document.addEventListener('visibilitychange', refresh);
+}
+
+async function refreshChatParticipants() {
+  try {
+    const response = await fetch('/api/peer/v1/principals');
+    const data = await response.json();
+    if (!response.ok || !data.ok || !Array.isArray(data.principals)) {
+      throw new Error(data.error || `Service access lookup failed (HTTP ${response.status})`);
+    }
+    chatPeerPrincipals = data.principals;
+    chatPeerStatus = 'Enabled is permission, not proof of a live connection.';
+  } catch (error) {
+    chatPeerPrincipals = [];
+    chatPeerStatus = String(error.message || error);
+    console.error('Chat participant access:', error);
+  }
+  renderChatParticipants();
+}
+
+async function openSharedChatThread() {
+  const id = getSharedChatThreadId();
+  if (!id) {
+    showToast('Select an existing conversation and pin it as shared first.', 'error');
+    return;
+  }
+  try {
+    const response = await fetch(`/api/conversations/${id}/messages`);
+    if (response.status === 404) {
+      localStorage.removeItem(CHAT_SHARED_THREAD_KEY);
+      renderChatParticipants();
+    }
+    if (!response.ok) throw new Error(`Cannot open shared conversation #${id} (HTTP ${response.status})`);
+    const data = await response.json();
+    if (Number(data.conv?.id) !== id || !Array.isArray(data.messages)) {
+      throw new Error('Shared conversation response could not be verified.');
+    }
+    if (document.getElementById('question-input')) switchChatThread(String(id));
+    window.dispatchEvent(new CustomEvent('hummingbird:shared-thread', { detail: { conversation_id: id } }));
+    renderChatParticipants();
+  } catch (error) {
+    showToast(String(error.message || error), 'error');
+  }
 }
 
 const CHAT_CUSTOM_DICTIONARY_KEY = 'fridays-chat-custom-dictionary-v1';
@@ -294,6 +904,7 @@ function _setActiveThreadId(convId) {
     localStorage.removeItem('fridays-chat-active-thread');
   }
   updateChatStatusPills();
+  renderChatParticipants();
 }
 
 function updateChatStatusPills() {
@@ -1762,14 +2373,13 @@ function updateComposerMeta() {
   const txt = String(input.value || '');
   const chars = txt.length;
   const words = (txt.trim().match(/\S+/g) || []).length;
-  const enabled = getEnabledChatAgents().length;
+  const recipient = chatRecipientSummary(txt, _chatAgentLabel);
   const attached = (window.__fridaysChatAttachments || []).length;
   const mode = String(window.__fridaysChatHistoryMode || 'full');
   const limit = Number(window.__fridaysChatHistoryLimit || 8);
   const modeLabel = mode === 'none' ? 'this message only' : (mode === 'recent' ? `last ${limit}` : 'full thread');
-  const flowLabel = _chatFlowModeLabel(window.__fridaysChatFlowMode, true);
   left.textContent = `${chars} chars · ${words} words`;
-  right.textContent = `${enabled} agent${enabled === 1 ? '' : 's'} on · ${flowLabel} · ${attached} file${attached === 1 ? '' : 's'} · ${modeLabel}`;
+  right.textContent = `To: ${recipient} · ${attached} file${attached === 1 ? '' : 's'} · ${modeLabel}`;
 }
 
 // ── Chunk 8C — Intent Classifier Frontend Wiring ─────────────────────────────
@@ -2098,7 +2708,12 @@ function _renderMentionMenu(input, ctx) {
   if (!menu || !input || !ctx) return;
   const query = _normalizeMentionKey(ctx.query);
   const enabled = window.__fridaysChatEnabledAgents || {};
-  const items = CHAT_AGENT_OPTIONS
+  const items = [
+    { value: 'apex', label: 'APEX', tier: 'local' },
+    { value: 'codex', label: 'Codex', tier: 'instructor' },
+    { value: 'instructor', label: 'VS Code Instructor', tier: 'instructor' },
+    { value: 'gemini', label: 'Gemini', tier: 'instructor' },
+  ]
     .map(opt => ({
       key: String(opt.value || '').toLowerCase(),
       label: String(opt.label || opt.value || ''),
@@ -2443,6 +3058,11 @@ function _chatAgentLabel(sender) {
   const normalized = String(sender || '').trim().toLowerCase().replace(/\[.*?\]/g, '').trim();
   if (!normalized) return 'Agent';
   if (normalized === 'you' || normalized === 'user') return 'You';
+  if (normalized === 'apex') return 'APEX';
+  if (normalized === 'codex-instructor') return 'Codex';
+  if (normalized === 'copilot-instructor') return 'VS Code Instructor';
+  if (normalized === 'gemini-advisor') return 'Gemini';
+  if (normalized === 'peer-bridge') return 'Peer bridge';
   const option = CHAT_AGENT_OPTIONS.find(a => a.value === normalized);
   if (option && option.label) return option.label;
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
@@ -2496,6 +3116,15 @@ function _chatTargetAgentsFromRaw(rawTargets) {
 function _chatAgentMeta(sender) {
   const raw = String(sender || '').trim().toLowerCase();
   const normalized = raw.replace(/\[.*?\]/g, '').trim();
+  if (normalized === 'codex-instructor') return { icon: 'C', purpose: 'Codex instructor and reviewer.', runtime: 'connected Codex session', tier: 'service' };
+  if (normalized === 'copilot-instructor' || normalized === 'gemini-advisor') {
+    return {
+      icon: _CHAT_AGENT_META.you.icon,
+      purpose: normalized === 'copilot-instructor' ? 'Instructor and reviewer.' : 'Architecture advisor via the instructor relay.',
+      runtime: normalized === 'copilot-instructor' ? 'attached VS Code session' : 'shared Gemini browser tab',
+      tier: 'service',
+    };
+  }
   return _CHAT_AGENT_META[normalized] || { icon: '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>', purpose: `Agent: ${normalized || 'unknown'}.`, runtime: 'unknown' };
 }
 
@@ -2696,6 +3325,7 @@ function _librarianQueueWatchdog() {
   const textEl = last.querySelector('.chat-text');
   const text = textEl ? (textEl.innerText || textEl.textContent || '') : '';
   // Skip error bubbles (0 tokens) — they must not trigger relays.
+  if(last.dataset.hbTaskId)return; // HB owns task routing; unknown usage is not an error.
   if (Number(last.dataset.tokens || 0) === 0) {
     _appendInfoLogEntry('librarian', 'Watchdog: skipping error/zero-token bubble.');
     return;
@@ -4421,8 +5051,8 @@ function _appendChatBubble(sender, text, opts = {}) {
   const visibleText = parsedSkill.text || (parsedSkill.events.length ? 'Executed skill run(s):' : extracted.text);
   const bubbleAttachments = Array.isArray(opts.attachments) && opts.attachments.length ? opts.attachments : extracted.attachments;
   // User messages: plain escaped text. Agent messages: rendered markdown.
-  const bodyHtml = isUser ? `<span style="white-space:pre-wrap;">${_escapeHtml(visibleText)}</span>` : _renderMarkdown(
-    typeof window.agentEnvelopeToMarkdown === 'function' ? window.agentEnvelopeToMarkdown(visibleText) : visibleText);
+  const bodyHtml = isUser ? `<span style="white-space:pre-wrap;">${_escapeHtml(visibleText)}</span>` : renderHummingbirdChatBody(visibleText, opts.messageType, value => _renderMarkdown(
+    typeof window.agentEnvelopeToMarkdown === 'function' ? window.agentEnvelopeToMarkdown(value) : value));
   const attachmentsHtml = _renderBubbleAttachments(bubbleAttachments);
   const eventsHtml = isUser ? '' : _renderSkillEvents(parsedSkill.events, sender);
   const relayCandidates = isUser ? [] : _extractAgentDirectedQuestions(visibleText, senderIdentity.key);
@@ -4466,7 +5096,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   const _tsDate = _now.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
   const _tsToday = new Date().toDateString() === _now.toDateString();
   const _tsLabel = _tsTime + (_tsToday ? '' : ' · ' + _tsDate);
-  const _tokCount = !isUser ? (Number(opts.tokens || 0).toLocaleString() + ' Tokens') : '';
+  const _tokCount = !isUser ? hbUsageLabel(opts.usage,opts.tokens) : '';
   const _traceItems = (!isUser && Array.isArray(opts.stageTrace) && opts.stageTrace.length) ? opts.stageTrace : null;
   const traceHtml = _traceItems
     ? `<details class="chat-bubble-trace"><summary>Trace &middot; ${_traceItems.length} step${_traceItems.length !== 1 ? 's' : ''}</summary><div class="chat-bubble-trace-body">${_traceItems.map((s, i) => `<div class="chat-bubble-trace-step"><span class="chat-bubble-trace-num">${i + 1}</span><span class="chat-bubble-trace-text">${_escapeHtml(_friendlyTraceText(s))}</span></div>`).join('')}</div></details>`
@@ -4483,6 +5113,8 @@ function _appendChatBubble(sender, text, opts = {}) {
       <span>${senderMetaHtml}</span>
       <span style="font-size:9px;color:var(--text-dim);opacity:0.7;margin-left:auto;white-space:nowrap;">${_tokCount ? `<span style="opacity:0.55;margin-right:5px;">${_escapeHtml(_tokCount)}</span>` : ''}${_tsLabel}${!isUser && Number(opts.chainDepth) > 0 ? `<span class="chat-bubble-chain-badge" title="Relay chain: ${Number(opts.chainDepth)} hop${Number(opts.chainDepth) !== 1 ? 's' : ''} remaining">\u26d3${Number(opts.chainDepth)}</span>` : ''}</span>
     </div>
+    ${hbTaskBadge(opts.task,opts.conversationId,opts.replyToMessageId,opts.messageId)}
+    ${hbRequestControl(opts.requestControl,opts.conversationId)}
     ${quoted}
     <div class="chat-text">${bodyHtml}</div>
     ${attachmentsHtml}
@@ -4494,6 +5126,8 @@ function _appendChatBubble(sender, text, opts = {}) {
     ${actionRow}
   `;
 
+  if(opts.task)bubble.dataset.hbTaskId=opts.task.task_id;
+  hbTaskBar('question-input',opts.conversationId);
   bubble.dataset.msgId = msgId;
   bubble.dataset.sender = senderKey;
   bubble.dataset.tokens = String(Number(opts.tokens || 0));
@@ -4503,7 +5137,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   if (opts.conversationId) bubble.dataset.conversationId = String(opts.conversationId);
   applyBubbleColorOverrideToNode(bubble);
   messages.appendChild(bubble);
-  if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto && !opts.fromHistory && Number(opts.tokens || 0) > 0) {
+  if (!isUser && relayCandidates.length && window.__fridaysChatRelayAuto && !opts.fromHistory && !opts.task && Number(opts.tokens || 0) > 0) {
     // If this bubble is itself a relay response, propagate chain depth (decrement by 1).
     // For direct user→agent responses (no chainDepth), assign the initial chain depth.
     const _parentDepth = Number.isFinite(Number(opts.chainDepth)) ? Number(opts.chainDepth) : -1;
@@ -4519,7 +5153,7 @@ function _appendChatBubble(sender, text, opts = {}) {
   // Only runs when auto-relay is on, fresh (non-history) agent bubble, non-zero tokens,
   // AND the regex found no explicit relay candidates (librarian is the fallback, not a supplement),
   // AND this is not a relay chain response (chainDepth < 0 = initial direct response only).
-  if (!isUser && window.__fridaysChatRelayAuto && !opts.fromHistory && Number(opts.tokens || 0) > 0 && relayCandidates.length === 0 && Number(opts.chainDepth ?? -1) < 0) {
+  if (!isUser && window.__fridaysChatRelayAuto && !opts.fromHistory && !opts.task && Number(opts.tokens || 0) > 0 && relayCandidates.length === 0 && Number(opts.chainDepth ?? -1) < 0) {
     _librarianReviewDebounced(visibleText, senderIdentity.key, opts.conversationId || null);
   }
   _recordTimelineEvent({
@@ -5234,7 +5868,7 @@ async function stopPendingAgents() {
     .map(j => String(j.job_id));
   const jobIds = Array.from(new Set([...(window.__fridaysChatPendingJobIds || []).slice(), ...runtimeRunningIds]));
   const convId = window.__fridaysChatPendingConversationId || window.__fridaysChatConversationId;
-  if (!jobIds.length) {
+  if (!jobIds.length && !convId) {
     showToast('No long-running agents to stop right now', 'info');
     return;
   }
@@ -5242,17 +5876,15 @@ async function stopPendingAgents() {
     const resp = await fetch('/api/chat/jobs/cancel', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ job_ids: jobIds, conversation_id: convId || null, hard_kill: true })
+      body: JSON.stringify({ job_ids: jobIds, conversation_id: convId || null })
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok || !data.ok) {
       throw new Error((data && data.error) || `HTTP ${resp.status}`);
     }
     const count = Number(data.count || 0);
-    const hardKills = Array.isArray(data.hard_kill_results) ? data.hard_kill_results : [];
-    const hardKillOk = hardKills.filter(item => item && item.ok).length;
-    const suffix = hardKillOk > 0 ? ` · hard-killed ${hardKillOk} local runtime${hardKillOk === 1 ? '' : 's'}` : '';
-    showToast(count > 0 ? `Stopped ${count} agent run(s)${suffix}` : 'No running jobs were stoppable', count > 0 ? 'success' : 'info');
+    const held = Array.isArray(data.held_tasks) ? data.held_tasks.length : 0;
+    showToast(held > 0 ? `Paused ${held} task(s); interrupted their peer workers` : count > 0 ? `Stopped ${count} agent run(s)` : 'No active work in this chat', held + count > 0 ? 'success' : 'info');
     _clearPendingChatTracking();
     const loadCtls = (window.__fridaysChatPendingLoadCtls || []).slice();
     window.__fridaysChatPendingLoadCtls = [];
@@ -5296,6 +5928,7 @@ function _getAgentSelectionState(agentKey) {
 }
 
 function renderChatAgentToggles() {
+  renderChatParticipants();
   const hosts = Array.from(document.querySelectorAll('.chat-agent-toggles'));
   if (!hosts.length) return;
   const userColor = _getActorBubbleColor('you') || '#42a5f5';
@@ -5830,6 +6463,7 @@ function renderChatMessages(rows, jobs = null) {
         messageId: msgId,
         conversationId: convId,
         editable: true,
+        task:row.task, requestControl:row.request_control, replyToMessageId:row.reply_to_message_id,
         selectedAgents: rawTargetAgents,
         localPromptText: extracted.text,
         attachments: extracted.attachments,
@@ -5839,7 +6473,9 @@ function renderChatMessages(rows, jobs = null) {
       _appendChatBubble(sender, content, {
         messageId: msgId,
         conversationId: convId,
+        messageType: row.message_type,
         tokens: Number(row.tokens_used || 0),
+        task:row.task, requestControl:row.request_control, usage:row.usage, replyToMessageId:row.reply_to_message_id,
         stageTrace: inlineTraceByMessageId[msgId] || [],
         fromHistory: true,
       });
@@ -6010,9 +6646,13 @@ function startChatLiveSyncService() {
     const convId = Number(window.__fridaysChatConversationId || 0);
     if (!convId) return;
     if (d.conversation_id && Number(d.conversation_id) !== convId) return;
-    if (d.status !== 'completed' && d.status !== 'failed') return;
+    if (applyChatPeerProgress(d, convId) && ['queued', 'running'].includes(d.status)) return;
+    if (!['completed', 'failed', 'tool_receipt', 'instructor_requested'].includes(d.status)) return;
     syncNow();
     refreshChatThreadList(convId);
+  });
+  document.addEventListener('hummingbird:chat-sync', (e) => {
+    if (Number(e.detail.conversation_id) === Number(window.__fridaysChatConversationId)) syncNow();
   });
   window.addEventListener('swarm:conversation-changed', () => {
     const convId = Number(window.__fridaysChatConversationId || 0);
@@ -6306,7 +6946,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   const msg = input.value.trim();
   let selectedAgents = (source === 'relay' && relayMeta?.target)
     ? [String(relayMeta.target).toLowerCase()]
-    : getAutomaticLocalChatAgents();
+    : getChatDispatchAgents(msg);
   let convId = window.__fridaysChatConversationId || null;
   if (!convId && !window.__fridaysChatForceNewThread) {
     const first = (window._chatConversations || [])[0];
@@ -6318,7 +6958,7 @@ function sendMessage(source = 'user', relayMeta = null) {
 
   const hasAttachments = (window.__fridaysChatAttachments || []).length > 0;
   const contextCfg = getChatContextConfig();
-  const mentionedAgents = source === 'user' ? _extractMentionedAgents(msg) : [];
+  const mentionedAgents = source === 'user' && !getChatPeerTargets(msg).length ? _extractMentionedAgents(msg) : [];
   if (mentionedAgents.length) {
     // If user explicitly mentions agents, deselect all others
     window.__fridaysChatEnabledAgents = {};
@@ -6443,6 +7083,9 @@ function sendMessage(source = 'user', relayMeta = null) {
       agents: selectedAgents,
       local_only: true,
       conversation_id: convId,
+      task_id:hbTaskSelection(convId),
+      approval_request_message_id:replyTargets.length===1 ? Number(replyTargets[0].msgId || replyTargets[0].messageId) || null : null,
+      approval_reply_text:replyTargets.length===1 ? msg : null,
       new_thread: !!window.__fridaysChatForceNewThread,
       history_mode: contextCfg.historyMode,
       history_limit: contextCfg.historyMode === 'recent' ? contextCfg.historyLimit : undefined,
@@ -6456,6 +7099,7 @@ function sendMessage(source = 'user', relayMeta = null) {
   })
   .then(r => r.json())
   .then(data => {
+    // Only the explicit Continue button/picker selects a task for later messages.
     // Backend lane state: ok | recovery | offline | error.
     const laneState = _setChatLaneState(data && data.state, data && data.response);
     if (!data || data.ok === false) {
@@ -6505,6 +7149,7 @@ function sendMessage(source = 'user', relayMeta = null) {
       immediateResponses.forEach(entry => {
         _appendChatBubble(entry.agent || 'agent', entry.response || '...', {
           tokens: entry.tokens || 0,
+          task:entry.task||data.task,usage:entry.usage,
           stageTrace: entry.stage_trace || [],
           ...(source === 'relay' && relayMeta ? { chainDepth: Number(relayMeta.chainDepth ?? -1) } : {}),
         });
@@ -6598,6 +7243,8 @@ function sendMessage(source = 'user', relayMeta = null) {
       pollActiveThreadRuntime(true);
     }
 
+    (Array.isArray(data.peer_statuses) ? data.peer_statuses : []).forEach(
+      detail => applyChatPeerProgress(detail, window.__fridaysChatConversationId));
     messages.scrollTop = messages.scrollHeight;
   })
   .catch(e => {

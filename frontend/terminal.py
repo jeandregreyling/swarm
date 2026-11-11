@@ -48,6 +48,7 @@ from services import (
 _BLUEPRINT_REGISTRY = [
     ('utils.vs_tools',            'vs_bp'),
     ('blueprints.agent_api',      'agent_api_bp'),
+    ('blueprints.agent_identity', 'agent_identity_bp'),
     ('blueprints.agents',         'agents_bp'),
     ('blueprints.auth',           'auth_bp'),
     ('blueprints.brief',          'brief_bp'),
@@ -105,6 +106,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.health',         'health_bp'),    ('blueprints.health_bp',       'health_digest_bp'),    ('blueprints.council_bp',     'council_bp'),
     ('blueprints.sysmod',         'sysmod_bp'),
     ('blueprints.studio_evidence','studio_evidence_bp'),
+    ('blueprints.peer_bridge',    'peer_bridge_bp'),
     ('blueprints.email_accounts', 'email_accounts_bp'),
     ('blueprints.enrollment',     'enrollment_bp'),
     ('blueprints.gmail_labels',   'gmail_labels_bp'),
@@ -235,6 +237,12 @@ def create_app():
     _IS_PROD = _STAGE == 'PROD' or _STAGE == ''
 
     if _IS_PROD:
+        # HB owns peer delivery; models submit requests, never supervise workers.
+        try:
+            from core.peer_coordination import start as _start_peer_coordination
+            _start_peer_coordination()
+        except Exception as _peer_err:
+            print(f'[Terminal] peer coordination start warning: {_peer_err}')
         # Background sweep for stuck jobs (every 10 minutes).
         import threading as _th
         def _stuck_job_sweeper():

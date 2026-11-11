@@ -1,9 +1,24 @@
 models:
+  - name: qwen2.5:14b-instruct
+    driver: llamacpp
+    endpoint: http://127.0.0.1:8080
+    role: general
+    path: /mnt/archive/models/blobs/sha256-2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54
+    ctx: 16384
+    quant: Q4_K_M
+    ram_gb: 4
+    ttl_seconds: 600
+    options:
+      mode: server
+      api_model: qwen2.5:14b-instruct
+      slots: 1
+      raw_completion: false
+
   - name: apex-direct:7b
     driver: llamacpp
     role: coder
     path: /mnt/archive/models/blobs/sha256-60e05f2100071479f596b964f89f510f057ce397ea22f2833a0cfe029bfc2463
-    ctx: 8192
+    ctx: 16384
     quant: Q4_K_M
     ram_gb: 6
     ttl_seconds: 600
@@ -29,7 +44,7 @@ models:
       threads: 4
       slots: 1
 
-  # Both 20B names use the persistent APEX Vulkan service, not the model pool.
+  # Retained for rollback; these aliases are not served while Qwen owns :8080.
   # Endpoint failure is explicit: never spawn a second 13GB model copy.
   # api_model maps registry names to the service's case-sensitive API alias.
   - name: apex-direct:20b
@@ -70,7 +85,7 @@ models:
     driver: llamacpp
     role: general
     path: /mnt/archive/models/blobs/sha256-f06e91e18fc74295d0c781bf91622508c75655e2c18ed869d52447ffe1e667e1
-    ctx: 8192
+    ctx: 16384
     quant: Q4_K_M
     ram_gb: 3.9
     ttl_seconds: 0
@@ -85,7 +100,7 @@ models:
     driver: llamacpp
     role: general
     path: /mnt/archive/models/blobs/sha256-dde5aa3fc5ffc17176b5e8bdc82f587b24b2678c6c66101bf7da77af9f7ccdff
-    ctx: 8192
+    ctx: 16384
     quant: Q4_K_M
     ram_gb: 3.0
     ttl_seconds: 0

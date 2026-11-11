@@ -421,6 +421,7 @@ def chat_via_gateway(
     # default while the chat layer still expects it to continue.
     idle_timeout_s: int = GATEWAY_CHAT_IDLE_TIMEOUT_S,
     absolute_timeout_s: int = GATEWAY_CHAT_ABSOLUTE_TIMEOUT_S,
+    queue_timeout_s: float | None = None,
     keep_alive: Any = None,
     options: Optional[dict] = None,
     temperature: Optional[float] = None,
@@ -499,11 +500,23 @@ def chat_via_gateway(
             _emit(f'gateway: {stage}')
 
     sem = _lock_for(model)
-    sem.acquire()
     t0 = time.monotonic()
+    queue_budget = max(0, min(absolute_timeout_s, queue_timeout_s)
+                       if queue_timeout_s is not None else absolute_timeout_s)
+    if not sem.acquire(timeout=queue_budget):
+        error = f"model busy: queue wait exceeded {queue_budget:g}s for {model}; inference not started"
+        logger.warning('[llm.gateway] %s', error)
+        _emit(f'gateway: failed — {error}')
+        return f'[local runtime error: {error}]', 0
     error: Optional[str] = None
     result = None
     try:
+        remaining = absolute_timeout_s - (time.monotonic() - t0)
+        if remaining <= 0:
+            error = f"absolute timeout while waiting for model {model}; inference not started"
+            logger.warning('[llm.gateway] %s', error)
+            _emit(f'gateway: failed — {error}')
+            return f'[local runtime error: {error}]', 0
         # Keep gpt-oss on Ollama's /api/chat path. The attempted /api/generate
         # Harmony workaround returns HTTP 500 on the installed Ollama version
         # (parser has no reverse mapping for the assistant function name).
@@ -514,8 +527,8 @@ def chat_via_gateway(
         result = _gw.chat(
             model,
             messages,
-            absolute_timeout_s=absolute_timeout_s,
-            idle_timeout_s=idle_timeout_s,
+            absolute_timeout_s=remaining,
+            idle_timeout_s=min(idle_timeout_s, remaining),
             keep_alive=keep_alive_arg,
             options=opts,
             on_token=on_chunk,

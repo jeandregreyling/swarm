@@ -74,7 +74,9 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
 
     _emit('loading context')
     system_instruction = GEMINI_SYSTEM_PROMPT + _memory_block()
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY, http_options=types.HttpOptions(
+        timeout=45000, retry_options=types.HttpRetryOptions(attempts=1),
+    ))
 
     def _api_call(msgs):
         contents = []
@@ -102,6 +104,7 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
                     resp = client.models.generate_content(
                         model=model, contents=contents, config=cfg
                     )
+                    _emit(f'provider model: {model}')
                     break
                 except Exception as e:
                     last_err = e

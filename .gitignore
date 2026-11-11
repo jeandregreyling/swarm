@@ -157,3 +157,9 @@ runtime/worker_*.txt
 /runtime/recovery-preservation/
 /runtime/recovery/
 /runtime/studio-evidence.sqlite
+
+# Local dependency and generated database files
+node_modules/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

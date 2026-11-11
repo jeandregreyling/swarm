@@ -267,6 +267,12 @@
         const p = pd.project;
         const runs = (rd && rd.items) || [];
         det.innerHTML = _renderDetail(p, runs);
+        if (typeof window.hbOpenTaskBoard === 'function') {
+          const workflow = document.createElement('div');
+          workflow.className = 'projects-task-workflow';
+          det.appendChild(workflow);
+          window.hbOpenTaskBoard(pid, workflow);
+        }
         // Seven sees — propose-only insight panel.
         try {
           if (window.SevenPanel) {

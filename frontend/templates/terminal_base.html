@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fridays — Seven's Swarm</title>
+<title>Hummingbird — APEX</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script>
@@ -101,7 +101,7 @@
 <link rel="stylesheet" href="/static/css/components.css?v=6">
 <link rel="stylesheet" href="/static/css/windows.css">
 <link rel="stylesheet" href="/static/css/taskbar.css?v=31-themepicker">
-<link rel="stylesheet" href="/static/css/views/chat.css?v=5">
+<link rel="stylesheet" href="/static/css/views/chat.css?v=9">
 <link rel="stylesheet" href="/static/css/modals.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/library.css">
 <link rel="stylesheet" href="/static/css/diamond.css?v={{ ASSET_VERSION }}">
@@ -111,7 +111,7 @@
 <link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
 <link rel="stylesheet" href="/static/css/views/downloads.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/responsive.css">
-<link rel="stylesheet" href="/static/css/home-chat.css?v=33">
+<link rel="stylesheet" href="/static/css/home-chat.css?v=34">
 <link rel="stylesheet" href="/static/css/login.css?v=28">
 <link rel="stylesheet" href="/static/css/skills.css?v=27">
 <link rel="stylesheet" href="/static/css/views/tasker.css?v=1">
@@ -956,6 +956,7 @@
               </button>
             </div>
           </div>
+          <section class="chat-team" data-chat-participants="home" aria-label="Conversation participants"></section>
           <div id="home-chat-messages">
             <div class="home-chat-welcome">
               <canvas id="home-mini-landscape" class="home-mini-landscape"></canvas>
@@ -981,8 +982,22 @@
             </div>
           </div>
           <div id="home-chat-input-area">
-            <div class="home-chat-compose">
-              <textarea id="home-chat-input" placeholder="Ask Fridays to help with a program, game, or task…" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
+            <details id="hb-hf-controls" style="margin:0 0 6px 0;font-size:11px;">
+              <summary style="cursor:pointer;opacity:.8;">Hugging Face jobs · status and controls</summary>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;">
+                <span id="hb-hf-status" role="status" aria-live="polite">Status not refreshed</span>
+                <button id="hb-hf-refresh" type="button">Refresh status</button>
+                <button id="hb-hf-pause" type="button">Pause after current file</button>
+                <button id="hb-hf-curate" type="button">Apply local LLM/agent scope and pause</button>
+                <input id="hb-hf-repo" type="text" maxlength="200" placeholder="owner/repo (optional full package)" aria-label="Hugging Face repository to include" />
+                <button id="hb-hf-include" type="button">Add package</button>
+                <button id="hb-hf-resume" type="button">Resume</button>
+              </div>
+              <small>Curated mode keeps catalogue discovery, filters unrelated downloads, and retains every verified file. Add a repository explicitly to include its full package. Resume only when ready.</small>
+            </details>
+            <div class="home-chat-compose" style="position:relative;">
+              <div id="home-chat-mention-menu" class="chat-mention-menu" role="listbox" aria-label="Conversation participants"></div>
+              <textarea id="home-chat-input" aria-label="Message Hummingbird" placeholder="Message Hummingbird — @ to address a teammate" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
               <button id="home-chat-fav-btn" class="voice-mic-btn" title="Save current input as favourite shortcut" onclick="homeChatToggleFavourite()" aria-label="Favourites">
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M8 2.5l1.7 3.5 3.8.5-2.8 2.7.7 3.8L8 11.2 4.6 13l.7-3.8L2.5 6.5l3.8-.5L8 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
               </button>
@@ -991,7 +1006,7 @@
               </button>
               <button id="home-chat-capture-btn" class="home-chat-capture-main" title="Capture typed text or latest reply into Studio" onclick="hcCaptureWork(this)">Capture Work</button>
               <button id="home-chat-send-btn" title="Send message">
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2 8l12-5-5 12-2-5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M14 3L7 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                Send
               </button>
             </div>
             <div id="home-chat-meta">
@@ -1171,8 +1186,8 @@
           <div>
             <div class="chat-topbar-row">
               <div class="chat-topbar-title-col" id="chat-topbar-title-col" data-collapsed="0">
-                <div class="chat-title" onclick="chatTopbarToggle()" title="Click to collapse" style="cursor:pointer;user-select:none;"><span id="chat-topbar-caret" style="display:inline-block;width:10px;color:var(--text-dim);font-size:10px;">▾</span> Fridays Chat Console</div>
-                <div class="chat-subtitle" id="chat-topbar-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
+                <div class="chat-title" onclick="chatTopbarToggle()" title="Click to collapse" style="cursor:pointer;user-select:none;"><span id="chat-topbar-caret" style="display:inline-block;width:10px;color:var(--text-dim);font-size:10px;">▾</span> APEX</div>
+                <div class="chat-subtitle" id="chat-topbar-subtitle">Your assistant in Hummingbird <span class="chat-mini-system">CPU --% · RAM --%</span></div>
               </div>
               <div class="chat-topbar-font-col">
                 <span class="chat-topbar-font-label">Font Size</span>
@@ -1199,6 +1214,7 @@
             <button id="chat-notify-toggle-btn" class="chat-control-btn" onclick="toggleDesktopNotifications()">Notifications Off</button>
           </div>
         </div>
+        <section class="chat-team" data-chat-participants="chat" aria-label="Conversation participants"></section>
         <div id="chat-section-main" class="chat-section chat-main-shell">
           <div class="chat-section-header" aria-controls="chat-section-main-content" aria-expanded="true">
             <span class="chat-section-title"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg> Main Chat</span>
@@ -1223,7 +1239,7 @@
             <div class="chat-compose-shell">
               <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported."><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M7.5 4.5l-3 3a2.8 2.8 0 0 0 4 4l4.5-4.5a2 2 0 0 0-2.8-2.8L5.7 8.7a1 1 0 0 0 1.4 1.4L11 6.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
-              <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
+              <textarea id="question-input" placeholder="Message APEX..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
                 onkeydown="handleQuestionInputKeydown(event)"
                 oninput="this.style.height='1px';this.style.height=Math.min(this.scrollHeight,200)+'px';this.style.overflowY=this.scrollHeight>=200?'auto':'hidden';_debouncedClassify()"></textarea>
               <button id="send-btn" onclick="sendMessage()">Send</button>
@@ -1500,6 +1516,7 @@
         <div id="agents-ops-board" class="agents-ops-board"></div>
         <aside id="agents-ops-detail" class="agents-ops-detail"></aside>
       </div>
+      <section id="agents-peer-audit" class="agents-peer-audit" aria-label="Service participants"></section>
     </div>
     <div id="agents-queue-body" class="agents-tab-body">
       <div id="agents-queue-panel" class="agents-panel"></div>
@@ -3302,7 +3319,7 @@
 <script src="/static/js/core/app.js?v={{ ASSET_VERSION }}-taskbar2"></script>
 
 <!-- Views -->
-<script src="/static/js/views/conversations.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/conversations.js?v={{ ASSET_VERSION }}-shared-room1"></script>
 <script src="/static/js/views/terminal.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/terminal-commands.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/files.js?v={{ ASSET_VERSION }}"></script>
@@ -3323,8 +3340,8 @@
 <script src="/static/js/views/records-files.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/projects.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/traced.js?v={{ ASSET_VERSION }}"></script>
-<script src="/static/js/core/trace-bus.js?v=30"></script>
-<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-local-chat6"></script>
+<script src="/static/js/core/trace-bus.js?v=31"></script>
+<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-live-team6"></script>
 <script src="/static/js/views/services.js?v={{ ASSET_VERSION }}-services3"></script>
 <script src="/static/js/views/ollama.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/time-wizard.js?v={{ ASSET_VERSION }}"></script>
@@ -3351,8 +3368,8 @@
 <script src="/static/js/views/home_banner.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/orientation_card.js?v={{ ASSET_VERSION }}"></script>
 
-<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}-hc-local-chat4"></script>
-<script src="/static/js/friday-auth.js?v=28"></script>
+<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}-hc-live-team5"></script>
+<script src="/static/js/friday-auth.js?v=29-session-recovery"></script>
 <script src="/static/js/core/aig_focus.js?v={{ ASSET_VERSION }}"></script>
 <!-- Init (must be last — depends on all above) -->
 <script src="/static/js/core/sse-client.js?v=2"></script>

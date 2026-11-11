@@ -34,15 +34,15 @@ def test_automatic_local_selection_ignores_saved_manual_toggles():
     subprocess.run([node, '-e', 'let CHAT_AGENT_OPTIONS;\n' + script], check=True, timeout=10)
 
 
-def test_both_chat_surfaces_request_local_only_without_manual_selection():
+def test_both_chat_surfaces_keep_local_lane_with_explicit_peer_mentions():
     home = (ROOT / 'frontend/static/js/views/home-chat.js').read_text()
     send = home.split('function _hcSend() {', 1)[1].split("fetch('/api/chat'", 1)[0]
-    assert 'getAutomaticLocalChatAgents()' in send
+    assert 'getChatDispatchAgents(text)' in send
     assert 'HC_MANUAL_KEY' not in send
     assert 'local_only: true' in send
     chat = (ROOT / 'frontend/static/js/views/chat.js').read_text()
     send = chat.split('function sendMessage(', 1)[1]
-    assert 'getAutomaticLocalChatAgents()' in send
+    assert 'getChatDispatchAgents(msg)' in send
     assert 'local_only: true' in send
     assert 'auto_relay: false' in send
 
@@ -86,7 +86,8 @@ def test_executor_reports_backend_results_not_model_claims(monkeypatch):
     assert receipts == [{'skill': 'file_read', 'status': 'failed'}]
 
 
-def test_local_only_chat_never_dispatches_cloud_and_routes_to_apex(monkeypatch, tmp_path):
+@pytest.mark.parametrize("message,local_only", [("Open a program", True), ("@apex Open a program", False), ("@apex Open a program", True)])
+def test_local_only_chat_never_dispatches_cloud_and_routes_to_apex(monkeypatch, tmp_path, message, local_only):
     from flask import Flask
     from frontend.blueprints import chat
     import core.chat_continuity
@@ -111,10 +112,10 @@ def test_local_only_chat_never_dispatches_cloud_and_routes_to_apex(monkeypatch, 
     app.register_blueprint(chat.chat_bp)
     with app.test_client() as client:
         response = client.post('/api/chat', json={
-            'message': 'Open a program', 'agents': ['ten'], 'local_only': True, 'new_thread': True,
+            'message': message, 'agents': ['ten'], 'local_only': local_only, 'new_thread': True,
         })
     assert response.status_code == 200, response.get_json()
     data = response.get_json()
     assert data['agent'] == 'apex' and data['agents'] == ['apex']
     assert data['routed_from'] == ['ten']
-    assert models == ['gpt-oss:20b']
+    assert models == ['qwen2.5:14b-instruct']

@@ -123,6 +123,7 @@ def chat(message, conversation_history=None, stage_cb=None, conv_id=None):
                     response = client.chat.completions.create(
                         model=m, messages=msgs, max_tokens=4096,
                     )
+                    _emit(f'provider model: {m}')
                     break
                 except Exception as e:
                     last_err = e

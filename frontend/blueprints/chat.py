@@ -1,3 +1,4 @@
+import json
 """chat.py — Chat Engine routes
 
 LINKED TO:
@@ -21,7 +22,7 @@ import threading
 import time
 import urllib.request
 
-from flask import Blueprint, request, Response, jsonify, send_file
+from flask import Blueprint, request, Response, jsonify, send_file, g
 from services import *
 from database import log_ghost_circle
 from utils.db.registry import get_agent_roster as _reg_roster, get_single_task_locals as _reg_stl
@@ -82,12 +83,74 @@ def _sse_module():
 def _sse_chat(conversation_id, agent, status, **extra):
     """Lazy SSE publish to avoid cross-blueprint import at module load."""
     try:
+        if agent == "apex":
+            extra.setdefault("runtime_class", "local")
         _sse_module().publish_chat_update(conversation_id, agent, status, **extra)
     except Exception:
         _LOG.exception('Failed to publish chat SSE update for conversation %s', conversation_id)
 
 chat_bp = Blueprint('chat', __name__)
+
+
+@chat_bp.teardown_request
+def release_inline_execution(error=None):
+    key=getattr(g,'hb_inline_execution',None)
+    if key:
+        from contextlib import closing
+        from core.hb_executions import release
+        with closing(get_connection()) as conn,conn:
+            release(conn,key,'failed' if error else 'completed')
+        g.hb_inline_execution=None
+from core.apex_turn_queue import TurnQueue as _TurnQueue
+_APEX_TURNS = _TurnQueue()
+APEX_QUEUE_SECONDS = 1260  # one pending approval (900 s) plus one full turn (360 s)
 _LOG = logging.getLogger('fridays.chat')
+
+
+def _dispatch_apex_peers(conv_id, agent_name, response_text):
+    """Hand strict APEX [DISPATCH: @peer] lines to the Hummingbird peer queue."""
+    from core import peer_bridge as peers
+    conn = None
+    try:
+        conn = get_connection()
+        row = conn.execute(
+            "SELECT MAX(id) FROM messages WHERE conversation_id=? AND from_agent=?",
+            (conv_id, agent_name),
+        ).fetchone()
+        result = peers.dispatch_from_agent(conn, conv_id, row[0] if row else None,
+                                           agent_name, response_text)
+        conn.commit()
+        if result.get('queued') or result.get('locked'):
+            _LOG.info('APEX peer dispatch for conversation %s: %s', conv_id, result)
+        return result
+    except Exception:
+        _LOG.exception('APEX peer dispatch failed for conversation %s', conv_id)
+        return None
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def _share_apex_exchange(conv_id, operator_message_id, message, answer, receipts, addressed):
+    """Copy a committed APEX turn only to peers explicitly addressed by the owner."""
+    from core import peer_bridge as peers
+    operator = _tool_operator()
+    if not operator:
+        return None
+    conn = None
+    try:
+        conn = get_connection()
+        queued = peers.share_exchange(conn, conv_id, operator_message_id, message, 'apex', answer,
+                                      receipts=receipts or (), addressed=addressed or (),
+                                      sender=operator[0])
+        conn.commit()
+        return queued
+    except Exception:
+        _LOG.exception('APEX team copy failed for conversation %s', conv_id)
+        return None
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def _tool_operator():
@@ -100,6 +163,154 @@ def _tool_operator():
     if not user or user['role'] != 'owner' or not token:
         return None
     return user['username'], session_identity(token)
+
+
+def _owner_package_command(message):
+    """Run a literal owner-pasted Hummingbird package command from main chat."""
+    import hashlib, shlex, subprocess, uuid
+    from pathlib import Path
+    from urllib.parse import urlsplit
+    from core import agent_identity
+    from utils.db.chat import new_conversation, log_message
+
+    operator=_tool_operator()
+    if not operator:return jsonify({'ok':False,'response':'An authenticated owner session is required to run a package command.'}),401
+    owner,_=operator
+    payload=request.get_json(silent=True) or {}
+    if payload.get('relay_from'):
+        return jsonify({'ok':False,'response':'Package commands must be typed directly by the owner, not relayed by an agent.'}),403
+    origin=request.headers.get('Origin','')
+    if not origin or (urlsplit(origin).scheme,urlsplit(origin).netloc)!=(request.scheme,request.host):
+        return jsonify({'ok':False,'response':'Package commands must come from the authenticated same-origin HB chat.'}),403
+    try:
+        if not isinstance(message,str) or len(message)>512 or any(ord(c)<32 for c in message):
+            raise ValueError('Paste one complete bash command on a single line.')
+        parts=shlex.split(message)
+        if len(parts)!=2 or parts[0]!='bash':
+            raise ValueError('Main chat runs only a single bash package-script command, without arguments or shell composition.')
+        script=Path(parts[1])
+        if (not script.is_absolute() or script.name not in {'activate.sh','deactivate.sh','rollback.sh'}
+                or not script.parent.name.startswith('Hummingbird-')
+                or script.parent.parent!=Path('/home/jd')
+                or script.is_symlink() or script.parent.is_symlink()
+                or not script.is_file() or not (script.parent/'README.md').is_file()
+                or (script.parent/'README.md').is_symlink()):
+            raise ValueError('The script must be activate.sh, deactivate.sh or rollback.sh in a reviewed /home/jd/Hummingbird-* package.')
+        info=script.stat();directory=script.parent.stat()
+        if (info.st_uid!=os.getuid() or directory.st_uid!=os.getuid()
+                or info.st_gid!=os.getgid() or directory.st_gid!=os.getgid()
+                or info.st_mode&0o002 or directory.st_mode&0o002 or info.st_size>128*1024):
+            raise ValueError('Package command ownership or file permissions failed the host check.')
+    except (ValueError,OSError) as exc:
+        return jsonify({'ok':False,'response':'Package command not run: '+str(exc)}),400
+
+    data=payload
+    conv_id=None
+    try:
+        requested=int(data.get('conversation_id')) if data.get('conversation_id') is not None else 0
+    except (TypeError,ValueError):requested=0
+    if requested>0:
+        from contextlib import closing
+        from utils.db._connection import get_connection
+        with closing(get_connection()) as conn:
+            if conn.execute('SELECT 1 FROM conversations WHERE id=?',(requested,)).fetchone():conv_id=requested
+    if conv_id is None:
+        env=os.environ.get('SWARM_ENV','prod').upper()
+        conv_id=new_conversation('HB command: '+script.name,source='terminal-ui:'+env,sender=owner)
+    log_message(conv_id,'user',message,to_agent='fridays',message_type='chat')
+    action_id=uuid.uuid4().hex
+    _sse_chat(conv_id,'fridays','running',action_id=action_id,stage='Running the owner-pasted Hummingbird package command')
+    outcome='failed';exit_code=-1;output='';error=''
+    try:
+        with agent_identity.execution('fridays',requested_by=owner,conversation_id=conv_id) as actor:
+            agent_identity.event(actor,action_id,'owner_package_command','started',result={'script':script.name,'command_sha256':hashlib.sha256(message.encode()).hexdigest()})
+            _sse_chat(conv_id,'fridays','running',owner_command=True,action_id=action_id,stage='Starting '+script.name)
+            run_env=os.environ.copy()
+            runtime_dir='/run/user/'+str(os.getuid())
+            if Path(runtime_dir).is_dir():
+                run_env.setdefault('XDG_RUNTIME_DIR',runtime_dir)
+                bus=Path(runtime_dir)/'bus'
+                if bus.exists():run_env.setdefault('DBUS_SESSION_BUS_ADDRESS','unix:path='+str(bus))
+            try:
+                result=subprocess.run(['/bin/bash',str(script)],cwd='/home/jd',env=run_env,
+                    capture_output=True,text=True,errors='replace',timeout=300,start_new_session=True)
+                exit_code=result.returncode
+                output=(result.stdout or '')+(('\n'+result.stderr) if result.stderr else '')
+                outcome='succeeded' if exit_code==0 else 'failed'
+            except subprocess.TimeoutExpired as exc:
+                stdout=exc.stdout.decode(errors='replace') if isinstance(exc.stdout,bytes) else (exc.stdout or '')
+                stderr=exc.stderr.decode(errors='replace') if isinstance(exc.stderr,bytes) else (exc.stderr or '')
+                output=stdout+(('\n'+stderr) if stderr else '')+'\nCommand exceeded the 300-second limit.'
+                error='timeout';outcome='failed'
+            except Exception as exc:
+                output='Command launcher failed: '+type(exc).__name__;error=type(exc).__name__;outcome='failed'
+            output=output[-16000:].strip()
+            agent_identity.event(actor,action_id,'owner_package_command',outcome,
+                result={'script':script.name,'exit_code':exit_code,'output_sha256':hashlib.sha256(output.encode()).hexdigest(),'error_type':error or None})
+    except Exception as exc:
+        output='HB could not run the package command: '+type(exc).__name__
+        outcome='failed'
+    summary=('HB package command completed' if outcome=='succeeded' else 'HB package command failed')+f' (exit code {exit_code}).'
+    response=summary+(('\n\n'+output) if output else '')
+    log_message(conv_id,'fridays',response,to_agent='user',message_type='response')
+    _sse_chat(conv_id,'fridays','completed' if outcome=='succeeded' else 'failed',owner_command=True,action_id=action_id,exit_code=exit_code)
+    return jsonify({'ok':True,'state':'ok','mode':'owner_package_command','agent':'fridays','model':'host-package-runner',
+        'response':response,'tokens':0,'responses':[{'agent':'fridays','response':response,'tokens':0,'pending':False,'job_id':None}],
+        'pending_jobs':[],'conversation_id':conv_id,'command_status':outcome,'exit_code':exit_code})
+
+
+def _is_owner_package_command(message):
+    return isinstance(message,str) and message.lstrip().startswith('bash /home/jd/Hummingbird-')
+
+
+@chat_bp.route('/api/chat/hf-mirror/status', methods=['GET'])
+@chat_bp.route('/api/chat/hf-mirror/control', methods=['POST'])
+def api_hf_mirror_control():
+    """Owner-only main-chat control for the resumable Hub mirror."""
+    from urllib.parse import urlsplit
+    from core import agent_identity
+    from core import hf_mirror
+    import uuid
+    operator=_tool_operator()
+    if not operator:return jsonify({'ok':False,'error':'Authenticated owner session required'}),401
+    owner,_=operator
+    if request.method=='POST':
+        origin=request.headers.get('Origin','')
+        if not origin or (urlsplit(origin).scheme,urlsplit(origin).netloc)!=(request.scheme,request.host):
+            return jsonify({'ok':False,'error':'Same-origin owner action required'}),403
+        if request.headers.get('X-HB-Owner-Action')!='1':
+            return jsonify({'ok':False,'error':'Owner action header required'}),403
+        body=request.get_json(silent=True)
+        if not isinstance(body,dict) or body.get('action') not in {'pause','resume','curate','include'}:
+            return jsonify({'ok':False,'error':'Choose pause, resume, curate or include'}),400
+        action=body['action']
+        if set(body)!={'action','repo'} and set(body)!={'action'}:
+            return jsonify({'ok':False,'error':'Unexpected control fields'}),400
+        if action=='include' and (not isinstance(body.get('repo'),str) or len(body['repo'])>200):
+            return jsonify({'ok':False,'error':'include requires one public Hub repository ID'}),400
+        try:
+            with agent_identity.execution('fridays',requested_by=owner,conversation_id=2833) as actor:
+                action_id=uuid.uuid4().hex
+                agent_identity.event(actor,action_id,'hf_mirror.'+action,'started',
+                    result={'repo':body.get('repo')})
+                if action in {'curate','include'}:
+                    repos=hf_mirror.acquisition_policy().get('explicit_repositories',[])
+                    if action=='include':repos.append(body['repo'])
+                    result=hf_mirror.set_acquisition_policy('curated',repos)
+                elif action=='pause':result=hf_mirror.pause(True)
+                else:result=hf_mirror.pause(False)
+                agent_identity.event(actor,action_id,'hf_mirror.'+action,'succeeded',
+                    result={'policy':result.get('acquisition_policy'),'pause_requested':result.get('pause_requested',action=='pause')})
+                result['action_id']=action_id
+        except (PermissionError,ValueError) as exc:return jsonify({'ok':False,'error':str(exc)}),400
+        result['mirror']=hf_mirror.status()
+        result['message']=('Current file may finish; the mirror will pause at its next file boundary.' if action in {'pause','curate','include'} else
+            'Mirror resumed under its selected policy. Existing verified files and checkpoints are retained.')
+        return jsonify({'ok':True,**result})
+    result=hf_mirror.status()
+    response=jsonify({'ok':True,'mirror':result,'observed_at':result.get('observed_at')})
+    response.headers['Cache-Control']='no-store'
+    return response
 
 
 @chat_bp.route('/api/tool-approval', methods=['GET', 'POST'])
@@ -1765,6 +1976,7 @@ def _friendly_api_error(exc) -> str:
 def api_chat():
     """Send a chat message to one or more agents on a shared conversation thread."""
     data = request.get_json() or {}
+    bound_task = None
     message = (data.get('message') or '').strip()
     explicit_agent_field = str(data.get('agent') or '').strip().lower()
     agent = (explicit_agent_field or 'seven').strip().lower()
@@ -1779,6 +1991,30 @@ def api_chat():
 
     if not message:
         return jsonify({'ok': False, 'response': 'Empty message'}), 400
+    if not relay_from:
+        from importlib import import_module
+        control_module=import_module(__package__+'.peer_bridge')
+        control_reply=control_module.maybe_owner_chat_control(data,message)
+        if control_reply is not None:return control_reply
+    if _is_owner_package_command(message):
+        return _owner_package_command(message)
+    # Main chat always starts with the local harness. Stale UI selections and
+    # historical thread participants cannot implicitly invoke paid providers.
+    data["local_only"] = True
+    from core.peer_bridge import mentioned_peers
+    peer_targets = mentioned_peers(message)
+    # Local APEX has no external inbox worker; invoke its tool-enabled handler.
+    if peer_targets == ["apex"]:
+        peer_targets = []
+        data["local_only"] = True
+    # In the APEX lane an @mention only flags a peer as addressed; APEX still answers first.
+    if (peer_targets and not relay_from
+            and re.match(r'^\s*@(codex|gemini|instructor|copilot|tiered(?:-assistant)?|mistral(?:-vibe)?|vibe)\b', message, re.I)):
+        import importlib as _importlib
+        import sys as _sys
+        peer_name = _sse_module().__name__.replace('.sse', '.peer_bridge')
+        peer_mod = _sys.modules.get(peer_name) or _importlib.import_module(peer_name)
+        return peer_mod.dispatch_operator_message(data, message, [peer for peer in peer_targets if peer != "apex"])
     from core.chat_continuity import (
         STATE_OFFLINE, STATE_OK, STATE_RECOVERY, APEX_AGENT, ApexOffline, ContinuityChat,
         apex_roster, apex_system_prompt, call_apex, recovery_roster, storage_fault,
@@ -2720,28 +2956,51 @@ def api_chat():
         )
         return response_text, tokens_used, elapsed_ms
 
+    selected_model = APEX_AGENT['model']  # bootstrap model for storage recovery only
     try:
         continuity = ContinuityChat()
         continuing_recovery = continuity.owns_id(requested_conv_id)
         fault = primary_chat_fault
+        if continuing_recovery and not fault and apex_lane:
+            from core.apex_permissions import autonomous_writes_allowed, resume_recovery_with_tools
+            recovery_operator = _tool_operator()
+            if recovery_operator and autonomous_writes_allowed(recovery_operator[0]):
+                resumed = resume_recovery_with_tools(
+                    continuity, requested_conv_id, recovery_operator[0], get_connection)
+                requested_conv_id = resumed['conversation_id']
+                data['conversation_id'] = requested_conv_id
+                continuing_recovery = False
         from core import llm
 
-        apex_deadline = time.monotonic() + 180
+        from core.apex_tools import TURN_SECONDS
+        apex_deadline = time.monotonic() + TURN_SECONDS
 
         def apex_model(model, messages):
-            remaining = max(1, int(apex_deadline - time.monotonic()))
-            from core.apex_tools import TURN_FORMAT
+            remaining = int(apex_deadline - time.monotonic())
+            if remaining <= 0:
+                raise RuntimeError('APEX turn deadline exceeded; inference not submitted')
+            from core.apex_tools import response_format_for_turn
+            from core.apex_context import APEX_REASONING_EFFORT, context_tokens, generation_budget
+            output_tokens = generation_budget(messages) if apex_lane and not (fault or continuing_recovery) else 1800
+            remaining = int(apex_deadline - time.monotonic())
+            if remaining <= 0:
+                raise RuntimeError('APEX turn deadline exceeded during context budgeting; inference not submitted')
+            options = {'num_ctx': context_tokens(), 'num_predict': output_tokens,
+                       'require_complete_output': apex_lane and not (fault or continuing_recovery)}
+            if apex_lane and not (fault or continuing_recovery):
+                options['reasoning_effort'] = APEX_REASONING_EFFORT
             return llm.chat_via_gateway(
                 model, messages, temperature=0.2, idle_timeout_s=min(60, remaining), absolute_timeout_s=remaining,
-                options={'num_ctx': 8192, 'num_predict': 1800},
-                response_format=TURN_FORMAT if apex_lane and not (fault or continuing_recovery) else None,
+                queue_timeout_s=1,
+                options=options,
+                response_format=response_format_for_turn() if apex_lane and not (fault or continuing_recovery) else None,
             )
 
         def _offline_response(exc, conversation_id=None, *, recovery=False):
             _LOG.error('APEX offline: %s', exc)
             payload = {
                 'ok': False, 'state': STATE_OFFLINE, 'agent': APEX_AGENT['name'],
-                'model': APEX_AGENT['model'], 'storage_degraded': bool(recovery),
+                'model': selected_model, 'storage_degraded': bool(recovery),
                 'response': f"APEX is offline: {exc}",
                 'routed_from': routed_from,
             }
@@ -2768,7 +3027,7 @@ def api_chat():
                 return _offline_response(exc, recovery=True)
             result['routed_from'] = routed_from
             _sse_chat(result['conversation_id'], APEX_AGENT['name'], 'completed',
-                      state=STATE_RECOVERY, model=APEX_AGENT['model'])
+                      state=STATE_RECOVERY, model=selected_model)
             return jsonify(result)
         conv_id = None
         if requested_conv_id is not None:
@@ -2806,6 +3065,27 @@ def api_chat():
         to_agent = normalized_agents[0] if len(normalized_agents) == 1 else ','.join(normalized_agents)
         msg_sender = relay_from if relay_from else 'user'
         log_message(conv_id, msg_sender, message, to_agent=to_agent, message_type='relay' if relay_from else 'chat')
+        operator_message_id = None
+        if apex_lane and not relay_from:
+            _id_conn = get_connection()
+            try:
+                _row = _id_conn.execute(
+                    "SELECT MAX(id) FROM messages WHERE conversation_id=? AND from_agent=?",
+                    (conv_id, msg_sender)).fetchone()
+                operator_message_id = _row[0] if _row else None
+                if operator_message_id:
+                    from core import hb_tasks
+                    hb_tasks.ensure_schema(_id_conn)
+                    tracked_task = hb_tasks.bind(_id_conn,conv_id,operator_message_id,task_id=data.get('task_id'),project_id=data.get('project_id'),step_id=data.get('step_id'))
+                    bound_task = tracked_task
+                    from core.hb_inline_tasks import implementation_request,start as start_inline
+                    operator=_tool_operator()
+                    if operator and implementation_request(message,data.get('task_id')):
+                        from core.apex_permissions import autonomous_writes_allowed
+                        g.hb_inline_execution=start_inline(_id_conn,tracked_task,owner=operator[0],allow_writes=autonomous_writes_allowed(operator[0]))
+                    _id_conn.commit()
+            finally:
+                _id_conn.close()
 
         if normalized_agents == ['watchdog']:
             clarify = (
@@ -2913,27 +3193,68 @@ def api_chat():
             thread_rows = _fetch_chat_thread_rows(conv_id, limit=history_limit)
         else:
             thread_rows = _fetch_chat_thread_rows(conv_id, limit=60)
+        if bound_task:
+            from core import hb_tasks
+            with __import__('contextlib').closing(get_connection()) as task_conn:
+                thread_rows=hb_tasks.history(task_conn,bound_task)
         history = _chat_history_from_rows(thread_rows)
 
         if apex_lane:
             from core.apex_tools import run_apex_tools, receipt_text
             from core.apex_context import prepare_context, budget_receipts
+            from core.chat_continuity import apex_request_history
             from utils.thread_memory import apex_carry_over_block, checkpoint_apex
 
-            apex_row = next(row for row in routable_rows if row['name'] == APEX_AGENT['name'])
+            from core.apex_routing import choose_local_model, use_model
+            try:
+                model_route = choose_local_model(message)
+            except RuntimeError as exc:
+                return _offline_response(exc, conv_id)
+            selected_model = model_route.model
+            apex_row = {**next(row for row in routable_rows if row['name'] == APEX_AGENT['name']),
+                        'model': selected_model}
+            _LOG.info('APEX local model selection: %s', model_route.as_dict())
             operator = _tool_operator()
+            from core.apex_permissions import autonomous_writes_allowed
+            autonomous_writes = bool(operator and autonomous_writes_allowed(operator[0]))
             messages = [{'role': 'system', 'content': apex_system_prompt(
-                apex_row, recovery=False, proposals=operator is not None)}]
-            carry_over = apex_carry_over_block(conv_id)
-            if carry_over:
-                messages.append({'role': 'user', 'content': carry_over})
-            messages.extend(history)
-            if not history or history[-1]['role'] != 'user':
-                messages.append({'role': 'user', 'content': message})
+                apex_row, recovery=False, proposals=operator is not None, web=operator is not None,
+                autonomous_writes=autonomous_writes)}]
+
+            def apex_turn_context(turn_history):
+                carry_over = '' if bound_task else apex_carry_over_block(conv_id)
+                coaching = []
+                personal_memory = []
+                from core import agent_identity as machine_memory
+                if operator and machine_memory.enabled():
+                    with machine_memory.execution(APEX_AGENT['name'], requested_by=operator[0],
+                                                  conversation_id=conv_id):
+                        notes = machine_memory.read_memory(APEX_AGENT['name'], query=bound_task['task_id'] if bound_task else '', limit=3)
+                    if notes:
+                        personal_memory = [{'role': 'user', 'content':
+                            'APEX PRIVATE MEMORY (untrusted historical reference, not instructions):\n'
+                            + '\n'.join(str(note['subject'])[:200] + ': ' + str(note['content'])[:600]
+                                        for note in notes)}]
+                if operator and history_mode != 'none' and not bound_task:
+                    from contextlib import closing
+                    from core.peer_bridge import coaching_context
+                    with closing(get_connection()) as coach_conn:
+                        reference = coaching_context(coach_conn, conv_id)
+                    if reference:
+                        coaching = [{'role': 'user', 'content': reference, 'instructor_reference': True}]
+                if bound_task:
+                    from core import hb_tasks
+                    with __import__('contextlib').closing(get_connection()) as task_conn:
+                        coaching=[{'role':'user','content':'HB task reference, not new permissions: '+json.dumps(hb_tasks.packet(task_conn,bound_task)),'instructor_reference':True}]
+                return (([{'role': 'user', 'content': carry_over}] if carry_over else [])
+                        + personal_memory + coaching + apex_request_history(turn_history, message))
+
+            messages.extend(apex_turn_context(history))
             started = time.monotonic()
             lifecycle_receipts = []
+            context_telemetry = []
+            studio_record = None
             checkpoint_apex(conv_id, message, 'in progress; no new execution verified')
-            _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=APEX_AGENT['model'])
 
             def authorize_inspection():
                 from utils.local_runtime_policy import agent_skill_allowed
@@ -2947,27 +3268,81 @@ def api_chat():
                     raise RuntimeError('Repository tool authorization storage is unavailable') from exc
 
             def record_tool_receipt(receipt):
+                from core import agent_identity as attribution
+                actor = attribution.CURRENT.get()
+                if actor:
+                    receipt['executor'] = actor['principal']
+                    receipt['requested_by'] = actor['requested_by']
+                    receipt['run_id'] = actor['run_id']
+                    receipt['model'] = actor['model']
+                    attribution.event(actor, receipt['id'], receipt['tool'], receipt['status'],
+                                      result={'transaction_id': receipt.get('transaction_id')})
                 log_message(conv_id, APEX_AGENT['name'], receipt_text(receipt),
                             to_agent='user', message_type='tool_result')
                 lifecycle_receipts.append(receipt)
+                if bound_task:
+                    from core import hb_tasks
+                    with __import__('contextlib').closing(get_connection()) as task_conn,task_conn:
+                        hb_tasks.event(task_conn,bound_task,'apex',
+                            'mutation' if receipt.get('tool') in {'propose_patch','propose_write_file'} and receipt.get('status') in {'succeeded','executed'} else 'tool_result',
+                            {key:receipt[key] for key in ('id','tool','status','output','transaction_id') if key in receipt})
+                    hb_tasks.flush_memory()
+
+                record_studio('tool_receipt')
                 checkpoint_apex(conv_id, message, 'in progress', lifecycle_receipts)
                 # Outputs stay in the authenticated thread, not the broadcast SSE feed.
                 _sse_chat(conv_id, APEX_AGENT['name'], 'tool_receipt',
                           receipt={key: receipt[key] for key in ('id', 'tool', 'status', 'truncated')})
+
+            def web_tool(args):
+                from lib.search.internet import search_provider
+                from utils.local_runtime_policy import agent_skill_allowed
+                from sqlite3 import DatabaseError
+                if not operator or _tool_operator() != operator:
+                    raise PermissionError('Authenticated owner session required for web search')
+                try:
+                    allowed = (
+                        agent_skill_allowed(APEX_AGENT['name'], 'web_search')
+                        and can_user_invoke_skill(identity['effective_user'], 'web_search', default_allow=True)
+                    )
+                except DatabaseError as exc:
+                    raise RuntimeError('Web search authorization storage is unavailable') from exc
+                if not allowed:
+                    raise PermissionError('Web search is not authorized')
+                return search_provider(args['query'], args['provider'])
 
             def propose_tool(repository, tool, args):
                 from core.tool_approval import APPROVALS, ApprovalConflict
                 if not operator or _tool_operator() != operator:
                     raise PermissionError('Authenticated owner session required for proposals')
                 owner, session_id = operator
+                from core.apex_permissions import WRITE_TOOLS, execute_authorized_write
+                if tool in WRITE_TOOLS and autonomous_writes:
+                    def authorize_write(_tool):
+                        return (_tool_operator() == operator
+                                and can_user_invoke_skill(owner, 'fs_write', default_allow=True))
+                    return execute_authorized_write(
+                        APPROVALS, repository, tool, args, operator, conv_id, authorize_write)
                 try:
-                    transaction = APPROVALS.propose(repository, tool, args, owner, session_id, conv_id)
+                    durable_operation=None
+                    if bound_task and tool in {'propose_patch','propose_write_file'}:
+                        from core import hb_task_operations,agent_identity as identity_runtime
+                        with __import__('contextlib').closing(get_connection()) as operation_conn,operation_conn:
+                            transaction,durable_operation,reused=hb_task_operations.prepare_owner_proposal(
+                                operation_conn,APPROVALS,repository,bound_task,tool,args,owner,session_id,conv_id,
+                                (identity_runtime.CURRENT.get() or {}).get('execution_id'))
+                        if reused:return reused
+                    else:
+                        transaction = APPROVALS.propose(repository, tool, args, owner, session_id, conv_id)
                 except ApprovalConflict as exc:
                     raise ValueError(str(exc)) from exc
                 waiting = time.monotonic()
                 try:
                     _sse_module().publish('tool_approval_pending', transaction.public(), audience=session_id)
                     result = APPROVALS.wait(transaction)
+                    if durable_operation:
+                        with __import__('contextlib').closing(get_connection()) as operation_conn,operation_conn:
+                            result=hb_task_operations.finish(operation_conn,durable_operation,result)
                 except Exception:
                     APPROVALS.cancel(transaction, 'Proposal delivery failed; no execution authorized')
                     raise
@@ -2976,48 +3351,247 @@ def api_chat():
                     apex_deadline += time.monotonic() - waiting
                 return result
 
+            def studio_tool(tool, args):
+                from core.apex_studio import save_handoff, read_handoff
+                from sqlite3 import DatabaseError
+                if not operator or _tool_operator() != operator:
+                    raise PermissionError('Authenticated owner session required for Studio continuity')
+                owner, _ = operator
+                try:
+                    from core.hb_agent_tools import READ_TOOLS, WRITE_TOOLS, call
+                    if tool in READ_TOOLS | WRITE_TOOLS:
+                        return call(tool,args)
+                    if tool in {'backlog_list','runtime_status','archive_status','archive_ingest','archive_mirror_pause','archive_mirror_resume','archive_mirror_curate','memory_search','memory_save','terminal_run'}:
+                        from core.hb_workflow import call_control
+                        return call_control(tool,args)
+                    if tool == 'knowledge_search':
+                        from core.apex_knowledge import search
+                        if set(args) != {'query'}:
+                            raise ValueError('knowledge_search accepts only query')
+                        return search(args['query'])
+                    if tool == 'knowledge_read':
+                        from core.apex_knowledge import read
+                        if set(args) - {'document_id', 'offset'} or 'document_id' not in args:
+                            raise ValueError('knowledge_read requires document_id and optional offset')
+                        return read(args['document_id'], args.get('offset', 0))
+                    if tool == 'ask_instructor':
+                        from contextlib import closing
+                        from core import peer_bridge as peers
+                        if set(args) != {'peer', 'question', 'context'}:
+                            raise ValueError('ask_instructor requires peer, question and context')
+                        try:
+                            with closing(get_connection()) as peer_conn, peer_conn:
+                                result = peers.request_help(peer_conn, conv_id, **args)
+                        except peers.PeerError as exc:
+                            raise ValueError(str(exc)) from None
+                        _sse_chat(conv_id, 'apex', 'instructor_requested', recipient=result['recipient'])
+                        return result
+                    if tool == 'studio_evidence_get':
+                        from core.apex_evidence import read_evidence
+                        if set(args) != {'evidence_id'}:
+                            raise ValueError('studio_evidence_get accepts only evidence_id')
+                        return read_evidence(conv_id, owner, args['evidence_id'])
+                    if tool == 'alm_step_get':
+                        from core.apex_alm import read_step
+                        if set(args) != {'step_id'}:
+                            raise ValueError('alm_step_get accepts only step_id')
+                        return read_step(args['step_id'])
+                    if tool == 'studio_resume':
+                        if set(args) - {'offset'}:
+                            raise ValueError('studio_resume accepts only offset')
+                        return read_handoff(conv_id, owner, offset=args.get('offset', 0), raw=False)
+                    if tool not in {'studio_handoff', 'studio_capacity_handoff'} or set(args) != {'title', 'summary', 'tasks'}:
+                        raise ValueError('studio_handoff requires title, summary and tasks')
+                    return save_handoff(conv_id, owner, message, context=messages,
+                                        receipts=lifecycle_receipts,
+                                        preserve_tasks=tool == 'studio_capacity_handoff', **args)
+                except DatabaseError as exc:
+                    _LOG.exception('APEX Studio continuity storage failed')
+                    raise RuntimeError(f'APEX Studio continuity storage failed: {exc}') from exc
+
+            def record_studio(state, response='', tokens=0):
+                nonlocal studio_record
+                from core.apex_studio import record_turn
+                from sqlite3 import DatabaseError
+                if not operator:
+                    return
+                if _tool_operator() != operator:
+                    raise PermissionError('Authenticated operator session changed during Studio recording')
+                try:
+                    studio_record = record_turn(
+                        conv_id, operator[0], message, messages, lifecycle_receipts,
+                        state=state, response=response, tokens=tokens, telemetry=context_telemetry,
+                        message_id=operator_message_id)
+                except DatabaseError as exc:
+                    _LOG.exception('APEX automatic Studio recording failed')
+                    raise RuntimeError(f'APEX automatic Studio recording failed: {exc}') from exc
+
+            def test_tool(args):
+                if bound_task:
+                    from core.hb_agent_tools import call
+                    return call('run_tests',args)
+                from core.apex_test_runner import run_tests
+                if not operator or _tool_operator() != operator:
+                    raise PermissionError('Authenticated owner session required for test runs')
+                if isinstance(args, dict) and 'case_id' in args:
+                    from core.apex_alm import run_recorded_tests
+                    return run_recorded_tests(args, run_tests)
+                return run_tests(args)
+
+            def prepare_working_context(current):
+                return prepare_context(current, archive_history=operator is not None,
+                                       telemetry=context_telemetry.append)
+
+            def prepare_tool_receipts(current, receipts):
+                return budget_receipts(current, receipts, archive_history=operator is not None,
+                                       telemetry=context_telemetry.append)
+
+            def model_progress(event):
+                stage = str(event.get('stage') or 'running').replace('_', ' ')
+                _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=selected_model,
+                          stage=stage + ': ' + selected_model)
+
+            queued_turn = []
+
+            def wait_for_turn(position):
+                queued_turn.append(position)
+                _sse_chat(conv_id, APEX_AGENT['name'], 'queued', model=selected_model, position=position)
+
+            from core.hb_process_lock import ProcessLock
+            process_turn=ProcessLock('apex-turn')
+            slot_held = _APEX_TURNS.acquire(APEX_QUEUE_SECONDS, on_wait=wait_for_turn)
             try:
-                response_text, tokens_used, tool_receipts = run_apex_tools(
-                    apex_model, messages, authorize_inspection, record_tool_receipt,
-                    proposal_handler=propose_tool if operator else None,
-                    prepare_messages=prepare_context, prepare_receipts=budget_receipts)
-            except ApexOffline as exc:
-                checkpoint_apex(conv_id, message, f'offline: {exc}', lifecycle_receipts)
-                _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state=STATE_OFFLINE, error=str(exc))
-                return _offline_response(exc, conv_id)
-            except RuntimeError as exc:
-                checkpoint_apex(conv_id, message, f'blocked: {exc}', lifecycle_receipts)
-                _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state='error', error=str(exc))
-                _LOG.error('APEX runtime error: %s', exc)
+                process_held=process_turn.acquire(APEX_QUEUE_SECONDS,on_wait=wait_for_turn) if slot_held else False
+                if not slot_held or not process_held:
+                    busy = (f'APEX was still busy with earlier turns after {APEX_QUEUE_SECONDS}s; your message '
+                            'is saved in this thread but was not answered. Send it again when APEX is free.')
+                    record_studio('blocked', busy)
+                    checkpoint_apex(conv_id, message, f'blocked: {busy}', lifecycle_receipts)
+                    _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state='busy', error=busy)
+                    return jsonify({
+                        'ok': False, 'state': 'busy', 'agent': APEX_AGENT['name'],
+                        'model': selected_model, 'conversation_id': conv_id,
+                        'response': busy, 'routed_from': routed_from,
+                    }), 503
+                if queued_turn and history_mode != 'none':
+                    # Queued behind another turn: include that turn's answer.
+                    fresh_rows = _fetch_chat_thread_rows(
+                        conv_id, limit=history_limit if history_mode == 'recent' else 60)
+                    if bound_task:
+                        from core import hb_tasks
+                        with __import__('contextlib').closing(get_connection()) as task_conn:
+                            fresh_rows=hb_tasks.history(task_conn,bound_task)
+                    messages[1:] = apex_turn_context(_chat_history_from_rows(fresh_rows))
+                apex_deadline = time.monotonic() + TURN_SECONDS
+                try:
+                    record_studio('running')
+                    if operator and not bound_task:
+                        from core.apex_studio import working_state
+                        # Archive only old context, never the latest operator request or in-loop receipts.
+                        for old in messages[1:-1]:
+                            if not old.get('instructor_reference'):
+                                old['studio_archived'] = True
+                        messages.insert(1, {'role': 'user', 'content': working_state(conv_id, operator[0])})
+                    from core.agent_identity import execution
+                    from core.hb_workflow import memory_snapshot, record_run
+                    measured_started=time.monotonic()
+                    measured_memory=memory_snapshot()
+                    model_progress({'stage': 'running'})
+                    with use_model(model_route, progress=model_progress), execution(APEX_AGENT['name'], model=selected_model,
+                                   requested_by=operator[0] if operator else '', conversation_id=conv_id) as agent_run:
+                        if agent_run and bound_task:
+                            agent_run.update(task_id=bound_task['task_id'],task_version=bound_task['version'])
+                            if getattr(g,'hb_inline_execution',None):agent_run['execution_id']=g.hb_inline_execution
+                        response_text, tokens_used, tool_receipts = run_apex_tools(
+                            apex_model, messages, authorize_inspection, record_tool_receipt,
+                            proposal_handler=propose_tool if operator else None,
+                            prepare_messages=prepare_working_context, prepare_receipts=prepare_tool_receipts,
+                            studio_handler=studio_tool if operator else None,
+                            web_handler=web_tool if operator else None,
+                            test_handler=test_tool if operator else None)
+                        from core.hb_agent_tools import ground_answer
+                        response_text=ground_answer(response_text,tool_receipts)
+                        run_measurement=record_run(conv_id,selected_model,model_route.category,
+                            'completed_with_tool_failures' if any(r.get('status')=='failed' for r in tool_receipts) else 'completed',
+                            measured_started,measured_memory,tokens_used,tool_receipts)
+                        _sse_chat(conv_id,'apex','measurement',model=selected_model,measurement=run_measurement)
+                        if agent_run:
+                            from core.agent_identity import save_memory
+                            save_memory(APEX_AGENT['name'], message[:200], response_text,
+                                        tags='chat,apex', source='chat:' + str(conv_id) + ':run:' + agent_run['run_id'])
+                except ApexOffline as exc:
+                    if 'measured_started' in locals():
+                        record_run(conv_id,selected_model,model_route.category,'failed',
+                            measured_started,measured_memory,0,lifecycle_receipts)
+                    record_studio('offline', str(exc))
+                    checkpoint_apex(conv_id, message, f'offline: {exc}', lifecycle_receipts)
+                    _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state=STATE_OFFLINE, error=str(exc))
+                    if operator:
+                        _share_apex_exchange(conv_id, operator_message_id, message, f'APEX offline: {exc}',
+                                             lifecycle_receipts, peer_targets)
+                    return _offline_response(exc, conv_id)
+                except RuntimeError as exc:
+                    if 'measured_started' in locals():
+                        record_run(conv_id,selected_model,model_route.category,'failed',
+                            measured_started,measured_memory,0,lifecycle_receipts)
+                    record_studio('blocked', str(exc))
+                    checkpoint_apex(conv_id, message, f'blocked: {exc}', lifecycle_receipts)
+                    _sse_chat(conv_id, APEX_AGENT['name'], 'failed', state='error', error=str(exc))
+                    _LOG.error('APEX runtime error: %s', exc)
+                    if operator:
+                        _share_apex_exchange(conv_id, operator_message_id, message, f'APEX error: {exc}',
+                                             lifecycle_receipts, peer_targets)
+                    return jsonify({
+                        'ok': False, 'state': 'error', 'agent': APEX_AGENT['name'],
+                        'model': selected_model, 'conversation_id': conv_id,
+                        'response': f'APEX error: {exc}', 'routed_from': routed_from,
+                    }), 500
+                elapsed_ms = int((time.monotonic() - started) * 1000)
+                log_message(conv_id, APEX_AGENT['name'], response_text, to_agent='user',
+                            message_type='response', tokens_used=tokens_used)
+                if operator:
+                    _share_apex_exchange(conv_id, operator_message_id, message, response_text,
+                                         tool_receipts, peer_targets)
+                if operator and '[DISPATCH:' in response_text:
+                    _dispatch_apex_peers(conv_id, APEX_AGENT['name'], response_text)
+                checkpoint_apex(conv_id, message, 'turn completed; receipt statuses are authoritative',
+                                lifecycle_receipts)
+                if not _record_exchange(conv_id, APEX_AGENT['name'], message, response_text):
+                    raise RuntimeError('APEX durable exchange persistence failed')
+                from core import hb_tasks
+                with __import__('contextlib').closing(get_connection()) as task_conn,task_conn:
+                    tracked=hb_tasks.for_message(task_conn,operator_message_id) if operator_message_id else None
+                    if tracked:
+                        last=task_conn.execute("SELECT MAX(id) FROM messages WHERE conversation_id=? AND from_agent=?",(conv_id,APEX_AGENT['name'])).fetchone()[0]
+                        if last and not hb_tasks.for_message(task_conn,last):
+                            hb_tasks.bind(task_conn,conv_id,last,task_id=tracked['task_id'],parent_message_id=operator_message_id,kind='reply')
+                            hb_tasks.event(task_conn,tracked,'apex','reply',{'content':response_text,'output_tokens':tokens_used},message_id=last)
+                hb_tasks.flush_memory()
+                record_studio('completed', response_text, tokens_used)
+                _sse_chat(conv_id, APEX_AGENT['name'], 'completed', state=STATE_OK, tokens=tokens_used)
+                entry = {
+                    'agent': APEX_AGENT['name'], 'response': response_text, 'tokens': tokens_used,
+                    'elapsed_ms': elapsed_ms, 'runtime_class': 'local', 'eta_seconds': 0,
+                    'pending': False, 'job_id': None, 'model': selected_model,
+                    'tool_receipts': tool_receipts, 'task':bound_task,
+                    'usage':{'source':'measured','output_tokens':tokens_used},
+                }
                 return jsonify({
-                    'ok': False, 'state': 'error', 'agent': APEX_AGENT['name'],
-                    'model': APEX_AGENT['model'], 'conversation_id': conv_id,
-                    'response': f'APEX error: {exc}', 'routed_from': routed_from,
-                }), 500
-            elapsed_ms = int((time.monotonic() - started) * 1000)
-            log_message(conv_id, APEX_AGENT['name'], response_text, to_agent='user',
-                        message_type='response', tokens_used=tokens_used)
-            checkpoint_apex(conv_id, message, 'turn completed; receipt statuses are authoritative',
-                            lifecycle_receipts)
-            if not _record_exchange(conv_id, APEX_AGENT['name'], message, response_text):
-                raise RuntimeError('APEX durable exchange persistence failed')
-            _sse_chat(conv_id, APEX_AGENT['name'], 'completed', state=STATE_OK, tokens=tokens_used)
-            entry = {
-                'agent': APEX_AGENT['name'], 'response': response_text, 'tokens': tokens_used,
-                'elapsed_ms': elapsed_ms, 'runtime_class': 'local', 'eta_seconds': 0,
-                'pending': False, 'job_id': None, 'model': APEX_AGENT['model'],
-                'tool_receipts': tool_receipts,
-            }
-            return jsonify({
-                'ok': True, 'state': STATE_OK, 'mode': 'apex', 'storage_degraded': False,
-                'agent': APEX_AGENT['name'], 'model': APEX_AGENT['model'],
-                'response': response_text, 'tokens': tokens_used, 'responses': [entry],
-                'pending_jobs': [], 'agents': normalized_agents, 'routed_from': routed_from,
-                'history_mode': history_mode,
-                'history_limit': history_limit if history_mode == 'recent' else None,
-                'conversation_id': conv_id,
-                'tool_receipts': tool_receipts,
-            })
+                    'ok': True, 'state': STATE_OK, 'mode': 'apex', 'storage_degraded': False,
+                    'agent': APEX_AGENT['name'], 'model': selected_model,
+                    'response': response_text, 'tokens': tokens_used, 'responses': [entry],
+                    'pending_jobs': [], 'agents': normalized_agents, 'routed_from': routed_from,
+                    'history_mode': history_mode,
+                    'history_limit': history_limit if history_mode == 'recent' else None,
+                    'conversation_id': conv_id,
+                    'tool_receipts': tool_receipts,
+                    'studio': studio_record, 'context_telemetry': context_telemetry, 'task':bound_task,
+                    'model_routing': model_route.as_dict(),
+                })
+            finally:
+                process_turn.release()
+                if slot_held:
+                    _APEX_TURNS.release()
 
         transcript = _thread_transcript_from_rows(thread_rows[-12:])
         reply_contexts = {
@@ -3794,122 +4368,51 @@ def api_chat_agents_health():
 
 @chat_bp.route('/api/chat/jobs/cancel', methods=['POST'])
 def api_chat_jobs_cancel():
-    """Best-effort cancellation for long-running chat jobs.
-
-    Body:
-    - job_ids: array of job IDs or comma-separated string (optional)
-    - conversation_id: optional, cancel all running jobs in conversation when job_ids omitted
-    """
-    data = request.get_json() or {}
-    raw_ids = data.get('job_ids') or []
-    hard_kill = bool(data.get('hard_kill', True))
-    if isinstance(raw_ids, str):
-        raw_ids = [x.strip() for x in raw_ids.split(',') if x.strip()]
-    want_ids = {str(x).strip() for x in raw_ids if str(x).strip()}
-
-    conv_id = data.get('conversation_id')
-    conv_id_int = None
-    if conv_id is not None and str(conv_id).strip() != '':
-        try:
-            conv_id_int = int(conv_id)
-        except Exception:
-            return jsonify({'ok': False, 'error': 'conversation_id must be int'}), 400
-
-    cancelled = []
-    skipped = []
-    local_agents_to_kill = {}
+    """Owner Stop holds durable tasks even when no legacy chat job exists."""
+    from importlib import import_module
+    from urllib.parse import urlsplit
+    bridge=import_module(__package__+'.peer_bridge')
+    user=bridge.get_current_user()
+    origin=request.headers.get('Origin')
+    if not user or user.get('role')!='owner':
+        return jsonify(ok=False,error='Owner authentication required'),403
+    if (request.headers.get('Sec-Fetch-Site')=='cross-site'
+            or origin and urlsplit(origin).netloc!=request.host):
+        return jsonify(ok=False,error='Use the authenticated main chat to Stop'),403
+    if not request.is_json:return jsonify(ok=False,error='JSON Stop command required'),400
+    data=request.get_json() or {}
+    try:
+        conv_id_int=int(data['conversation_id'])
+        if conv_id_int<=0:raise ValueError()
+    except (KeyError,TypeError,ValueError):
+        return jsonify(ok=False,error='A positive conversation_id is required'),400
+    raw_ids=data.get('job_ids') or []
+    if isinstance(raw_ids,str):raw_ids=[x.strip() for x in raw_ids.split(',') if x.strip()]
+    if not isinstance(raw_ids,list):return jsonify(ok=False,error='job_ids must be an array'),400
+    want_ids={str(x).strip() for x in raw_ids if str(x).strip()}
+    # Commit the same task holds used by chat bubble controls before cancelling
+    # futures. Stop never unloads a model resident shared with another task.
+    held=bridge._owner_chat_stop({'conversation_id':conv_id_int},'Stop',conv_id_int,user).get_json()
+    cancelled=[];skipped=[]
     with _CHAT_JOB_LOCK:
         _cleanup_chat_jobs_locked()
-        for job_id, job in list(_CHAT_JOBS.items()):
-            if want_ids and job_id not in want_ids:
-                continue
-            if conv_id_int is not None and int(job.get('conversation_id') or -1) != conv_id_int:
-                continue
-
-            status = str(job.get('status') or 'running')
-            if status in {'completed', 'failed', 'cancelled'}:
-                skipped.append({'job_id': job_id, 'reason': f'already {status}'})
-                continue
-
-            fut = job.get('future')
-            cancel_signal_sent = False
-            if fut is not None:
-                try:
-                    cancel_signal_sent = bool(fut.cancel())
-                except Exception:
-                    cancel_signal_sent = False
-
-            now_ts = time.time()
-            now_iso = _chat_now_iso()
-            job.update({
-                'status': 'cancelled',
-                'stage': 'cancelled by user',
-                'eta_seconds': 0,
-                'error': 'cancelled by user',
-                'cancel_requested': True,
-                'updated_ts': now_ts,
-                'updated_at': now_iso,
-            })
-            update_chat_job_db(job_id, status='cancelled', stage='cancelled by user',
-                               error='cancelled by user')
-            job_runtime_class = str(job.get('runtime_class') or '').strip().lower()
-            if hard_kill and (job_runtime_class == 'local' or _chat_runtime_class(job.get('agent')) == 'local'):
-                agent_key = str(job.get('agent') or '').strip().lower()
-                if agent_key and agent_key not in local_agents_to_kill:
-                    local_agents_to_kill[agent_key] = job_id
-            cancelled.append({'job_id': job_id, 'agent': job.get('agent'), 'cancel_signal_sent': cancel_signal_sent})
-
-    hard_kill_results = []
-    hard_kill_by_agent = {}
-    if hard_kill and local_agents_to_kill:
-        for agent_name, kill_job_id in sorted(local_agents_to_kill.items()):
-            result = _chat_try_hard_kill_local_agent(agent_name, ignore_job_id=kill_job_id)
-            hard_kill_results.append(result)
-            hard_kill_by_agent[agent_name] = result
-            _chat_schedule_delayed_runtime_cleanup(agent_name, job_id=kill_job_id)
-            log_activity('terminal', 'chat_job_hard_kill', f"agent={agent_name} ok={result.get('ok')} detail={result.get('detail', '')[:120]}")
-
-    for item in cancelled:
-        agent_name = str(item.get('agent') or '').strip().lower()
-        stop_result = hard_kill_by_agent.get(agent_name)
-        if stop_result:
-            trace = [{'text': 'cancelled by user', 'ts': time.time()}, {'text': _chat_runtime_stop_trace(stop_result), 'ts': time.time()}]
-            error = 'cancelled by user'
-            detail = str(stop_result.get('detail') or '').strip()
-            if detail:
-                error += f'; ollama stop: {detail}'
-            try:
-                update_chat_job_db(
-                    item['job_id'],
-                    status='cancelled',
-                    stage='cancelled by user',
-                    error=error,
-                    stage_trace_json=json.dumps(trace),
-                )
-            except Exception:
-                pass
-            try:
-                _chat_log_watchdog_ollama_event(
-                    conv_id_int,
-                    item['job_id'],
-                    agent_name,
-                    'user_cancel_stop',
-                    stop_result,
-                    _chat_runtime_stop_trace(stop_result),
-                )
-            except Exception:
-                pass
-        log_activity('terminal', 'chat_job_cancelled', f"job_id={item['job_id']} agent={item.get('agent')}")
-
-    return jsonify({
-        'ok': True,
-        'cancelled': cancelled,
-        'skipped': skipped,
-        'hard_kill': hard_kill,
-        'hard_kill_results': hard_kill_results,
-        'count': len(cancelled),
-    })
-
+        for job_id,job in list(_CHAT_JOBS.items()):
+            if want_ids and job_id not in want_ids:continue
+            if int(job.get('conversation_id') or -1)!=conv_id_int:continue
+            status=str(job.get('status') or 'running')
+            if status in {'completed','failed','cancelled'}:
+                skipped.append({'job_id':job_id,'reason':f'already {status}'});continue
+            future=job.get('future');signalled=False
+            if future is not None:
+                try:signalled=bool(future.cancel())
+                except Exception:pass
+            job.update(status='cancelled',stage='cancelled by user',eta_seconds=0,
+                error='cancelled by user',cancel_requested=True,updated_ts=time.time(),updated_at=_chat_now_iso())
+            update_chat_job_db(job_id,status='cancelled',stage='cancelled by user',error='cancelled by user')
+            cancelled.append({'job_id':job_id,'agent':job.get('agent'),'cancel_signal_sent':signalled})
+    return jsonify(ok=True,cancelled=cancelled,skipped=skipped,count=len(cancelled),
+        held_tasks=held['held_tasks'],control_receipts=held['control_receipts'],interrupted=held['interrupted'],
+        hard_kill=False,hard_kill_results=[])
 
 
 @chat_bp.route('/api/chat/librarian/review', methods=['POST'])

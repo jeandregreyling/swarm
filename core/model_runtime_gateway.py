@@ -396,8 +396,8 @@ def chat(
     # Persistent chat jobs can legitimately spend several minutes in local
     # inference. Keep the transport clocks aligned with the chat watchdog
     # policy so the gateway does not fail first with a stale 240s idle cap.
-    absolute_timeout_s: int = DEFAULT_ABSOLUTE_TIMEOUT_S,
-    idle_timeout_s: int = DEFAULT_IDLE_TIMEOUT_S,
+    absolute_timeout_s: float = DEFAULT_ABSOLUTE_TIMEOUT_S,
+    idle_timeout_s: float = DEFAULT_IDLE_TIMEOUT_S,
     keep_alive: str | int = "60s",
     options: dict[str, Any] | None = None,
     on_token: Any = None,
@@ -639,8 +639,8 @@ def _direct_chat_if_registered(
     model: str,
     messages: list[dict[str, str]],
     *,
-    absolute_timeout_s: int,
-    idle_timeout_s: int,
+    absolute_timeout_s: float,
+    idle_timeout_s: float,
     options: dict[str, Any] | None,
     on_token: Any = None,
     on_event: Any = None,

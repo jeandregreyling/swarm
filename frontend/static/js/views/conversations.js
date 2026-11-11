@@ -10,8 +10,8 @@
 //     docs/FEATURES_TODO.md).
 //   * The chat tile does NOT auto-restore on hard refresh (no window
 //     persistence layer yet). When the user opens the Chat tile,
-//     loadChatData() runs below and ALWAYS defaults to a fresh thread unless
-//     the caller explicitly handed us `__fridaysChatOpenWithConvId`.
+//     loadChatData() defaults to a fresh thread unless the caller explicitly
+//     handed us `__fridaysChatOpenWithConvId` or the operator pinned a shared room.
 //   * Locked by tests/test_hard_refresh_behavior.py.
 
 function loadChatData(win) {
@@ -28,10 +28,13 @@ function loadChatData(win) {
   // Previously we auto-resumed the most-recent thread from localStorage or
   // fell back to the first conversation, which made it impossible to start
   // a new chat just by opening the window.
-  const explicitOpenId = window.__fridaysChatOpenWithConvId || null;
+  const explicitOpenId = window.__fridaysChatOpenWithConvId || getSharedChatThreadId();
   window.__fridaysChatOpenWithConvId = null; // one-shot
 
   if (explicitOpenId) {
+    if (Number(explicitOpenId) === getSharedChatThreadId() && !win.maximized) {
+      winManager.toggleMaximize(win.id);
+    }
     refreshChatThreadList(explicitOpenId).then(() => {
       const convId = window.__fridaysChatConversationId;
       if (convId) {
@@ -280,4 +283,3 @@ function deleteConversation(convId, event) {
   if (!confirm('Delete this conversation and all of its messages?')) return;
   fire();
 }
-

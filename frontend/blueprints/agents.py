@@ -9,7 +9,7 @@ from utils.db.registry import (
     full_zoo_ping as _full_zoo_ping,
     get_zoo_ping_snapshot as _get_zoo_ping_snapshot,
 )
-from frontend.services.identity import _agent_availability_reason
+from services.identity import _agent_availability_reason
 
 agents_bp = Blueprint('agents', __name__)
 ROLES_SKILLS_PATH = os.path.join(os.path.dirname(__file__), '..', 'roles_skills.json')
@@ -287,7 +287,7 @@ def _agents_status_rows_for_ops():
 
 def _agents_runtime_summary_for_ops(blockers):
     try:
-        from frontend.services.ops_status import get_local_ai_statuses
+        from services.ops_status import get_local_ai_statuses
         runtimes = get_local_ai_statuses()
     except Exception as exc:
         blockers.append({'kind': 'runtime', 'severity': 'warn', 'message': f'Local AI status unavailable: {exc}'})
@@ -307,7 +307,7 @@ def _agents_runtime_summary_for_ops(blockers):
 def _agents_hive_summary_for_ops(blockers):
     try:
         from core.hive import get_registry
-        from frontend.services.ops_status import get_expected_farm_nodes
+        from services.ops_status import get_expected_farm_nodes
         reg = get_registry()
         nodes = get_expected_farm_nodes(reg.list_nodes())
         jobs = reg.list_jobs(limit=50)
@@ -935,6 +935,20 @@ def set_agent_temperature(name):
     print(f'[Terminal] {name} temperature → {temp}')
     return jsonify({'name': name, 'temperature': temp})
 
+
+
+@agents_bp.before_request
+def _private_memory_owner_routes():
+    from core import agent_identity
+    if not agent_identity.enabled():
+        return None
+    kinds = {'agents.api_agent_memory':'read', 'agents.api_agent_memory_write':'write',
+             'agents.api_agents_memories_query':'query'}
+    kind = kinds.get(request.endpoint)
+    if kind:
+        from frontend.blueprints.agent_identity import owner_memory_route
+        return owner_memory_route(kind,(request.view_args or {}).get('agent'))
+    return None
 
 
 @agents_bp.route('/api/agents/<agent>/memory')

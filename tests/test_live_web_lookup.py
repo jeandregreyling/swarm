@@ -82,3 +82,69 @@ def test_skill_search_uses_best_engine(monkeypatch):
 @pytest.mark.parametrize('text', ['what are some of their names', 'What year did it come out?'])
 def test_short_followups_are_not_searched_out_of_context(text):
     assert internet.needs_web_lookup(text) is False
+
+
+@pytest.mark.parametrize("provider", ["duckduckgo", "serper", "tavily"])
+def test_named_provider_is_bounded_and_attributed(monkeypatch, provider):
+    calls = []
+
+    def search(query, **kwargs):
+        calls.append((query, kwargs))
+        return "Source: https://docs.python.org/\n" + "x" * 4000
+
+    monkeypatch.setattr(internet, "search_web", search)
+    from lib.search import internet_serper, internet_tavily
+    monkeypatch.setattr(internet_serper, "search", search)
+    monkeypatch.setattr(internet_tavily, "search", search)
+    result = internet.search_provider(" Python documentation ", provider)
+    assert calls == [("Python documentation", {
+        "num_results" if provider == "serper" else "max_results": 3})]
+    assert result["provider"] == provider
+    assert result["sources"] == ["https://docs.python.org/"]
+    assert result["fetched_at"].endswith("+00:00")
+    assert len(result["text"]) == 3000 and result["truncated"]
+
+
+@pytest.mark.parametrize("query,provider", [
+    ("", "serper"), ("x" * 201, "serper"), (False, "serper"),
+    ("public", "invented"), ("public", []),
+])
+def test_named_provider_invalid_input_never_dispatches(monkeypatch, query, provider):
+    monkeypatch.setattr(internet, "search_web", lambda *_a, **_k: pytest.fail("Invalid query dispatched"))
+    with pytest.raises(ValueError):
+        internet.search_provider(query, provider)
+
+
+@pytest.mark.parametrize("text", ["[Search failed: TimeoutException]", "No results found.",
+                                  "A convincing answer with no source URLs"])
+def test_named_provider_failure_never_becomes_success_or_fallback(monkeypatch, text):
+    monkeypatch.setattr(internet, "search_web", lambda *_a, **_k: text)
+    with pytest.raises(ValueError):
+        internet.search_provider("Python documentation", "duckduckgo")
+
+
+def test_duckduckgo_never_silently_uses_another_engine(monkeypatch):
+    calls = []
+
+    class Client:
+        def __init__(self, **kwargs):
+            assert kwargs == {"timeout": 10}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def text(self, query, **kwargs):
+            calls.append((query, kwargs))
+            return [{"href": "https://docs.python.org/", "title": "Docs", "body": "Python"}]
+
+    monkeypatch.setattr(internet, "_DDGS_OK", True)
+    monkeypatch.setattr(internet, "_DDGS", Client)
+    assert "https://docs.python.org/" in internet.search_web("Python documentation")
+    assert calls == [("Python documentation", {"max_results": 3, "backend": "duckduckgo"})]
+    monkeypatch.setattr(internet, "_DDGS_OK", False)
+    with pytest.raises(ValueError, match="unavailable"):
+        internet.search_provider("Python documentation", "duckduckgo")
+    assert len(calls) == 1

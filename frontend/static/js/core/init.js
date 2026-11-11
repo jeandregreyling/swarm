@@ -537,3 +537,19 @@ function updateTicketQueue() {
       queue.innerHTML = '<div style="padding: 12px; color: var(--text-dim);">Ticket queue unavailable</div>';
     });
 }
+
+// The native Hummingbird shell opens the same authenticated APEX chat.
+document.addEventListener('DOMContentLoaded', () => {
+  const query = new URLSearchParams(window.location.search);
+  if (query.get('app') !== 'hummingbird') return;
+  document.body.classList.add('hummingbird-desktop');
+  setTimeout(() => {
+    openWindow('chat', 'APEX', 'view-chat');
+    setTimeout(() => {
+      const id = Number(query.get('conversation_id')) || getSharedChatThreadId();
+      if (Number.isSafeInteger(id) && id > 0) switchChatThread(String(id));
+      winManager.fullscreen('chat');
+      document.getElementById('question-input')?.focus();
+    }, 200);
+  }, 200);
+});

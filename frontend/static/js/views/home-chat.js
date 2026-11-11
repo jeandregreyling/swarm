@@ -20,10 +20,10 @@
   let _hcSending = false;
   let _hcInitialized = false;
   let _hcViewVersion = 0;
+  let _hcSendVersion = 0;
   const _hcEnv = (window.ENV_STAGE || 'PROD').toUpperCase();
 
-  // localStorage keys. Home-chat keeps its own active-thread state; it only
-  // hands a thread to the main chat when the user explicitly expands it.
+  // An explicitly pinned shared room is restored on both chat surfaces.
   const HC_ACTIVE_THREAD_KEY = 'fridays-home-chat-active-thread';
   const HC_AGENT_TOGGLE_PREFIX = 'fridays-chat-thread-agents-';
   const HC_GLOBAL_AGENTS_KEY = 'fridays-chat-enabled-agents';
@@ -46,6 +46,17 @@
     if (chat.nextElementSibling !== tiles) chat.insertAdjacentElement('afterend', tiles);
   }
 
+  function _hcFitLiveRoom() {
+    const chat = document.querySelector('.home-chat-section');
+    const content = document.getElementById('home-content');
+    if (!chat || !content) return;
+    const top = chat.getBoundingClientRect().top + content.scrollTop;
+    const taskbarTop = document.getElementById('taskbar')?.getBoundingClientRect().top;
+    const bottom = taskbarTop > 0 ? taskbarTop : window.innerHeight;
+    chat.style.setProperty('--chat-live-room-height', `${Math.max(280, bottom - top - 14)}px`);
+  }
+  window.homeFitLiveRoom = _hcFitLiveRoom;
+
   window.initHomeChat = function () {
     _hcEnsureChatFirst();
     if (_hcInitialized) {
@@ -53,17 +64,20 @@
       return;
     }
     _hcInitialized = true;
-    const savedThread = Number(localStorage.getItem(HC_ACTIVE_THREAD_KEY));
+    const savedThread = getSharedChatThreadId() || Number(localStorage.getItem(HC_ACTIVE_THREAD_KEY));
     _hcConvId = Number.isSafeInteger(savedThread) && savedThread > 0 ? savedThread : null;
 
     _hcSetEnvBadge();
     _hcBindEvents();
     _hcRenderAgentPills();
+    refreshChatParticipants();
     _hcLoadThreads();
     _hcSetGreeting();
     _hcFetchInterests();
     _hcInitMiniLandscape();
     _hcRestorePanelState();
+    _hcFitLiveRoom();
+    window.addEventListener('resize', _hcFitLiveRoom);
 	    _hcBindCrossSurfaceRefresh();
 	    _hcPruneStaleAgentToggles();
 	    _hcLoadProofTrail();
@@ -82,6 +96,9 @@
   function _hcBindCrossSurfaceRefresh() {
     if (_hcCrossBound) return;
     _hcCrossBound = true;
+    window.addEventListener('hummingbird:shared-thread', (event) => {
+      _hcSwitchThread(event.detail.conversation_id);
+    });
     window.addEventListener('swarm:conversation-changed', (ev) => {
       const detail = (ev && ev.detail) || {};
       // If the deleted conv is the one we're viewing, drop back to welcome.
@@ -95,7 +112,10 @@
       _hcLoadThreadsListOnly();
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') _hcLoadThreadsListOnly();
+      if (document.visibilityState === 'visible') {
+        _hcLoadThreadsListOnly();
+        if (_hcConvId) _hcSilentRefresh(_hcConvId);
+      }
     });
     window.addEventListener('focus', () => _hcLoadThreadsListOnly());
   }
@@ -110,6 +130,76 @@
     badge.setAttribute('data-env', env);
   }
 
+  // ── @ participant menu ───────────────────────────────────────────────────
+  const _HC_MENTIONS = [
+    { key: 'apex', label: 'APEX', role: 'Local execution partner' },
+    { key: 'codex', label: 'Codex', role: 'Instructor / connected terminal session' },
+    { key: 'instructor', label: 'VS Code Instructor', role: 'Instructor / reviewer' },
+    { key: 'gemini', label: 'Gemini', role: 'Architecture advisor' },
+  ];
+  let _hcMention = { open: false, start: -1, end: -1, active: 0, items: [] };
+
+  function _hcMentionClose() {
+    const menu = document.getElementById('home-chat-mention-menu');
+    if (menu) { menu.style.display = 'none'; menu.innerHTML = ''; }
+    _hcMention = { open: false, start: -1, end: -1, active: 0, items: [] };
+  }
+
+  function _hcMentionPick(input, idx) {
+    const item = _hcMention.items[idx];
+    if (!_hcMention.open || !item) return false;
+    const value = input.value;
+    const before = value.slice(0, _hcMention.start) + '@' + item.key + ' ';
+    input.value = before + value.slice(_hcMention.end);
+    input.focus();
+    input.setSelectionRange(before.length, before.length);
+    _hcMentionClose();
+    input.dispatchEvent(new Event('input'));
+    return true;
+  }
+
+  function _hcMentionUpdate(input) {
+    const menu = document.getElementById('home-chat-mention-menu');
+    const caret = Number(input.selectionStart || 0);
+    const match = input.value.slice(0, caret).match(/(^|\s)@([a-zA-Z]*)$/);
+    if (!menu || !match) { _hcMentionClose(); return; }
+    const query = match[2].toLowerCase();
+    const items = _HC_MENTIONS.filter(item =>
+      item.key.startsWith(query) || item.label.toLowerCase().includes(query));
+    if (!items.length) { _hcMentionClose(); return; }
+    const active = Math.min(_hcMention.open ? _hcMention.active : 0, items.length - 1);
+    _hcMention = { open: true, start: caret - match[2].length - 1, end: caret, active, items };
+    menu.innerHTML = items.map((item, idx) =>
+      `<button type="button" role="option" class="chat-mention-item${idx === active ? ' active' : ''}" data-idx="${idx}">` +
+      `<span><strong>${_hcEsc(item.label)}</strong> @${_hcEsc(item.key)}</span>` +
+      `<span class="chat-mention-meta">${_hcEsc(item.role)}</span></button>`).join('');
+    menu.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('mousedown', (e) => { e.preventDefault(); _hcMentionPick(input, Number(btn.dataset.idx)); });
+    });
+    menu.style.display = 'block';
+  }
+
+  function _hcMentionKeydown(e, input) {
+    if (!_hcMention.open) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const count = _hcMention.items.length;
+      _hcMention.active = (_hcMention.active + (e.key === 'ArrowDown' ? 1 : count - 1)) % count;
+      _hcMentionUpdate(input);
+      return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      return _hcMentionPick(input, _hcMention.active);
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      _hcMentionClose();
+      return true;
+    }
+    return false;
+  }
+
   // ── Event bindings ───────────────────────────────────────────────────────
   function _hcBindEvents() {
     const input = document.getElementById('home-chat-input');
@@ -117,8 +207,12 @@
     const threadSel = document.getElementById('home-chat-thread-select');
     const newBtn = document.getElementById('home-chat-new-btn');
     const expandBtn = document.getElementById('home-chat-expand-btn');
+    _hcBindHfControls();
 
-    if (sendBtn) sendBtn.addEventListener('click', _hcSend);
+    if (sendBtn) {
+      sendBtn.textContent = 'Send';
+      sendBtn.addEventListener('click', _hcSend);
+    }
     if (newBtn) newBtn.addEventListener('click', _hcNewThread);
     if (expandBtn) expandBtn.addEventListener('click', () => {
       // Session 28 fix: hand the current home-chat thread to the main chat
@@ -136,13 +230,17 @@
       }
     });
     if (input) {
+      input.setAttribute('aria-label', 'Message Hummingbird');
+      input.placeholder = 'Message Hummingbird — @ to address a teammate';
       input.addEventListener('keydown', (e) => {
+        if (_hcMentionKeydown(e, input)) return;
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           _hcSend();
         }
       });
-      input.addEventListener('input', () => { _hcAutoGrow(input); _hcUpdateTokenCount(input); });
+      input.addEventListener('input', () => { _hcAutoGrow(input); _hcUpdateTokenCount(input); _hcUpdateMeta(); _hcMentionUpdate(input); });
+      input.addEventListener('blur', () => setTimeout(_hcMentionClose, 150));
       _hcUpdateTokenCount(input);
     }
 
@@ -154,12 +252,45 @@
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         const tag = (e.target.tagName || '').toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (e.target.closest('button, summary, a, [role="button"]')) return;
         if (e.key.length === 1 && !e.target.isContentEditable) {
           input.focus();
           // Let the character flow into the now-focused input naturally
         }
       });
     }
+  }
+
+  function _hcBindHfControls() {
+    const status=document.getElementById('hb-hf-status');
+    const show=(value)=>{if(status)status.textContent=value;};
+    const format=(data)=>{
+      const m=data?.mirror||data||{};const states=m.file_states||{};const repos=m.repository_states||{};
+      const active=m.active_transfer;
+      const path=active?`; active ${active.repo}/${active.path}`:'';
+      const scope=m.acquisition_policy?.mode||'full (legacy)';
+      const progress=`${m.files_verified||0} verified / ${m.files_known||0} known files; ${m.catalogue_enumeration_complete?'catalogue complete':'catalogue still discovering'}`;
+      const blocked=`; ${states.filtered||0} filtered, ${states.budget_blocked||0} budget blocked, ${repos.access_blocked||0} restricted`;
+      return `Mirror ${m.state||'unknown'} · ${scope} · ${progress}${blocked}${path}. No ETA until comparable throughput is recorded.`;
+    };
+    const request=async(action,repo)=>{
+      show('Contacting HB…');
+      try{
+        const response=await fetch(action==='status'?'/api/chat/hf-mirror/status':'/api/chat/hf-mirror/control',{
+          method:action==='status'?'GET':'POST',credentials:'same-origin',
+          headers:action==='status'?{}:{'Content-Type':'application/json','X-HB-Owner-Action':'1'},
+          body:action==='status'?undefined:JSON.stringify(repo?{action,repo}:{action})});
+        const data=await response.json();
+        if(!response.ok||data.ok!==true)throw new Error(data.error||`HB returned ${response.status}`);
+        show((data.message?data.message+' ':'')+format(data));
+        if(repo){const input=document.getElementById('hb-hf-repo');if(input)input.value='';}
+      }catch(error){show(`HB control failed: ${String(error.message||error)}`);}
+    };
+    const bind=(id,action)=>{const button=document.getElementById(id);if(button&&!button.dataset.hfBound){button.dataset.hfBound='1';button.addEventListener('click',()=>{
+      if(action==='include'){const repo=document.getElementById('hb-hf-repo')?.value.trim();if(!repo){show('Enter a public Hub repository ID such as Qwen/Qwen3-Coder.');return;}request(action,repo);}
+      else request(action);
+    });}};
+    bind('hb-hf-refresh','status');bind('hb-hf-pause','pause');bind('hb-hf-curate','curate');bind('hb-hf-include','include');bind('hb-hf-resume','resume');
   }
 
   // ── Auto-grow textarea ───────────────────────────────────────────────────
@@ -220,6 +351,7 @@
         const tsBit = ts ? ' · ' + ts : '';
         return `<option value="${c.id}"${isSel}>#${c.id} · ${title}${tsBit}</option>`;
       }).join('');
+    renderChatParticipants();
   }
 
   // ── Live sync (SSE-driven; mirrors chat tile messages without a timer) ───
@@ -230,13 +362,49 @@
   function _hcStartLiveSync() {
     if (_hcLiveSyncBound) return;
     _hcLiveSyncBound = true;
+    document.addEventListener('hummingbird:chat-sync', e => {
+      if (_hcConvId && Number(e.detail.conversation_id) === Number(_hcConvId)) _hcSilentRefresh(_hcConvId);
+    });
     document.addEventListener('sse:chat', (e) => {
       const d = (e && e.detail) || {};
-      if (!_hcConvId || _hcSending) return;
+      if (_hcApplyPeerProgress(d)) return;
+      if (d.owner_command && d.status === 'running' && _hcSending && _hcConvId
+          && String(d.conversation_id || '') === String(_hcConvId)) {
+        const pending = document.querySelector('#home-chat-messages .hc-bubble[data-pending-job-id^="hc-tmp-"]');
+        if (pending) _hcUpsertThinkingBubble({
+          job_id: pending.dataset.pendingJobId, agent: 'fridays', status: 'running',
+          stage: d.stage || 'Running the owner-pasted HB package command',
+        });
+        return;
+      }
+      if (d.status === 'queued' && _hcSending && _hcConvId
+          && String(d.conversation_id || '') === String(_hcConvId)) {
+        // The backend queues a message sent while APEX is mid-turn; say so instead of looking stuck.
+        const pending = document.querySelector('#home-chat-messages .hc-bubble[data-pending-job-id^="hc-tmp-"]');
+        if (pending) _hcUpsertThinkingBubble({
+          job_id: pending.dataset.pendingJobId, agent: d.agent || 'apex', status: 'running',
+          stage: `queued: APEX finishes ${d.position || 1} earlier turn(s) first`,
+        });
+        return;
+      }
+      if (!_hcConvId) return;
       if (d.conversation_id && String(d.conversation_id) !== String(_hcConvId)) return;
       if (d.state) _hcSetLaneState(d.state, d.error || '');
-      if (d.status === 'completed' || d.status === 'failed') _hcSilentRefresh(_hcConvId);
+      if (['completed', 'failed', 'tool_receipt', 'instructor_requested'].includes(d.status)) _hcSilentRefresh(_hcConvId);
     });
+  }
+
+  function _hcApplyPeerProgress(detail) {
+    const job = chatPeerProgressJob(detail, _hcConvId);
+    if (!job) return false;
+    if (['queued', 'running'].includes(job.status)) _hcUpsertThinkingBubble(job);
+    else {
+      const node = document.querySelector(`#home-chat-messages [data-pending-job-id="${CSS.escape(job.job_id)}"]`);
+      if (node) node.remove();
+      delete _hcJobHistory[job.job_id];
+      _hcSilentRefresh(_hcConvId);
+    }
+    return true;
   }
 
   // ── Lane state surface: ok | recovery | offline | error ──────────────────
@@ -271,37 +439,61 @@
     return true;
   }
 
-  function _hcSilentRefresh(convId) {
+  function _hcSilentRefresh(convId, settled = false) {
     const viewVersion = _hcViewVersion;
-    fetch(`/api/conversations/${convId}/messages`)
-      .then(r => r.json())
+    const sendVersion = _hcSendVersion;
+    return fetch(`/api/conversations/${convId}/messages`)
+      .then(r => {
+        if (!r.ok) throw new Error(`Live chat refresh failed (HTTP ${r.status})`);
+        return r.json();
+      })
       .then(data => {
-        if (_hcSending || _hcConvId !== convId || _hcViewVersion !== viewVersion) return;
+        if (_hcConvId !== convId || _hcViewVersion !== viewVersion) return;
         const msgs = data.messages || [];
         if (!msgs.length) return;
         const container = document.getElementById('home-chat-messages');
         if (!container) return;
-        if (container.querySelector('.hc-pending')) return;
-        // Check if there are new messages vs what's rendered
-        const rendered = container.querySelectorAll('.hc-bubble[data-message-id]');
-        const lastRenderedId = rendered.length
-          ? Number(rendered[rendered.length - 1].dataset.messageId || 0)
-          : 0;
-        const lastFetchedId = Number(msgs[msgs.length - 1].id || 0);
-        if (lastFetchedId <= lastRenderedId) return;
-
-        // Don't clobber locally-rendered bubbles that haven't been persisted
-        // yet (e.g. an agent reply just appended client-side while the DB row
-        // is still being written). If our local count is greater than what the
-        // DB returns, the in-flight append would vanish on a clobber-rebuild.
-        const totalRendered = container.querySelectorAll('.hc-bubble').length;
-        if (totalRendered > msgs.length) return;
-
-        _hcClearMessages();
-        msgs.forEach(m => _hcAppendBubble(m));
-        _hcScrollBottom();
+        const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 90;
+        if (settled && !_hcSending && sendVersion === _hcSendVersion && _hcLaneState === 'ok'
+            && !container.querySelector('.hc-bubble[data-pending-job-id]')) {
+          const top = container.scrollTop;
+          _hcClearMessages();
+          msgs.forEach(msg => _hcAppendBubble(msg));
+          if (atBottom) _hcScrollBottom();
+          else container.scrollTop = top;
+          return;
+        }
+        const persisted = Array.from(container.querySelectorAll('.hc-bubble[data-message-id]'));
+        const lastId = Math.max(0, ...persisted.map(el => Number(el.dataset.messageId)));
+        const ids = new Set(persisted.map(el => String(el.dataset.messageId)));
+        msgs.forEach(msg => {
+          if (ids.has(String(msg.id))) return;
+          // Adopt only new persisted rows; an older identical message is not this optimistic turn.
+          const optimistic = Number(msg.id) > lastId
+            ? Array.from(container.querySelectorAll('.hc-bubble:not([data-message-id])'))
+              .find(el => !el.dataset.pendingJobId && el._chatMessage
+                && el._chatMessage.content === msg.content
+                && String(el._chatMessage.sender || el._chatMessage.from_agent).toLowerCase()
+                  === String(msg.sender || msg.from_agent).toLowerCase())
+            : null;
+          const bubble = _hcAppendBubble(msg);
+          if (optimistic) optimistic.remove();
+          const later = Array.from(container.querySelectorAll('.hc-bubble[data-message-id]'))
+            .find(el => Number(el.dataset.messageId) > Number(msg.id));
+          if (later) container.insertBefore(bubble, later);
+          else {
+            const pending = container.querySelector('.hc-bubble[data-pending-job-id]');
+            if (pending) container.insertBefore(bubble, pending);
+          }
+          ids.add(String(msg.id));
+        });
+        if (atBottom) _hcScrollBottom();
       })
-      .catch(() => {});
+      .catch(error => {
+        console.error('Home chat live refresh:', error);
+        const status = document.getElementById('home-chat-status');
+        if (status) status.textContent = 'Live updates unavailable — reconnecting';
+      });
   }
 
   // ── Switch thread ────────────────────────────────────────────────────────
@@ -325,6 +517,7 @@
     _hcShowWelcome(true);
     _hcRenderAgentPills();
     _hcUpdateMeta();
+    renderChatParticipants();
   }
 
   // ── Load messages ────────────────────────────────────────────────────────
@@ -379,6 +572,27 @@
   function _hcAppendBubble(msg) {
     const container = document.getElementById('home-chat-messages');
     if (!container) return;
+    if (msg.id) {
+      const existing = container.querySelector(`[data-message-id="${CSS.escape(String(msg.id))}"]`);
+      if (existing) {
+        existing._chatMessage=msg;
+        if(msg.task && typeof hbUpdateContinue==='function') {
+          if(!existing.querySelector('.hb-bubble-controls[data-hb-task]'))existing.querySelector('.hc-bubble-body')?.insertAdjacentHTML('beforebegin',hbTaskBadge(msg.task,msg.conversation_id || _hcConvId,msg.reply_to_message_id,msg.id));
+          hbUpdateContinue(msg.task);
+        }
+        if(msg.request_control && typeof hbRequestControl==='function') {
+          if(!existing.querySelector('.hb-request-controls'))existing.querySelector('.hc-bubble-body')?.insertAdjacentHTML('beforebegin',hbRequestControl(msg.request_control,msg.conversation_id || _hcConvId));
+          hbUpdateApproval(msg.request_control);
+        }
+        return existing;
+      }
+    } else if (Number.isFinite(msg._afterId)) {
+      const existing = Array.from(container.querySelectorAll('.hc-bubble[data-message-id]')).find(el =>
+        Number(el.dataset.messageId) > msg._afterId && el._chatMessage?.content === msg.content
+        && String(el._chatMessage.sender || el._chatMessage.from_agent).toLowerCase()
+          === String(msg.sender || msg.from_agent).toLowerCase());
+      if (existing) return existing;
+    }
     _hcShowWelcome(false);
 
     const sender = (msg.sender || msg.from_agent || '').toLowerCase();
@@ -388,7 +602,9 @@
     const agentLabel = isUser ? 'You' : _hcAgentDisplayName(sender);
 
     const time = msg.created_at ? _hcFormatTime(msg.created_at) : '';
-    const content = _hcRenderContent(msg.content || '');
+    const content = !isUser && typeof renderHummingbirdChatBody === 'function'
+      ? renderHummingbirdChatBody(msg.content || '', msg.message_type, _hcRenderContent)
+      : _hcRenderContent(msg.content || '');
     const rawText = _hcEsc(String(msg.content || '').trim().slice(0, 4000));
     const msgId = msg.id || '';
     const convId = msg.conversation_id || _hcConvId || '';
@@ -417,6 +633,7 @@
     }
 
     const div = document.createElement('div');
+    div._chatMessage = msg;
     div.className = `hc-bubble ${type}`;
     if (hasIds) div.dataset.messageId = msgId;
     if (msg._placeholderId) div.dataset.ph = msg._placeholderId;
@@ -425,10 +642,16 @@
         `<span class="hc-bubble-sender">${_hcEsc(agentLabel)}</span>` +
         (time ? `<span class="hc-bubble-time">${time}</span>` : '') +
       `</div>` +
+      (typeof hbTaskBadge==='function' ? hbTaskBadge(msg.task,convId,msg.reply_to_message_id,msg.id) : '') +
+      (typeof hbRequestControl==='function' ? hbRequestControl(msg.request_control,convId) : '') +
+      (!isUser && typeof hbUsageLabel==='function' ? `<span class="hb-usage">${_hcEsc(hbUsageLabel(msg.usage,msg.tokens_used))}</span>` : '') +
       `<div class="hc-bubble-body">${content}</div>` +
       actionHtml;
 
+    if(msg.task)div.dataset.hbTaskId=msg.task.task_id;
+    if(typeof hbTaskBar==='function')hbTaskBar('home-chat-input',convId);
     container.appendChild(div);
+    return div;
   }
 
   // ── Home-chat action handlers (global) ─────────────────────────────────
@@ -628,6 +851,9 @@
 	  window.homeLoadProofTrail = _hcLoadProofTrail;
 
 	  function _hcAgentDisplayName(name) {
+    if (name === 'apex' || name === 'codex-instructor' || name === 'copilot-instructor' || name === 'gemini-advisor' || name === 'peer-bridge') {
+      return _chatAgentLabel(name);
+    }
     const agents = _hcAgentOptions();
     const match = agents.find(a => a.value === name || a.label?.toLowerCase() === name);
     return match ? match.label : (name.charAt(0).toUpperCase() + name.slice(1));
@@ -836,14 +1062,8 @@
 
   function _hcUpdateMeta() {
     const countEl = document.getElementById('home-chat-agent-count');
-    const isManual = localStorage.getItem(HC_MANUAL_KEY) === '1';
     if (countEl) {
-      if (isManual) {
-        const n = document.querySelectorAll('#home-chat-agents .home-chat-agent-pill.active').length;
-        countEl.textContent = `${n} agent${n !== 1 ? 's' : ''} on`;
-      } else {
-        countEl.textContent = 'auto-route';
-      }
+      countEl.textContent = `To: ${chatRecipientSummary(document.getElementById('home-chat-input')?.value, _chatAgentLabel)}`;
     }
   }
 
@@ -951,11 +1171,15 @@
       return;
     }
 
-    const enabled = getAutomaticLocalChatAgents();
+    const enabled = getChatDispatchAgents(text);
     if (!enabled.length) {
       if (typeof showToast === 'function') showToast('No local agent is available. Check the local runtime in Agents.', 'error');
       return;
     }
+    const sendAfterId = Math.max(0, ...Array.from(
+      document.querySelectorAll('#home-chat-messages .hc-bubble[data-message-id]'),
+      el => Number(el.dataset.messageId)));
+    _hcSendVersion += 1;
 
     // Show user bubble immediately
     _hcAppendBubble({
@@ -996,6 +1220,7 @@
       agents: enabled,
       local_only: true,
       conversation_id: _hcConvId || null,
+      task_id:typeof hbTaskSelection==='function' ? hbTaskSelection(_hcConvId) : null,
       new_thread: !_hcConvId,
       history_mode: 'recent',
       history_limit: 12,
@@ -1010,6 +1235,7 @@
       .then(r => r.json())
       .then(data => {
         if (viewVersion !== _hcViewVersion) return;
+        // Only the explicit Continue button/picker selects a task for later messages.
         if (data.conversation_id && String(data.conversation_id) !== String(_hcConvId)) {
           _hcConvId = data.conversation_id;
           localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(_hcConvId));
@@ -1054,6 +1280,7 @@
         // Render completed (non-pending) agent responses
         (Array.isArray(data.tool_receipts) ? data.tool_receipts : []).forEach(receipt => {
           _hcAppendBubble({
+            _afterId: sendAfterId,
             sender: 'apex', message_type: 'tool_result',
             content: `[tool:${receipt.tool}] ${receipt.status} (receipt ${receipt.id})\n` +
               JSON.stringify(receipt.arguments) + '\n' + receipt.output +
@@ -1064,6 +1291,8 @@
         if (immediate.length > 0) {
           immediate.forEach(resp => {
             _hcAppendBubble({
+              _afterId: sendAfterId,
+              task:resp.task||data.task,usage:resp.usage,tokens_used:resp.tokens,conversation_id:data.conversation_id,
               sender: resp.agent || 'agent',
               message_type: 'agent',
               content: resp.response || resp.text || '(empty response)',
@@ -1072,6 +1301,7 @@
           });
         } else if (!pendingAcks.length && !pendingJobIds.length && data.response) {
           _hcAppendBubble({
+            _afterId: sendAfterId,
             sender: data.agent || 'agent',
             message_type: 'agent',
             content: data.response,
@@ -1098,6 +1328,8 @@
             status: 'running',
           });
         });
+
+        (Array.isArray(data.peer_statuses) ? data.peer_statuses : []).forEach(_hcApplyPeerProgress);
 
         if (pendingJobIds.length) {
           _hcPollJobs(pendingJobIds);
@@ -1130,6 +1362,7 @@
         }
         // Keep Offline/Recovery visible; only a healthy lane reads "Ready".
         if (statusEl && _hcLaneState === 'ok') statusEl.textContent = 'Ready';
+        if (viewVersion === _hcViewVersion && _hcConvId) _hcSilentRefresh(_hcConvId, true);
       });
   }
 
@@ -1245,6 +1478,7 @@
           } else {
             document.removeEventListener('sse:chat', onSse);
             if (statusEl && _hcLaneState === 'ok') statusEl.textContent = 'Ready';
+            _hcSilentRefresh(convId, true);
           }
         })
         .catch(() => {

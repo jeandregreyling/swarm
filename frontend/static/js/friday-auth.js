@@ -1,6 +1,6 @@
 /* friday-auth.js — Login, registration, session, and user management UI
  *
- * On page load, checks /api/auth/me.
+ * Rechecks /api/auth/me while the page is open and after owner-access failures.
  * If not logged in, shows login overlay.
  * If owner has no password, shows first-time setup.
  * Owner can manage users from a panel inside the Skills/Identity tile.
@@ -9,6 +9,8 @@
   'use strict';
 
   let _currentUser = null;
+  let _authCheckPending = null;
+  let _authGeneration = 0;
   const LOGIN_PREFS_KEY = 'fridays-login-prefs';
 
   function _loadLoginPrefs() {
@@ -33,11 +35,36 @@
 
   // ── Bootstrap ────────────────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => _authCheck());
+  window.addEventListener('focus', () => _authCheck());
+  window.addEventListener('hummingbird:auth-required', () => _authCheck());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return _authCheck();
+  });
+  setInterval(() => {
+    if (!document.hidden) _authCheck();
+  }, 30000);
+  window.fridayAuthCheck = _authCheck;
+
+  function _clearSession() {
+    _currentUser = null;
+    window.__fridayUser = null;
+    for (const id of ['friday-user-badge', 'friday-user-menu', 'friday-users-overlay']) {
+      document.getElementById(id)?.remove();
+    }
+  }
 
   function _authCheck() {
-    fetch('/api/auth/me')
-      .then(r => r.json())
+    if (_authCheckPending) return _authCheckPending;
+    const generation = _authGeneration;
+    const options = { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(5000) };
+    _authCheckPending = fetch('/api/auth/me', options)
+      .then(r => {
+        if (!r.ok) throw new Error(`Session check failed (HTTP ${r.status})`);
+        return r.json();
+      })
       .then(data => {
+        if (generation !== _authGeneration) return _currentUser;
+        if (!data.ok || !Object.hasOwn(data, 'user')) throw new Error('Invalid session response');
         if (data.user) {
           _currentUser = data.user;
           window.__fridayUser = data.user;
@@ -53,23 +80,47 @@
           } catch (_) {}
           _hideAuthOverlay();
           _renderUserBadge();
+          return _currentUser;
         } else {
+          const expired = !!_currentUser;
+          _clearSession();
+          // Do not replace a login form that the operator is already filling in.
+          if (document.getElementById('friday-auth-overlay')) return null;
+          if (expired) {
+            _showLogin('Your session expired. Sign in to restore APEX tools, Studio and teammate delivery. Your chat draft is preserved.');
+            return null;
+          }
           // Check if first-time setup needed
-          return fetch('/api/auth/setup-status')
-            .then(r => r.json())
+          return fetch('/api/auth/setup-status', options)
+            .then(r => {
+              if (!r.ok) throw new Error(`Setup check failed (HTTP ${r.status})`);
+              return r.json();
+            })
             .then(status => {
+              if (generation !== _authGeneration) return _currentUser;
+              if (typeof status.owner_has_password !== 'boolean') throw new Error('Invalid setup response');
               if (!status.owner_has_password) {
                 _showSetup();
               } else {
                 _showLogin();
               }
+              return null;
             });
         }
       })
-      .catch(() => {
-        // Auth endpoint not available — allow through (backward compat)
-        _hideAuthOverlay();
+      .catch(error => {
+        if (generation !== _authGeneration) return _currentUser;
+        console.error('[Hummingbird auth]', error);
+        _clearSession();
+        const message = `Cannot verify your session: ${error.message}. Retrying automatically; your draft is preserved.`;
+        if (!document.getElementById('friday-auth-overlay')) _showLogin(message);
+        else _setMsg(document.getElementById('login-msg'), message, 'error');
+        return null;
+      })
+      .finally(() => {
+        _authCheckPending = null;
       });
+    return _authCheckPending;
   }
 
   // ── Overlay management ──────────────────────────────────────────────────
@@ -162,6 +213,7 @@
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
+          _authGeneration++;
           _currentUser = data.user;
           window.__fridayUser = data.user;
           _hideAuthOverlay();
@@ -186,13 +238,13 @@
   }
 
   // ── Login / Register ──────────────────────────────────────────────────
-  function _showLogin() {
+  function _showLogin(message = '') {
     const overlay = _getOrCreateOverlay();
     const loginPrefs = _loadLoginPrefs();
     overlay.innerHTML = `
       <div class="friday-auth-card">
         <div class="friday-auth-logo">
-          <h1>Friday</h1>
+          <h1>Hummingbird</h1>
           <p>Sign in to continue</p>
         </div>
         <div class="friday-auth-tabs">
@@ -245,6 +297,7 @@
     const loginPass = overlay.querySelector('#login-pass');
     const loginRemember = overlay.querySelector('#login-remember');
     const loginMsg = overlay.querySelector('#login-msg');
+    if (message) _setMsg(loginMsg, message, 'error');
     _wireEyeToggle(loginPass);
     _wireEyeToggle(overlay.querySelector('#reg-pass'));
     loginBtn.addEventListener('click', () => {
@@ -262,6 +315,7 @@
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
+          _authGeneration++;
           _currentUser = data.user;
           window.__fridayUser = data.user;
           _saveLoginPrefs(u, remember);

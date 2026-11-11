@@ -6,6 +6,7 @@ import difflib
 import hashlib
 import json
 import logging
+import ast
 import os
 from pathlib import Path
 import secrets
@@ -42,14 +43,16 @@ class Transaction:
     paths: list[str]
     diff: str
     hashes: dict[str, str]
-    states: dict[str, tuple[bytes, int]]
+    states: dict[str, tuple[bytes, int] | None]
     args: dict
     repository: ReadOnlyRepository
     head: str = ""
     index_hash: str = ""
+    creation_parents: dict[str, tuple[int, int]] = field(default_factory=dict)
     expires_at: float = field(default_factory=lambda: time.time() + APPROVAL_TIMEOUT)
     ready: threading.Event = field(default_factory=threading.Event)
     result: dict | None = None
+    execution: dict | None = None
 
     def public(self) -> dict:
         return {
@@ -57,6 +60,7 @@ class Transaction:
             "tool": self.tool, "paths": self.paths, "diff": self.diff,
             "hashes": self.hashes, "expires_at": self.expires_at,
             "message": self.args.get("message", ""),
+            "new_paths": [path for path, state in self.states.items() if state is None],
         }
 
 
@@ -68,10 +72,42 @@ class ApprovalStore:
         self._reserved: set[tuple[str, str]] = set()
 
     @staticmethod
-    def _state(repository, relative, *, commit: bool = False, patch: bool = False):
+    def _parent_fd(repository, relative):
+        repository._path(relative)
+        descriptor = os.open(repository.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            for part in Path(relative).parent.parts:
+                child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)
+                os.close(descriptor)
+                descriptor = child
+            return descriptor
+        except OSError:
+            os.close(descriptor)
+            raise
+
+    @staticmethod
+    def _state(repository, relative, *, commit: bool = False, patch: bool = False,
+               create: bool = False):
         # Reuse the tracked-text and protected-path boundary; never read private pools.
         limit = MAX_FILE_BYTES if commit or patch else MAX_WRITE_BYTES
-        repository._text(relative, set(repository._tracked()), allow_untracked=commit, max_bytes=limit)
+        if create:
+            path = repository._source_path(relative)
+            parent = ApprovalStore._parent_fd(repository, relative)
+            try:
+                try:
+                    os.stat(path.name, dir_fd=parent, follow_symlinks=False)
+                except FileNotFoundError:
+                    ignored = subprocess.run(
+                        ["git", "-C", str(repository.root), "check-ignore", "--no-index", "--", relative],
+                        capture_output=True, timeout=10)
+                    if ignored.returncode == 0:
+                        raise PermissionError("Ignored source paths cannot be created")
+                    if ignored.returncode != 1:
+                        ignored.check_returncode()
+                    return None
+            finally:
+                os.close(parent)
+        repository._text(relative, set(repository._tracked()), allow_untracked=commit or create or patch, max_bytes=limit)
         path = repository._path(relative)
         with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), "rb") as stream:
             info = os.fstat(stream.fileno())
@@ -83,6 +119,8 @@ class ApprovalStore:
 
     @staticmethod
     def _hash(state):
+        if state is None:
+            return hashlib.sha256(b"APEX:absent-source-file").hexdigest()
         return hashlib.sha256(state[0] + b"\0mode:" + str(state[1]).encode()).hexdigest()
 
     @staticmethod
@@ -93,6 +131,13 @@ class ApprovalStore:
         transaction.result = {
             "transaction_id": transaction.id, "status": status, "output": output,
         }
+        if transaction.execution:
+            transaction.result.update({
+                'executor': transaction.execution['principal'],
+                'requested_by': transaction.execution['requested_by'],
+                'run_id': transaction.execution['run_id'],
+                'model': transaction.execution['model'],
+            })
         self._pending.pop(transaction.id, None)
         self._reserved.difference_update(
             (str(transaction.repository.root), path) for path in transaction.paths)
@@ -124,6 +169,11 @@ class ApprovalStore:
                     or any(len(args[key].encode("utf-8")) > 8000 or "\0" in args[key]
                            for key in ("exact_old_text", "new_text"))):
                 raise ValueError("propose_patch requires file_path, nonempty exact_old_text and new_text; text limit 8000 bytes")
+            if args["exact_old_text"] == args["new_text"]:
+                raise ValueError(
+                    "propose_patch new_text is identical to exact_old_text, so it changes nothing. "
+                    "Propose only a change the operator or your ALM step explicitly requested. No transaction created."
+                )
             paths = [args["file_path"]]
         else:
             if (set(args) != {"paths", "message"} or not isinstance(args["paths"], list)
@@ -137,10 +187,24 @@ class ApprovalStore:
                 or len(set(paths)) != len(paths)):
             raise ValueError("Paths must be unique canonical workspace-relative file paths")
         commit = tool == "propose_commit"
-        states = {path: self._state(repository, path, commit=commit, patch=patch) for path in paths}
+        states = {path: self._state(repository, path, commit=commit, patch=patch,
+                                    create=tool == "propose_write_file") for path in paths}
+        creation_parents = {}
+        for path, state in states.items():
+            if state is None:
+                parent = self._parent_fd(repository, path)
+                try:
+                    info = os.fstat(parent)
+                    creation_parents[path] = (info.st_dev, info.st_ino)
+                finally:
+                    os.close(parent)
         if tool == "propose_write_file" or patch:
-            before = states[paths[0]][0].decode("utf-8")
+            state = states[paths[0]]
+            before = state[0].decode("utf-8") if state is not None else ""
             if patch:
+                if (args['exact_old_text'] in args['new_text'] and args['new_text'] in before
+                        and before.count(args['exact_old_text'])==1):
+                    raise ValueError('This exact insertion is already present in current source; no duplicate write was proposed. Read back the existing result and continue with the next unfinished action.')
                 matches = before.count(args["exact_old_text"])
                 if matches != 1:
                     raise ValueError(
@@ -152,11 +216,24 @@ class ApprovalStore:
                     raise ValueError("Patched file exceeds the 1 MiB limit")
             else:
                 after = args["content"]
-            if before == after:
+            if before == after and state is not None:
                 raise ValueError("Write proposal has no changes")
+            if tool=='propose_write_file' and len(before)>4096 and len(after)<len(before)//2:
+                raise ValueError('A fragment cannot replace this existing source file. Use an exact scoped patch for an intentional removal; no source changed.')
+            if paths[0].endswith('.py'):
+                try:updated_tree=ast.parse(after,filename=paths[0])
+                except SyntaxError as exc:
+                    raise ValueError(f'Python proposal does not parse at line {exc.lineno}: {exc.msg}. No source changed; correct the payload locally.') from None
+                if tool=='propose_write_file' and state is not None:
+                    try:original_tree=ast.parse(before)
+                    except SyntaxError:original_tree=None
+                    if original_tree:
+                        definitions=lambda tree:{n.name for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef))}
+                        removed=definitions(original_tree)-definitions(updated_tree)
+                        if removed:raise ValueError('Complete-file write would remove existing definitions: '+', '.join(sorted(removed))+'. Use a reviewed exact patch for an intentional removal; a fragment cannot replace the module.')
             diff = "".join(difflib.unified_diff(
                 before.splitlines(keepends=True), after.splitlines(keepends=True),
-                fromfile="a/" + paths[0], tofile="b/" + paths[0]))
+                fromfile="a/" + paths[0] if state is not None else "/dev/null", tofile="b/" + paths[0]))
             # Show complete file payload when a missing final newline affects diff display.
             diff = json.dumps(
                 {"unified_diff": diff, **({"exact_old_text": args["exact_old_text"],
@@ -180,10 +257,13 @@ class ApprovalStore:
             reservations = {(str(repository.root), path) for path in paths}
             if self._reserved & reservations or len(self._pending) >= 16:
                 raise ApprovalConflict("Target already has a pending proposal or approval queue is full")
+            from core.agent_identity import CURRENT
             transaction = Transaction(
                 str(uuid.uuid4()), owner, session, secrets.token_urlsafe(32), conversation_id,
                 tool, list(paths), diff, {path: self._hash(state) for path, state in states.items()},
                 states, json.loads(json.dumps(args)), repository, head, index_hash,
+                creation_parents=creation_parents,
+                execution=dict(CURRENT.get()) if CURRENT.get() else None,
             )
             self._pending[transaction.id] = transaction
             self._reserved.update(reservations)
@@ -209,6 +289,7 @@ class ApprovalStore:
             return dict(transaction.result)
 
     def decide(self, transaction_id, decision, owner, session, csrf, authorize) -> dict:
+        from core.hb_executions import authorized as task_authorized
         if type(decision) is not bool:
             raise ValueError("decision must be a JSON boolean")
         with self._lock:
@@ -220,27 +301,53 @@ class ApprovalStore:
                     or not secrets.compare_digest(transaction.csrf, csrf)):
                 raise PermissionError("Transaction belongs to another operator session or CSRF token is invalid")
             # Claim before execution; racing approvals cannot execute the same transaction.
+            from core import agent_identity as attribution
+            actor = transaction.execution
+            before = {path: hashlib.sha256(state[0]).hexdigest() if state is not None else None
+                      for path, state in transaction.states.items()}
+            audit_started = False
+
+            def audit(status, after=None, result=None):
+                return attribution.event(actor, transaction.id, transaction.tool, status,
+                    paths=transaction.paths, before=before, after=after, result=result)
+
             try:
+                audit('started', result={'diff': transaction.diff})
+                audit_started = actor is not None
                 if not decision:
+                    audit("denied", result={"reason": "operator_denied"})
                     self._finish(transaction, "denied", "User Denied Execution")
-                elif not authorize(transaction.tool):
+                elif not authorize(transaction.tool) or (actor and not attribution.identity_is_active(actor)) or not task_authorized(actor):
+                    audit("denied", result={"reason": "permission_denied"})
                     self._finish(transaction, "denied", "Operator permission denied execution")
                 else:
                     repository = transaction.repository
-                    for path in transaction.paths:
-                        if self._hash(self._state(repository, path, commit=transaction.tool == "propose_commit",
-                                                  patch=transaction.tool == "propose_patch")) != transaction.hashes[path]:
-                            raise ApprovalConflict("Stale payload: target file changed since proposal")
-                    if transaction.tool in {"propose_write_file", "propose_patch"}:
-                        output = self._write(transaction)
-                    else:
-                        if (repository._git("rev-parse", "HEAD").strip() != transaction.head
-                                or self._index_hash(repository) != transaction.index_hash):
-                            raise ApprovalConflict("Stale commit: HEAD or staging index changed")
-                        output = self._commit(transaction)
-                    self._finish(transaction, "succeeded", output)
+                    from core.hb_process_lock import ProcessLock
+                    with ProcessLock('source-write',repository.root):
+                        if not authorize(transaction.tool) or (actor and not attribution.identity_is_active(actor)) or not task_authorized(actor):
+                            raise PermissionError('Permission revoked before execution')
+                        for path in transaction.paths:
+                            if self._hash(self._state(repository, path, commit=transaction.tool == "propose_commit",
+                                                      patch=transaction.tool == "propose_patch",
+                                                      create=transaction.tool == "propose_write_file")) != transaction.hashes[path]:
+                                raise ApprovalConflict("Stale payload: target file changed since proposal")
+                        if transaction.tool in {"propose_write_file", "propose_patch"}:
+                            output = self._write(transaction)
+                        else:
+                            if (repository._git("rev-parse", "HEAD").strip() != transaction.head
+                                    or self._index_hash(repository) != transaction.index_hash):
+                                raise ApprovalConflict("Stale commit: HEAD or staging index changed")
+                            output = self._commit(transaction)
+                        after = attribution.path_hashes(repository, transaction.paths) if actor else None
+                        audit("succeeded", after=after)
+                        self._finish(transaction, "succeeded", output)
             except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
                 LOG.exception("Tool approval execution failed: %s", transaction.id)
+                if audit_started:
+                    try:
+                        audit('failed', result={'error_type': type(exc).__name__})
+                    except RuntimeError:
+                        LOG.exception('Audit outcome unavailable; durable action intent remains %s', transaction.id)
                 self._finish(transaction, "failed", str(exc))
             return dict(transaction.result)
 
@@ -249,8 +356,11 @@ class ApprovalStore:
         relative = transaction.paths[0]
         path = repository._path(relative)
         patch = transaction.tool == "propose_patch"
+        state = transaction.states[relative]
+        if state is None:
+            return self._create(transaction)
         content = (
-            transaction.states[relative][0].decode("utf-8").replace(
+            state[0].decode("utf-8").replace(
                 transaction.args["exact_old_text"], transaction.args["new_text"], 1)
             if patch else transaction.args["content"]
         )
@@ -260,15 +370,54 @@ class ApprovalStore:
                 temp_path = Path(stream.name)
                 stream.write(content.encode("utf-8"))
                 stream.flush()
-                os.fchmod(stream.fileno(), transaction.states[relative][1])
+                os.fchmod(stream.fileno(), state[1])
                 os.fsync(stream.fileno())
-            if self._hash(self._state(repository, relative, patch=patch)) != transaction.hashes[relative]:
+            if self._hash(self._state(repository, relative, patch=patch, create=not patch)) != transaction.hashes[relative]:
                 raise ApprovalConflict("Stale payload: target changed before atomic replacement")
             os.replace(temp_path, path)
         finally:
             if temp_path is not None and temp_path.exists():
                 temp_path.unlink()
-        return f"Approved {'patch' if patch else 'write'} completed: {relative}; SHA-256 {self._hash(self._state(repository, relative, patch=patch))}"
+        return f"Approved {'patch' if patch else 'write'} completed: {relative}; SHA-256 {self._hash(self._state(repository, relative, patch=patch, create=not patch))}"
+
+    def _create(self, transaction):
+        repository = transaction.repository
+        relative = transaction.paths[0]
+        parent = self._parent_fd(repository, relative)
+        temporary = ".apex-write-" + secrets.token_hex(16)
+        created_temp = False
+        try:
+            info = os.fstat(parent)
+            if (info.st_dev, info.st_ino) != transaction.creation_parents[relative]:
+                raise ApprovalConflict("Stale payload: creation parent changed")
+            descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                                 0o600, dir_fd=parent)
+            created_temp = True
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(transaction.args["content"].encode("utf-8"))
+                stream.flush()
+                os.fchmod(stream.fileno(), 0o644)
+                os.fsync(stream.fileno())
+            if self._state(repository, relative, create=True) is not None:
+                raise ApprovalConflict("Stale payload: creation target now exists")
+            current_parent = self._parent_fd(repository, relative)
+            try:
+                current_info = os.fstat(current_parent)
+                if (current_info.st_dev, current_info.st_ino) != transaction.creation_parents[relative]:
+                    raise ApprovalConflict("Stale payload: creation parent changed")
+            finally:
+                os.close(current_parent)
+            # Linking the complete inode is atomic and fails if any target appeared.
+            os.link(temporary, Path(relative).name, src_dir_fd=parent, dst_dir_fd=parent,
+                    follow_symlinks=False)
+            os.fsync(parent)
+        finally:
+            try:
+                if created_temp:
+                    os.unlink(temporary, dir_fd=parent)
+            finally:
+                os.close(parent)
+        return f"Approved creation completed: {relative}; SHA-256 {self._hash(self._state(repository, relative, commit=True))}"
 
     def _commit(self, transaction):
         repository = transaction.repository

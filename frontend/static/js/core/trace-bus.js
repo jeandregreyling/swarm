@@ -48,6 +48,7 @@
   }
 
   function _pushEvent(ev) {
+    if (ev && ev.id != null && buffer.some(item => item && item.id === ev.id)) return;
     buffer.unshift(ev);
     if (buffer.length > MAX_BUFFER) buffer.length = MAX_BUFFER;
     _fire('event', ev);
@@ -107,7 +108,7 @@
 
   function start() {
     if (es) return;
-    if (pageClosing || !navigator.onLine) return;
+    if (pageClosing || !navigator.onLine || document.visibilityState === 'hidden') return;
     tickerEl = document.getElementById('trace-ticker');
 
     // Prime with a small backlog from the DB so the user sees context on open
@@ -120,20 +121,23 @@
       .catch(() => {});
 
     try {
-      es = new EventSource('/api/spine/stream');
-      es.onopen = () => {
-        retryMs = 2000;
+      const source = new EventSource('/api/spine/stream');
+      es = source;
+      source.onopen = () => {
+        if (es === source) retryMs = 2000;
       };
-      es.onmessage = (msg) => {
-        if (!msg || !msg.data) return;
+      source.onmessage = (msg) => {
+        if (es !== source || !msg || !msg.data) return;
         try {
           const ev = JSON.parse(msg.data);
           _pushEvent(ev);
         } catch (_) {}
       };
-      es.onerror = () => {
-        if (es) { try { es.close(); } catch (_) {} es = null; }
-        if (pageClosing || !navigator.onLine) return;
+      source.onerror = () => {
+        if (es !== source) return;
+        try { source.close(); } catch (_) {}
+        es = null;
+        if (pageClosing || !navigator.onLine || document.visibilityState === 'hidden') return;
         if (retryTimer) clearTimeout(retryTimer);
         retryTimer = setTimeout(() => {
           retryTimer = null;
@@ -183,6 +187,17 @@
   window.addEventListener('pagehide', () => {
     pageClosing = true;
     stop();
+  });
+
+  window.addEventListener('pageshow', () => {
+    pageClosing = false;
+    start();
+  });
+
+  // Hidden tabs must leave HTTP connections available for main-chat requests.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') stop();
+    else start();
   });
 
   if (document.readyState === 'loading') {

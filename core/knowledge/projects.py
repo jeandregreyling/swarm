@@ -85,7 +85,7 @@ CASE_STATUSES = ('draft', 'ready', 'passed', 'failed', 'blocked', 'obsolete')
 PROJECT_STATUSES = ('active', 'archived', 'on_hold')
 BLACKBOARD_KINDS = (
     'note', 'handoff', 'decision', 'risk', 'test', 'research', 'milestone',
-    'quintum-chunk', 'quintum-synthesis',
+    'quintum-chunk', 'quintum-synthesis', 'trace',
 )
 BLACKBOARD_STATUSES = ('active', 'resolved', 'archived')
 DEFAULT_OWNER = 'seven'

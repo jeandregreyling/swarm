@@ -46,7 +46,14 @@ _TEST_DB = tempfile.NamedTemporaryFile(
 _TEST_DB.close()
 
 os.environ["SWARM_DB_PATH"] = _TEST_DB.name
+_TEST_AGENT_IDENTITIES = tempfile.TemporaryDirectory(prefix="swarm_test_identities_")
+os.environ["HUMMINGBIRD_AGENT_STATE"] = _TEST_AGENT_IDENTITIES.name
 os.environ["SWARM_VORTEX_LEDGER_DISABLED"] = "1"
+_TEST_HF_MIRROR = tempfile.TemporaryDirectory(prefix="swarm_test_hf_mirror_")
+os.environ["HUMMINGBIRD_HF_MIRROR_ROOT"] = _TEST_HF_MIRROR.name
+os.environ["HUMMINGBIRD_HF_TEXT_INDEX"] = os.path.join(_TEST_HF_MIRROR.name,"text.sqlite")
+_TEST_HB_LOCKS = tempfile.TemporaryDirectory(prefix="swarm_test_hb_locks_")
+os.environ["HUMMINGBIRD_LOCK_DIR"] = _TEST_HB_LOCKS.name
 _TEST_VORTEX_BACKUPS = tempfile.TemporaryDirectory(prefix="swarm_test_vortex_")
 os.environ["SWARM_VORTEX_BACKUP_ROOT"] = _TEST_VORTEX_BACKUPS.name
 
@@ -60,6 +67,13 @@ os.environ.setdefault("SEVEN_LLAMA_SYSTEMD_SCOPE", "0")
 os.environ.setdefault("SWARM_OLLAMA_STORE", "")
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolate_owner_apex_grants(tmp_path, monkeypatch):
+    """Host standing grants must never authorize edits during unrelated tests."""
+    from core import apex_permissions
+    monkeypatch.setattr(apex_permissions, 'POLICY_PATH', tmp_path / 'absent-owner-policy.json')
 
 
 @pytest.fixture(autouse=True)

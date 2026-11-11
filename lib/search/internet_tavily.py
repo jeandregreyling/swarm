@@ -67,6 +67,7 @@ def search(query, max_results=5, search_depth='basic'):
                 max_results=max_results,
                 search_depth=search_depth,
                 include_answer=True,
+                timeout=10,
             )
             result = _format_results(response, query)
             print(f'[Tavily] {len(response.get("results",[]))} results for: {query[:60]}')
@@ -77,7 +78,7 @@ def search(query, max_results=5, search_depth='basic'):
                 pass
             return result
         except Exception as e:
-            print(f'[Tavily] Key {key[:16]}... failed: {e}')
+            print(f'[Tavily] Search failed: {type(e).__name__}')
 
     return f'[Tavily search unavailable for: {query}]'
 

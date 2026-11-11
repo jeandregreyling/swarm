@@ -2910,6 +2910,12 @@ def _trust_gate(skill_name, agent_name):
 # ── Central dispatch ──────────────────────────────────────────────────────────
 
 def call(skill_name, args='', agent='ghost', source_conv_id=None):
+    from core.agent_identity import authenticated_skill_call
+    return authenticated_skill_call(skill_name, args, agent, source_conv_id,
+        lambda: _call_with_existing_policy(skill_name, args, agent, source_conv_id))
+
+
+def _call_with_existing_policy(skill_name, args='', agent='ghost', source_conv_id=None):
     """
     Invoke a skill by name. Returns (success: bool, output: str).
     skill_name     — one of REGISTRY keys

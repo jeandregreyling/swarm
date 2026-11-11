@@ -1,0 +1,6 @@
+{
+  "name": "hummingbird-instructor-link",
+  "version": "0.1.0",
+  "description": "Explicit, bounded handoffs to the attached instructor session.",
+  "extensions": "extensions/"
+}
