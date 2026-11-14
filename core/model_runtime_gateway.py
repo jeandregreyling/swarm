@@ -348,10 +348,13 @@ def force_unload(
             except Exception as exc:
                 return 1, str(exc)
 
-    cmds = restart_cmds or [
+    # Owner 15 Nov: no default restart of ollama.service any more (it raised password popups; HB runs on llama-server).
+    # A caller that really manages an Ollama runtime passes restart_cmds itself, or sets HB_ALLOW_OLLAMA_RESTART=1.
+    import os as _os
+    cmds = restart_cmds or ([
         ["systemctl", "--user", "--no-ask-password", "restart", "ollama"],
         ["systemctl", "--no-ask-password", "restart", "ollama"],
-    ]
+    ] if _os.environ.get('HB_ALLOW_OLLAMA_RESTART', '').strip() == '1' else [])
     restart_ok = False
     for cmd in cmds:
         try:

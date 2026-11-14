@@ -1002,8 +1002,19 @@ def _watchdog_kill_ollama_runner_pid(model_name: str) -> dict:
     return result
 
 
+def _ollama_restart_allowed() -> bool:
+    """Owner 15 Nov: "still getting ollama.service reset requests that shouldn't be happening". HB runs its models on llama-server;
+    Ollama is the unused runtime. The old chat watchdog still asked systemd to restart ollama.service whenever it thought a model
+    was stuck - three password popups in 40 seconds on JD's screen. It is only allowed when HB_ALLOW_OLLAMA_RESTART=1 is set."""
+    import os as _os
+    return _os.environ.get('HB_ALLOW_OLLAMA_RESTART', '').strip() == '1'
+
+
 def _watchdog_restart_ollama_service(model_name: str) -> dict:
     result = {'ok': False, 'detail': '', 'action': 'systemctl-restart-ollama'}
+    if not _ollama_restart_allowed():
+        result['detail'] = 'not restarted: HB does not use Ollama (llama-server runs the models)'
+        return result
     try:
         proc = subprocess.run(
             ['systemctl', '--no-ask-password', 'restart', 'ollama'],
