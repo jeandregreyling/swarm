@@ -100,8 +100,9 @@ def _safe_root() -> Path:
         raise ValueError(f'unsafe Vortex ledger root: {root}')
     if configured_root.is_symlink():
         raise ValueError(f'Vortex ledger root must not be a symlink: {configured_root}')
-    if root == Path('/mnt/archive/vortex') and not Path('/mnt/archive').is_mount():
-        raise OSError('/mnt/archive is not mounted; refusing to write Vortex data on the system disk')
+    from core import hb_archive         # audit 15 Nov: the archive is on the NVMe since 11 Nov (core/hb_archive.py)
+    if root == Path('/mnt/archive/vortex') and not hb_archive.trusted('/mnt/archive'):
+        raise OSError('/mnt/archive is neither a mounted volume nor marked as the archive by the owner; refusing to write Vortex data there')
     return root
 
 

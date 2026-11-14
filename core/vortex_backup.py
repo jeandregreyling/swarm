@@ -21,8 +21,9 @@ def backup_root() -> Path:
         root = Path(configured).expanduser().resolve()
     else:
         archive = Path('/mnt/archive')
-        if not archive.is_mount():
-            raise OSError('/mnt/archive is not mounted; refusing to put memory backups on the system disk')
+        from core import hb_archive     # audit 15 Nov: the archive is on the NVMe since 11 Nov (core/hb_archive.py)
+        if not hb_archive.trusted(archive):
+            raise OSError('/mnt/archive is neither a mounted volume nor marked as the archive by the owner; refusing to put memory backups there')
         root = archive / 'vortex' / 'memory-backups'
     if root in {Path('/'), Path.home(), Path(__file__).resolve().parents[1]}:
         raise ValueError(f'unsafe Vortex backup root: {root}')
