@@ -593,6 +593,17 @@ def hb_queue_status(current_user=None):
         if request.headers.get('Sec-Fetch-Site')=='cross-site' or origin and urlsplit(origin).netloc!=request.host:
             return jsonify(ok=False,error='Use the authenticated main chat for HB switches'),403
         body=request.get_json(silent=True) if request.is_json else None
+        if isinstance(body,dict) and isinstance(body.get('clip'),list):   # owner 15 Nov: the board is editable by clicking (same rules as /clip)
+            args=[str(a)[:40] for a in body['clip'][:3]]
+            if not args or args[0] not in ('up','down','top','importance','doer','impact','clear'):
+                return jsonify(ok=False,error='clip: up|down|top|importance|doer|impact|clear, then the step'),400
+            from core import hb_clipboard
+            with closing(get_connection()) as conn,conn:
+                said=hb_clipboard.edit(conn,args,current_user['username']+' via the task board')
+            with closing(get_connection()) as conn:
+                data=hb_queue.status(conn)
+                data['summary']=hb_queue.summary(conn)
+            return jsonify(ok=True,said=said,**data)
         if not isinstance(body,dict) or type(body.get('on')) is not bool:return jsonify(ok=False,error='JSON {switch, on} required'),400
         try:
             with closing(get_connection()) as conn,conn:
@@ -604,6 +615,16 @@ def hb_queue_status(current_user=None):
         data['summary']=hb_queue.summary(conn)
     if changed:data['changed']=changed
     return jsonify(ok=True,**data)
+
+
+@peer_bridge_bp.route('/api/peer/v1/hb/activity',methods=['GET'])
+@require_owner
+def hb_live_activity(current_user=None):
+    """Owner 14 Nov: plain text of what the models are doing right now (core/hb_live_activity.py), shown under the thinking bubble."""
+    from contextlib import closing
+    from core import hb_live_activity
+    with closing(get_connection()) as conn:
+        return jsonify(ok=True,**hb_live_activity.snapshot(conn))
 
 
 @peer_bridge_bp.route('/api/peer/v1/hb/models',methods=['GET','POST'])
