@@ -31,14 +31,21 @@
     const st = document.createElement('style'); st.id = 'hb-clip-css'; st.textContent = CSS; document.head.appendChild(st);
   }
 
-  function holder() {
-    let el = document.getElementById('hb-clipboard');
+  // Owner 15 Nov ("I don't see a task board at all"): HB has two chat windows - the Home chat panel and the Chat window
+  // ("Message APEX..."). The board was only ever put in the first. It now sits above the messages of both.
+  const PLACES = [['hb-clipboard', 'home-chat-messages'], ['hb-clipboard-chat', 'chat-messages']];
+  function holders() { return PLACES.map(p => holder(p[0], p[1])).filter(Boolean); }
+
+  function holder(id = 'hb-clipboard', anchor = 'home-chat-messages') {
+    let el = document.getElementById(id);
     if (el) return el;
-    const messages = document.getElementById('home-chat-messages');
+    const messages = document.getElementById(anchor);
     if (!messages || !messages.parentNode) return null;
-    el = document.createElement('section'); el.id = 'hb-clipboard'; el.className = 'hb-clip'; el.setAttribute('aria-label', "HB's clipboard: the open tasks");
+    el = document.createElement('section'); el.id = id; el.className = 'hb-clip'; el.setAttribute('aria-label', "HB's clipboard: the open tasks");
     messages.parentNode.insertBefore(el, messages);
     el.onclick = e => {
+      const sw = e.target.closest('[data-switch]');        // the switches inside the Chat window's board header
+      if (sw) { e.stopPropagation(); flip(sw.dataset.switch, sw.getAttribute('aria-pressed') !== 'true'); return; }
       const t = e.target.closest('[data-task]');           // owner 15 Nov: pause / continue / approve / cancel a task by clicking
       if (t) {
         e.stopPropagation();
@@ -125,7 +132,7 @@
     if (sig === S.sig) return;
     S.sig = sig;
     style();
-    const el = holder();
+    const all = holders(), el = all[0];
     if (el) {
       const now = d.items.find(i => i.state === 'now' || i.state === 'needs_you');
       const next = d.items.find(i => i.state === 'next');
@@ -135,19 +142,29 @@
         (d.background || []).map(b => `<div class="hb-clip-bg">${ico('sprout')} ${esc(b.role)} (${esc(b.model)}): ${esc(b.now)}</div>`).join('') +
         (S.open ? `<ul class="hb-clip-list">${d.items.map(rowHtml).join('')}</ul>` : '');
     }
-    const box = switches();
-    if (box) {
-      box.innerHTML = `<button type="button" class="hb-switch${d.on ? ' on' : ''}" data-switch="auto" aria-pressed="${d.on}" ` +
+    const swHtml = `<button type="button" class="hb-switch${d.on ? ' on' : ''}" data-switch="auto" aria-pressed="${d.on}" ` +
         `title="${d.on ? 'Auto is on: HB works through the open tasks. Click to stop.' : 'Auto is off: nothing new starts. Click to let HB drive.'}">Auto</button>` +
         (d.on ? `<button type="button" class="hb-switch${d.auto ? ' on' : ''}" data-switch="approve" aria-pressed="${d.auto}" ` +
           `title="${d.auto ? 'Auto-approve is on: HB approves plans and finished steps whose checks pass.' : 'Auto-approve is off: they wait for you.'}">Approve</button>` : '');
-    }
+    const box = switches();
+    if (box) box.innerHTML = swHtml;
+    // owner 15 Nov: the Chat window has no switch row of its own - its board carries the switches in its header
+    all.slice(1).forEach(other => { other.innerHTML = el ? el.innerHTML.replace('</div>', swHtml + '</div>') : ''; });
+  }
+
+  function notOwner() {
+    if (S.sig === 'not-owner') return;
+    S.sig = 'not-owner';
+    style();
+    holders().forEach(el => { el.innerHTML = '<div class="hb-clip-head"><b>HB</b><span>Task board is off in this window: it is not signed in as the owner. ' +
+      '<a href="/login" style="color:var(--accent,#6aa9ff)">Sign in</a> here to see and change the tasks.</span></div>'; });
   }
 
   async function refresh() {
     if (document.hidden) return;
     try {
       const r = await fetch('/api/peer/v1/hb/queue', { credentials: 'same-origin', signal: AbortSignal.timeout(5000) });
+      if (r.status === 401 || r.status === 403) { notOwner(); return; }   // owner 15 Nov: say it instead of showing nothing
       if (!r.ok) return;
       const d = await r.json();
       if (d && d.ok) show(d);
