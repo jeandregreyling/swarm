@@ -336,7 +336,7 @@ def check_due():
                               OR COALESCE(lease_expires_at,'') < ?)
                        ORDER BY
                          CASE name
-                           WHEN 'watchdog_deos_cycle' THEN 0
+                           WHEN 'watchdog_does_cycle' THEN 0
                            WHEN 'local_agent_work_cycle' THEN 1
                            ELSE 2
                          END,
@@ -369,7 +369,7 @@ def check_due():
                        WHERE enabled=1 AND (next_run IS NULL OR next_run <= ?)
                        ORDER BY
                          CASE name
-                           WHEN 'watchdog_deos_cycle' THEN 0
+                           WHEN 'watchdog_does_cycle' THEN 0
                            WHEN 'local_agent_work_cycle' THEN 1
                            ELSE 2
                          END,

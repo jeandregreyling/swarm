@@ -43,17 +43,36 @@ conversations are unavailable, not silently replaced with empty records.
 
 ### APEX-only local chat lane
 
+#### Expired owner sessions
+
+The Hummingbird page rechecks its session every 30 seconds while visible, on
+focus, and after an owner-access failure from the live board or approval panel.
+An expired session clears the authenticated badge and opens the normal sign-in
+form without reloading the conversation or replacing its unsent draft. Failed
+session checks are shown explicitly; they do not imply authenticated access.
+Polling preserves partially entered login fields. Signing in in another tab
+restores the current page on its next check.
+
+Without an authenticated owner, the APEX Studio handler and automatic peer team
+copies are unavailable. A Studio call now reports the missing authenticated
+handler rather than a generic repository-read denial. Sign in and start a fresh
+turn; neither a role badge nor a chat message grants an owner session. Verify a
+new Studio receipt and peer delivery before claiming recovery. No session TTL,
+permission rule or proposal approval gate is changed.
+
 #### Human-in-the-loop proposal bridge
 
 Authenticated owner sessions may additionally use `propose_write_file` (one
-existing tracked UTF-8 file with complete replacement content, still limited to
+safe existing or new non-ignored UTF-8 source file with complete content, limited to
 256,000 bytes) and
 `propose_commit` (a nonempty explicit array of at most 20 tracked or explicitly
 selected non-ignored untracked source file paths
 and a message). These tools propose work; they never authorize themselves.
 Anonymous/agent-key callers and recovery threads cannot attach proposal tools.
-Protected repository paths remain unavailable. New files and deletion are
-deliberately not part of this initial write capability.
+Protected repository paths remain unavailable. New files require an existing,
+non-symlink parent directory; no directory creation or deletion is allowed.
+Creation previews identify `new_paths`, show `/dev/null` as the diff source, and
+include the complete proposed content. No file or index entry is created before approval.
 
 Each proposal reserves its target paths, records SHA-256 snapshots including
 file modes, and creates a one-use transaction UUID bound to the actual
@@ -78,7 +97,11 @@ consumed on the first valid decision under the transaction lock, including
 failed execution, so retries never repeat mutations.
 
 Approved writes preserve file modes and atomically replace only the approved
-target. Approved commits build a temporary index based on the proposed HEAD,
+target. New-file transactions snapshot absence and parent device/inode identity,
+recheck the source/ignore boundary, and atomically link a complete fsynced file
+without overwriting any target that appears during approval. Rejected, expired,
+or stale creation proposals leave the target and Git index untouched.
+Approved commits build a temporary index based on the proposed HEAD,
 add only the approved paths, keep configured Git hooks, include the Copilot
 trailer, and refresh only approved entries in the real index. Other staged and
 working-tree modifications are preserved. There is no `git commit -a`, force
@@ -121,15 +144,27 @@ lookup failures stop execution; no permissions or live schema are rewritten.
 Transport schemas bind each tool name to its own required arguments; read calls
 cannot use the commit-only `paths` array. Backend argument failures identify
 unexpected/missing keys and return the expected schema for a bounded retry.
-Direct writes, arbitrary commands, web access, and legacy `SKILL` dispatch are
+Direct writes, arbitrary commands, and legacy `SKILL` dispatch are
 not available on this lane. Owner-approved proposals are separate as described
 above. Recovery remains text-only.
+
+Authenticated healthy APEX sessions also attach `web_search(query, provider)`,
+using the existing DuckDuckGo, Serper (Google) and Tavily adapters. Each call
+checks the authenticated owner session, agent policy and the operator's
+`web_search` permission. Queries are limited to 200 characters and three
+results, with bounded text, source URLs and a UTC retrieval timestamp.
+Only public search terms may be sent; private context, repository contents
+and credentials must never be exported. Provider failures are failed receipts,
+not invented results or silent provider substitution. Credentials stay in the
+backend and failure logs omit key fragments. Search receipts use the same
+context budgeting, Studio persistence and untrusted-data boundary as reads.
+No web capability is attached in recovery or unauthenticated sessions.
 
 File reads are restricted to bounded tracked UTF-8 source/documentation,
 excluding symlinks, secrets, databases, private sandpits and runtime contents.
 Inspection reads accept files up to 1 MiB while output remains bounded.
 `read_file` returns at most 100 lines per call. Before injecting each read
-batch, the wrapper tokenizes the prospective prompt against the 6,392-token
+batch, the wrapper tokenizes the prospective prompt against the 5,120-token
 input budget. Oversized read bodies are withheld and replaced by an explicit
 context-budget error; durable receipts retain the real execution status and raw
 output, plus the warning. The active receipt distinguishes successful inspection
@@ -145,9 +180,15 @@ allowing untracked runtime names to be discovered without reading their data.
 Each result is persisted as a `tool_result` in the originating conversation;
 sanitized receipt metadata is published through the existing chat SSE channel.
 The HTTP response also includes `tool_receipts`. A maximum of six model rounds,
-twelve calls and a shared 180-second inference budget prevents unbounded loops.
+twelve calls and a shared 360-second inference budget prevents unbounded loops;
+tools stop once less than twice the longest round (at least 120 seconds) remains,
+leaving time for one tool-free answer.
 Malformed calls, denied access, file failures and exhausted limits are explicit,
 not successful-looking fallbacks. Tool outputs are untrusted reference data.
+An approval-denied or expired mutation proposal ends its turn immediately with
+the persisted denial receipt. No further inference, repeat proposal or
+capacity handoff follows that denial; another proposal requires a new operator
+instruction. Ordinary read-access denials still allow bounded tool recovery.
 An empty final-channel response receives one logged format retry within the
 existing round/time limits; reasoning-channel content is never executed. A short
 sentence followed by a newline and exactly one complete tool envelope may be
@@ -157,15 +198,69 @@ suspend behind the same human approval gate.
 
 The healthy APEX lane budgets every inference with the registered server's
 `/apply-template` and `/tokenize` endpoints, including a formatting margin.
-The 8,192-token context reserves 1,800 tokens for reasoning/output (above the
-1,024-token minimum). Historical receipt dumps are replaced in working context
+The 8,192-token context reserves at least 2,048 tokens for reasoning/output.
+Each dispatch requests up to 4,096 output tokens, capped by the remaining
+exact-tokenized context (including the 128-token formatting margin).
+The healthy lane explicitly requests low reasoning effort in both template
+tokenization and inference. The server otherwise defaults to medium effort;
+small authoring exercises repeatedly exhausted the completion cap at that
+default. This setting is a bounded-effort mitigation, not a guarantee of
+completion, and does not alter recovery or other callers' defaults.
+These conservative values follow local capacity trials, not a larger server
+context allocation. A higher output cap does not guarantee task completion.
+Historical receipt dumps are replaced in working context
 by their real status, arguments and receipt/transaction handles. In-loop receipt
 bodies remain until a subsequent model turn consumes them; consumption never
 asserts that the result was analyzed. Full receipts stay in the conversation.
 Older assistant prose may be archived behind explicit markers when necessary;
 system instructions, operator messages and unread receipts are not truncated.
-An irreducibly oversized prompt fails before inference with an explicit budget
-error rather than deleting instructions.
+An irreducibly oversized prompt stops before inference rather than deleting
+instructions. For authenticated operator sessions, unfinished work is saved
+through the Studio continuity bridge instead of returning an input-overflow error.
+APEX final-text turns with `finish_reason=length` are never parsed or executed,
+including reasoning-only turns. This complete-output check is opt-in on the
+healthy APEX tool lane; other runtime callers retain their existing behavior.
+
+#### Studio capacity handoff
+
+Studio persistence is automatic for every authenticated healthy APEX turn,
+not conditional on a model handoff call. Before inference the wrapper records
+the request and available full context, and injects a compact project/task-state
+reference. Tool receipts and final responses (including failures and token
+telemetry) are recorded throughout the lifecycle. Request steps distinguish
+`doing`, `blocked`, and `partial`: a completed chat turn never automatically
+marks the underlying assignment done. Projects remain on hold for background
+workers; the current operator-authorized turn may continue normally.
+
+After successful archival, the wrapper can remove historical messages from
+the active prompt until the exact input budget fits. Only explicitly
+Studio-archived history is eligible; the current request, system rules, and
+unread in-loop receipts remain protected. Full messages remain in Studio and
+the chat store. The wrapper returns before/after token counts, the remaining
+output allowance, and compaction counts as `context_telemetry`; APEX does not
+have to request a fresh history window manually. Irreducibly oversized current
+instructions still pause safely rather than silently losing constraints.
+Malformed final JSON receives one bounded corrective retry; repeated malformed
+or empty final output pauses with saved tasks instead of dispatching partial
+payloads. This is bounded assistance, not an infinite retry/scheduling loop.
+
+`studio_handoff` accepts exactly `title`, `summary`, and 1-10 unique concrete
+`tasks`. It is a single-call turn and ends after a real persistence receipt.
+`studio_resume` reads 1,500-character context pages by `offset` from only the
+authenticated operator's current conversation.
+The backend uses existing Studio `projects`, `project_steps`, and
+`project_blackboard_notes` tables. One atomic transaction saves the project,
+task list, full available operator context (split into numbered notes without
+truncation), and verified receipt handles. Checksums and numbered-part readback
+detect missing or corrupted context. Identical saves are idempotent.
+Projects remain `on_hold` with tasks owned by `apex`; this does not schedule
+workers, change model routing, or approve any file/commit mutation.
+Input/output budget exhaustion and round/time limits use the same durable
+handoff automatically when the authenticated continuity handler is attached.
+Without that handler, the explicit error behavior remains. Storage failures
+remain errors, never successful-looking handoffs. A later operator continuation
+can start with a bounded history and retrieve only the needed Studio pages,
+rather than resending the entire oversized transcript.
 
 APEX reuses `mind.db`'s thread-state and full-exchange storage. Its checkpoints
 contain the latest request, blocked/completed state and verified receipt handles,
@@ -184,13 +279,41 @@ reservation, atomic write and one-use receipt path as whole-file writes.
 
 Every `local_only` `/api/chat` request (both the chat tile and home chat always
 send `local_only: true`) now routes to a single target: `apex` →
-`gpt-oss:20b`, the externally owned llama-server registered in
+`qwen2.5:14b-instruct`, the externally owned llama-server registered in
 `ops/llm_registry.yaml`. The former Gemma/Qwen/LLaMA/Mistral bootstrap roster
 is gone; `core/chat_continuity.py` exposes `APEX_AGENT`, `apex_roster()` and a
 `recovery_roster()` that is the same single entry flagged `storage_degraded`.
 The lane never reads the `agents` table and never imports per-agent modules.
 Requested agents are preserved in the response as `routed_from`; relays are
 refused with HTTP 400. Non-local traffic during a storage fault returns 503.
+
+The Qwen2.5-14B-Instruct Q4_K_M deployment uses the embedded Qwen chat
+template, full Vulkan layer offload, and a 16,384-token context shared with
+the wrapper governor. It is the standard Instruct variant, not Coder.
+The GGUF SHA-256 is
+`2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54`,
+verified against the official Ollama manifest
+`7cdf5a0187d5c58cc5d369b255592f7841d1c4696d45a8c8a9489440385b22f6`.
+The user service retains its environment-only alias so the managed pool cannot
+adopt or evict it. Host memory is capped at 12 GiB, direct-I/O loading avoids
+mapping the full weight file into the page cache, prompt RAM caching is disabled,
+and restarts are bounded. The previous GPT-OSS weights and registry entries
+remain for rollback, but their API aliases are not available during Qwen service.
+Model replacement does not change authentication, tool approvals or audit receipts.
+
+For offline archives, [`hf_vault_heist.py`](../hf_vault_heist.py) defaults to
+metadata-only preflight on `/mnt/archive/hf_archive`. It verifies the mount,
+immutable revisions, repository licenses, selected file sizes and source hashes.
+Run it with the repository Python environment; only `--download` transfers files,
+after operator confirmation. Defaults select Q4_K_M and Q8_0 for Qwen Coder/Nemo
+and the Ultrachat/OpenOrca datasets (about 47.42 GiB), with two workers, a
+100 GiB budget and 10 GiB free-space reserve. All Hugging Face caches stay on
+the archive volume. `--repo` selects an explicit subset; Llama additionally
+requires `--accept-llama-license`. The gated Stack dataset remains blocked pending
+separate access and per-source license review. JSON-line progress and verified,
+read-back archive receipts distinguish downloads from library indexing.
+Progress can be relayed through the existing authenticated instructor chat
+bridge/SSE; there is no assumed `UnifiedChat` WebSocket endpoint.
 
 Responses carry an explicit `state`:
 
@@ -204,9 +327,28 @@ Responses carry an explicit `state`:
 Transport/timeout classification lives in `classify_runtime_error()`; the user
 message is always persisted (primary row or continuity journal) before the
 model call, so an offline APEX never loses input. The UIs show the state in
-`#home-chat-status` and `#chat-lane-state` ("Offline" / "Recovery") and no
-longer poll: thread, pending-job and runtime refreshes are driven by the
-`chat` SSE channel from `frontend/blueprints/sse.py`.
+`#home-chat-status` and `#chat-lane-state` ("Offline" / "Recovery"). Thread and
+pending-job updates use the `chat` SSE channel from
+`frontend/blueprints/sse.py`. The visible main-chat runtime/task board also
+refreshes through the owner-authenticated activity endpoint every five seconds,
+with a transcript recovery refresh every fifteen seconds.
+
+Chat defaults to a compact live-status line. Runtime provenance, participant
+message previews and paginated Studio tasks are available by expanding it;
+polling preserves that disclosure and does not replace its keyboard focus.
+Expanded details have a bounded scroll area on both chat surfaces so the
+transcript and composer remain available. Failed refreshes explicitly mark
+retained status as stale. Conversation options are a separate disclosure.
+The home composer has a labelled Send button and wraps its tools below the
+input on narrow screens. Existing named themes remain selectable and persist
+through the theme picker, including subsequent atmosphere refreshes; no
+user-wide theme override is imposed.
+
+The optional trace ticker releases its separate SSE connection while its
+browser tab is hidden, leaving HTTP connections available for main-chat
+requests. It reconnects when visible or restored from the browser back/forward
+cache and deduplicates the replayed backlog by event ID. The main-chat SSE
+connection, authentication and tool-approval checks are unchanged.
 
 The memory panel's `/api/memory` retrieval uses the fixed `memory_apex` table,
 not registry `memory_table` identifiers. Omitted or `apex` agent selections are

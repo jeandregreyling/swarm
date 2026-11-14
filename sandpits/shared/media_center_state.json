@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-10-19T09:27:27+00:00",
+  "created_at": "2026-11-12T00:16:55+00:00",
   "projects": [
     {
-      "id": "media-d2d623e6",
+      "id": "media-b86425b1",
       "name": "pytest reference render",
       "medium": "audio",
       "status": "ready",
@@ -10,7 +10,7 @@
       "style": "",
       "engine_mode": "local-first",
       "duration_sec": 12,
-      "updated_at": "2026-10-20T15:30:37+00:00",
+      "updated_at": "2026-11-13T21:20:32+00:00",
       "timeline": {
         "tempo_bpm": 120,
         "time_signature": "4/4",
@@ -130,11 +130,11 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-5AED32C221",
+      "studio_project_id": "P-66F4552DA3",
       "synth_runs": [],
       "media_refs": [
         {
-          "id": "ref-69f8597d14",
+          "id": "ref-6a7940dfcc",
           "title": "YouTube reference",
           "account_id": "youtube",
           "account_name": "YouTube",
@@ -163,12 +163,12 @@
             "linked_account_status": "linked",
             "detected_provider": "youtube"
           },
-          "created_at": "2026-10-20T15:30:36+00:00",
-          "updated_at": "2026-10-20T15:30:36+00:00",
+          "created_at": "2026-11-13T21:20:30+00:00",
+          "updated_at": "2026-11-13T21:20:30+00:00",
           "knowledge_status": "indexed"
         },
         {
-          "id": "ref-7dd4ea3bfc",
+          "id": "ref-f67d116c85",
           "title": "Apple Music reference",
           "account_id": "apple-music",
           "account_name": "Apple Music",
@@ -197,21 +197,21 @@
             "linked_account_status": "pending_auth",
             "detected_provider": "apple-music"
           },
-          "created_at": "2026-10-20T15:30:35+00:00",
-          "updated_at": "2026-10-20T15:30:35+00:00",
+          "created_at": "2026-11-13T21:20:28+00:00",
+          "updated_at": "2026-11-13T21:20:28+00:00",
           "knowledge_status": "indexed"
         }
       ],
       "artifacts": [
         {
-          "id": "artifact-9270bda848",
-          "job_id": "job-8748c8660e",
+          "id": "artifact-f70fe8a115",
+          "job_id": "job-d0535222dd",
           "label": "Audio Preview",
-          "path": "artifacts/media_center/media-d2d623e6/job-8748c8660e/preview.wav",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-d2d623e6/job-8748c8660e/preview.wav",
+          "path": "artifacts/media_center/media-b86425b1/job-d0535222dd/preview.wav",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-b86425b1/job-d0535222dd/preview.wav",
           "mime_type": "audio/wav",
           "status": "ready",
-          "created_at": "2026-10-20T15:30:35+00:00"
+          "created_at": "2026-11-13T21:20:28+00:00"
         }
       ],
       "routing": {
@@ -219,11 +219,11 @@
         "video_agent": "",
         "swarm_node_id": "",
         "handoff_mode": "swarm-assisted",
-        "updated_at": "2026-10-20T15:30:37+00:00"
+        "updated_at": "2026-11-13T21:20:32+00:00"
       }
     },
     {
-      "id": "media-14ea0735",
+      "id": "media-91aca72e",
       "name": "pytest real local render",
       "medium": "audio",
       "status": "editing",
@@ -231,7 +231,7 @@
       "style": "",
       "engine_mode": "local-first",
       "duration_sec": 12,
-      "updated_at": "2026-10-20T15:30:34+00:00",
+      "updated_at": "2026-11-13T21:20:26+00:00",
       "timeline": {
         "tempo_bpm": 120,
         "time_signature": "4/4",
@@ -308,7 +308,7 @@
             "status": "planned"
           },
           {
-            "id": "clip-take-116b47c554",
+            "id": "clip-take-9f718a5b8f",
             "lane_id": "lane-music",
             "name": "Local Tone Synth take",
             "kind": "audio",
@@ -317,9 +317,9 @@
             "source": "synth:local-tone",
             "prompt": "pytest synth take",
             "status": "generated",
-            "take_id": "take-116b47c554",
-            "created_at": "2026-10-20T15:30:33+00:00",
-            "updated_at": "2026-10-20T15:30:33+00:00"
+            "take_id": "take-9f718a5b8f",
+            "created_at": "2026-11-13T21:20:25+00:00",
+            "updated_at": "2026-11-13T21:20:25+00:00"
           }
         ]
       },
@@ -365,10 +365,10 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-0810257BF5",
+      "studio_project_id": "P-C721CEAB39",
       "synth_runs": [
         {
-          "id": "take-116b47c554",
+          "id": "take-9f718a5b8f",
           "synth_id": "local-tone",
           "synth_name": "Local Tone Synth",
           "runner_key": "local_synth_audio_runner",
@@ -377,13 +377,13 @@
           "lane_id": "lane-music",
           "start_sec": 2.0,
           "duration_sec": 5.0,
-          "created_at": "2026-10-20T15:30:33+00:00",
+          "created_at": "2026-11-13T21:20:25+00:00",
           "artifact_path": ""
         }
       ],
       "media_refs": [
         {
-          "id": "ref-c488a759df",
+          "id": "ref-d517d2b43d",
           "title": "pytest indexed reference",
           "account_id": "youtube",
           "account_name": "YouTube",
@@ -411,21 +411,21 @@
             "linked_account_status": "linked",
             "detected_provider": "custom-feed"
           },
-          "created_at": "2026-10-20T15:30:34+00:00",
-          "updated_at": "2026-10-20T15:30:34+00:00",
+          "created_at": "2026-11-13T21:20:26+00:00",
+          "updated_at": "2026-11-13T21:20:26+00:00",
           "knowledge_status": "indexed"
         }
       ],
       "artifacts": [
         {
-          "id": "artifact-a2141737e4",
-          "job_id": "job-9a9c610be7",
+          "id": "artifact-a28a6e99ed",
+          "job_id": "job-f68a6e00b2",
           "label": "Audio Preview",
-          "path": "artifacts/media_center/media-14ea0735/job-9a9c610be7/preview.wav",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-14ea0735/job-9a9c610be7/preview.wav",
+          "path": "artifacts/media_center/media-91aca72e/job-f68a6e00b2/preview.wav",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-91aca72e/job-f68a6e00b2/preview.wav",
           "mime_type": "audio/wav",
           "status": "ready",
-          "created_at": "2026-10-20T15:30:33+00:00"
+          "created_at": "2026-11-13T21:20:23+00:00"
         }
       ],
       "routing": {
@@ -436,7 +436,7 @@
       }
     },
     {
-      "id": "media-9076a7fb",
+      "id": "media-a92c07fc",
       "name": "pytest reference render",
       "medium": "audio",
       "status": "editing",
@@ -444,7 +444,7 @@
       "style": "",
       "engine_mode": "local-first",
       "duration_sec": 12,
-      "updated_at": "2026-10-20T15:30:32+00:00",
+      "updated_at": "2026-11-13T21:20:22+00:00",
       "timeline": {
         "tempo_bpm": 120,
         "time_signature": "4/4",
@@ -521,7 +521,7 @@
             "status": "planned"
           },
           {
-            "id": "clip-89252e91b1",
+            "id": "clip-37f7a27dab",
             "lane_id": "lane-scenes",
             "name": "pytest editor clip",
             "kind": "marker",
@@ -530,8 +530,8 @@
             "source": "manual",
             "prompt": "clip created by integration test",
             "status": "planned",
-            "created_at": "2026-10-20T15:30:32+00:00",
-            "updated_at": "2026-10-20T15:30:32+00:00"
+            "created_at": "2026-11-13T21:20:22+00:00",
+            "updated_at": "2026-11-13T21:20:22+00:00"
           }
         ]
       },
@@ -577,11 +577,11 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-26D7B3C694",
+      "studio_project_id": "P-6B804851F9",
       "synth_runs": [],
       "media_refs": [
         {
-          "id": "ref-9bddb6a851",
+          "id": "ref-8e8c35684d",
           "title": "YouTube reference",
           "account_id": "youtube",
           "account_name": "YouTube",
@@ -610,12 +610,12 @@
             "linked_account_status": "available",
             "detected_provider": "youtube"
           },
-          "created_at": "2026-10-20T15:17:35+00:00",
-          "updated_at": "2026-10-20T15:17:35+00:00",
+          "created_at": "2026-11-13T20:50:56+00:00",
+          "updated_at": "2026-11-13T20:50:56+00:00",
           "knowledge_status": "indexed"
         },
         {
-          "id": "ref-c1ac8a5cc6",
+          "id": "ref-eff7c8f886",
           "title": "Apple Music reference",
           "account_id": "apple-music",
           "account_name": "Apple Music",
@@ -644,21 +644,21 @@
             "linked_account_status": "pending_auth",
             "detected_provider": "apple-music"
           },
-          "created_at": "2026-10-20T15:17:34+00:00",
-          "updated_at": "2026-10-20T15:17:34+00:00",
+          "created_at": "2026-11-13T20:50:54+00:00",
+          "updated_at": "2026-11-13T20:50:54+00:00",
           "knowledge_status": "indexed"
         }
       ],
       "artifacts": [
         {
-          "id": "artifact-9fe14002e1",
-          "job_id": "job-e8af317459",
+          "id": "artifact-f7d90a37e6",
+          "job_id": "job-dcd0a40e30",
           "label": "Audio Preview",
-          "path": "artifacts/media_center/media-9076a7fb/job-e8af317459/preview.wav",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-9076a7fb/job-e8af317459/preview.wav",
+          "path": "artifacts/media_center/media-a92c07fc/job-dcd0a40e30/preview.wav",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-a92c07fc/job-dcd0a40e30/preview.wav",
           "mime_type": "audio/wav",
           "status": "ready",
-          "created_at": "2026-10-20T15:17:34+00:00"
+          "created_at": "2026-11-13T20:50:54+00:00"
         }
       ],
       "routing": {
@@ -666,11 +666,11 @@
         "video_agent": "",
         "swarm_node_id": "",
         "handoff_mode": "swarm-assisted",
-        "updated_at": "2026-10-20T15:17:36+00:00"
+        "updated_at": "2026-11-13T20:50:57+00:00"
       }
     },
     {
-      "id": "media-50dcaec8",
+      "id": "media-123f9c51",
       "name": "pytest real local render",
       "medium": "audio",
       "status": "editing",
@@ -678,7 +678,7 @@
       "style": "",
       "engine_mode": "local-first",
       "duration_sec": 12,
-      "updated_at": "2026-10-20T15:17:33+00:00",
+      "updated_at": "2026-11-13T20:50:53+00:00",
       "timeline": {
         "tempo_bpm": 120,
         "time_signature": "4/4",
@@ -755,7 +755,7 @@
             "status": "planned"
           },
           {
-            "id": "clip-take-0a5fc27b38",
+            "id": "clip-take-9fab333f5d",
             "lane_id": "lane-music",
             "name": "Local Tone Synth take",
             "kind": "audio",
@@ -764,9 +764,9 @@
             "source": "synth:local-tone",
             "prompt": "pytest synth take",
             "status": "generated",
-            "take_id": "take-0a5fc27b38",
-            "created_at": "2026-10-20T15:17:33+00:00",
-            "updated_at": "2026-10-20T15:17:33+00:00"
+            "take_id": "take-9fab333f5d",
+            "created_at": "2026-11-13T20:50:52+00:00",
+            "updated_at": "2026-11-13T20:50:52+00:00"
           }
         ]
       },
@@ -812,10 +812,10 @@
           "target": "preview reel"
         }
       ],
-      "studio_project_id": "P-232DBB9A47",
+      "studio_project_id": "P-500607AF71",
       "synth_runs": [
         {
-          "id": "take-0a5fc27b38",
+          "id": "take-9fab333f5d",
           "synth_id": "local-tone",
           "synth_name": "Local Tone Synth",
           "runner_key": "local_synth_audio_runner",
@@ -824,13 +824,13 @@
           "lane_id": "lane-music",
           "start_sec": 2.0,
           "duration_sec": 5.0,
-          "created_at": "2026-10-20T15:17:33+00:00",
+          "created_at": "2026-11-13T20:50:52+00:00",
           "artifact_path": ""
         }
       ],
       "media_refs": [
         {
-          "id": "ref-dcd80a39dc",
+          "id": "ref-27d1b5cb1f",
           "title": "pytest indexed reference",
           "account_id": "youtube",
           "account_name": "YouTube",
@@ -858,316 +858,23 @@
             "linked_account_status": "available",
             "detected_provider": "custom-feed"
           },
-          "created_at": "2026-10-20T15:17:33+00:00",
-          "updated_at": "2026-10-20T15:17:33+00:00",
+          "created_at": "2026-11-13T20:50:53+00:00",
+          "updated_at": "2026-11-13T20:50:53+00:00",
           "knowledge_status": "indexed"
         }
       ],
       "artifacts": [
         {
-          "id": "artifact-37013d4b09",
-          "job_id": "job-8e67d3b058",
+          "id": "artifact-32a306b845",
+          "job_id": "job-a3f25c4dc8",
           "label": "Audio Preview",
-          "path": "artifacts/media_center/media-50dcaec8/job-8e67d3b058/preview.wav",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-50dcaec8/job-8e67d3b058/preview.wav",
+          "path": "artifacts/media_center/media-123f9c51/job-a3f25c4dc8/preview.wav",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-123f9c51/job-a3f25c4dc8/preview.wav",
           "mime_type": "audio/wav",
           "status": "ready",
-          "created_at": "2026-10-20T15:17:32+00:00"
+          "created_at": "2026-11-13T20:50:51+00:00"
         }
       ],
-      "routing": {
-        "music_agent": "",
-        "video_agent": "",
-        "swarm_node_id": "",
-        "handoff_mode": "local-first"
-      }
-    },
-    {
-      "id": "media-6761cb37",
-      "name": "12345",
-      "medium": "audio-video",
-      "status": "editing",
-      "prompt": "12345",
-      "style": "",
-      "engine_mode": "local-first",
-      "duration_sec": 30,
-      "updated_at": "2026-10-20T15:17:31+00:00",
-      "timeline": {
-        "tempo_bpm": 120,
-        "time_signature": "4/4",
-        "lanes": [
-          {
-            "id": "lane-scenes",
-            "name": "Scenes / Sections",
-            "kind": "marker",
-            "role": "scene"
-          },
-          {
-            "id": "lane-music",
-            "name": "Music Stems",
-            "kind": "audio",
-            "role": "stem"
-          },
-          {
-            "id": "lane-synth",
-            "name": "Synth Takes",
-            "kind": "audio",
-            "role": "generated"
-          },
-          {
-            "id": "lane-references",
-            "name": "Reference Markers",
-            "kind": "marker",
-            "role": "reference"
-          },
-          {
-            "id": "lane-video",
-            "name": "Video / Cut Markers",
-            "kind": "video",
-            "role": "cut"
-          },
-          {
-            "id": "lane-captions",
-            "name": "Captions",
-            "kind": "caption",
-            "role": "text"
-          }
-        ],
-        "clips": [
-          {
-            "id": "clip-intro-bed",
-            "lane_id": "lane-music",
-            "name": "Intro score bed",
-            "kind": "audio",
-            "start_sec": 0,
-            "duration_sec": 8,
-            "source": "planned",
-            "prompt": "Percussive pulse with luminous pads.",
-            "status": "planned"
-          },
-          {
-            "id": "clip-intro-scene",
-            "lane_id": "lane-scenes",
-            "name": "Intro section",
-            "kind": "marker",
-            "start_sec": 0,
-            "duration_sec": 8,
-            "source": "planned",
-            "prompt": "Set the emotional and visual premise.",
-            "status": "planned"
-          },
-          {
-            "id": "clip-intro-visual",
-            "lane_id": "lane-video",
-            "name": "Intro visual pass",
-            "kind": "video",
-            "start_sec": 0,
-            "duration_sec": 8,
-            "source": "planned",
-            "prompt": "Fast-cut system visuals with bright UI motion.",
-            "status": "planned"
-          },
-          {
-            "id": "clip-3a7d6b3b9a",
-            "lane_id": "lane-scenes",
-            "name": "pytest editor clip",
-            "kind": "marker",
-            "start_sec": 1.5,
-            "duration_sec": 3.25,
-            "source": "manual",
-            "prompt": "clip created by integration test",
-            "status": "planned",
-            "created_at": "2026-10-20T15:17:31+00:00",
-            "updated_at": "2026-10-20T15:17:31+00:00"
-          }
-        ]
-      },
-      "tracks": [
-        {
-          "id": "trk-score",
-          "name": "Score Bed",
-          "role": "music",
-          "model_hint": "musicgen-small"
-        },
-        {
-          "id": "trk-fx",
-          "name": "Texture / FX",
-          "role": "audio-design",
-          "model_hint": "stable-audio-open"
-        }
-      ],
-      "scenes": [
-        {
-          "id": "scn-1",
-          "name": "Intro",
-          "duration_sec": 8,
-          "goal": "Establish the mood and pulse."
-        },
-        {
-          "id": "scn-2",
-          "name": "Lift",
-          "duration_sec": 12,
-          "goal": "Build momentum for the main hook."
-        }
-      ],
-      "deliverables": [
-        {
-          "id": "dlv-1",
-          "type": "audio",
-          "format": "wav",
-          "target": "master stem"
-        },
-        {
-          "id": "dlv-2",
-          "type": "video",
-          "format": "mp4",
-          "target": "preview reel"
-        }
-      ],
-      "studio_project_id": "P-ED4C773782",
-      "synth_runs": [],
-      "media_refs": [],
-      "artifacts": [],
-      "routing": {
-        "music_agent": "",
-        "video_agent": "",
-        "swarm_node_id": "",
-        "handoff_mode": "local-first"
-      }
-    },
-    {
-      "id": "media-5ab7b465",
-      "name": "12345",
-      "medium": "audio-video",
-      "status": "draft",
-      "prompt": "12345",
-      "style": "",
-      "engine_mode": "local-first",
-      "duration_sec": 30,
-      "updated_at": "2026-10-20T15:09:32+00:00",
-      "timeline": {
-        "tempo_bpm": 120,
-        "time_signature": "4/4",
-        "lanes": [
-          {
-            "id": "lane-scenes",
-            "name": "Scenes / Sections",
-            "kind": "marker",
-            "role": "scene"
-          },
-          {
-            "id": "lane-music",
-            "name": "Music Stems",
-            "kind": "audio",
-            "role": "stem"
-          },
-          {
-            "id": "lane-synth",
-            "name": "Synth Takes",
-            "kind": "audio",
-            "role": "generated"
-          },
-          {
-            "id": "lane-references",
-            "name": "Reference Markers",
-            "kind": "marker",
-            "role": "reference"
-          },
-          {
-            "id": "lane-video",
-            "name": "Video / Cut Markers",
-            "kind": "video",
-            "role": "cut"
-          },
-          {
-            "id": "lane-captions",
-            "name": "Captions",
-            "kind": "caption",
-            "role": "text"
-          }
-        ],
-        "clips": [
-          {
-            "id": "clip-intro-scene",
-            "lane_id": "lane-scenes",
-            "name": "Intro section",
-            "kind": "marker",
-            "start_sec": 0,
-            "duration_sec": 8,
-            "source": "planned",
-            "prompt": "Set the emotional and visual premise.",
-            "status": "planned"
-          },
-          {
-            "id": "clip-intro-bed",
-            "lane_id": "lane-music",
-            "name": "Intro score bed",
-            "kind": "audio",
-            "start_sec": 0,
-            "duration_sec": 8,
-            "source": "planned",
-            "prompt": "Percussive pulse with luminous pads.",
-            "status": "planned"
-          },
-          {
-            "id": "clip-intro-visual",
-            "lane_id": "lane-video",
-            "name": "Intro visual pass",
-            "kind": "video",
-            "start_sec": 0,
-            "duration_sec": 8,
-            "source": "planned",
-            "prompt": "Fast-cut system visuals with bright UI motion.",
-            "status": "planned"
-          }
-        ]
-      },
-      "tracks": [
-        {
-          "id": "trk-score",
-          "name": "Score Bed",
-          "role": "music",
-          "model_hint": "musicgen-small"
-        },
-        {
-          "id": "trk-fx",
-          "name": "Texture / FX",
-          "role": "audio-design",
-          "model_hint": "stable-audio-open"
-        }
-      ],
-      "scenes": [
-        {
-          "id": "scn-1",
-          "name": "Intro",
-          "duration_sec": 8,
-          "goal": "Establish the mood and pulse."
-        },
-        {
-          "id": "scn-2",
-          "name": "Lift",
-          "duration_sec": 12,
-          "goal": "Build momentum for the main hook."
-        }
-      ],
-      "deliverables": [
-        {
-          "id": "dlv-1",
-          "type": "audio",
-          "format": "wav",
-          "target": "master stem"
-        },
-        {
-          "id": "dlv-2",
-          "type": "video",
-          "format": "mp4",
-          "target": "preview reel"
-        }
-      ],
-      "studio_project_id": "P-1105353A68",
-      "synth_runs": [],
-      "media_refs": [],
-      "artifacts": [],
       "routing": {
         "music_agent": "",
         "video_agent": "",
@@ -1179,12 +886,12 @@
       "id": "media-demo",
       "name": "Swarm Launch Teaser",
       "medium": "audio-video",
-      "status": "draft",
+      "status": "editing",
       "prompt": "Build a cinematic teaser with percussive pulse, luminous pads, and fast-cut system visuals.",
       "style": "future pulse / high-energy",
       "engine_mode": "local-first",
       "duration_sec": 45,
-      "updated_at": "2026-10-19T09:27:27+00:00",
+      "updated_at": "2026-11-13T20:50:50+00:00",
       "timeline": {
         "tempo_bpm": 120,
         "time_signature": "4/4",
@@ -1228,17 +935,6 @@
         ],
         "clips": [
           {
-            "id": "clip-intro-scene",
-            "lane_id": "lane-scenes",
-            "name": "Intro section",
-            "kind": "marker",
-            "start_sec": 0,
-            "duration_sec": 8,
-            "source": "planned",
-            "prompt": "Set the emotional and visual premise.",
-            "status": "planned"
-          },
-          {
             "id": "clip-intro-bed",
             "lane_id": "lane-music",
             "name": "Intro score bed",
@@ -1247,6 +943,17 @@
             "duration_sec": 8,
             "source": "planned",
             "prompt": "Percussive pulse with luminous pads.",
+            "status": "planned"
+          },
+          {
+            "id": "clip-intro-scene",
+            "lane_id": "lane-scenes",
+            "name": "Intro section",
+            "kind": "marker",
+            "start_sec": 0,
+            "duration_sec": 8,
+            "source": "planned",
+            "prompt": "Set the emotional and visual premise.",
             "status": "planned"
           },
           {
@@ -1259,6 +966,19 @@
             "source": "planned",
             "prompt": "Fast-cut system visuals with bright UI motion.",
             "status": "planned"
+          },
+          {
+            "id": "clip-f3fdea5ec9",
+            "lane_id": "lane-scenes",
+            "name": "pytest editor clip",
+            "kind": "marker",
+            "start_sec": 1.5,
+            "duration_sec": 3.25,
+            "source": "manual",
+            "prompt": "clip created by integration test",
+            "status": "planned",
+            "created_at": "2026-11-13T20:50:50+00:00",
+            "updated_at": "2026-11-13T20:50:50+00:00"
           }
         ]
       },
@@ -1313,63 +1033,63 @@
         "swarm_node_id": "",
         "handoff_mode": "local-first"
       },
-      "studio_project_id": "P-3ECA921FF6"
+      "studio_project_id": "P-268B1B21A2"
     }
   ],
   "jobs": [
     {
-      "id": "job-8748c8660e",
-      "project_id": "media-d2d623e6",
+      "id": "job-d0535222dd",
+      "project_id": "media-b86425b1",
       "project_name": "pytest reference render",
       "job_type": "generate-audio",
       "mode": "real-local",
       "status": "completed",
       "engine": "python-wave-local-preview",
       "notes": "Real local preview rendered. This is a playable artifact, not a simulated completion.",
-      "input_reference_id": "ref-7dd4ea3bfc",
+      "input_reference_id": "ref-f67d116c85",
       "input_reference_title": "Apple Music reference",
       "input_reference_url": "https://music.apple.com/us/song/1887536621",
-      "created_at": "2026-10-20T15:30:35+00:00",
-      "updated_at": "2026-10-20T15:30:35+00:00",
+      "created_at": "2026-11-13T21:20:28+00:00",
+      "updated_at": "2026-11-13T21:20:28+00:00",
       "artifacts": [
         {
           "label": "Audio Preview",
-          "path": "artifacts/media_center/media-d2d623e6/job-8748c8660e/preview.wav",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-d2d623e6/job-8748c8660e/preview.wav",
+          "path": "artifacts/media_center/media-b86425b1/job-d0535222dd/preview.wav",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-b86425b1/job-d0535222dd/preview.wav",
           "mime_type": "audio/wav",
           "status": "ready"
         },
         {
           "label": "Run Manifest",
-          "path": "artifacts/media_center/media-d2d623e6/job-8748c8660e/manifest.json",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-d2d623e6/job-8748c8660e/manifest.json",
+          "path": "artifacts/media_center/media-b86425b1/job-d0535222dd/manifest.json",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-b86425b1/job-d0535222dd/manifest.json",
           "mime_type": "application/json",
           "status": "ready"
         }
       ]
     },
     {
-      "id": "job-7d9d9af449",
-      "project_id": "media-14ea0735",
+      "id": "job-c8d386872f",
+      "project_id": "media-91aca72e",
       "project_name": "pytest real local render",
       "job_type": "synth:local-tone",
       "mode": "manifest",
       "status": "generated",
       "engine": "local_synth_audio_runner",
       "notes": "pytest synth take",
-      "created_at": "2026-10-20T15:30:33+00:00",
-      "updated_at": "2026-10-20T15:30:33+00:00",
+      "created_at": "2026-11-13T21:20:25+00:00",
+      "updated_at": "2026-11-13T21:20:25+00:00",
       "artifacts": [
         {
           "label": "Timeline take",
-          "path": "clip-take-116b47c554",
+          "path": "clip-take-9f718a5b8f",
           "status": "generated"
         }
       ]
     },
     {
-      "id": "job-9a9c610be7",
-      "project_id": "media-14ea0735",
+      "id": "job-f68a6e00b2",
+      "project_id": "media-91aca72e",
       "project_name": "pytest real local render",
       "job_type": "generate-audio",
       "mode": "real-local",
@@ -1379,78 +1099,78 @@
       "input_reference_id": "",
       "input_reference_title": "",
       "input_reference_url": "",
-      "created_at": "2026-10-20T15:30:33+00:00",
-      "updated_at": "2026-10-20T15:30:33+00:00",
+      "created_at": "2026-11-13T21:20:23+00:00",
+      "updated_at": "2026-11-13T21:20:23+00:00",
       "artifacts": [
         {
           "label": "Audio Preview",
-          "path": "artifacts/media_center/media-14ea0735/job-9a9c610be7/preview.wav",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-14ea0735/job-9a9c610be7/preview.wav",
+          "path": "artifacts/media_center/media-91aca72e/job-f68a6e00b2/preview.wav",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-91aca72e/job-f68a6e00b2/preview.wav",
           "mime_type": "audio/wav",
           "status": "ready"
         },
         {
           "label": "Run Manifest",
-          "path": "artifacts/media_center/media-14ea0735/job-9a9c610be7/manifest.json",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-14ea0735/job-9a9c610be7/manifest.json",
+          "path": "artifacts/media_center/media-91aca72e/job-f68a6e00b2/manifest.json",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-91aca72e/job-f68a6e00b2/manifest.json",
           "mime_type": "application/json",
           "status": "ready"
         }
       ]
     },
     {
-      "id": "job-e8af317459",
-      "project_id": "media-9076a7fb",
+      "id": "job-dcd0a40e30",
+      "project_id": "media-a92c07fc",
       "project_name": "pytest reference render",
       "job_type": "generate-audio",
       "mode": "real-local",
       "status": "completed",
       "engine": "python-wave-local-preview",
       "notes": "Real local preview rendered. This is a playable artifact, not a simulated completion.",
-      "input_reference_id": "ref-c1ac8a5cc6",
+      "input_reference_id": "ref-eff7c8f886",
       "input_reference_title": "Apple Music reference",
       "input_reference_url": "https://music.apple.com/us/song/1887536621",
-      "created_at": "2026-10-20T15:17:34+00:00",
-      "updated_at": "2026-10-20T15:17:34+00:00",
+      "created_at": "2026-11-13T20:50:54+00:00",
+      "updated_at": "2026-11-13T20:50:54+00:00",
       "artifacts": [
         {
           "label": "Audio Preview",
-          "path": "artifacts/media_center/media-9076a7fb/job-e8af317459/preview.wav",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-9076a7fb/job-e8af317459/preview.wav",
+          "path": "artifacts/media_center/media-a92c07fc/job-dcd0a40e30/preview.wav",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-a92c07fc/job-dcd0a40e30/preview.wav",
           "mime_type": "audio/wav",
           "status": "ready"
         },
         {
           "label": "Run Manifest",
-          "path": "artifacts/media_center/media-9076a7fb/job-e8af317459/manifest.json",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-9076a7fb/job-e8af317459/manifest.json",
+          "path": "artifacts/media_center/media-a92c07fc/job-dcd0a40e30/manifest.json",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-a92c07fc/job-dcd0a40e30/manifest.json",
           "mime_type": "application/json",
           "status": "ready"
         }
       ]
     },
     {
-      "id": "job-116e7ffa65",
-      "project_id": "media-50dcaec8",
+      "id": "job-797c21b92a",
+      "project_id": "media-123f9c51",
       "project_name": "pytest real local render",
       "job_type": "synth:local-tone",
       "mode": "manifest",
       "status": "generated",
       "engine": "local_synth_audio_runner",
       "notes": "pytest synth take",
-      "created_at": "2026-10-20T15:17:33+00:00",
-      "updated_at": "2026-10-20T15:17:33+00:00",
+      "created_at": "2026-11-13T20:50:52+00:00",
+      "updated_at": "2026-11-13T20:50:52+00:00",
       "artifacts": [
         {
           "label": "Timeline take",
-          "path": "clip-take-0a5fc27b38",
+          "path": "clip-take-9fab333f5d",
           "status": "generated"
         }
       ]
     },
     {
-      "id": "job-8e67d3b058",
-      "project_id": "media-50dcaec8",
+      "id": "job-a3f25c4dc8",
+      "project_id": "media-123f9c51",
       "project_name": "pytest real local render",
       "job_type": "generate-audio",
       "mode": "real-local",
@@ -1460,20 +1180,20 @@
       "input_reference_id": "",
       "input_reference_title": "",
       "input_reference_url": "",
-      "created_at": "2026-10-20T15:17:32+00:00",
-      "updated_at": "2026-10-20T15:17:32+00:00",
+      "created_at": "2026-11-13T20:50:51+00:00",
+      "updated_at": "2026-11-13T20:50:51+00:00",
       "artifacts": [
         {
           "label": "Audio Preview",
-          "path": "artifacts/media_center/media-50dcaec8/job-8e67d3b058/preview.wav",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-50dcaec8/job-8e67d3b058/preview.wav",
+          "path": "artifacts/media_center/media-123f9c51/job-a3f25c4dc8/preview.wav",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-123f9c51/job-a3f25c4dc8/preview.wav",
           "mime_type": "audio/wav",
           "status": "ready"
         },
         {
           "label": "Run Manifest",
-          "path": "artifacts/media_center/media-50dcaec8/job-8e67d3b058/manifest.json",
-          "url": "/api/media-center/artifacts/artifacts/media_center/media-50dcaec8/job-8e67d3b058/manifest.json",
+          "path": "artifacts/media_center/media-123f9c51/job-a3f25c4dc8/manifest.json",
+          "url": "/api/media-center/artifacts/artifacts/media_center/media-123f9c51/job-a3f25c4dc8/manifest.json",
           "mime_type": "application/json",
           "status": "ready"
         }
@@ -1488,8 +1208,8 @@
       "status": "ready",
       "engine": "local-ffmpeg-placeholder",
       "notes": "Framework stub ready for model wiring.",
-      "created_at": "2026-10-19T09:27:27+00:00",
-      "updated_at": "2026-10-19T09:27:27+00:00",
+      "created_at": "2026-11-12T00:16:55+00:00",
+      "updated_at": "2026-11-12T00:16:55+00:00",
       "artifacts": [
         {
           "label": "Storyboard",
@@ -1566,7 +1286,7 @@
       "kind": "video",
       "lane_kind": "video",
       "runner_key": "local_ffmpeg_video_runner",
-      "status": "needs_ffmpeg",
+      "status": "available",
       "capabilities": [
         "testsrc",
         "sine",
@@ -1615,9 +1335,9 @@
         "playlist",
         "video_url"
       ],
-      "subscription_id": "F-5D1128D131",
+      "subscription_id": "F-1D71FAD65C",
       "source": "https://www.youtube.com/@pytest",
-      "linked_at": "2026-10-20T15:30:38+00:00"
+      "linked_at": "2026-11-13T21:20:33+00:00"
     },
     {
       "id": "youtube-music",
@@ -1702,6 +1422,6 @@
       ]
     }
   ],
-  "tracking_project_id": "P-57184BF5F6",
-  "updated_at": "2026-10-22T05:17:38+00:00"
+  "tracking_project_id": "P-2C7950042D",
+  "updated_at": "2026-11-14T06:36:38+00:00"
 }

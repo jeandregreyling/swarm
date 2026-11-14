@@ -1,0 +1,211 @@
+{
+  "schema_version": "hummingbird.studio-plan.v1",
+  "plan_key": "hummingbird-namespace-routing-20261102-v1",
+  "document": "docs/HUMMINGBIRD_NAMESPACE_MIGRATION.md",
+  "project": {
+    "name": "Hummingbird namespace migration and model routing",
+    "description": "Review-only sequential APEX curriculum: staged legacy namespace migration, immutable history/session compatibility, specialised coding handoffs and measured llama-server/Ollama admission on a 16 GB GPU. See docs/HUMMINGBIRD_NAMESPACE_MIGRATION.md. Registration authorises no implementation or background execution.",
+    "methodology": "waterfall",
+    "owner": "apex",
+    "status": "on_hold",
+    "tags": ["hummingbird", "apex", "namespace-migration", "model-routing", "review-only"]
+  },
+  "execution_policy": {
+    "autonomous_execution": false,
+    "initial_step_status": "blocked",
+    "operator_release_required": true,
+    "approval_per_mutation": true,
+    "history_and_active_sessions": "Preserve existing records and token bytes; retain validation until original expiry.",
+    "canonical_product": "Hummingbird",
+    "canonical_product_namespace": "hummingbird",
+    "canonical_agent": "apex",
+    "primary_backend": "llama-server",
+    "fallback_backend": "ollama",
+    "one_gpu_coding_lease": true,
+    "proposed_gpu_reserve_gib": 2,
+    "proposed_host_available_reserve_gib": 8,
+    "reserves_require_benchmark_and_operator_acceptance": true,
+    "scheduler_hold_enforcement_verified": false,
+    "expected_steps": 20,
+    "expected_dependencies": 19
+  },
+  "command_catalog": {
+    "C01": "Read-only root, revision, dirty-tree and whitespace baseline; exact commands in Markdown section 4.",
+    "C02": "Read-only tracked namespace/path inventory using RX-01, RX-02 and RX-05.",
+    "C03": "Read-only cookies, setting keys, imports, package IDs and contract inventory using RX-03/RX-04.",
+    "C04": "Read-only selected-device VRAM, host MemAvailable, service health/models, installed help/version; no generation or model load.",
+    "C05": ".venv/bin/python -m pytest -q tests/test_deos_teacher.py tests/test_apex_studio.py tests/test_studio_local_teaching.py tests/test_studio_intake.py",
+    "C06": ".venv/bin/python -m pytest -q tests/test_apex_external_server.py tests/test_chat_continuity.py tests/test_model_runtime_gateway.py tests/test_ollama_model_guard.py tests/test_seven_direct_runtime.py",
+    "C07": ".venv/bin/python -m pytest -q tests/test_tool_approval.py tests/test_apex_read_tools.py tests/test_local_runtime_policy.py",
+    "C08": ".venv/bin/python -m pytest -q tests/test_frontend_smokes_and_routes.py tests/test_home_chat_continuity.py tests/test_terminal_runtime_contract.py tests/test_windows_launcher_runtime_guard.py",
+    "C09": ".venv/bin/python -m pytest -q tests/test_studio_defaults.py tests/test_studio_projects_git_branch.py tests/test_gemma_studio_watcher.py",
+    "C10": "Read-only actual Studio schemas; verify configured paths before observed defaults.",
+    "C11": "Read-only git diff --check, diff --stat, status --short plus bounded per-file get_diff.",
+    "C12": "Read-only scoped UI brand scan; classify hits, never globally replace."
+  },
+  "steps": [
+    {
+      "key": "HB-01", "title": "HB-01 Verify Studio evidence retrieval and release gates", "owner": "apex", "status": "blocked", "order_idx": 0, "depends_on": [],
+      "description": "Use the existing Studio-first curriculum and real dispatcher to retrieve evidence 95 for project P-26C093E7E6. If missing, propose/implement the bounded evidence lookup only with approval. Inspect scheduler on-hold/dependency enforcement before enabling pickup. No repeated transcript paging or instructor-access impersonation.",
+      "commands": ["C05", "C09"],
+      "acceptance": ["Exact source verification IDs and lookup receipts independently match stored evidence.", "Fresh-turn and unseen negative cases pass; wrong-scope, denied, absent, malformed and long-context tests pass.", "Operator/task/approval gates proven; project hold alone is not assumed sufficient."],
+      "rollback": "Keep project on hold and all tasks blocked; disable any newly approved lookup through its reviewed rollback without deleting evidence."
+    },
+    {
+      "key": "HB-02", "title": "HB-02 Inventory and classify legacy namespace consumers", "owner": "apex", "status": "blocked", "order_idx": 1, "depends_on": ["HB-01"],
+      "description": "Run C01-C03. Produce path/line/class/target/consumer/compatibility/owner/test ledger for branding, agent IDs, framework modules, config, cookies, persistence, services, platform IDs, history and third parties. Preserve dirty changes. Use exact regex catalogue as classifiers, not replacements.",
+      "commands": ["C01", "C02", "C03"],
+      "acceptance": ["All proposed edit surfaces have exact source locations and dependent consumers.", "Historical/third-party/credential/runtime exclusions explicit; counts distinguished from occurrences."],
+      "rollback": "No application mutation; retain inventory evidence and correct classifications rather than editing sources."
+    },
+    {
+      "key": "HB-03", "title": "HB-03 Verify backup restoration and per-slice rollback", "owner": "apex", "status": "blocked", "order_idx": 2, "depends_on": ["HB-02"],
+      "description": "Propose approved online SQLite backups for configured primary/evidence stores, retention and protected baseline of existing uncommitted changes. Test restore on disposable storage. Define flag-off rollback per namespace/routing slice; never copy live DB/WAL as a guaranteed consistent backup.",
+      "commands": ["C01", "C10"],
+      "acceptance": ["Operator-approved backup paths/retention and actual isolated restore receipt.", "Production historical rows and session state unchanged; current edits accounted for."],
+      "rollback": "Keep implementation blocked until restoration is demonstrated; do not restore over a live database."
+    },
+    {
+      "key": "HB-04", "title": "HB-04 Approve canonical identities and compatibility map", "owner": "apex", "status": "blocked", "order_idx": 3, "depends_on": ["HB-03"],
+      "description": "Specify canonical apex agent, hummingbird product modules, HUMMINGBIRD_* owned settings and hummingbird_session cookie. Known seven agent aliases resolve apex; classify fridays identities before mapping. Define new/old-key conflict rejection and same-principal ACL behaviour. Do not rewrite history.",
+      "commands": ["C03", "C07"],
+      "acceptance": ["Operator-reviewed map per consumer and exact new name.", "No privilege inheritance, unknown alias acceptance or destructive historical replacement.", "Legacy TTL and existing signed/opaque tokens preserved."],
+      "rollback": "Retain old readers/writers until the reviewed mapping and tests are accepted."
+    },
+    {
+      "key": "HB-05", "title": "HB-05 Benchmark approved orchestrator and coding models", "owner": "apex", "status": "blocked", "order_idx": 4, "depends_on": ["HB-04"],
+      "description": "Inspect actual registered artifacts and existing local candidates before downloads. Benchmark small generalists for orchestration and Qwen2.5-Coder 7B for patch tasks via approved llama-server profiles. Verify license/hash/quant/template/tool schema. Mistral/DeepSeek alternatives require equivalent evidence.",
+      "commands": ["C04", "C06"],
+      "acceptance": ["Exact model profiles and held-out reliability/latency results.", "Peak selected-device VRAM and host RAM measured at proposed context, batch and concurrency.", "Operator selects models; no model-size marketing claim substitutes for fit."],
+      "rollback": "Restore original approved serving profile; no unapproved model download or overlapping resident load."
+    },
+    {
+      "key": "HB-06", "title": "HB-06 Implement approved cross-backend resource admission", "owner": "apex", "status": "blocked", "order_idx": 5, "depends_on": ["HB-05"],
+      "description": "After approval, implement one host GPU coding lease covering llama-server and Ollama. Enforce measured incremental weight/KV/scratch budgets, initial proposed 2 GiB GPU and 8 GiB RAM reserves, one coding slot, stale-telemetry denial, explicit CPU/partial-offload profiles and externally owned service drain rules. Thresholds require measured approval.",
+      "commands": ["C04", "C06", "C11"],
+      "acceptance": ["No admission with unknown memory or reserve breach.", "Concurrency, cancellation, crash recovery and no-swap pressure tests.", "No killing/adopting external APEX service or aggregate-other-GPU budget trick."],
+      "rollback": "Disable admission feature and retain old route; release only owned verified resources."
+    },
+    {
+      "key": "HB-07", "title": "HB-07 Add gated task-specialist routing and handoff contracts", "owner": "apex", "status": "blocked", "order_idx": 6, "depends_on": ["HB-06"],
+      "description": "APEX stays canonical orchestrator/state manager; coder role generates refactoring proposals through llama-server. Add feature-flagged host classifier/registry routing, bounded request/result schemas and provenance. Eligible primary failure permits one admitted Ollama fallback; permissions, malformed output and failed tests never trigger bypass.",
+      "commands": ["C06", "C07", "C11"],
+      "acceptance": ["Flag-off original route unchanged; flag-on task identity/context/receipt persistence passes.", "Same ACL and approvals at both providers; exact model/backend/digest recorded.", "Unknown fields/stale source/denial/output-budget failure remain explicit."],
+      "rollback": "Disable routing flag; checkpoint task and resume original orchestrator without rewriting its history."
+    },
+    {
+      "key": "HB-08", "title": "HB-08 Canary specialist delegation and bounded fallback", "owner": "apex", "status": "blocked", "order_idx": 7, "depends_on": ["HB-07"],
+      "description": "Under approved server ownership transition, test checkpoint/drain/admit/infer/verify/release/resume. Prefer CPU-resident small orchestrator or checkpoint/unload; do not assume two GPU models fit. Test primary coder and eligible CPU/offloaded Ollama fallback without duplicate model copies.",
+      "commands": ["C04", "C06", "C07"],
+      "acceptance": ["Specialist authors a small proposed patch; no unapproved apply.", "Fresh-turn continuity and resource/latency/failed-test acceptance observed.", "One bounded fallback, clear provenance and no OOM or foreign-process termination."],
+      "rollback": "Drain owned canary, retain Studio receipts and restore original server configuration after operator approval."
+    },
+    {
+      "key": "HB-09", "title": "HB-09 Add canonical identity and configuration readers", "owner": "apex", "status": "blocked", "order_idx": 8, "depends_on": ["HB-08"],
+      "description": "Implement approved boundary alias normalisation and one owned-config resolver before writer changes. Legacy seven requests map apex only after caller authentication; new HUMMINGBIRD_* keys and old aliases conflict explicitly when unequal. Preserve third-party OLLAMA_*/LLAMA_ARG_* variables.",
+      "commands": ["C03", "C06", "C07", "C11"],
+      "acceptance": ["Old/new alias/config fixtures resolve same effective principal without extra rights.", "Unknown/spoofed identities denied; equal/unequal setting precedence tested.", "No historical row/session rewrite."],
+      "rollback": "Disable canonical readers only while old writers remain; keep alias evidence and operator-approved compatibility."
+    },
+    {
+      "key": "HB-10", "title": "HB-10 Migrate cookie issuance and all authentication consumers", "owner": "apex", "status": "blocked", "order_idx": 9, "depends_on": ["HB-09"],
+      "description": "Coordinate login_bp, services/auth, chat approval, SSE and Flask UI sessions. New login cookie name hummingbird_session; legacy friday_session validates to original expiry. Keep random token bytes/keys/TTL; share selected validated token for owner and approval binding. Reject conflicting principals and invalid canonical-cookie downgrade. Logout revokes presented valid credentials and clears both names.",
+      "commands": ["C03", "C07", "C08", "C11"],
+      "acceptance": ["Old/new/expired/revoked/conflicting-cookie and logout tests.", "Live old session remains valid and new login canonical, no active session mutation.", "Same owner session binds chat, SSE and pending approval before/after cutover."],
+      "rollback": "Return to old issuance while preserving both validators; do not revoke or extend existing tokens as rollback."
+    },
+    {
+      "key": "HB-11", "title": "HB-11 Canonicalise future writes and primary agent grants", "owner": "apex", "status": "blocked", "order_idx": 10, "depends_on": ["HB-10"],
+      "description": "Update active primary-agent defaults, routing and tool grants to apex, product metadata to hummingbird. Old database read projections resolve known aliases while preserving stored authors, project/snapshot IDs and active thread state. No duplicate canonical profile with divergent grants.",
+      "commands": ["C05", "C06", "C07", "C09"],
+      "acceptance": ["New task/message/receipt/ACL fixtures canonical.", "Old rows still readable with original provenance and unchanged scope.", "Pending approvals and snapshot associations survive identity mapping."],
+      "rollback": "Disable canonical writer feature only via reviewed adapter; never mass-rewrite rows written during canary."
+    },
+    {
+      "key": "HB-12", "title": "HB-12 Migrate rendered product and primary agent branding", "owner": "apex", "status": "blocked", "order_idx": 11, "depends_on": ["HB-11"],
+      "description": "Coder changes classified web/mobile/desktop titles, labels, accessible names, help/login text, notifications and localisation to Hummingbird/APEX. Leave historical chat messages and third-party names untouched. Review current dirty UI edits before proposing each patch.",
+      "commands": ["C08", "C11", "C12"],
+      "acceptance": ["Rendered page title/login/nav/agent labels canonical.", "Accessibility/browser smoke and localisation evidence.", "Historical quotations, URLs and dependency assets preserved."],
+      "rollback": "Revert only approved UI slice through reviewed diff; retain unrelated UI edits."
+    },
+    {
+      "key": "HB-13", "title": "HB-13 Migrate Python modules with compatibility shims", "owner": "apex", "status": "blocked", "order_idx": 12, "depends_on": ["HB-12"],
+      "description": "Move first-party framework implementations toward hummingbird and primary agent implementation toward agents.apex in reviewed slices. Legacy fridays/agents.seven/core.seven_llm/core.seven_runtime readers delegate to canonical implementations. Share singleton registries, dispatcher and locks; no dual state.",
+      "commands": ["C02", "C03", "C05", "C06", "C07", "C11"],
+      "acceptance": ["Old and new import paths work, no cycles.", "One registry/lock/server owner and unchanged permission behaviour.", "All impacted focused tests and exact dependency-path checks pass."],
+      "rollback": "Keep tested old import shims and restore canonical slice only from reviewed changes."
+    },
+    {
+      "key": "HB-14", "title": "HB-14 Stage service CLI path and settings cutover", "owner": "apex", "status": "blocked", "order_idx": 13, "depends_on": ["HB-13"],
+      "description": "Add Hummingbird commands/units/config and update first-party launchers. Preserve actual existing database/state resolution; never create a new empty store because a filename changed. Share mixed-version locks, avoid duplicate services on one port and approve each service restart.",
+      "commands": ["C03", "C04", "C08", "C10", "C11"],
+      "acceptance": ["Dry-run deployment/config/entrypoint tests.", "Old aliases work; same data selected; no double load or separate legacy/canonical locks.", "Operator-approved canary restart and rollback receipt."],
+      "rollback": "Restore approved old unit/config route without touching DB contents or killing unrelated processes."
+    },
+    {
+      "key": "HB-15", "title": "HB-15 Approve and migrate distribution and platform contracts", "owner": "apex", "status": "blocked", "order_idx": 14, "depends_on": ["HB-14"],
+      "description": "Separately approve exact Python distribution name, Android namespace/applicationId, desktop/iOS bundle IDs and Windows package paths. Determine reverse-domain ownership, signing continuity and old-install data upgrade strategy. No guessed publisher namespace or assumption that applicationId change is in-place upgrade.",
+      "commands": ["C03", "C08", "C11"],
+      "acceptance": ["Exact operator-approved package IDs/signing and platform build commands discovered.", "Old-installed-client upgrade/data-preservation tests on isolated devices.", "Missing platform/signing capability is blocked, not counted as passed."],
+      "rollback": "Retain installed old IDs as explicit compatibility contracts until upgrade can be validated."
+    },
+    {
+      "key": "HB-16", "title": "HB-16 Update active docs CI tooling and discovery links", "owner": "apex", "status": "blocked", "order_idx": 15, "depends_on": ["HB-15"],
+      "description": "Update classified active first-party docs, examples, workflows, skills and generated artifact labels to canonical paths. Preserve history, third-party/model names and published legacy URLs or redirect with explicit approval. Update links when skill folders move; no unrelated dependency changes.",
+      "commands": ["C02", "C11", "C12"],
+      "acceptance": ["Active links/import/build references resolve.", "Remaining legacy matches individually classified.", "No historical evidence rewritten and no dependency vendor names changed."],
+      "rollback": "Restore only reviewed doc/tooling slice; retain old URL/import redirects as needed."
+    },
+    {
+      "key": "HB-17", "title": "HB-17 Run full compatibility routing and preservation matrix", "owner": "apex", "status": "blocked", "order_idx": 16, "depends_on": ["HB-16"],
+      "description": "Execute all task-specific new tests plus relevant baselines in isolated fixtures, then approved browser canary. Cover both config namespaces/cookies/imports, old history/new writes, immutable sessions, same-principal ACLs, admitted primary/fallback coding handoffs and installed-client contracts.",
+      "commands": ["C05", "C06", "C07", "C08", "C09", "C11", "C12"],
+      "acceptance": ["Exact commands/outputs/exit and resource/model/approval receipts saved.", "All required measurable assertions pass; new tests do not read production credentials/storage.", "First failed required assertion blocks rollout; selected tests not labelled full-suite."],
+      "rollback": "Keep feature flags off and fix bounded failures via approved specialist tasks."
+    },
+    {
+      "key": "HB-18", "title": "HB-18 Perform operator-controlled canonical cutover", "owner": "apex", "status": "blocked", "order_idx": 17, "depends_on": ["HB-17"],
+      "description": "Activate canonical writers/routes/service entrypoints only in reviewed order with operator approvals. Monitor resource admission, auth/approval/SSE consistency, new/old sessions, UI and Studio continuity. Failed invariant triggers reviewed slice rollback.",
+      "commands": ["C04", "C07", "C08", "C11", "C12"],
+      "acceptance": ["Explicit release/deployment receipts.", "Old session valid; new cookie/metadata Hummingbird; new primary-agent writes apex.", "Specialist/fallback provenance and memory safe; no history/token rewrite."],
+      "rollback": "Approved flag/config/unit rollback with active data preserved and source receipts retained."
+    },
+    {
+      "key": "HB-19", "title": "HB-19 Observe compatibility window and retire eligible aliases", "owner": "apex", "status": "blocked", "order_idx": 18, "depends_on": ["HB-18"],
+      "description": "Measure legacy reader/client usage without secrets across the configured window. Retire only explicit approved aliases whose clients are migrated. Existing legacy sessions remain accepted to original natural expiry; externally needed aliases remain classified contracts.",
+      "commands": ["C02", "C03", "C11"],
+      "acceptance": ["Configured TTL/client/version evidence, not an arbitrary date.", "No remaining required old consumers before individual alias removal.", "Operator per-alias retirement approval and regression tests."],
+      "rollback": "Restore removed reader alias only if its original trust/expiry policy remains intact."
+    },
+    {
+      "key": "HB-20", "title": "HB-20 Verify residual namespace ledger and final Studio closeout", "owner": "apex", "status": "blocked", "order_idx": 19, "depends_on": ["HB-19"],
+      "description": "Rerun scoped inventory; every remaining legacy hit must be preserved history, third party, tested alias or explicit unresolved contract. Verify final evidence/rollback references through fresh-turn Studio readback. Operator signs off; deferred contracts prevent full completion.",
+      "commands": ["C01", "C02", "C11", "C12"],
+      "acceptance": ["No unclassified active first-party legacy namespaces or legacy primary-agent writers.", "Fresh-turn exact evidence retrieval and independent readback pass.", "Operator closeout; unresolved platform/client contract leaves project partial/on hold."],
+      "rollback": "Reopen affected task with exact residual risk and receipts; never mark unresolved scope done."
+    }
+  ],
+  "teacher_payload": {
+    "legacy_eagerness_check": true,
+    "technical_awareness": "This is an operator-requested review-only plan and Studio registration, not a rename implementation. Existing APEX is a fixed gpt-oss:20b local lane; specialist routing is a new feature with admission and external-service ownership requirements. Effective APEX tools lack an evidence-ID lookup. Studio project hold alone is not enforced by the inspected open-step selector, so register all tasks blocked. Preserve historical rows, active sessions, third-party names and dirty worktree. Exact future publisher application IDs and benchmarked model choices are not known; their tasks require explicit approval.",
+    "capability_pack": {
+      "pack_id": "hummingbird.namespace-routing.v1",
+      "prerequisites": [
+        "Goal: staged canonical Hummingbird framework and APEX agent migration with compatible legacy readers, immutable history and measured specialist routing.",
+        "Operator reviews Markdown/JSON and Studio on-hold project before releasing any task. Discover actual tools and task-specific approvals.",
+        "Use docs/HUMMINGBIRD_NAMESPACE_MIGRATION.md and its command/pattern catalogue; manifest steps HB-01 through HB-20 define sequence and acceptance."
+      ],
+      "procedure": [
+        "Authorized SKILL Commands: none on normal APEX lane. Use attached structured read/proposal tools; Bash diagnostics/tests require a separately authorised bounded runner, not chat simulation.",
+        "Complete exact Studio evidence lookup, scheduler/approval gate verification and fresh-turn unseen tests before complex namespace work. Record every real attempt and correction.",
+        "Build classified source/contract ledger, preserve dirty baseline, prove isolated backup restoration and approve canonical alias map before changes.",
+        "Benchmark approved local orchestrator/coder candidates; implement host admission and gated llama-server coding handoff/Ollama fallback only through reviewed specialist proposals and existing approvals. One GPU coding lease, measured weights/KV/scratch and host RAM reserves, no assumed two-model fit.",
+        "Apply ordered reader-before-writer migration: identity/config, cookies/auth/SSE/approval, future storage/grants, rendered branding, module shims, deployment paths, separately approved signed platform contracts, active docs/CI.",
+        "Preserve old sessions to original expiry and historical rows unchanged. Canonical future primary-agent identity is apex, product namespace hummingbird; dependency/model names remain unchanged.",
+        "Require task-specific tests, source/model/approval receipts, memory peaks and independent Studio readback. Cut over and retire aliases only under explicit operator approval with rollback and observed consumer expiry."
+      ],
+      "failure_conditions": "Stop on denied/unavailable tools, conflicting edits, missing or corrupt evidence, incomplete restore, identity/expiry violation, unknown memory/model provenance, exhausted budgets, unapproved service operation, failed required test or unavailable platform-upgrade verification. No global replacement, history rewrite, guessed package identity, forced process termination, silent backend switch, arbitrary SQL/shell or success from saved plans/prose."
+    },
+    "prohibited_execution_code": null
+  }
+}

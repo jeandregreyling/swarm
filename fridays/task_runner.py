@@ -132,7 +132,7 @@ def _compact_relay_handoff_prompt(recovery, thread_tail, stage_trace, support_ou
         '- Answer the latest user request directly using only the facts below.',
         '- If a prior support note is wrong, correct it.',
         '- Keep it concise and operational.',
-        '- Do not include DEOS_STATUS; Watchdog adds completion status.',
+        '- Do not include DOES_STATUS; Watchdog adds completion status.',
         '',
         'Thread tail:',
     ]
@@ -187,8 +187,8 @@ def _run_relay_handoff_agent(agent, prompt, timeout_seconds=120):
         content = str(content or '').strip()
         if not content:
             return False, f'{agent} relay handoff returned no content', int(tokens or 0)
-        if 'deos_status:' not in content.lower():
-            content = content.rstrip() + '\nDEOS_STATUS: done'
+        if 'does_status:' not in content.lower():
+            content = content.rstrip() + '\nDOES_STATUS: done'
         return True, content, int(tokens or 0)
     except Exception as exc:
         return False, f'{agent} relay handoff failed: {type(exc).__name__}: {exc}', 0
@@ -599,10 +599,10 @@ def _task_watchdog_stall_detection(**kwargs):
     return f'{action} for {count} stalled task(s) (>{max_age} min)'
 
 
-@register('watchdog_deos_cycle', 'Run Watchdog/Seven DEOS control-plane cycle: decide, execute, operate, sustain.', 'monitoring')
-def _task_watchdog_deos_cycle(**kwargs):
-    from utils.watchdog_deos import run_deos_cycle_summary
-    return run_deos_cycle_summary(kwargs.get('args') or '')
+@register('watchdog_does_cycle', 'Run Watchdog/Seven DOES control-plane cycle: do, operate, execute, sustain.', 'monitoring')
+def _task_watchdog_does_cycle(**kwargs):
+    from utils.watchdog_does import run_does_cycle_summary
+    return run_does_cycle_summary(kwargs.get('args') or '')
 
 
 @register('chat_job_sweep', 'Poke the chat server so its own stall watchdog fails and kills hung chat jobs even when no browser tab is polling.', 'monitoring')
@@ -616,14 +616,14 @@ def _task_chat_job_sweep(**kwargs):
 
 @register('local_agent_work_cycle', 'Let one local agent claim and execute one Studio step with bounded runtime.', 'agents')
 def _task_local_agent_work_cycle(**kwargs):
-    from utils.watchdog_deos import run_deos_cycle_summary
+    from utils.watchdog_does import run_does_cycle_summary
     args = str(kwargs.get('args') or '').strip()
     merged = (
         'prewarm=1 warm_timeout_seconds=60 execute_recovery=0 '
         'execute_work=1 work_timeout_seconds=900 '
         + args
     ).strip()
-    return run_deos_cycle_summary(merged)
+    return run_does_cycle_summary(merged)
 
 
 def _tasker_in_idle_window(window, now=None):

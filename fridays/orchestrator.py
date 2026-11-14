@@ -139,26 +139,13 @@ DISPATCH_CAPABILITIES = {
 }
 
 
-def _load_agent_key():
-    """Load the AGENT_API_KEY from .env.agents file or environment."""
-    key = os.environ.get('AGENT_API_KEY', '').strip()
-    if key:
-        return key
-    if ENV_AGENTS_FILE.exists():
-        for line in ENV_AGENTS_FILE.read_text().splitlines():
-            if line.startswith('AGENT_API_KEY='):
-                return line.split('=', 1)[1].strip()
-    return ''
-
-
 def _agent_api(method, path, agent_id='fridays', data=None):
     """Make an internal HTTP call to the agent API on localhost:5050."""
     try:
         import urllib.request
         import urllib.error
-        key = _load_agent_key()
-        if not key:
-            return None, 'AGENT_API_KEY not found'
+        from core.agent_identity import credentials
+        key = credentials(agent_id)['token']
         
         url = f'http://localhost:5050{path}'
         body = json.dumps(data or {}).encode() if data else b''
@@ -168,7 +155,7 @@ def _agent_api(method, path, agent_id='fridays', data=None):
             method=method,
             headers={
                 'Content-Type': 'application/json',
-                'X-Agent-Key': key,
+                'Authorization': 'Bearer ' + key,
                 'X-Agent-Id': agent_id,
             }
         )
