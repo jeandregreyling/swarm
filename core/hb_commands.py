@@ -59,6 +59,7 @@ COMMANDS = [
     ('examples', '/examples <words>', 'Worked examples: how a similar change was done before and which check passed', False),
     ('note', '/note <number>', 'Look up an SAP Note with your S-user (from the keyring) and keep it in the Knowledge Centre', False),
     ('email', '/email [check | trust <address> | untrust <address>]', "Email intake: what you send to HB's mailbox (spreadsheets too) is saved in the Knowledge Centre", False),
+    ('notes', '/notes [run KC<id>]', 'SAP notes jobs: the notes a spreadsheet\'s "needs check" tab lists, fetched into the Knowledge Centre', False),
     ('yes', '/yes', 'Confirm what HB just asked', False),
     ('no', '/no', 'Decline what HB just asked', False),
 ]
@@ -127,6 +128,8 @@ def parse(body):
         return ('bench', words[1:])
     if cmd == 'agents':
         return ('agents', words[1:])
+    if cmd == 'notes':   # owner 15 Nov: SAP notes job (core/hb_sap_note_job.py)
+        return ('notes', body.split()[1:])
     if cmd == 'email':   # owner 15 Nov: email intake (core/hb_email_intake.py)
         return ('email', body.split()[1:])
     if cmd == 'note':   # owner 15 Nov: SAP Notes (core/hb_sap_notes.py)
@@ -835,6 +838,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'email':
         from core import hb_email_intake
         return hb_email_intake.command(conn, args, actor)
+    if command == 'notes':
+        from core import hb_sap_note_job
+        return hb_sap_note_job.command(conn, args)
     if command == 'agents':
         from core import hb_agents
         if len(args) >= 2 and args[0].lower() == 'retire':

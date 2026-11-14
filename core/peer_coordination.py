@@ -238,6 +238,11 @@ def start():
                             email_tick(conn)
                         except Exception:
                             LOG.exception('Email intake tick failed')
+                        try:  # Owner 15 Nov: SAP notes job - a spreadsheet's "needs check" tab becomes notes in the KC (core/hb_sap_note_job.py)
+                            from core.hb_sap_note_job import tick as sap_notes_tick
+                            sap_notes_tick(conn)
+                        except Exception:
+                            LOG.exception('SAP notes job tick failed')
                         try:  # Owner 14 Nov: daily grounding - HB opens the day once JD is here (core/hb_grounding.py)
                             from core.hb_grounding import tick as grounding_tick
                             grounding_tick(conn)
