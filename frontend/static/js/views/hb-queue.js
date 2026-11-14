@@ -39,6 +39,13 @@
     el = document.createElement('section'); el.id = 'hb-clipboard'; el.className = 'hb-clip'; el.setAttribute('aria-label', "HB's clipboard: the open tasks");
     messages.parentNode.insertBefore(el, messages);
     el.onclick = e => {
+      const t = e.target.closest('[data-task]');           // owner 15 Nov: pause / continue / approve / cancel a task by clicking
+      if (t) {
+        e.stopPropagation();
+        if (t.dataset.task === 'cancel' && !window.confirm('Cancel this task? Its queued work is dropped and it will not run again.')) return;
+        task([t.dataset.task, t.dataset.id]);
+        return;
+      }
       const b = e.target.closest('[data-clip]');           // owner 15 Nov: move a task by clicking (same as /clip up|down|top)
       if (b) { e.stopPropagation(); clip([b.dataset.clip, b.dataset.step]); return; }
       if (e.target.closest('.hb-clip-head')) { S.open = !S.open; S.sig = ''; refresh(); }
@@ -77,10 +84,30 @@
     } catch (_) { /* HB restarting */ }
   }
 
+  async function task(args) {
+    try {
+      const r = await fetch('/api/peer/v1/hb/queue', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task: args }) });
+      const d = await r.json();
+      if (d && d.ok) { S.sig = ''; show(d); }
+    } catch (_) { /* HB restarting */ }
+  }
+
+  function taskHtml(i) {
+    if (!i.task_id) return '';
+    const id = esc(i.task_id), why = String(i.why || '');
+    const held = /held by you|Continue off|paused/i.test(why);
+    return (i.state === 'needs_you' && /approval/i.test(why) ? `<button type="button" data-task="accept" data-id="${esc(i.step_id)}" title="Approve this finished step">approve</button>` : '') +
+      (held ? `<button type="button" data-task="continue" data-id="${id}" title="Give it a fresh try">continue</button>`
+            : `<button type="button" data-task="pause" data-id="${id}" title="Stop it; it keeps its place">pause</button>`) +
+      `<button type="button" data-task="cancel" data-id="${id}" title="Drop this task">cancel</button>`;
+  }
+
   function editHtml(i) {
-    if (i.state === 'now' || i.state === 'blocked') return '<span></span>';
+    if (i.state === 'blocked') return '<span></span>';
+    if (i.state === 'now') return `<span class="hb-clip-edit">${taskHtml(i)}</span>`;
     const step = esc(i.step_id), now = Math.min(5, i.importance || 3);
-    return `<span class="hb-clip-edit"><button type="button" data-clip="top" data-step="${step}" title="Move to the top: HB does it next">⤒</button>` +
+    return `<span class="hb-clip-edit">${taskHtml(i)}<button type="button" data-clip="top" data-step="${step}" title="Move to the top: HB does it next">⤒</button>` +
       `<button type="button" data-clip="up" data-step="${step}" title="Move up">▲</button>` +
       `<button type="button" data-clip="down" data-step="${step}" title="Move down">▼</button>` +
       `<select data-importance="${step}" title="Importance (5 is highest)">${[5, 4, 3, 2, 1].map(n => `<option value="${n}"${n === now ? ' selected' : ''}>${n}</option>`).join('')}</select></span>`;

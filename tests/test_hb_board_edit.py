@@ -10,7 +10,7 @@ def test_practice_71_board_rows_have_move_and_importance_controls():
     js = (ROOT / 'frontend/static/js/views/hb-queue.js').read_text()
     for piece in ('data-clip="top"', 'data-clip="up"', 'data-clip="down"', 'select data-importance=', "JSON.stringify({ clip: args })", "clip(['importance', s.dataset.importance, s.value])"):
         assert piece in js, piece
-    assert "i.state === 'now' || i.state === 'blocked'" in js          # the running step and blocked ones are not movable
+    assert "if (i.state === 'blocked') return '<span></span>';" in js   # blocked steps have no controls; the running one only pause / cancel
     done = subprocess.run(['node', '--check', str(ROOT / 'frontend/static/js/views/hb-queue.js')], capture_output=True, text=True)
     assert done.returncode == 0, done.stderr
 

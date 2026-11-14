@@ -593,6 +593,24 @@ def hb_queue_status(current_user=None):
         if request.headers.get('Sec-Fetch-Site')=='cross-site' or origin and urlsplit(origin).netloc!=request.host:
             return jsonify(ok=False,error='Use the authenticated main chat for HB switches'),403
         body=request.get_json(silent=True) if request.is_json else None
+        if isinstance(body,dict) and isinstance(body.get('task'),list):   # owner 15 Nov: pause / continue / cancel / approve from the board row
+            import re as _re
+            args=[str(a)[:40] for a in body['task'][:2]]
+            ok_task=len(args)==2 and args[0] in ('pause','continue','cancel') and _re.fullmatch(r'T-[0-9A-F]{12}',args[1])
+            ok_step=len(args)==2 and args[0]=='accept' and _re.fullmatch(r'S-[0-9A-F]{10}',args[1])
+            if not (ok_task or ok_step):
+                return jsonify(ok=False,error='task: pause|continue|cancel T-..., or accept S-...'),400
+            from core import hb_commands
+            after=[]
+            with closing(get_connection()) as conn,conn:
+                said=hb_commands.run(conn,2834,args[0],[args[1]],current_user['username']+' via the task board',after)
+            for job in after:
+                try:job()
+                except Exception:pass
+            with closing(get_connection()) as conn:
+                data=hb_queue.status(conn)
+                data['summary']=hb_queue.summary(conn)
+            return jsonify(ok=True,said=str(said)[:400],**data)
         if isinstance(body,dict) and isinstance(body.get('clip'),list):   # owner 15 Nov: the board is editable by clicking (same rules as /clip)
             args=[str(a)[:40] for a in body['clip'][:3]]
             if not args or args[0] not in ('up','down','top','importance','doer','impact','clear'):
