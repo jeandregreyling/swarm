@@ -201,8 +201,23 @@ def tick(conn):
 
 
 def command(conn, args):
-    """/notes  ·  /notes run KC<id>"""
+    """/notes  ·  /notes run KC<id>  ·  /notes add <numbers, in any layout>"""
     ensure_schema(conn)
+    if args and args[0].lower() == 'add':     # owner 15 Nov: a pasted list (a column copied from a sheet, commas, "Note 123..."): no file needed
+        found = []
+        for piece in re.split(r'[\s,;/|]+', ' '.join(args[1:])):
+            m = re.fullmatch(r'#?(\d{6,10})\.?', piece.strip())
+            if m and m.group(1) not in found:
+                found.append(m.group(1))
+        if not found:
+            return 'Give the note numbers after /notes add, for example: /notes add 2382421 1999997 2000002'
+        now = time.time()
+        sid = -int(now * 1000)                # a pasted list has no spreadsheet in the Knowledge Centre: a negative id marks it
+        conn.execute('INSERT INTO hb_sap_note_jobs(source_id, title, sheet, numbers, state, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+                     (sid, f"pasted list of {len(found)} note number(s), {time.strftime('%d %b %H:%M', time.localtime(now))}", 'pasted', json.dumps(found[:MAX_NOTES]),
+                      'pending', now, now))
+        return (f'{len(found[:MAX_NOTES])} SAP Note number(s) taken; HB starts fetching within a minute and says when they are in the Knowledge Centre. '
+                '/notes shows progress.')
     if len(args) == 2 and args[0].lower() == 'run' and re.fullmatch(r'(?i)(kc)?\d+', args[1]):
         sid = int(re.sub(r'\D', '', args[1]))
         row = conn.execute('SELECT title, raw_text FROM knowledge_sources WHERE source_id=?', (sid,)).fetchone()
