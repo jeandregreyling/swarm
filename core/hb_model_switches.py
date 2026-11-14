@@ -8,7 +8,8 @@ started and stopped by systemd, not here; switching it Off only stops HB routing
 import time
 
 MODES = ('auto', 'on', 'off')
-FRED = 'fred-cpu:24b'
+from core.hb_roles import model_for
+FRED = model_for('deep')        # owner 14 Nov: roles, not names (core/hb_roles.py)
 
 
 def ensure_schema(conn):

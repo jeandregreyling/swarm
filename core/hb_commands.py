@@ -29,15 +29,20 @@ COMMANDS = [
     ('continue', '/continue T-xxxx', 'Resume a task (same as its On control)', False),
     ('cancel', '/cancel T-xxxx', 'Drop a task that is no longer needed (asks first)', True),
     ('done', '/done T-xxxx what must be true; another check', 'Define what "done" means for a task (DREAM)', False),
+    ('revert', '/revert S-xxxx', "Undo a step's change set in one action: every file goes back to its saved before-copy", True),
+    ('changes', '/changes S-xxxx', "Show a step's change set: files, applied or not, local commit, revert", False),
     ('clipboard', '/clipboard T-xxxx', "Show HB's DREAM clipboard for a task", False),
     ('clip', '/clip up|down|top|clear S-xxxx · importance S-xxxx 1-5 · doer S-xxxx hb|small|apex|fred', "Edit HB's clipboard (order, importance, who does it)", False),
     ('pick', '/pick S-xxxx N', "Choose option N from HB counsel's review of a vague step; it becomes the step's spec", False),
+    ('consult', '/consult <question>', 'Ask HB as a consultant: it acknowledges at once, investigates, and comes back with four options', False),
+    ('choose', '/choose C-xxxx N', "Record your choice (1-4) from a consultation; it is saved in the Knowledge Centre", False),
     ('agents', '/agents [onboard-local | onboard <id> <profile> <about> | examine <id|@handle> | handles <id> <h1,h2> | retire <id> | model <id> <model>]', 'Onboarded HB agents (own memory, KC page, tools); onboard-local makes every benchmarked local model an agent', False),
     ('bench', '/bench [all|model name|status]', 'Benchmark the local models: GPU fit and programmer / researcher / social / useless (results in main chat and Studio)', False),
     ('merits', '/merits', "How each agent is doing: checked successes, fixes for others, tags and badges", False),
     ('downloads', '/downloads', 'Big downloads HB is tracking: progress, connection, Studio step', False),
     ('tidy', '/tidy [yes]', 'Close chat lines HB wrongly made into tasks (remarks, go-aheads); lists them first', False),
     ('drive', '/drive [on|off|status]', 'HB drives the open tasks to the finish (same as saying "go")', False),
+    ('today', '/today', "HB's opening for today: self-check, the real date, what is next, and a short grounding checkpoint", False),
     ('workflow', '/workflow on|off|auto on|off|status|next S-xxxx', 'Run the Studio plan step by step: HB picks the next ready step, APEX scopes it, you approve', False),
     ('plan', '/plan T-xxxx', "Approve APEX's proposed plan and done criteria for a task, and start it", False),
     ('accept', '/accept S-xxxx', 'Accept a Studio step waiting for your approval (marks it done)', False),
@@ -47,6 +52,7 @@ COMMANDS = [
     ('nanny', '/nanny on [minutes]|off|status|report', 'The nanny bot (small CPU model) that watches the system', False),
     ('unload', '/unload model-name', 'Unload an HB-managed local model to free memory', False),
     ('stop', '/stop', 'Stop all current work now', False),
+    ('roles', '/roles [set <role> <model>]', 'Which model plays each role (APEX, Fred, counsel, reviewer, homework); set changes one', False),
     ('yes', '/yes', 'Confirm what HB just asked', False),
     ('no', '/no', 'Decline what HB just asked', False),
 ]
@@ -115,12 +121,21 @@ def parse(body):
         return ('bench', words[1:])
     if cmd == 'agents':
         return ('agents', words[1:])
+    if cmd == 'roles':   # owner 14 Nov: roles, not names (core/hb_roles.py)
+        return ('roles', words[1:])
+    if cmd == 'consult':   # owner 12 Nov: consultant protocol (core/hb_consultant.py)
+        return ('consult', [body.split(None, 1)[1].strip()]) if len(words) > 1 else None
+    if cmd == 'choose':
+        m = re.search(r'\b(C-[0-9A-Fa-f]{8})\s+([1-4])\s*$', body, re.I)
+        return ('choose', [m.group(1).upper(), m.group(2)]) if m else None
     if cmd == 'pick':
         m = STEP_RE.search(body)
         n = re.search(r'\b([1-3])\s*$', body)
         return ('pick', [m.group(0).upper(), n.group(1)]) if m and n else None
     if cmd == 'tidy':
         return ('tidy', ['yes'] if len(words) > 1 and words[1].lower() in ('yes', 'confirm') else [])
+    if cmd == 'today':   # owner 14 Nov: daily grounding (core/hb_grounding.py)
+        return ('today', [])
     if cmd == 'drive':
         sub = words[1].lower() if len(words) > 1 else 'on'
         return ('drive', [sub]) if sub in ('on', 'off', 'status', 'start', 'stop') else None
@@ -136,6 +151,9 @@ def parse(body):
     if cmd == 'plan':
         m = TASK_RE.search(body)
         return ('plan', [m.group(0).upper()]) if m else None
+    if cmd in ('revert', 'changes'):   # owner 13 Nov: change control
+        m = STEP_RE.search(body)
+        return (cmd, [m.group(0).upper()]) if m else None
     if cmd in ('accept', 'reject'):
         m = STEP_RE.search(body)
         if not m:
@@ -641,7 +659,17 @@ def accept_step(conn, step_id, actor, comment=''):
         hb_merits.on_accept(conn, step_id, tasks, str(row[1]))
     except Exception:
         pass
-    return _accept_record(conn, step_id, str(row[1]), tasks, comment, auto)
+    committed = ''
+    try:   # owner 13 Nov: change control - an approved change set is committed locally by HB (core/hb_change_sets.commit)
+        from core import hb_change_sets
+        done = hb_change_sets.commit(step_id, str(row[1]))
+        if done.get('state') == 'committed':
+            committed = f"\nCommitted locally: {done['commit']} ({len(done['files'])} file(s))."
+        elif done.get('state') in ('git locked', 'git add failed', 'git commit failed'):
+            committed = f"\nNot committed: {done['state']}."
+    except Exception:
+        committed = ''
+    return _accept_record(conn, step_id, str(row[1]), tasks, comment, auto) + committed
 
 
 def _accept_record(conn, step_id, title, tasks, comment, auto=False):
@@ -757,9 +785,20 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'clip':
         from core import hb_clipboard
         return hb_clipboard.edit(conn, args, actor)
+    if command == 'consult':
+        from core import hb_consultant
+        return hb_consultant.open_consultation(conn, conversation_id, args[0], actor)
+    if command == 'choose':
+        from core import hb_consultant
+        return hb_consultant.choose(conn, args[0], int(args[1]), actor)
     if command == 'pick':
         from core import hb_counsel
         return hb_counsel.pick(conn, args[0], int(args[1]), actor)
+    if command == 'roles':
+        from core import hb_roles
+        if len(args) == 3 and args[0].lower() == 'set':
+            return hb_roles.assign(conn, args[1].lower(), args[2], actor)
+        return hb_roles.table(conn)
     if command == 'agents':
         from core import hb_agents
         if len(args) >= 2 and args[0].lower() == 'retire':
@@ -796,6 +835,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'tidy':
         from core import hb_owner_intent
         return hb_owner_intent.tidy(conn, conversation_id, actor, confirm=bool(args))
+    if command == 'today':
+        from core import hb_grounding
+        return hb_grounding.text(hb_grounding.self_check(conn))
     if command == 'drive':
         from core import hb_queue
         return hb_queue.command(conn, conversation_id, args, actor)
@@ -805,6 +847,23 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'plan':
         from core import hb_plan_workflow
         return hb_plan_workflow.approve_plan(conn, args[0], actor)
+    if command == 'changes':
+        from core import hb_change_sets
+        r = hb_change_sets.record(args[0])
+        if not r:
+            return f'{args[0]} has no change set.'
+        return (f"{args[0]}: {r['state']}; {len(r['files'])} file(s): {', '.join(r['files'])}."
+                + (f" Committed locally as {r['commit']['commit']} on {r['commit']['at']}." if r['commit'] else ' Not committed yet.')
+                + (f" Reverted on {r['reverted']['at']}." if r['reverted'] else ''))
+    if command == 'revert':
+        from core import hb_change_sets
+        r = hb_change_sets.revert(args[0])
+        if r['state'] != 'reverted':
+            return f"{args[0]}: {r['state']}. {r.get('note', '')}"
+        conn.execute("UPDATE project_steps SET status='todo', residual_risk=?, updated_at=? WHERE step_id=?",
+                     (f'Change set reverted by {actor}', time.time(), args[0]))
+        return (f"{args[0]}: change set reverted ({len(r['restored'])} file(s) restored, {len(r['removed'])} removed). The step is open again. "
+                'Restart HB if the files were live code.')
     if command == 'accept':
         return accept_step(conn, args[0], actor, args[1] if len(args) > 1 else '')
     if command == 'reject':

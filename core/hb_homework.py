@@ -27,7 +27,8 @@ from pathlib import Path
 from core import hb_tasks
 
 ROOT = Path(__file__).resolve().parents[1]
-MODEL = 'homework-cpu:7b'
+from core.hb_roles import model_for
+MODEL = model_for('homework')   # owner 14 Nov: roles, not names (core/hb_roles.py)
 DOERS = ('hb', 'small', 'apex', 'fred')
 LOOKAHEAD = 3
 _RUNNING = threading.Lock()

@@ -5,7 +5,8 @@ import json,time,threading
 from core import hb_tasks,llm
 from core.seven_llm import registry,llama_server
 from utils.db._connection import get_connection
-MODEL='fred-cpu:24b'
+from core.hb_roles import model_for
+MODEL=model_for('review')   # owner 14 Nov: roles, not names (core/hb_roles.py)
 
 
 def _task_packet(conn,task):

@@ -20,7 +20,8 @@ from core import hb_tasks
 
 PLAN = 'P-2AB8250A87'
 MAIN_CHAT = 2834
-MODEL = 'fred-cpu:24b'          # the counsel role; moves to role assignment with the "roles, not names" work (S-9F36B5AB4E)
+from core.hb_roles import model_for
+MODEL = model_for('counsel')    # owner 14 Nov: roles, not names - the counsel role's model comes from the role register (core/hb_roles.py)
 RECHECK_DAYS = 7
 _RUNNING = threading.Lock()
 SCHEMA = {'type': 'object', 'additionalProperties': False,
@@ -41,6 +42,24 @@ def _latest(conn, task_id):
     return (json.loads(row[0]), row[1]) if row else (None, None)
 
 
+def _runnable(text):
+    try:
+        from core.hb_plan_workflow import runnable_check
+        return runnable_check(text)
+    except ImportError:
+        import re
+        return bool(re.search(r'\b(pytest|python3?|run_tests|curl|bash|node|npm|make|sqlite3)\b|tests/\S+\.py|\btests? pass', text, re.I))
+
+
+def _runnable(text):
+    try:
+        from core.hb_plan_workflow import runnable_check
+        return runnable_check(text)
+    except ImportError:
+        import re
+        return bool(re.search(r'\b(pytest|python3?|run_tests|curl|bash|node|npm|make|sqlite3)\b|tests/\S+\.py|\btests? pass', text, re.I))
+
+
 def vague(conn, step):
     """Why this queue step needs counsel, or None."""
     if str(step.get('skip') or '').startswith('needs a spec'):
@@ -50,6 +69,10 @@ def vague(conn, step):
     desc = conn.execute('SELECT description FROM project_steps WHERE step_id=?', (step['step_id'],)).fetchone()
     if step.get('task_id') and desc and SPEC_MARK in str(desc[0] or '') and not str(step.get('skip') or '').startswith(('blocked', 'not APEX')):
         return 'not scoped in Studio yet'
+    if step.get('task_id') and desc and 'Done when' in str(desc[0] or '') and not _runnable(str(desc[0] or '')):
+        return 'its Done when has no check APEX can run'          # owner 14 Nov: prose checks made 5 steps loop 8 rounds each
+    if step.get('task_id') and desc and 'Done when' in str(desc[0] or '') and not _runnable(str(desc[0] or '')):
+        return 'its Done when has no check APEX can run'          # owner 14 Nov: prose checks made 5 steps loop 8 rounds each
     if step.get('skip') or not step.get('task_id'):
         return None
     from core.hb_dream_method import done_when
@@ -192,14 +215,8 @@ def _can_run(conn):
     if conn.execute("SELECT name FROM sqlite_master WHERE name='hb_peer_work'").fetchone() and conn.execute(
             "SELECT 1 FROM hb_task_events e JOIN hb_peer_work w ON w.request_id=e.request_id WHERE e.kind='fred_turn' AND w.state IN ('queued','running')").fetchone():
         return False
-    # Owner 14 Nov: "let the current tasks finish, then propose the specs" - only while the queue has no precise work running or ready.
-    try:
-        from core import hb_plan_workflow as wf
-        w = wf.settings(conn) or {}
-        if w.get('enabled') and (w.get('task_id') or wf.next_ready(conn)):
-            return False
-    except Exception:
-        pass
+    # Owner 14 Nov (evening): "the background models aren't doing anything" - the counsel runs on the CPU, so it no longer waits for
+    # APEX's GPU queue to empty (it never did); it only waits for a Fred turn and the model benchmark (both use the CPU).
     from core.hb_model_switches import current_modes
     return current_modes().get(MODEL) != 'off'
 
