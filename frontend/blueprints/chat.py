@@ -3107,6 +3107,9 @@ def api_chat():
                                     hb_merits.try_better(_id_conn, message)
                             except Exception:
                                 pass
+                        if owner_intent == 'status':   # 15 Nov: "share the open tasks" - HB answers at once from its own records
+                            _id_conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
+                                             "VALUES (?,'hummingbird','user',?,'response',0)", (conv_id, hb_owner_intent.status_text(_id_conn, conv_id)))
                         if owner_intent == 'agents':   # 14 Nov: HB answers "onboard @X" itself and starts its own exam when needed
                             from core import hb_agents
                             _agents_text = hb_agents.onboard_request(_id_conn, conv_id, message, f"{(current_user or {}).get('username') or 'owner'} via chat")

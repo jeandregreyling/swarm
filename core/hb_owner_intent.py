@@ -38,6 +38,33 @@ _ACTION = re.compile(r"\b(?:build|fix|implement|create|make|add|update|change|in
 _ONBOARD = re.compile(r'\bon-?board(ing|ed)?\b', re.I)
 
 
+# owner 15 Nov: asking HB about its own work ("hey can you please share open tasks and your proposed solutions?") made a task with no
+# definition of done; APEX circled, Fred took over and held the queue for ten minutes. Such a line is a status question.
+_STATUS_ASK = re.compile(r"\b(?:share|show|list|tell|give|what|what's|whats|which|where|how many|summari[sz]e|update me|status|report|any|anything|is there)\b", re.I)
+_STATUS_ABOUT = re.compile(r"\b(?:open tasks?|tasks? (?:are )?(?:still )?(?:open|left|remaining|outstanding|pending)|task list|the tasks|the queue|backlog|status|progress|"
+                           r"where (?:we|you|things) (?:are|stand)|what(?:'s| is) (?:left|open|next|outstanding|pending|blocked|stuck)|"
+                           r"what (?:are you|is hb|is apex) (?:doing|working on|trying to do)|proposed solutions?|needs? me|waiting (?:for|on) me)\b", re.I)
+_STATUS_WORK = re.compile(r"\b(?:build|fix|implement|create|install|write|repair|remove|deploy|refactor|rename|migrate|merge|move|delete|cancel|change)\b", re.I)
+
+
+def status_text(conn, conversation_id=None):
+    """HB's own answer to a status question: what it is doing, what is next, what waits and why, and what needs JD. No model."""
+    from core import hb_queue
+    from core.hb_plain import message
+    s = hb_queue.status(conn)
+    label = {'now': 'now', 'next': 'next', 'needs_you': 'needs you', 'waiting': 'waiting', 'blocked': 'blocked'}
+    rows = [f"{n}. {label.get(i['state'], i['state'])}: {i['title']}" + (f" - {i['why']}" if i.get('why') and i['state'] in ('waiting', 'blocked', 'needs_you') else '')
+            for n, i in enumerate(s['items'][:14], 1)]
+    try:
+        from core.hb_commands import waiting_items
+        needs = [str(w.get('title') or w.get('label') or '')[:110] for w in waiting_items(conn, conversation_id)][:6]
+    except Exception:
+        needs = []
+    return message(hb_queue.summary(conn), *(rows or ['No open tasks in the plan.']),
+                   'Needs you: ' + ('; '.join(n for n in needs if n) if needs else 'nothing') + '.',
+                   details=['from HB\'s own records; /tasks, /queue and the board above the chat show the same'])
+
+
 def classify(text):
     """'drive', 'remark', 'agents' (onboard @X: HB answers) or None (a real request: a new task)."""
     body = _FILLER.sub('', str(text or '')).strip()
@@ -54,6 +81,10 @@ def classify(text):
         return 'remark'
     if _GO.search(body) and not _ACTION.search(body):
         return 'drive'                                   # "all clear, now you can go ahead" (but "go ahead and fix X" is work)
+    if words <= 25 and '\n' not in body and _STATUS_ASK.search(body) and _STATUS_ABOUT.search(body) and not _STATUS_WORK.search(body):
+        return 'status'                                  # owner 15 Nov: "share the open tasks" - HB answers from its records, no task, no model
+    if body.rstrip().endswith('?') and words <= 20 and '\n' not in body and not _ACTION.search(body):
+        return 'remark'                                  # owner 14 Nov: "HAS ANYONE ACTUALLY HELPED apex?" is a question to answer, not a task
     if words <= 3 and not _ACTION.search(body):
         return 'remark'                                  # "think", "adjust", "maybe", "ywes", "DREn"
     if not _ACTION.search(body) and words <= 12 and '\n' not in body and not body.rstrip().endswith('?'):
