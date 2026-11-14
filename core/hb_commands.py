@@ -55,6 +55,8 @@ COMMANDS = [
     ('roles', '/roles [set <role> <model>]', 'Which model plays each role (APEX, Fred, counsel, reviewer, homework); set changes one', False),
     ('net', '/net [bench [name] | budget <GB left> <floor GB> | mobile <name> on|off | pick <GB>]', 'Connections, their measured speed, the mobile data budget, and which one a job should use', False),
     ('swap', '/swap [plan <model GB>]', 'NVMe swap for very large models: is one on, and what a model of that size would need', False),
+    ('scorecards', '/scorecards', "Per model and task type: checked successes, corrections, turns answered and time, from HB's own records", False),
+    ('examples', '/examples <words>', 'Worked examples: how a similar change was done before and which check passed', False),
     ('yes', '/yes', 'Confirm what HB just asked', False),
     ('no', '/no', 'Decline what HB just asked', False),
 ]
@@ -123,6 +125,10 @@ def parse(body):
         return ('bench', words[1:])
     if cmd == 'agents':
         return ('agents', words[1:])
+    if cmd == 'scorecards':   # owner 14 Nov: model scorecards and worked examples (core/hb_scorecards.py)
+        return ('scorecards', [])
+    if cmd == 'examples':
+        return ('examples', [body.split(None, 1)[1].strip()]) if len(words) > 1 else None
     if cmd == 'swap':   # owner 14 Nov: NVMe swap for very large models (core/hb_swap.py)
         return ('swap', words[1:])
     if cmd == 'net':   # owner 14 Nov: HB network manager (core/hb_network.py)
@@ -811,6 +817,12 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'swap':
         from core import hb_swap
         return hb_swap.command(args)
+    if command == 'scorecards':
+        from core import hb_scorecards
+        return hb_scorecards.text(conn)
+    if command == 'examples':
+        from core import hb_scorecards
+        return hb_scorecards.examples_text(conn, args[0])
     if command == 'agents':
         from core import hb_agents
         if len(args) >= 2 and args[0].lower() == 'retire':

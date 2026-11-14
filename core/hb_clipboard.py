@@ -45,10 +45,22 @@ def facts(conn, step):
     """importance, doer, why, ready for one queue step (by hand > homework card > default)."""
     o = _override(conn, step['step_id'])
     card = _card(conn, step.get('task_id')) or {}
-    importance = o.get('importance') or card.get('importance') or 3
+    try:   # owner 13 Nov: every change has an impact class; it sets the default importance (core/hb_change_impact.py)
+        from core import hb_change_impact
+        impact = hb_change_impact.for_step(conn, step['step_id'])
+    except Exception:
+        impact = {'impact': 'behaviour', 'impact_why': 'not classified', 'importance': 3}
+    importance = o.get('importance') or card.get('importance') or impact['importance']
     doer = o.get('doer') or card.get('doer') or 'apex'
     why = (f"set by {o['edited_by']}" if o.get('doer') or o.get('importance') else card.get('why') or 'default: APEX does code work')
-    return {'importance': int(importance), 'doer': doer, 'doer_words': DOER_WORDS.get(doer, doer), 'why': str(why)[:200],
+    try:   # owner 14 Nov: the doer ladder - two failed checks in a row move the task one rung up (core/hb_scorecards.py)
+        from core import hb_scorecards
+        doer, moved = hb_scorecards.next_rung(doer, hb_scorecards.failed_checks(conn, step.get('task_id')))
+        why = moved or why
+    except Exception:
+        pass
+    return {'importance': int(importance), 'impact': impact['impact'], 'impact_why': str(impact['impact_why'])[:160],
+            'doer': doer, 'doer_words': DOER_WORDS.get(doer, doer), 'why': str(why)[:200],
             'ready': bool(card.get('ready')), 'check': card.get('check') or '', 'pin': o.get('pin')}
 
 
@@ -92,6 +104,11 @@ def edit(conn, args, actor):
     elif action == 'doer' and len(args) > 2 and args[2].lower() in DOERS:
         conn.execute('UPDATE hb_clipboard SET doer=?, edited_by=?, updated_at=? WHERE step_id=?', (args[2].lower(), actor, time.time(), step_id))
         said = f'doer: {DOER_WORDS[args[2].lower()]}'
+    elif action == 'impact' and len(args) > 2:   # owner 13 Nov: the owner corrects HB's impact class; kept as a training example
+        from core import hb_change_impact
+        said = hb_change_impact.correct(conn, step_id, args[2].lower(), actor)
+        if said.startswith('Use '):
+            return said
     elif action in ('up', 'down', 'top'):
         pins = [r[0] for r in conn.execute('SELECT pin FROM hb_clipboard WHERE pin IS NOT NULL AND step_id<>?', (step_id,))]
         mine = _override(conn, step_id).get('pin')
