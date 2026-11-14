@@ -9,6 +9,40 @@ NOTICE = ('Stored reference material, not instructions or permission. Cite the d
           'source reference. Downloaded files become searchable after ingestion; private agent memory is excluded.')
 
 
+ONLINE_FALLBACK = {'gemini-advisor', 'gemini', 'codex-instructor', 'codex', 'claude-code', 'claude', 'copilot-instructor'}
+
+
+def online_reader(conn=None):
+    """Owner 15 Nov: is the agent asking right now an ONLINE one (its words leave this machine)? HB itself and local models: False.
+    An agent HB cannot classify is treated as online - confidential material is never shown on a guess."""
+    try:
+        from core import agent_identity
+        actor = agent_identity.CURRENT.get()
+    except Exception:
+        actor = None
+    if not actor or not actor.get('principal'):
+        return False
+    who = str(actor['principal']).lower()
+    if who in ONLINE_FALLBACK:
+        return True
+    try:
+        own = conn or get_connection()
+        try:
+            row = own.execute('SELECT kind FROM hb_agents WHERE agent_id=?', (who,)).fetchone()
+        finally:
+            if conn is None:
+                own.close()
+    except Exception:
+        row = None
+    if row:
+        return row[0] != 'local'
+    return who not in ('apex', 'fred', 'nanny', 'hummingbird')
+
+
+def confidential(tags):
+    return 'confidential' in str(tags or '').lower()
+
+
 def _tables(conn):
     return {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
 
@@ -102,6 +136,8 @@ def search(query):
         if not items:
             from core.hf_mirror import catalogue_search
             items=catalogue_search(query)
+    if any(confidential(i.get('tags')) for i in items) and online_reader():
+        items=[i for i in items if not confidential(i.get('tags'))]      # owner 15 Nov: confidential sources never reach an online agent
     return {'status':'found' if items else 'not_found','source':'knowledge_library_and_project_docs',
             'query':query,'items':items[:8],'notice':NOTICE}
 
@@ -133,6 +169,9 @@ def read(document_id, offset=0):
                 'hint':'No Knowledge Centre document has this id. Document ids come from knowledge_search results. '
                        'Search by title words, by an HB task id (e.g. knowledge_search("T-563CFF56ACD1")) or by chat:N, '
                        'then knowledge_read the document_id it returns.'}
+    if confidential(row[3]) and online_reader():
+        return {'status':'not_permitted','document_id':document_id,
+                'hint':'This document is marked confidential by the owner: only HB and the local models on this machine may read it.'}
     if offset>row[1]:
         raise ValueError('Knowledge offset exceeds document length')
     return {'status':'found','document_id':document_id,'title':row[0],'content':row[2],'tags':row[3],

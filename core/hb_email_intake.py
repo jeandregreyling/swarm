@@ -17,6 +17,7 @@ from contextlib import closing
 from xml.etree import ElementTree
 
 MAIN_CHAT = 2834
+INBOX = '/home/jd/HB-Inbox'          # owner 15 Nov: drop confidential work files here; nothing leaves the machine
 EVERY_S = 120
 MAX_ATTACHMENT = 20 * 1024 * 1024
 MAX_ROWS = 20000
@@ -101,7 +102,47 @@ def attachment_text(filename, content_type, data):
         return None, f'could not be read ({type(exc).__name__})'
     if name.endswith('.xls'):
         return None, 'old .xls format: save it as .xlsx or .csv and send it again'
+    if name.endswith('.rpmsg'):
+        return None, ("protected by the sender's organisation (Microsoft rights protection): only the sender's own sign-in can open it. "
+                      f'Save the file itself into {INBOX} on this machine instead')
     return None, 'a file type HB does not read yet'
+
+
+# ------------------------------------------------------------------ local inbox folder (owner 15 Nov: confidential work files, no email needed)
+def folder_check(conn, folder=None, keep=None, now=None):
+    """Take in every file JD dropped into the inbox folder: saved in the Knowledge Centre as confidential, then moved to taken/.
+    Files HB cannot read stay where they are, with the reason in main chat once. Returns how many were taken in."""
+    from pathlib import Path
+    folder = Path(folder or INBOX)
+    if not folder.is_dir():
+        return 0
+    keep = keep or _keep
+    now = time.time() if now is None else now
+    taken = 0
+    for path in sorted(p for p in folder.iterdir() if p.is_file() and not p.name.startswith('.')):
+        if now - path.stat().st_mtime < 5:
+            continue                                     # still being copied
+        key = f'file://{path.name}/{int(path.stat().st_mtime)}/{path.stat().st_size}'
+        if conn.execute('SELECT 1 FROM hb_email_seen WHERE message_id=?', (key,)).fetchone():
+            continue
+        text, why = attachment_text(path.name, '', path.read_bytes()) if path.stat().st_size <= MAX_ATTACHMENT else (None, 'too large')
+        from core.hb_plain import message
+        if text is None:
+            line, outcome, sid = message(f'📥 {path.name} is in the inbox folder but HB could not read it: {why}.'), 'not read: ' + str(why)[:120], None
+        else:
+            sid = keep(conn, f'Inbox file: {path.name}', key, f'File: {path.name}\nReceived: {time.strftime("%d %b %Y %H:%M", time.localtime(now))}\n\n' + text,
+                       ['inbox-file', 'confidential'])
+            (folder / 'taken').mkdir(exist_ok=True)
+            path.rename(folder / 'taken' / f'{time.strftime("%Y%m%d-%H%M%S", time.localtime(now))}-{path.name}')
+            line, outcome = message(f'📥 {path.name} taken in from the inbox folder.',
+                                    f'Saved in the Knowledge Centre{f" (KC{sid})" if sid else ""} as confidential: only HB and the local models may read it.',
+                                    details=['the file itself is now in the folder taken/']), 'taken in'
+            taken += 1
+        conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                     (MAIN_CHAT, line))
+        conn.execute('INSERT OR REPLACE INTO hb_email_seen(message_id, sender, subject, outcome, kc_sources, at) VALUES (?,?,?,?,?,?)',
+                     (key, 'inbox folder', path.name[:200], outcome, str(sid or ''), now))
+    return taken
 
 
 # ------------------------------------------------------------------ one message
@@ -152,14 +193,14 @@ def ingest(conn, msg, keep=_keep, now=None):
     kept, skipped = [], []
     head = f'Email from {sender}\nSubject: {subject}\nDate: {msg.get("Date", "")}\n'
     if body:
-        kept.append(('message text', keep(conn, f'Email: {subject}', f'email://{mid}', head + '\n' + body, ['email'])))
+        kept.append(('message text', keep(conn, f'Email: {subject}', f'email://{mid}', head + '\n' + body, ['email', 'confidential'])))
     for n, (name, kind, data) in enumerate(files, 1):
         text, why = attachment_text(name, kind, data)
         if text is None:
             skipped.append((name, why))
             continue
         kept.append((name, keep(conn, f'Email attachment: {name} ({subject})', f'email://{mid}/{n}/{name}',
-                               head + f'Attachment: {name}\n\n' + text, ['email', 'email-attachment'])))
+                               head + f'Attachment: {name}\n\n' + text, ['email', 'email-attachment', 'confidential'])))
     from core.hb_plain import message
     line = message(f'📧 Email from {sender}: "{subject[:120]}"',
                    'Saved in the Knowledge Centre: ' + ('; '.join(f'{what} (KC{sid})' if sid else what for what, sid in kept) or 'nothing') + '.',
@@ -236,6 +277,11 @@ def tick(conn, now=None):
     """HB's loop: check the mailbox every EVERY_S seconds in the background."""
     now = time.time() if now is None else now
     ensure_schema(conn)
+    try:   # owner 15 Nov: the local inbox folder is looked at on every pass (no network involved)
+        folder_check(conn, now=now)
+    except Exception:
+        import logging
+        logging.getLogger('hb.email').exception('inbox folder check failed')
     last = conn.execute('SELECT last_check FROM hb_email_intake WHERE id=1').fetchone()[0] or 0
     if now - last < EVERY_S or not _RUNNING.acquire(blocking=False):
         return False
@@ -279,4 +325,5 @@ def command(conn, args, actor, mailbox=_mailbox):
     return (f"Email intake: send to {box}. Trusted senders: {', '.join(sorted(trusted(conn)))}. Checked every {EVERY_S // 60} minutes"
             + (f"; last check {time.strftime('%H:%M', time.localtime(last))}: {note or 'running'}" if last else '; not checked yet')
             + f". Only mail since {time.strftime('%d %b %H:%M', time.localtime(since))} is taken in."
-            + ''.join(f'\n- {s}: "{sub_}" - {o}' for s, sub_, o in recent) + '\nCheck now with /email check.')
+            + ''.join(f'\n- {s}: "{sub_}" - {o}' for s, sub_, o in recent) + f'\nEverything taken in is confidential: only HB and the local models read it. Files can also be dropped into {INBOX} on this machine.'
+            + '\nCheck now with /email check.')
