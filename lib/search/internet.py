@@ -1,25 +1,24 @@
 import re
 import sys
+from datetime import datetime, timezone
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
 
 try:
     from ddgs import DDGS as _DDGS
     _DDGS_OK = True
+    _DDGS_BACKEND = 'duckduckgo'
 except ImportError:
-    try:
-        from duckduckgo_search import DDGS as _DDGS
-        _DDGS_OK = True
-    except ImportError:
-        _DDGS_OK = False
-        _DDGS = None
+    _DDGS_OK = False
+    _DDGS = None
+    _DDGS_BACKEND = 'duckduckgo'
 
 def search_web(query, max_results=3):
     if not _DDGS_OK:
-        return "[Search unavailable: ddgs/duckduckgo_search not installed]"
+        return "[Search unavailable: ddgs not installed]"
     try:
-        with _DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results))
+        with _DDGS(timeout=10) as ddgs:
+            results = list(ddgs.text(query, max_results=max_results, backend=_DDGS_BACKEND))
         if not results:
             return "No results found."
         summary = ""
@@ -28,7 +27,37 @@ def search_web(query, max_results=3):
             summary += f"{r['title']}: {r['body']}\n\n"
         return summary.strip()
     except Exception as e:
-        return f"[Search failed: {str(e)}]"
+        return f"[Search failed: {type(e).__name__}]"
+
+
+def search_provider(query, provider):
+    """Run one named existing adapter; never disguise a provider failure as results."""
+    if not isinstance(query, str) or not 1 <= len(query.strip()) <= 200:
+        raise ValueError("web_search requires a public query of 1-200 characters")
+    query = query.strip()
+    if not isinstance(provider, str) or provider not in {"duckduckgo", "serper", "tavily"}:
+        raise ValueError("web_search provider must be duckduckgo, serper or tavily")
+    if provider == "duckduckgo":
+        text = search_web(query, max_results=3)
+    elif provider == "serper":
+        from lib.search.internet_serper import search
+        text = search(query, num_results=3)
+    else:
+        from lib.search.internet_tavily import search
+        text = search(query, max_results=3)
+    if not text or text.startswith(_FAILED_PREFIXES):
+        raise ValueError(f"{provider} returned no search results or is unavailable")
+    sources = list(dict.fromkeys(re.findall(r"https?://[^\s<>]+", text)))[:3]
+    if not sources:
+        raise ValueError(f"{provider} returned no attributable source URLs")
+    return {
+        "provider": provider,
+        "query": query,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "sources": sources,
+        "text": text[:3000],
+        "truncated": len(text) > 3000,
+    }
 
 _FAILED_PREFIXES = ('[Serper search unavailable', '[Tavily search unavailable', '[Search failed',
                     '[Search unavailable', 'No results found')

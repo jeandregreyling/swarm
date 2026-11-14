@@ -45,7 +45,7 @@ def search(query, num_results=5):
                 pass
             return result
         except Exception as e:
-            print(f'[Serper] Key {key[:12]}... failed: {e}')
+            print(f'[Serper] Search failed: {type(e).__name__}')
 
     return f'[Serper search unavailable for: {query}]'
 

@@ -31,6 +31,10 @@ MODEL = 'qwen2.5:latest'
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 def _all_eight_memories(query='', limit=100):
+    from core import agent_identity as runtime
+    if runtime.enabled():
+        with runtime.execution('eight'):
+            return runtime.read_memory('eight', query, limit)
     conn = get_connection()
     like = f'%{query}%'
     rows = conn.execute(
@@ -46,6 +50,10 @@ def _all_eight_memories(query='', limit=100):
 
 
 def _archive_memory(memory_id):
+    from core import agent_identity as runtime
+    if runtime.enabled():
+        return runtime.private_memory_call('eight', 'memory.archive',
+            lambda conn: conn.execute('UPDATE memories SET archived=1 WHERE id=?', (memory_id,)).rowcount)
     conn = get_connection()
     conn.execute("UPDATE memory_eight SET archived=1 WHERE id=?", (memory_id,))
     conn.commit()
@@ -53,6 +61,9 @@ def _archive_memory(memory_id):
 
 
 def _save_eight_knowledge(subject, content, tags='', importance=8, source='taught'):
+    from core import agent_identity as runtime
+    if runtime.enabled():
+        return save_agent_memory('eight', subject, content, tags, importance, source)
     conn = get_connection()
     conn.execute(
         "INSERT INTO memory_eight (agent,subject,content,tags,importance,source) VALUES (?,?,?,?,?,?)",

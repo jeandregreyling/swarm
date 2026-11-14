@@ -77,7 +77,7 @@ def response(message: str) -> str:
     if not result.get("ok"):
         return (
             "I inspected live Studio but could not select a bounded task. "
-            f"DEOS blocker: {result.get('blocker')}"
+            f"DOES blocker: {result.get('blocker')}"
         )
     step = result["step"]
     mapping = result["mapping"]
@@ -88,6 +88,6 @@ def response(message: str) -> str:
         f"State: {step['status']} · owner={step['owner']}\n"
         f"CHM: ghost -> seven -> {mapping['return_to']}; evidence={mapping['evidence']}; "
         f"unresolved={mapping['unresolved']}\n"
-        "DEOS action: work only this step, verify the real path, then write completion or the exact blocker back to Studio."
+        "DOES action: work only this step, verify the real path, then write completion or the exact blocker back to Studio."
     )
 

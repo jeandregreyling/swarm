@@ -35,6 +35,7 @@ AGENT_POOL_MAP = {
     'scholar': 'memory_scholar', 'seeker': 'memory_seeker',
     'gemini': 'memory_gemini',
     'twenty': 'memory_twenty',
+    'mistral-vibe': 'memory_mistral_vibe',
     # STEP-MEMORIES-HIVE-KNOWLEDGE-SYNC-20260430 — restore writes for the
     # agents that previously fell off the map (Seven herself plus the local
     # runner agents and ghost workers). Where a dedicated table doesn't

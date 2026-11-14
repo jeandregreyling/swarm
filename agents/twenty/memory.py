@@ -45,6 +45,10 @@ CONSOLIDATION_BATCH = 50
 def remember(subject, content, tags='', importance=IMPORTANCE_NORMAL,
              source='council', ticket_ref='', conn=None):
     """Write a new memory.  Returns the row id."""
+    from core import agent_identity as runtime
+    if runtime.enabled():
+        with runtime.execution('twenty'):
+            return runtime.save_memory('twenty', subject, content[:2000], tags, importance, source, ticket_ref=ticket_ref)
     close = False
     if conn is None:
         conn = get_connection()
@@ -101,6 +105,12 @@ def remember_pattern(pattern_type, pattern_key, pattern_value, confidence=0.5,
 def recall(subject_like=None, tags_like=None, min_importance=1, limit=20,
            conn=None):
     """Retrieve memories by subject/tag/importance.  Returns list of dicts."""
+    from core import agent_identity as runtime
+    if runtime.enabled():
+        with runtime.execution('twenty'):
+            rows = runtime.read_memory('twenty', subject_like or '', min(limit,100))
+        return [dict(row) for row in rows if row['importance'] >= min_importance
+                and (not tags_like or tags_like.lower() in row['tags'].lower())]
     close = False
     if conn is None:
         conn = get_connection()
@@ -200,6 +210,12 @@ def decay_stale_memories(conn=None):
 
     Returns count of archived rows.
     """
+    from core import agent_identity as runtime
+    if runtime.enabled():
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=DECAY_DAYS)).strftime('%Y-%m-%d %H:%M:%S')
+        return runtime.private_memory_call('twenty','memory.decay',lambda conn: conn.execute(
+            'UPDATE memories SET archived=1 WHERE archived=0 AND importance<=? AND created_at<?',
+            (DECAY_THRESHOLD,cutoff)).rowcount)
     close = False
     if conn is None:
         conn = get_connection()
@@ -226,6 +242,15 @@ def consolidate_if_needed(conn=None):
 
     Returns count of archived rows (0 if no consolidation needed).
     """
+    from core import agent_identity as runtime
+    if runtime.enabled():
+        def consolidate(memory):
+            if memory.execute('SELECT count(*) FROM memories WHERE archived=0').fetchone()[0] <= MAX_ACTIVE_MEMORIES:
+                return 0
+            return memory.execute('''UPDATE memories SET archived=1 WHERE id IN
+                (SELECT id FROM memories WHERE archived=0 AND importance<=? ORDER BY created_at LIMIT ?)''',
+                (IMPORTANCE_NORMAL,CONSOLIDATION_BATCH)).rowcount
+        return runtime.private_memory_call('twenty','memory.consolidate',consolidate)
     close = False
     if conn is None:
         conn = get_connection()

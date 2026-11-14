@@ -1,6 +1,6 @@
-"""Watchdog DEOS supervisor.
+"""Watchdog DOES supervisor.
 
-DEOS = Decides, Executes, Operates, Sustains.
+DOES = Decides, Executes, Operates, Sustains.
 
 This module is intentionally deterministic. It does not make Duck, Librarian,
 Seven, or Vortex autonomous thinkers. It keeps support roles ready, chooses one
@@ -19,12 +19,12 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from utils.db._connection import get_connection
-from utils.deos_teaching import evaluate_local_result, local_agent_packet
+from utils.does_teaching import evaluate_local_result, local_agent_packet
 
 
 PROJECT_ID = 'P-CHAT-RELAY-RECOVERY'
-STEP_ID = 'S-DEOS-CONTROL-PLANE'
-WORK_STEP_ID = 'S-DEOS-LOCAL-AGENT-WORK'
+STEP_ID = 'S-DOES-CONTROL-PLANE'
+WORK_STEP_ID = 'S-DOES-LOCAL-AGENT-WORK'
 
 
 def _one_model_mode() -> bool:
@@ -207,7 +207,7 @@ def _ensure_project(conn) -> None:
             (project_id, name, description, methodology, status, owner,
              created_at, updated_at, priority, tags)
            VALUES (?, 'Chat Relay Recovery Watchdog',
-             'DEOS control plane for stalled chat work, model readiness, and one-at-a-time recovery.',
+             'DOES control plane for stalled chat work, model readiness, and one-at-a-time recovery.',
              'agile', 'active', 'watchdog', ?, ?, 90, ?)
            ON CONFLICT(project_id) DO UPDATE SET
              description=excluded.description,
@@ -219,7 +219,7 @@ def _ensure_project(conn) -> None:
             PROJECT_ID,
             now,
             now,
-            json.dumps(['watchdog', 'deos', 'chat', 'relay-recovery'], ensure_ascii=True),
+            json.dumps(['watchdog', 'does', 'chat', 'relay-recovery'], ensure_ascii=True),
         ),
     )
     _execute_with_retry(
@@ -227,11 +227,11 @@ def _ensure_project(conn) -> None:
         """INSERT INTO project_steps
             (step_id, project_id, title, description, status, owner, order_idx,
              created_at, updated_at, residual_risk, owner_route)
-           VALUES (?, ?, 'Run Watchdog DEOS supervisor',
+           VALUES (?, ?, 'Run Watchdog DOES supervisor',
              'Deterministic control loop: decide next recovery state, execute bounded operations, operate through Studio rows, and sustain evidence/lessons. Duck and Librarian are support functions, not autonomous always-thinking loops.',
              'doing', 'watchdog', 1, ?, ?,
              'If this loop is absent, cold starts, DB locks, and agent timeouts look like random LLM failures.',
-             'watchdog:deos')
+             'watchdog:does')
            ON CONFLICT(step_id) DO UPDATE SET
              description=excluded.description,
              status='doing',
@@ -248,7 +248,7 @@ def _ensure_project(conn) -> None:
             (step_id, project_id, title, description, status, owner, order_idx,
              created_at, updated_at, residual_risk, owner_route)
            VALUES (?, ?, 'Run local agent work packets on their own time',
-             'DEOS may claim one Studio step at a time and call one local agent with a bounded work packet. The agent can use SKILL commands through its normal local runtime. DEOS records output/evidence and only marks done when the response explicitly reports done with proof.',
+             'DOES may claim one Studio step at a time and call one local agent with a bounded work packet. The agent can use SKILL commands through its normal local runtime. DOES records output/evidence and only marks done when the response explicitly reports done with proof.',
              'todo', 'watchdog', 2, ?, ?,
              'Local agents may still time out or fail to emit valid SKILL commands; failures must become blockers, not silent stalls.',
              'watchdog:local-agent-work')
@@ -274,7 +274,7 @@ def _add_step_evidence(
         conn,
         """INSERT INTO project_step_evidence
             (project_id, step_id, source_type, source_ref, summary, status)
-           VALUES (?, ?, 'watchdog_deos', ?, ?, ?)""",
+           VALUES (?, ?, 'watchdog_does', ?, ?, ?)""",
         (project_id or PROJECT_ID, step_id, str(source_ref or '')[:120], str(summary or '')[:500], status),
     )
 
@@ -521,7 +521,7 @@ def _recovery_counts(conn) -> Dict[str, int]:
 
 
 def _clear_stale_local_work_claims(conn, stale_seconds: int = 1800) -> int:
-    """Return stale local-agent ``doing`` steps to blocked so DEOS can retry."""
+    """Return stale local-agent ``doing`` steps to blocked so DOES can retry."""
     candidates = tuple(WORK_AGENT_MODULES)
     placeholders = ','.join('?' for _ in candidates)
     cutoff = _now() - max(300, int(stale_seconds or 1800))
@@ -538,7 +538,7 @@ def _clear_stale_local_work_claims(conn, stale_seconds: int = 1800) -> int:
     count = 0
     for row in rows:
         step_id = str(row['step_id'])
-        summary = f"DEOS returned stale local-agent claim to blocked: {row['owner']} / {row['title']}"
+        summary = f"DOES returned stale local-agent claim to blocked: {row['owner']} / {row['title']}"
         conn.execute(
             """UPDATE project_steps
                SET status='blocked',
@@ -608,7 +608,7 @@ def _reroute_blocked_failed_local_steps(conn, limit: int = 5) -> int:
         nxt = _next_work_agent(conn, step_id, current)
         if not nxt:
             continue
-        summary = f"DEOS rerouted blocked local work from {current} to {nxt}: {row['title']}"
+        summary = f"DOES rerouted blocked local work from {current} to {nxt}: {row['title']}"
         conn.execute(
             """UPDATE project_steps
                SET owner=?, residual_risk=?, updated_at=?
@@ -693,7 +693,7 @@ def _claim_local_agent_step(
             conn,
             data['step_id'],
             f'claim:{data["step_id"]}',
-            f"DEOS claimed step for {data.get('owner')}: {data.get('title')}",
+            f"DOES claimed step for {data.get('owner')}: {data.get('title')}",
             'ok',
             project_id=data.get('project_id') or PROJECT_ID,
         )
@@ -703,7 +703,7 @@ def _claim_local_agent_step(
 
 
 MAX_CONTINUES = 5
-_CONTINUE_RE = re.compile(r'(?im)^\s*DEOS_STATUS:\s*continue[\s.!]*$')
+_CONTINUE_RE = re.compile(r'(?im)^\s*DOES_STATUS:\s*continue[\s.!]*$')
 
 
 def _chat_job_active(conn, max_age_seconds: int = 900) -> bool:
@@ -787,17 +787,17 @@ def _agent_work_prompt(step: Dict[str, Any], notes: Optional[List[str]] = None) 
     return (
         f'{local_agent_packet(agent)}\n\n'
         f'{chm_block}\n'
-        'You are running under Watchdog/Seven DEOS. Complete this Studio task if it is safe and concrete.\n'
+        'You are running under Watchdog/Seven DOES. Complete this Studio task if it is safe and concrete.\n'
         'Rules:\n'
         '- Work only on this one task.\n'
         '- Use SKILL commands for file reads, patches, verification, or ALM actions when needed.\n'
         '- Prefer the smallest useful completion. Do not over-research simple recovery cards.\n'
         '- Keep changes narrow: no broad rewrites or unrelated work.\n'
         '- If the task is unclear, unsafe, or too large, stop and report BLOCKED with the exact blocker.\n'
-        '- End your final answer with exactly one status line: DEOS_STATUS: done | blocked | needs_human | continue.\n'
+        '- End your final answer with exactly one status line: DOES_STATUS: done | blocked | needs_human | continue.\n'
         '- If done, include the proof command/output summary before the status line.\n'
         '- If the task needs more passes, write a short PROGRESS: line saying what is finished and what comes next, '
-        'then DEOS_STATUS: continue. You will be handed back this step with your notes.\n'
+        'then DOES_STATUS: continue. You will be handed back this step with your notes.\n'
         '- Do not restate the task. Start your reply with the SKILL line for your first action.\n'
         '- Edit files with fenced blocks: fs_write/fs_append take one block of exact content, fs_patch and '
         'fs_insert_after take two (old/anchor, then new); verify with fs_readonly afterwards. '
@@ -943,7 +943,7 @@ def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tupl
         timeout_seconds = 600
     if 'Recovery ID:' in prompt and 'Live conversation context:' in prompt:
         return _run_local_agent_direct_guarded(agent, 'recovery', prompt, min(timeout_seconds, 120))
-    if 'DEOS_MICRO_TASK' in prompt:
+    if 'DOES_MICRO_TASK' in prompt:
         return _run_local_agent_direct_guarded(agent, 'micro', prompt, min(timeout_seconds, 90))
     ctx = mp.get_context('fork')
     queue = ctx.Queue(maxsize=1)
@@ -956,7 +956,7 @@ def _run_local_agent_work(agent: str, prompt: str, timeout_seconds: int) -> Tupl
         if proc.is_alive():
             proc.kill()
             proc.join(5)
-        return False, f'{agent} timed out after {timeout_seconds}s during DEOS work packet', 0
+        return False, f'{agent} timed out after {timeout_seconds}s during DOES work packet', 0
     try:
         status, answer, tokens = queue.get_nowait()
     except Exception:
@@ -1045,11 +1045,11 @@ def _run_local_agent_micro_direct(agent: str, prompt: str, timeout_seconds: int)
         )
         msg = data.get('message') or {}
         content = str(msg.get('content') or data.get('response') or '').strip()
-        visible = re.sub(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', '', content).strip()
+        visible = re.sub(r'(?im)^\s*DOES_STATUS:\s*(done|blocked|needs_human)\s*$', '', content).strip()
         if content and not visible:
             return False, f'{agent} micro task returned only a status line', int(data.get('eval_count') or 0)
-        if content and 'deos_status:' not in content.lower():
-            content = content.rstrip() + '\nDEOS_STATUS: done'
+        if content and 'does_status:' not in content.lower():
+            content = content.rstrip() + '\nDOES_STATUS: done'
         return bool(content), content or f'{agent} micro task returned no content', int(data.get('eval_count') or 0)
     except Exception as exc:
         return False, f'{agent} micro task failed: {type(exc).__name__}: {exc}', 0
@@ -1060,16 +1060,16 @@ def _compact_micro_task_prompt(prompt: str) -> str:
     keep = False
     for raw in str(prompt or '').splitlines():
         line = raw.strip()
-        if 'DEOS_MICRO_TASK' in line:
+        if 'DOES_MICRO_TASK' in line:
             keep = True
             continue
         if keep and line:
             lines.append(line)
     text = '\n'.join(lines).strip() or str(prompt or '')[-1000:]
     return (
-        'DEOS_MICRO_TASK\n'
+        'DOES_MICRO_TASK\n'
         'Return the requested result only. Preserve exact requested text and visible proof phrases. '
-        'Do not include DEOS_STATUS; Watchdog adds that.\n'
+        'Do not include DOES_STATUS; Watchdog adds that.\n'
         + text[:1200]
     )
 
@@ -1086,7 +1086,7 @@ def _run_local_agent_direct(agent: str, prompt: str, timeout_seconds: int) -> Tu
         'Your first line must answer the latest user request or summarize the concrete recovery result. '
         'Do not return only a status line. '
         'If the last user request is already answerable, answer it directly. '
-        'Do not include any DEOS_STATUS line; Watchdog will add it after you return useful content.\n\n'
+        'Do not include any DOES_STATUS line; Watchdog will add it after you return useful content.\n\n'
         + direct_prompt
     )
     try:
@@ -1101,11 +1101,11 @@ def _run_local_agent_direct(agent: str, prompt: str, timeout_seconds: int) -> Tu
         )
         msg = data.get('message') or {}
         content = str(msg.get('content') or data.get('response') or '').strip()
-        visible = re.sub(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', '', content).strip()
+        visible = re.sub(r'(?im)^\s*DOES_STATUS:\s*(done|blocked|needs_human)\s*$', '', content).strip()
         if content and not visible:
             return False, f'{agent} direct recovery returned only a status line', int(data.get('eval_count') or 0)
-        if content and 'deos_status:' not in content.lower():
-            content = content.rstrip() + '\nDEOS_STATUS: done'
+        if content and 'does_status:' not in content.lower():
+            content = content.rstrip() + '\nDOES_STATUS: done'
         return bool(content), content or f'{agent} direct recovery returned no content', int(data.get('eval_count') or 0)
     except Exception as exc:
         return False, f'{agent} direct recovery failed: {type(exc).__name__}: {exc}', 0
@@ -1211,7 +1211,7 @@ def _finish_local_agent_step(conn, step: Dict[str, Any], ok: bool, answer: str, 
         evidence_status,
     )
     now = _now()
-    residual = '' if status == 'done' else 'Agent did not provide a verified DEOS_STATUS: done result; see latest evidence.'
+    residual = '' if status == 'done' else 'Agent did not provide a verified DOES_STATUS: done result; see latest evidence.'
     _execute_with_retry(
         conn,
         "UPDATE project_steps SET status=?, residual_risk=?, updated_at=? WHERE step_id=?",
@@ -1263,7 +1263,7 @@ def _close_relay_recovery_if_applicable(step: Dict[str, Any], result: str) -> No
         pass
 
 
-def run_deos_cycle(args: str = '') -> Dict[str, Any]:
+def run_does_cycle(args: str = '') -> Dict[str, Any]:
     """Run one deterministic Watchdog/Seven control-plane cycle."""
     opts = _parse_args(args)
     prewarm = _bool_opt(opts.get('prewarm'), default=False)
@@ -1402,7 +1402,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
                 conn,
                 'direct-runtime',
                 (
-                    'DEOS direct runtime check: '
+                    'DOES direct runtime check: '
                     f"ok={direct_snapshot.get('ok')} "
                     f"models={len(direct_snapshot.get('models') or [])} "
                     f"servers={len(direct_snapshot.get('servers') or [])} "
@@ -1413,9 +1413,9 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             _add_step_evidence(
                 conn,
                 DIRECT_RUNTIME_STEP_ID,
-                'watchdog-deos:direct-runtime',
+                'watchdog-does:direct-runtime',
                 (
-                    'DEOS direct GGUF runtime check: '
+                    'DOES direct GGUF runtime check: '
                     f"ok={direct_snapshot.get('ok')} "
                     f"available_gb={(direct_snapshot.get('resources') or {}).get('available_gb')} "
                     f"servers={len(direct_snapshot.get('servers') or [])}"
@@ -1427,7 +1427,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             report['operates']['seven_service'] = seven_service_snapshot
             service_status = 'ok' if seven_service_snapshot.get('ok') else 'warn'
             detail = (
-                'DEOS Seven standalone service check: '
+                'DOES Seven standalone service check: '
                 f"ok={seven_service_snapshot.get('ok')} "
                 f"model={seven_service_snapshot.get('model')} "
                 f"flask_required={seven_service_snapshot.get('flask_required')} "
@@ -1439,7 +1439,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             _add_step_evidence(
                 conn,
                 SEVEN_SERVICE_STEP_ID,
-                'watchdog-deos:seven-runtime-service',
+                'watchdog-does:seven-runtime-service',
                 detail,
                 service_status,
                 project_id=DIRECT_RUNTIME_PROJECT_ID,
@@ -1451,7 +1451,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             _add_step_evidence(
                 conn,
                 DIRECT_RUNTIME_STEP_ID,
-                'watchdog-deos:direct-smoke',
+                'watchdog-does:direct-smoke',
                 detail,
                 'ok' if ok else 'warn',
                 project_id=DIRECT_RUNTIME_PROJECT_ID,
@@ -1460,7 +1460,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             conn,
             'cycle',
             (
-                f'DEOS cycle: prewarm={prewarm} execute_recovery={execute_recovery} '
+                f'DOES cycle: prewarm={prewarm} execute_recovery={execute_recovery} '
                 f'execute_work={execute_work} direct_check={direct_check} direct_smoke={direct_smoke} counts={counts}'
             ),
             'ok',
@@ -1478,7 +1478,7 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
             'readiness_failed': True,
             'ready_recovery_agents': [],
         }
-        report['executes'].append(f'deos cycle skipped: sqlite lock during control-plane setup: {exc}')
+        report['executes'].append(f'does cycle skipped: sqlite lock during control-plane setup: {exc}')
         return report
     finally:
         conn.close()
@@ -1586,30 +1586,30 @@ def run_deos_cycle(args: str = '') -> Dict[str, Any]:
     try:
         from utils.db.watchdog_lessons import record_repair_lesson
         record_repair_lesson(
-            'watchdog-deos-control-plane',
+            'watchdog-does-control-plane',
             'Fridays needs Watchdog/Seven to decide, execute, operate, and sustain instead of only reporting failures.',
             (
-                'Run watchdog_deos_cycle as the deterministic control-plane loop. '
+                'Run watchdog_does_cycle as the deterministic control-plane loop. '
                 'Duck and Librarian are bounded support calls; Seven/Watchdog owns state, readiness, execution, and evidence.'
             ),
-            proof_required='Tasker has watchdog_deos_cycle scheduled, Studio step S-DEOS-CONTROL-PLANE has evidence, and relay recovery remains one-at-a-time.',
+            proof_required='Tasker has watchdog_does_cycle scheduled, Studio step S-DOES-CONTROL-PLANE has evidence, and relay recovery remains one-at-a-time.',
             evidence=report,
             owner='watchdog',
-            source_thread_id='DEOS',
-            lesson_id='WDL-DEOS-CONTROL-PLANE-20260515',
+            source_thread_id='DOES',
+            lesson_id='WDL-DOES-CONTROL-PLANE-20260515',
         )
-        report['sustains'].append('repair lesson WDL-DEOS-CONTROL-PLANE-20260515 updated')
+        report['sustains'].append('repair lesson WDL-DOES-CONTROL-PLANE-20260515 updated')
     except Exception as exc:
         report['sustains'].append(f'repair lesson update failed: {exc}')
 
     return report
 
 
-def run_deos_cycle_summary(args: str = '') -> str:
-    report = run_deos_cycle(args)
+def run_does_cycle_summary(args: str = '') -> str:
+    report = run_does_cycle(args)
     counts = report.get('operates', {}).get('recovery_counts', {})
     actions = report.get('executes', [])
     return (
-        'DEOS cycle complete: '
+        'DOES cycle complete: '
         f'counts={counts}; actions=' + ' | '.join(str(a) for a in actions[:6])
     )[:1800]

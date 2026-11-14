@@ -57,6 +57,11 @@ def promote_to_verified(subject, content, tags=''):
 
 
 def save_agent_memory(agent_name, subject, content, tags='', importance=5, source='learned'):
+    from core import agent_identity
+    if agent_identity.enabled() and agent_name.lower() != 'ghost':
+        with agent_identity.execution(agent_name.lower()):
+            agent_identity.save_memory(agent_name.lower(), subject, content, tags, importance, source)
+        return True
     table = AGENT_POOL_MAP.get(agent_name.lower())
     if not table:
         # STEP-MEMORIES-HIVE-KNOWLEDGE-SYNC-20260430 — never silently drop
@@ -83,6 +88,10 @@ def save_agent_memory(agent_name, subject, content, tags='', importance=5, sourc
 
 
 def get_agent_memory(agent_name, query='', limit=5):
+    from core import agent_identity
+    if agent_identity.enabled() and agent_name.lower() != 'ghost':
+        with agent_identity.execution(agent_name.lower()):
+            return agent_identity.read_memory(agent_name.lower(), query, limit)
     table = AGENT_POOL_MAP.get(agent_name.lower())
     if not table:
         return []

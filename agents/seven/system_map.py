@@ -9,7 +9,7 @@ DOMAINS = (
     ("Blackboard", "project_blackboard_notes", "project coordination, decisions, handoffs, and milestones"),
     ("Sandpit", "sandpits/shared", "temporary working receipts; promote durable outcomes to Studio or KC"),
     ("Vortex", "time-machine events and checkpoints", "behavioral checkpoints and event history, not task ownership"),
-    ("Watchdog", "recoveries and DEOS supervisor", "timeouts, reroutes, bounded recovery, and exact blockers"),
+    ("Watchdog", "recoveries and DOES supervisor", "timeouts, reroutes, bounded recovery, and exact blockers"),
     ("Scheduler", "scheduled_tasks and scheduler daemon", "when bounded unattended work runs"),
     ("Chat", "conversations, messages, and chat_jobs", "visible user request and response path"),
     ("Model Runtime", "Seven runtime and local model operator", "single-speaker model execution, grading, stop, and unload"),
@@ -23,7 +23,7 @@ def response() -> str:
         lines.append(f"- {name}: {surface}; owns {boundary}.")
     lines.extend([
         "CHM rule: every handoff carries source, target, authoritative context, obligations, evidence, unresolved items, and return path.",
-        "DEOS rule: act through the owning surface, verify the real path, then attach proof to the owning Studio step.",
+        "DOES rule: act through the owning surface, verify the real path, then attach proof to the owning Studio step.",
     ])
     return "\n".join(lines)
 

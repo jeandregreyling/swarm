@@ -1,10 +1,10 @@
-"""Seven-owned DEOS operating contract.
+"""Seven-owned DOES operating contract.
 
-DEOS = Decides, Executes, Operates, Sustains.
+DOES = Decides, Executes, Operates, Sustains.
 
 This module is intentionally small and deterministic. It gives Seven a native
 way to describe the proof standard he should hold the system to, and to read the
-latest DEOS/browser evidence from Studio rather than relying on chat memory.
+latest DOES/browser evidence from Studio rather than relying on chat memory.
 """
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def latest_evidence(limit: int = 5) -> list[dict]:
 
 def contract() -> str:
     return (
-        "DEOS = Decides, Executes, Operates, Sustains.\n\n"
+        "DOES = Decides, Executes, Operates, Sustains.\n\n"
         "Seven's rule for Fridays fixes:\n"
         "  0. CHM maps the handoff: preserve source, target, whole latest turn, obligations, evidence, unresolved items, and return path.\n"
         "  1. Decides: bind every obligation to a real user path test, action, or explicit blocker.\n"
@@ -71,7 +71,7 @@ def status(limit: int = 5) -> str:
     if not rows:
         lines.append("\nLatest evidence: none recorded for the Seven direct/chat path.")
         return '\n'.join(lines)
-    lines.append("\nLatest Seven/DEOS evidence:")
+    lines.append("\nLatest Seven/DOES evidence:")
     for r in rows:
         summary = str(r.get('summary') or '').strip().replace('\n', ' ')
         if len(summary) > 240:

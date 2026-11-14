@@ -1854,6 +1854,7 @@ def _seed_agents():
         (17,  'ghost_coder', 'Ghost Coder', 'claude-sonnet-4-20250514', 0.3,  'Developer Agent — code-aware AI, reads/writes/patches code, bridges Copilot and Fridays'),
         ( 7,  'seven',      'Seven',      'seven-direct:daily',              0.0,  'Personal companion — loyal, thinks out loud'),
         (21,  'twenty',     'Twenty',     'qwen:latest',             0.8,  'Local Qwen agent — multi-file coding and deeper refactoring'),
+        (22,  'mistral-vibe', 'Mistral Vibe', 'mistral-large-latest',   0.2,  'Online teacher — teaches APEX system access patterns and complex reasoning'),
     ]
     conn = get_connection()
     for number, name, label, model, temp, role in roster:

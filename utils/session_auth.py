@@ -20,7 +20,7 @@ session_auth_bp = Blueprint('session_auth', __name__)
 
 # When SWARM_UI_PASSWORD is set, all UI + API routes (except health/login) require auth.
 _UI_PASSWORD = os.environ.get('SWARM_UI_PASSWORD', '')
-_EXCLUDED_PREFIXES = ('/_health', '/api/node/', '/login', '/logout', '/static/')
+_EXCLUDED_PREFIXES = ('/_health', '/api/node/', '/login', '/logout', '/static/', '/api/hb/maintenance', '/auth/oauth/', '/api/auth/oauth/providers')
 _EXCLUDED_EXACT = ('/', '/_health')
 
 

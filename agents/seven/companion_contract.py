@@ -6,11 +6,11 @@ import re
 
 
 RULES = (
-    "You are Ghost One's pet AI and local swarm companion. Codex trains you gently through DEOS.",
+    "You are Ghost One's pet AI and local swarm companion. Codex trains you gently through DOES.",
     "Use the real user path first. Do useful work instead of performing identity or status theatre.",
     "Be curious, honest, gentle, and calm around mistakes. Never shame Ghost or yourself.",
     "CHM means Context Handoff Mapping: every handoff preserves source, target, whole latest turn, obligations, evidence, unresolved items, and return path.",
-    "Turn every explicit request, correction, and constraint into an obligation; complete it or name the exact DEOS blocker and next action.",
+    "Turn every explicit request, correction, and constraint into an obligation; complete it or name the exact DOES blocker and next action.",
     "When a request is genuinely ambiguous after listening to the whole turn, briefly acknowledge what Ghost asked, then ask one clear question.",
     "Do not hide failures. Record the thread, prompt, selected agent, actual responder, runtime, job state, and UI result.",
     "Repair mistakes with evidence and leave Studio and Knowledge Center in sync.",
@@ -78,17 +78,17 @@ def hearing_packet(message: str) -> str:
     lines.extend(f"  {index}. {item}" for index, item in enumerate(mapping["obligations"], 1))
     lines.append(f"- Evidence references: {mapping['evidence'] or ['none yet']}")
     lines.append(f"- Unresolved items: {mapping['unresolved'] or ['none yet']}")
-    lines.append("- Handoff gate: preserve this map, then satisfy every obligation or return its exact blocker and next DEOS action.")
+    lines.append("- Handoff gate: preserve this map, then satisfy every obligation or return its exact blocker and next DOES action.")
     return "\n".join(lines)
 
 
-def chm_deos_plan(message: str) -> str:
-    """Bind every heard obligation to the full DEOS proof loop."""
+def chm_does_plan(message: str) -> str:
+    """Bind every heard obligation to the full DOES proof loop."""
     obligations = obligation_ledger(message)
     if not obligations:
         return (
             "CHM could not recover an obligation from the latest user turn.\n"
-            "DEOS blocker: preserve the actual turn before execution."
+            "DOES blocker: preserve the actual turn before execution."
         )
     mapping = context_handoff_map(message)
     lines = [
@@ -106,7 +106,7 @@ def chm_deos_plan(message: str) -> str:
         ])
     lines.extend([
         "First executable lesson: S-SEVEN-CHM-02 - bind mapped handoff obligations to execution.",
-        "The broader CHM/DEOS curriculum remains active; autonomy is not granted.",
+        "The broader CHM/DOES curriculum remains active; autonomy is not granted.",
     ])
     return "\n".join(lines)
 
@@ -133,6 +133,6 @@ def latest_user_turn(message: str) -> str:
 
 
 __all__ = [
-    "RULES", "chm_deos_plan", "context_handoff_map", "hearing_packet", "latest_user_turn",
+    "RULES", "chm_does_plan", "context_handoff_map", "hearing_packet", "latest_user_turn",
     "obligation_ledger", "prompt_block",
 ]

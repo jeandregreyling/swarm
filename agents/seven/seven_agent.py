@@ -586,9 +586,9 @@ def _is_listening_practice_prompt(message):
     )
 
 
-def _is_chm_deos_prompt(message):
+def _is_chm_does_prompt(message):
     msg = (message or '').strip().lower()
-    return 'chm' in msg and 'deos' in msg
+    return 'chm' in msg and ('does protocol' in msg or 'DOES' in (message or ''))
 
 
 def _is_project_work_prompt(message):
@@ -613,9 +613,9 @@ def _project_work_response(message):
     return response(message)
 
 
-def _chm_deos_response(message):
-    from agents.seven.companion_contract import chm_deos_plan
-    return chm_deos_plan(message)
+def _chm_does_response(message):
+    from agents.seven.companion_contract import chm_does_plan     # renamed in DOES rename 4 (14 Nov)
+    return chm_does_plan(message)
 
 
 def _listening_practice_response():
@@ -736,8 +736,8 @@ def _compose(message, state, memories):
     if _is_listening_practice_prompt(msg):
         return _listening_practice_response(), 0
 
-    if _is_chm_deos_prompt(msg):
-        return _chm_deos_response(msg), 0
+    if _is_chm_does_prompt(msg):
+        return _chm_does_response(msg), 0
 
     if _is_project_work_prompt(msg):
         return _project_work_response(msg), 0
@@ -864,13 +864,13 @@ def _compose(message, state, memories):
         except Exception as exc:
             return f"learnings module raised: {exc}", 0
 
-    if _is_about(msg, ['deos', 'deos path', 'deos standard', 'proof path',
+    if _is_about(msg, ['does protocol', 'does path', 'does standard', 'proof path',
                        'real user path', 'make it work standard']):
         try:
-            from agents.seven import deos
-            return deos.status(limit=5), 0
+            from agents.seven import does
+            return does.status(limit=5), 0
         except Exception as exc:
-            return f"DEOS module raised: {exc}", 0
+            return f"DOES module raised: {exc}", 0
 
     # For anything else — signal to caller to route through the LLM.
     return None, 0
@@ -1045,7 +1045,7 @@ def _llm_chat(message, state, memories, history, stage_cb=None):
         if _response_looks_cut_off(text, tokens):
             return (
                 "I heard the request, but my response hit its bounded output limit before I completed every obligation. "
-                "DEOS blocker: the answer is incomplete, so I will not pretend it is done; split the lesson or retry with a larger bounded response budget."
+                "DOES blocker: the answer is incomplete, so I will not pretend it is done; split the lesson or retry with a larger bounded response budget."
             ), tokens
         return text.strip(), tokens
     except Exception as exc:
@@ -1081,7 +1081,7 @@ def _slash_command(text, emit=None):
             "  /standard                        — read out the contract Seven holds the build to\n"
             "  /selfcheck                       — same as /audit (alias)\n"
             "  /learnings                       — recent positive/negative lessons Seven has captured\n"
-            "  /deos                            — Seven's DEOS proof contract + latest evidence\n"
+            "  /does                            — Seven's DOES proof contract + latest evidence\n"
             "  /witness                         — review your last message; tells you what's bullshit\n"
             "  /witness on|off                  — toggle witness footer on Seven replies\n"
             "  /witness list [N] | stats        — recent callouts ledger\n"
@@ -1131,12 +1131,12 @@ def _slash_command(text, emit=None):
         except Exception as exc:
             return f"learnings unavailable: {exc}"
 
-    if cmd in ('deos', 'proof', 'prove'):
+    if cmd in ('does', 'proof', 'prove'):
         try:
-            from agents.seven import deos
-            return deos.status(limit=5)
+            from agents.seven import does
+            return does.status(limit=5)
         except Exception as exc:
-            return f"DEOS unavailable: {exc}"
+            return f"DOES unavailable: {exc}"
 
     if cmd == 'curiosity':
         try:
@@ -1338,7 +1338,7 @@ def chat(message, conversation_history=None, stage_cb=None, conversation_id=None
         '/audit', '/selfcheck', '/self-check', '/self_check',
         '/standard', '/thestandard', '/the-standard',
         '/learnings', '/lessons', '/learned',
-        '/deos', '/proof', '/prove',
+        '/does', '/proof', '/prove',
         '/pillars', '/identity', '/curiosity', '/help', '/commands',
         '/witness', '/truth', '/callout',
     )

@@ -1,21 +1,25 @@
-# APEX (gpt-oss:20B) on the RX 6800 via the Vulkan llama-server.
+# APEX (Qwen2.5-14B-Instruct Q4_K_M) on the RX 6800 via Vulkan.
 # Install: cp apex-server-user.service ~/.config/systemd/user/apex-server.service && systemctl --user enable --now apex-server
 # Do not run alongside the system apex-server.service (both bind :8080).
 # The alias is passed via LLAMA_ARG_ALIAS, not --alias, so the Swarm llama pool
 # (core/seven_llm/llama_server.py _foreign_servers) never adopts or reaps it.
 [Unit]
-Description=APEX (user) gpt-oss:20B Vulkan llama-server (0.0.0.0:8080)
+Description=APEX (user) Qwen2.5-14B-Instruct Vulkan llama-server (0.0.0.0:8080)
 After=default.target
+StartLimitIntervalSec=300
+StartLimitBurst=2
 
 [Service]
 Type=simple
-Environment=LLAMA_ARG_ALIAS=gpt-oss:20B
+Environment=LLAMA_ARG_ALIAS=qwen2.5:14b-instruct
 ExecStart=/home/jd/llama.cpp/build-vulkan/bin/llama-server \
-    -m /mnt/archive/models/blobs/sha256-8ecb5d4ad6172c63f9cbf1a07a04e525985a8a11a6e516da02b674c4010de716 \
-    --host 0.0.0.0 --port 8080 --ctx-size 8192 --parallel 1 \
-    --jinja --chat-template-file /home/jd/llama.cpp/models/templates/openai-gpt-oss-120b.jinja \
+    -m /mnt/archive/models/blobs/sha256-2049f5674b1e92b4464e5729975c9689fcfbf0b0e4443ccf10b5339f370f9a54 \
+    --device Vulkan0 -ngl 99 --load-mode dio \
+    --host 0.0.0.0 --port 8080 --ctx-size 16384 --parallel 1 \
+    --jinja --flash-attn on --cache-type-k f16 --cache-type-v f16 --cache-ram 0 --fit off \
     --no-webui
-Restart=always
+MemoryMax=12G
+Restart=on-failure
 RestartSec=5
 
 [Install]

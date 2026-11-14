@@ -1,4 +1,4 @@
-"""DEOS teaching packets for local worker agents.
+"""DOES teaching packets for local worker agents.
 
 These strings are deliberately compact. They are injected into bounded local
 work packets so Gemma/Qwen/Mistral/llama learn the operating contract without
@@ -10,8 +10,8 @@ import re
 from typing import Iterable
 
 
-DEOS_LOCAL_AGENT_PACKET = """DEOS LOCAL WORKER CONTRACT
-DEOS = Decides, Executes, Operates, Sustains.
+DOES_LOCAL_AGENT_PACKET = """DOES LOCAL WORKER CONTRACT
+DOES = Decides, Executes, Operates, Sustains.
 You are not the control plane. Watchdog owns state, timeout, fallback, and proof.
 You own exactly one claimed task packet.
 CHM = Context Handoff Mapping. Preserve source, target, authoritative task context, obligations, evidence, unresolved items, and return path.
@@ -21,7 +21,7 @@ Operate: report what happened, including blockers and runtime failures.
 Sustain: include proof, affected files/records, and final status.
 Never claim completion without visible proof.
 Never hide a timeout, refusal, missing file, stale service, DB lock, or unsafe action.
-End with exactly one status line: DEOS_STATUS: done | blocked | needs_human | continue.
+End with exactly one status line: DOES_STATUS: done | blocked | needs_human | continue.
 Use continue only when more passes are needed; add a PROGRESS: line first."""
 
 
@@ -40,28 +40,28 @@ DRILL_AGENT_ORDER = ['qwen', 'gemma', 'llama', 'mistral']
 
 
 def local_agent_packet(agent: str = '') -> str:
-    """Return the compact DEOS packet for a local worker."""
+    """Return the compact DOES packet for a local worker."""
     name = str(agent or '').strip().lower()
     hint = ROLE_HINTS.get(name, 'Prefer bounded local work with explicit proof and blockers.')
-    return f'{DEOS_LOCAL_AGENT_PACKET}\nAgent role hint: {hint}'
+    return f'{DOES_LOCAL_AGENT_PACKET}\nAgent role hint: {hint}'
 
 
-def studio_seed_steps(project_id: str = 'P-DEOS-OPERATING-SYSTEM-20260516') -> list[dict]:
-    """Task-board scaffolding for teaching local agents how to DEOS."""
+def studio_seed_steps(project_id: str = 'P-DOES-OPERATING-SYSTEM-20260516') -> list[dict]:
+    """Task-board scaffolding for teaching local agents how to DOES."""
     return [
         {
-            'step_id': 'S-DEOS-13-LOCAL-AI-TEACHING-PACKETS',
+            'step_id': 'S-DOES-13-LOCAL-AI-TEACHING-PACKETS',
             'project_id': project_id,
-            'title': 'Local AI DEOS teaching packets',
+            'title': 'Local AI DOES teaching packets',
             'description': (
-                'Inject compact DEOS worker contracts into local agent work packets so Gemma/Qwen/Mistral/llama '
-                'understand one-task-at-a-time execution, proof, blockers, and final DEOS_STATUS semantics.'
+                'Inject compact DOES worker contracts into local agent work packets so Gemma/Qwen/Mistral/llama '
+                'understand one-task-at-a-time execution, proof, blockers, and final DOES_STATUS semantics.'
             ),
             'owner': 'watchdog',
             'owner_route': 'watchdog:local-ai-teacher',
         },
         {
-            'step_id': 'S-DEOS-14-HOUSE-AGENT-COACHING',
+            'step_id': 'S-DOES-14-HOUSE-AGENT-COACHING',
             'project_id': project_id,
             'title': 'House agent coaching loop',
             'description': (
@@ -72,9 +72,9 @@ def studio_seed_steps(project_id: str = 'P-DEOS-OPERATING-SYSTEM-20260516') -> l
             'owner_route': 'watchdog:house-agent',
         },
         {
-            'step_id': 'S-DEOS-15-LOCAL-AI-DRILL-QUEUE',
+            'step_id': 'S-DOES-15-LOCAL-AI-DRILL-QUEUE',
             'project_id': project_id,
-            'title': 'Local AI DEOS drill queue',
+            'title': 'Local AI DOES drill queue',
             'description': (
                 'Create repeatable tiny drills for each local worker: answer, patch, verify, recover, and escalate. '
                 'Each drill must produce chat visibility, job/evidence rows, and KC lessons.'
@@ -86,7 +86,7 @@ def studio_seed_steps(project_id: str = 'P-DEOS-OPERATING-SYSTEM-20260516') -> l
 
 
 def drill_queue_steps(
-    project_id: str = 'P-DEOS-OPERATING-SYSTEM-20260516',
+    project_id: str = 'P-DOES-OPERATING-SYSTEM-20260516',
     count: int = 30,
     start_index: int = 4,
     agents: Iterable[str] = DRILL_AGENT_ORDER,
@@ -103,13 +103,13 @@ def drill_queue_steps(
         agent = agent_list[offset % len(agent_list)]
         prev_agent = agent_list[(offset - 1) % len(agent_list)] if offset else 'watchdog'
         next_agent = agent_list[(offset + 1) % len(agent_list)]
-        marker = f'{agent.upper()}_DEOS_DRILL_{index:02d}_READY'
+        marker = f'{agent.upper()}_DOES_DRILL_{index:02d}_READY'
         steps.append({
-            'step_id': f'S-DEOS-TEACHING-DRILL-{index:02d}',
+            'step_id': f'S-DOES-TEACHING-DRILL-{index:02d}',
             'project_id': project_id,
             'title': f'Teaching drill {index:02d}: {prev_agent} to {agent} relay proof',
             'description': (
-                'DEOS_MICRO_TASK\n'
+                'DOES_MICRO_TASK\n'
                 f'Handoff: {prev_agent} -> {agent} -> {next_agent}\n'
                 f'Task: Return exactly: Proof: {marker}'
             ),
@@ -121,7 +121,7 @@ def drill_queue_steps(
 
 
 def format_seed_markdown(steps: Iterable[dict]) -> str:
-    lines = ['# DEOS Local AI Teaching Scaffold', '']
+    lines = ['# DOES Local AI Teaching Scaffold', '']
     lines.append('The house agent teaches; local agents execute bounded packets; Watchdog enforces proof.')
     for step in steps:
         lines.append('')
@@ -131,12 +131,12 @@ def format_seed_markdown(steps: Iterable[dict]) -> str:
 
 
 def evaluate_local_result(answer: str, ok: bool = True) -> dict:
-    """Assess whether a local worker followed the DEOS handoff contract."""
+    """Assess whether a local worker followed the DOES handoff contract."""
     text = str(answer or '').strip()
     lowered = text.lower()
-    status_match = re.search(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', text)
+    status_match = re.search(r'(?im)^\s*DOES_STATUS:\s*(done|blocked|needs_human)\s*$', text)
     status = status_match.group(1).lower() if status_match else ''
-    visible = re.sub(r'(?im)^\s*DEOS_STATUS:\s*(done|blocked|needs_human)\s*$', '', text).strip()
+    visible = re.sub(r'(?im)^\s*DOES_STATUS:\s*(done|blocked|needs_human)\s*$', '', text).strip()
     issues = []
     if not ok:
         issues.append('runner_failed')
@@ -145,9 +145,9 @@ def evaluate_local_result(answer: str, ok: bool = True) -> dict:
     if not visible:
         issues.append('no_visible_work')
     if not status:
-        issues.append('missing_deos_status')
+        issues.append('missing_does_status')
     elif status not in {'done', 'blocked', 'needs_human'}:
-        issues.append('invalid_deos_status')
+        issues.append('invalid_does_status')
     if status == 'done' and not _has_proof_marker(visible):
         issues.append('missing_proof')
     if _looks_like_refusal(text):
@@ -213,4 +213,4 @@ def _looks_like_refusal(text: str) -> bool:
 
 def _coaching_summary(coaching_status: str, status: str, issues: list[str]) -> str:
     issue_text = ','.join(issues) if issues else 'none'
-    return f'coaching={coaching_status} deos_status={status or "missing"} issues={issue_text}'
+    return f'coaching={coaching_status} does_status={status or "missing"} issues={issue_text}'
