@@ -20,10 +20,10 @@
   let _hcSending = false;
   let _hcInitialized = false;
   let _hcViewVersion = 0;
+  let _hcSendVersion = 0;
   const _hcEnv = (window.ENV_STAGE || 'PROD').toUpperCase();
 
-  // localStorage keys. Home-chat keeps its own active-thread state; it only
-  // hands a thread to the main chat when the user explicitly expands it.
+  // An explicitly pinned shared room is restored on both chat surfaces.
   const HC_ACTIVE_THREAD_KEY = 'fridays-home-chat-active-thread';
   const HC_AGENT_TOGGLE_PREFIX = 'fridays-chat-thread-agents-';
   const HC_GLOBAL_AGENTS_KEY = 'fridays-chat-enabled-agents';
@@ -40,30 +40,153 @@
     const content = document.getElementById('home-content');
     const chat = document.querySelector('.home-chat-section');
     const tiles = document.querySelector('.home-tiles-section');
+    const workspace = document.getElementById('home-workspace');   // 12 Nov: Core Workspace sits above chat, collapsible
     if (!content || !chat || !tiles) return;
     // Older running servers may still serve the pre-fix cached template.
-    if (content.firstElementChild !== chat) content.prepend(chat);
+    if (workspace) {
+      if (content.firstElementChild !== workspace) content.prepend(workspace);
+      if (workspace.nextElementSibling !== chat) workspace.insertAdjacentElement('afterend', chat);
+    } else if (content.firstElementChild !== chat) content.prepend(chat);
     if (chat.nextElementSibling !== tiles) chat.insertAdjacentElement('afterend', tiles);
+  }
+
+  function _hcFitLiveRoom() {
+    const chat = document.querySelector('.home-chat-section');
+    const content = document.getElementById('home-content');
+    if (!chat || !content) return;
+    const top = chat.getBoundingClientRect().top + content.scrollTop;
+    const taskbarTop = document.getElementById('taskbar')?.getBoundingClientRect().top;
+    const bottom = taskbarTop > 0 ? taskbarTop : window.innerHeight;
+    chat.style.setProperty('--chat-live-room-height', `${Math.max(280, bottom - top - 14)}px`);
+  }
+  window.homeFitLiveRoom = _hcFitLiveRoom;
+
+  // ── Other chats active (12 Nov): conversations with activity in the last 15 minutes, one click away ──
+  function _hcElsewhere() {
+    const bar = document.querySelector('#home-chat-bar .home-chat-bar-center');
+    if (!bar) return;
+    fetch('/api/conversations', { credentials: 'same-origin' }).then(r => (r.ok ? r.json() : null)).then(list => {
+      if (!Array.isArray(list)) return;
+      const cutoff = Date.now() - 15 * 60 * 1000;
+      const active = list.filter(c => c && c.id && Number(c.id) !== Number(_hcConvId) && c.last_message_at &&
+        Date.parse(String(c.last_message_at).replace(' ', 'T') + 'Z') >= cutoff);
+      let chip = document.getElementById('home-chat-elsewhere');
+      if (!active.length) { if (chip) chip.remove(); return; }
+      if (!chip) {
+        chip = document.createElement('details');
+        chip.id = 'home-chat-elsewhere';
+        chip.className = 'hb-elsewhere';
+        bar.appendChild(chip);
+      }
+      const open = chip.open;
+      chip.innerHTML = `<summary title="Other conversations with activity in the last 15 minutes">● ${active.length} other chat${active.length === 1 ? '' : 's'} active</summary>` +
+        `<div class="hb-elsewhere-list">` + active.slice(0, 8).map(c =>
+          `<button type="button" data-conv="${Number(c.id)}">#${Number(c.id)} ${_hcEsc(String(c.title || 'conversation').slice(0, 48))}` +
+          `<small> · ${_hcEsc(String(c.last_from || ''))}</small></button>`).join('') + `</div>`;
+      chip.open = open;
+      chip.querySelectorAll('button[data-conv]').forEach(btn => btn.addEventListener('click', () => {
+        const sel = document.getElementById('home-chat-thread-select');
+        if (sel) {
+          if (![...sel.options].some(o => o.value === btn.dataset.conv)) sel.add(new Option('#' + btn.dataset.conv, btn.dataset.conv));
+          sel.value = btn.dataset.conv;
+          sel.dispatchEvent(new Event('change'));
+        }
+        chip.open = false;
+      }));
+    }).catch(() => {});
+  }
+  setInterval(() => { if (!document.hidden) _hcElsewhere(); }, 30000);
+  setTimeout(_hcElsewhere, 3000);
+
+  // Owner 13 Nov: scrolled up in main chat -> a floating arrow jumps back to the latest message.
+  // Owner 13 Nov: main chat shows the latest 20 messages; scrolling to the top loads the 20 before them.
+  let _hcOlderBusy = false, _hcNoOlder = null;
+  function _hcInitOlderLoader() {
+    const list = document.getElementById('home-chat-messages');
+    if (!list || list.dataset.olderLoader) return;
+    list.dataset.olderLoader = '1';
+    list.addEventListener('scroll', () => {
+      if (list.scrollTop > 80 || _hcOlderBusy || !_hcConvId || _hcNoOlder === _hcConvId) return;
+      const first = list.querySelector('.hc-bubble[data-message-id]');
+      if (!first) return;
+      _hcOlderBusy = true;
+      const convId = _hcConvId;
+      fetch(`/api/conversations/${convId}/messages?limit=20&before=${Number(first.dataset.messageId)}`)
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => {
+          if (!data || _hcConvId !== convId) return;
+          _hcNoOlder = data.has_more ? null : convId;
+          const height = list.scrollHeight;
+          list._hcPrependAt = Date.now();
+          (data.messages || []).forEach(msg => {
+            const el = _hcAppendBubble(msg);
+            if (el) list.insertBefore(el, first);
+          });
+          list.scrollTop += list.scrollHeight - height;
+        })
+        .catch(() => {})
+        .finally(() => { _hcOlderBusy = false; });
+    }, { passive: true });
+  }
+
+  function _hcInitJumpButton() {
+    const list = document.getElementById('home-chat-messages');
+    const main = document.getElementById('home-chat-main');
+    if (!list || !main || document.getElementById('hc-jump-bottom')) return;
+    const btn = document.createElement('button');
+    btn.id = 'hc-jump-bottom';
+    btn.type = 'button';
+    btn.title = 'Click: jump to the latest message. Double-click: auto scroll on or off';
+    let auto = localStorage.getItem('hc-auto-follow') !== '0';
+    btn.classList.toggle('auto', auto);
+    btn.addEventListener('dblclick', () => {
+      auto = !auto;
+      localStorage.setItem('hc-auto-follow', auto ? '1' : '0');
+      btn.classList.toggle('auto', auto);
+      if (auto) list.scrollTop = list.scrollHeight;
+    });
+    btn.setAttribute('aria-label', 'Jump to the latest message');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v13M6 12l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    main.appendChild(btn);
+    const update = () => {
+      const away = list.scrollHeight - list.scrollTop - list.clientHeight > 120;
+      btn.classList.toggle('show', away || auto);
+      const input = document.getElementById('home-chat-input-area');
+      btn.style.bottom = ((input ? input.offsetHeight : 0) + 14) + 'px';
+    };
+    list.addEventListener('scroll', update, { passive: true });
+    if (window.ResizeObserver) new ResizeObserver(update).observe(list);
+    new MutationObserver(() => {
+      if (auto && Date.now() - (list._hcPrependAt || 0) > 400) list.scrollTop = list.scrollHeight;
+      update();
+    }).observe(list, { childList: true, subtree: true });
+    btn.addEventListener('click', () => list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' }));
+    update();
   }
 
   window.initHomeChat = function () {
     _hcEnsureChatFirst();
+    _hcInitJumpButton();
+    _hcInitOlderLoader();
     if (_hcInitialized) {
       _hcLoadThreadsListOnly();
       return;
     }
     _hcInitialized = true;
-    const savedThread = Number(localStorage.getItem(HC_ACTIVE_THREAD_KEY));
+    const savedThread = getSharedChatThreadId() || Number(localStorage.getItem(HC_ACTIVE_THREAD_KEY));
     _hcConvId = Number.isSafeInteger(savedThread) && savedThread > 0 ? savedThread : null;
 
     _hcSetEnvBadge();
     _hcBindEvents();
     _hcRenderAgentPills();
+    refreshChatParticipants();
     _hcLoadThreads();
     _hcSetGreeting();
     _hcFetchInterests();
     _hcInitMiniLandscape();
     _hcRestorePanelState();
+    _hcFitLiveRoom();
+    window.addEventListener('resize', _hcFitLiveRoom);
 	    _hcBindCrossSurfaceRefresh();
 	    _hcPruneStaleAgentToggles();
 	    _hcLoadProofTrail();
@@ -82,6 +205,9 @@
   function _hcBindCrossSurfaceRefresh() {
     if (_hcCrossBound) return;
     _hcCrossBound = true;
+    window.addEventListener('hummingbird:shared-thread', (event) => {
+      _hcSwitchThread(event.detail.conversation_id);
+    });
     window.addEventListener('swarm:conversation-changed', (ev) => {
       const detail = (ev && ev.detail) || {};
       // If the deleted conv is the one we're viewing, drop back to welcome.
@@ -95,7 +221,10 @@
       _hcLoadThreadsListOnly();
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') _hcLoadThreadsListOnly();
+      if (document.visibilityState === 'visible') {
+        _hcLoadThreadsListOnly();
+        if (_hcConvId) _hcSilentRefresh(_hcConvId);
+      }
     });
     window.addEventListener('focus', () => _hcLoadThreadsListOnly());
   }
@@ -110,6 +239,121 @@
     badge.setAttribute('data-env', env);
   }
 
+  // ── @ participant menu ───────────────────────────────────────────────────
+  const _HC_MENTIONS = [
+    { key: 'apex', label: 'APEX', role: 'Local execution partner' },
+    { key: 'codex', label: 'Codex', role: 'Instructor / connected terminal session' },
+    { key: 'instructor', label: 'VS Code Instructor', role: 'Instructor / reviewer' },
+    { key: 'gemini', label: 'Gemini', role: 'Architecture advisor' },
+    { key: 'claude', label: 'Claude', role: 'Claude Code via its CLI (costs tokens)' },
+  ];
+  let _hcMention = { open: false, start: -1, end: -1, active: 0, items: [] };
+  // Owner 13 Nov: @ list follows Live status: available online peers and every local model not switched Off.
+  let _hcMentionLive = null, _hcMentionLiveAt = 0;
+  function _hcLoadMentions(input) {
+    if (Date.now() - _hcMentionLiveAt < 30000) return;
+    _hcMentionLiveAt = Date.now();
+    fetch('/api/peer/v1/hb/mentions', { credentials: 'same-origin' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (!data || !Array.isArray(data.items)) return;
+        const roles = Object.fromEntries(_HC_MENTIONS.map(m => [m.key, m.role]));
+        _hcMentionLive = data.items.map(item => ({ key: item.key, label: item.label,
+          role: item.tier === 'model' ? 'Local model · ' + item.note : (roles[item.key] || item.note) }));
+        if (document.activeElement === input && _hcMention.open) _hcMentionUpdate(input);
+      })
+      .catch(() => {});
+  }
+
+  function _hcMentionClose() {
+    const menu = document.getElementById('home-chat-mention-menu');
+    if (menu) { menu.style.display = 'none'; menu.innerHTML = ''; }
+    _hcMention = { open: false, start: -1, end: -1, active: 0, items: [] };
+  }
+
+  function _hcMentionPick(input, idx) {
+    const item = _hcMention.items[idx];
+    if (!_hcMention.open || !item) return false;
+    const value = input.value;
+    const before = value.slice(0, _hcMention.start) + (item.slash ? '/' : '@') + item.key + ' ';
+    input.value = before + value.slice(_hcMention.end);
+    input.focus();
+    input.setSelectionRange(before.length, before.length);
+    _hcMentionClose();
+    input.dispatchEvent(new Event('input'));
+    return true;
+  }
+
+  // ── "/" Hummingbird system commands (list comes from the server) ─────────
+  let _hcSlashCommands = null;
+  function _hcLoadSlashCommands(input) {
+    if (_hcSlashCommands) return;
+    _hcSlashCommands = [];
+    fetch('/api/peer/v1/hb/commands', { credentials: 'same-origin' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data && Array.isArray(data.commands)) {
+          _hcSlashCommands = data.commands;
+          if (document.activeElement === input) _hcMentionUpdate(input);
+        } else { _hcSlashCommands = null; }
+      })
+      .catch(() => { _hcSlashCommands = null; });
+  }
+
+  function _hcMentionUpdate(input) {
+    const menu = document.getElementById('home-chat-mention-menu');
+    const caret = Number(input.selectionStart || 0);
+    const typed = input.value.slice(0, caret);
+    const slash = typed.match(/^\s*\/([a-zA-Z]*)$/);
+    const match = slash ? null : typed.match(/(^|\s)@([a-zA-Z0-9.\-]*)$/);
+    if (!menu || (!match && !slash)) { _hcMentionClose(); return; }
+    let query, items;
+    if (slash) {
+      _hcLoadSlashCommands(input);
+      query = slash[1].toLowerCase();
+      items = (_hcSlashCommands || []).filter(c => c.name.startsWith(query))
+        .map(c => ({ key: c.name, label: c.usage, role: c.description + (c.confirm ? ' · asks first' : ''), slash: true }));
+    } else {
+      query = match[2].toLowerCase();
+      _hcLoadMentions(input);
+      items = (_hcMentionLive || _HC_MENTIONS).filter(item =>
+        item.key.startsWith(query) || item.label.toLowerCase().includes(query));
+    }
+    if (!items.length) { _hcMentionClose(); return; }
+    const active = Math.min(_hcMention.open ? _hcMention.active : 0, items.length - 1);
+    _hcMention = { open: true, start: caret - query.length - 1, end: caret, active, items };
+    menu.innerHTML = items.map((item, idx) =>
+      `<button type="button" role="option" class="chat-mention-item${idx === active ? ' active' : ''}" data-idx="${idx}">` +
+      (item.slash ? `<span><strong>${_hcEsc(item.label)}</strong></span>`
+                  : `<span><strong>${_hcEsc(item.label)}</strong> @${_hcEsc(item.key)}</span>`) +
+      `<span class="chat-mention-meta">${_hcEsc(item.role)}</span></button>`).join('');
+    menu.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('mousedown', (e) => { e.preventDefault(); _hcMentionPick(input, Number(btn.dataset.idx)); });
+    });
+    menu.style.display = 'block';
+  }
+
+  function _hcMentionKeydown(e, input) {
+    if (!_hcMention.open) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const count = _hcMention.items.length;
+      _hcMention.active = (_hcMention.active + (e.key === 'ArrowDown' ? 1 : count - 1)) % count;
+      _hcMentionUpdate(input);
+      return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      return _hcMentionPick(input, _hcMention.active);
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      _hcMentionClose();
+      return true;
+    }
+    return false;
+  }
+
   // ── Event bindings ───────────────────────────────────────────────────────
   function _hcBindEvents() {
     const input = document.getElementById('home-chat-input');
@@ -117,8 +361,12 @@
     const threadSel = document.getElementById('home-chat-thread-select');
     const newBtn = document.getElementById('home-chat-new-btn');
     const expandBtn = document.getElementById('home-chat-expand-btn');
+    _hcBindHfControls();
 
-    if (sendBtn) sendBtn.addEventListener('click', _hcSend);
+    if (sendBtn) {
+      sendBtn.textContent = 'Send';
+      sendBtn.addEventListener('click', _hcSend);
+    }
     if (newBtn) newBtn.addEventListener('click', _hcNewThread);
     if (expandBtn) expandBtn.addEventListener('click', () => {
       // Session 28 fix: hand the current home-chat thread to the main chat
@@ -136,13 +384,17 @@
       }
     });
     if (input) {
+      input.setAttribute('aria-label', 'Message Hummingbird');
+      input.placeholder = 'Message Hummingbird — @ to address a teammate, / for commands';
       input.addEventListener('keydown', (e) => {
+        if (_hcMentionKeydown(e, input)) return;
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
           _hcSend();
         }
       });
-      input.addEventListener('input', () => { _hcAutoGrow(input); _hcUpdateTokenCount(input); });
+      input.addEventListener('input', () => { _hcAutoGrow(input); _hcUpdateTokenCount(input); _hcUpdateMeta(); _hcMentionUpdate(input); });
+      input.addEventListener('blur', () => setTimeout(_hcMentionClose, 150));
       _hcUpdateTokenCount(input);
     }
 
@@ -154,6 +406,7 @@
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         const tag = (e.target.tagName || '').toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (e.target.closest('button, summary, a, [role="button"]')) return;
         if (e.key.length === 1 && !e.target.isContentEditable) {
           input.focus();
           // Let the character flow into the now-focused input naturally
@@ -162,10 +415,42 @@
     }
   }
 
+  function _hcBindHfControls() {
+    const status=document.getElementById('hb-hf-status');
+    const show=(value)=>{if(status)status.textContent=value;};
+    const format=(data)=>{
+      const m=data?.mirror||data||{};const states=m.file_states||{};const repos=m.repository_states||{};
+      const active=m.active_transfer;
+      const path=active?`; active ${active.repo}/${active.path}`:'';
+      const scope=m.acquisition_policy?.mode||'full (legacy)';
+      const progress=`${m.files_verified||0} verified / ${m.files_known||0} known files; ${m.catalogue_enumeration_complete?'catalogue complete':'catalogue still discovering'}`;
+      const blocked=`; ${states.filtered||0} filtered, ${states.budget_blocked||0} budget blocked, ${repos.access_blocked||0} restricted`;
+      return `Mirror ${m.state||'unknown'} · ${scope} · ${progress}${blocked}${path}. No ETA until comparable throughput is recorded.`;
+    };
+    const request=async(action,repo)=>{
+      show('Contacting HB…');
+      try{
+        const response=await fetch(action==='status'?'/api/chat/hf-mirror/status':'/api/chat/hf-mirror/control',{
+          method:action==='status'?'GET':'POST',credentials:'same-origin',
+          headers:action==='status'?{}:{'Content-Type':'application/json','X-HB-Owner-Action':'1'},
+          body:action==='status'?undefined:JSON.stringify(repo?{action,repo}:{action})});
+        const data=await response.json();
+        if(!response.ok||data.ok!==true)throw new Error(data.error||`HB returned ${response.status}`);
+        show((data.message?data.message+' ':'')+format(data));
+        if(repo){const input=document.getElementById('hb-hf-repo');if(input)input.value='';}
+      }catch(error){show(`HB control failed: ${String(error.message||error)}`);}
+    };
+    const bind=(id,action)=>{const button=document.getElementById(id);if(button&&!button.dataset.hfBound){button.dataset.hfBound='1';button.addEventListener('click',()=>{
+      if(action==='include'){const repo=document.getElementById('hb-hf-repo')?.value.trim();if(!repo){show('Enter a public Hub repository ID such as Qwen/Qwen3-Coder.');return;}request(action,repo);}
+      else request(action);
+    });}};
+    bind('hb-hf-refresh','status');bind('hb-hf-pause','pause');bind('hb-hf-curate','curate');bind('hb-hf-include','include');bind('hb-hf-resume','resume');
+  }
+
   // ── Auto-grow textarea ───────────────────────────────────────────────────
   function _hcAutoGrow(el) {
     el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    el.style.height = Math.min(el.scrollHeight, Math.min(window.innerHeight * 0.4, 360)) + 'px';
   }
 
   // ── Load threads ─────────────────────────────────────────────────────────
@@ -220,6 +505,7 @@
         const tsBit = ts ? ' · ' + ts : '';
         return `<option value="${c.id}"${isSel}>#${c.id} · ${title}${tsBit}</option>`;
       }).join('');
+    renderChatParticipants();
   }
 
   // ── Live sync (SSE-driven; mirrors chat tile messages without a timer) ───
@@ -230,13 +516,49 @@
   function _hcStartLiveSync() {
     if (_hcLiveSyncBound) return;
     _hcLiveSyncBound = true;
+    document.addEventListener('hummingbird:chat-sync', e => {
+      if (_hcConvId && Number(e.detail.conversation_id) === Number(_hcConvId)) _hcSilentRefresh(_hcConvId);
+    });
     document.addEventListener('sse:chat', (e) => {
       const d = (e && e.detail) || {};
-      if (!_hcConvId || _hcSending) return;
+      if (_hcApplyPeerProgress(d)) return;
+      if (d.owner_command && d.status === 'running' && _hcSending && _hcConvId
+          && String(d.conversation_id || '') === String(_hcConvId)) {
+        const pending = document.querySelector('#home-chat-messages .hc-bubble[data-pending-job-id^="hc-tmp-"]');
+        if (pending) _hcUpsertThinkingBubble({
+          job_id: pending.dataset.pendingJobId, agent: 'fridays', status: 'running',
+          stage: d.stage || 'Running the owner-pasted HB package command',
+        });
+        return;
+      }
+      if (d.status === 'queued' && _hcSending && _hcConvId
+          && String(d.conversation_id || '') === String(_hcConvId)) {
+        // The backend queues a message sent while APEX is mid-turn; say so instead of looking stuck.
+        const pending = document.querySelector('#home-chat-messages .hc-bubble[data-pending-job-id^="hc-tmp-"]');
+        if (pending) _hcUpsertThinkingBubble({
+          job_id: pending.dataset.pendingJobId, agent: d.agent || 'apex', status: 'running',
+          stage: `queued: APEX finishes ${d.position || 1} earlier turn(s) first`,
+        });
+        return;
+      }
+      if (!_hcConvId) return;
       if (d.conversation_id && String(d.conversation_id) !== String(_hcConvId)) return;
       if (d.state) _hcSetLaneState(d.state, d.error || '');
-      if (d.status === 'completed' || d.status === 'failed') _hcSilentRefresh(_hcConvId);
+      if (['completed', 'failed', 'tool_receipt', 'instructor_requested'].includes(d.status)) _hcSilentRefresh(_hcConvId);
     });
+  }
+
+  function _hcApplyPeerProgress(detail) {
+    const job = chatPeerProgressJob(detail, _hcConvId);
+    if (!job) return false;
+    if (['queued', 'running'].includes(job.status)) _hcUpsertThinkingBubble(job);
+    else {
+      const node = document.querySelector(`#home-chat-messages [data-pending-job-id="${CSS.escape(job.job_id)}"]`);
+      if (node) node.remove();
+      delete _hcJobHistory[job.job_id];
+      _hcSilentRefresh(_hcConvId);
+    }
+    return true;
   }
 
   // ── Lane state surface: ok | recovery | offline | error ──────────────────
@@ -271,37 +593,61 @@
     return true;
   }
 
-  function _hcSilentRefresh(convId) {
+  function _hcSilentRefresh(convId, settled = false) {
     const viewVersion = _hcViewVersion;
-    fetch(`/api/conversations/${convId}/messages`)
-      .then(r => r.json())
+    const sendVersion = _hcSendVersion;
+    return fetch(`/api/conversations/${convId}/messages?limit=${Math.max(20, document.querySelectorAll('#home-chat-messages .hc-bubble[data-message-id]').length)}`)
+      .then(r => {
+        if (!r.ok) throw new Error(`Live chat refresh failed (HTTP ${r.status})`);
+        return r.json();
+      })
       .then(data => {
-        if (_hcSending || _hcConvId !== convId || _hcViewVersion !== viewVersion) return;
+        if (_hcConvId !== convId || _hcViewVersion !== viewVersion) return;
         const msgs = data.messages || [];
         if (!msgs.length) return;
         const container = document.getElementById('home-chat-messages');
         if (!container) return;
-        if (container.querySelector('.hc-pending')) return;
-        // Check if there are new messages vs what's rendered
-        const rendered = container.querySelectorAll('.hc-bubble[data-message-id]');
-        const lastRenderedId = rendered.length
-          ? Number(rendered[rendered.length - 1].dataset.messageId || 0)
-          : 0;
-        const lastFetchedId = Number(msgs[msgs.length - 1].id || 0);
-        if (lastFetchedId <= lastRenderedId) return;
-
-        // Don't clobber locally-rendered bubbles that haven't been persisted
-        // yet (e.g. an agent reply just appended client-side while the DB row
-        // is still being written). If our local count is greater than what the
-        // DB returns, the in-flight append would vanish on a clobber-rebuild.
-        const totalRendered = container.querySelectorAll('.hc-bubble').length;
-        if (totalRendered > msgs.length) return;
-
-        _hcClearMessages();
-        msgs.forEach(m => _hcAppendBubble(m));
-        _hcScrollBottom();
+        const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 90;
+        if (settled && !_hcSending && sendVersion === _hcSendVersion && _hcLaneState === 'ok'
+            && !container.querySelector('.hc-bubble[data-pending-job-id]')) {
+          const top = container.scrollTop;
+          _hcClearMessages();
+          msgs.forEach(msg => _hcAppendBubble(msg));
+          if (atBottom) _hcScrollBottom();
+          else container.scrollTop = top;
+          return;
+        }
+        const persisted = Array.from(container.querySelectorAll('.hc-bubble[data-message-id]'));
+        const lastId = Math.max(0, ...persisted.map(el => Number(el.dataset.messageId)));
+        const ids = new Set(persisted.map(el => String(el.dataset.messageId)));
+        msgs.forEach(msg => {
+          if (ids.has(String(msg.id))) return;
+          // Adopt only new persisted rows; an older identical message is not this optimistic turn.
+          const optimistic = Number(msg.id) > lastId
+            ? Array.from(container.querySelectorAll('.hc-bubble:not([data-message-id])'))
+              .find(el => !el.dataset.pendingJobId && el._chatMessage
+                && el._chatMessage.content === msg.content
+                && String(el._chatMessage.sender || el._chatMessage.from_agent).toLowerCase()
+                  === String(msg.sender || msg.from_agent).toLowerCase())
+            : null;
+          const bubble = _hcAppendBubble(msg);
+          if (optimistic) optimistic.remove();
+          const later = Array.from(container.querySelectorAll('.hc-bubble[data-message-id]'))
+            .find(el => Number(el.dataset.messageId) > Number(msg.id));
+          if (later) container.insertBefore(bubble, later);
+          else {
+            const pending = container.querySelector('.hc-bubble[data-pending-job-id]');
+            if (pending) container.insertBefore(bubble, pending);
+          }
+          ids.add(String(msg.id));
+        });
+        if (atBottom) _hcScrollBottom();
       })
-      .catch(() => {});
+      .catch(error => {
+        console.error('Home chat live refresh:', error);
+        const status = document.getElementById('home-chat-status');
+        if (status) status.textContent = 'Live updates unavailable — reconnecting';
+      });
   }
 
   // ── Switch thread ────────────────────────────────────────────────────────
@@ -325,12 +671,13 @@
     _hcShowWelcome(true);
     _hcRenderAgentPills();
     _hcUpdateMeta();
+    renderChatParticipants();
   }
 
   // ── Load messages ────────────────────────────────────────────────────────
   function _hcLoadMessages(convId) {
     const viewVersion = _hcViewVersion;
-    fetch(`/api/conversations/${convId}/messages`)
+    fetch(`/api/conversations/${convId}/messages?limit=20`)
       .then(r => {
         if (r.status === 404) return null;
         if (!r.ok) throw new Error('Cannot load this conversation');
@@ -376,10 +723,117 @@
     if (w) w.style.display = show ? 'flex' : 'none';
   }
 
+  // Owner 13 Nov: Fred's (the larger local model's) advice was a system bubble with raw JSON. Read it into plain parts.
+  function _hcFredAdvice(msg) {
+    const raw = String(msg.content || '');
+    const m = raw.match(/^HB local review job (J-[0-9A-F]+) (\w+)\./);
+    if (!m || String(msg.sender || msg.from_agent || '').toLowerCase() !== 'hummingbird') return null;
+    const line = raw.split('\n')[1] || '';
+    let data = {};
+    try { data = JSON.parse(line); } catch (_) {
+      const pick = key => { const r = line.match(new RegExp('"' + key + '":\\s*"((?:[^"\\\\]|\\\\.)*)')); return r ? r[1].replace(/\\n/g, ' ').replace(/\\"/g, '"') : ''; };
+      data = { advice: pick('advice'), reason: pick('reason') };
+    }
+    return { job: m[1], status: m[2], advice: String(data.advice || data.error || ''), reason: String(data.reason || ''),
+             online: data.need_online === true, seconds: Number(data.elapsed_seconds) || 0 };
+  }
+
+  function _hcFredBubble(msg, fred, container) {
+    const div = document.createElement('div');
+    div._chatMessage = msg;
+    div.className = 'hc-bubble hc-fred';
+    if (msg.id) div.dataset.messageId = msg.id;
+    const apex = Array.from(container.querySelectorAll('.hc-bubble.hc-agent')).reverse()
+      .find(el => String(el._chatMessage?.sender || el._chatMessage?.from_agent || '').toLowerCase() === 'apex');
+    const asked = apex ? String(apex._chatMessage?.content || '').replace(/\s+/g, ' ').trim().slice(0, 90) : '';
+    const took = fred.seconds ? ` · ${fred.seconds >= 60 ? Math.round(fred.seconds / 60) + ' min' : Math.round(fred.seconds) + ' s'}` : '';
+    div.innerHTML =
+      `<div class="hc-fred-link"${apex && apex.dataset.messageId ? ` data-target="${_hcEsc(apex.dataset.messageId)}" title="Show the APEX message this answers"` : ''}>` +
+        `↳ Fred advising APEX${asked ? ': <span class="hc-fred-asked">' + _hcEsc(asked) + (asked.length >= 90 ? '…' : '') + '</span>' : ''}</div>` +
+      `<div class="hc-fred-body">${fred.status === 'completed' ? _hcRenderContent(fred.advice || 'No advice returned.') : _hcEsc('Fred could not review this: ' + (fred.advice || fred.status))}</div>` +
+      (fred.reason ? `<div class="hc-fred-why">Why: ${_hcEsc(fred.reason)}</div>` : '') +
+      `<div class="hc-fred-meta">Fred · local 24B on CPU${took}${fred.online ? ' · thinks online help is needed' : ' · no online help needed'} · ${_hcEsc(fred.job)}` +
+        (msg.created_at ? ' · ' + _hcFormatTime(msg.created_at) : '') + `</div>`;
+    const link = div.querySelector('.hc-fred-link[data-target]');
+    if (link) link.addEventListener('click', () => {
+      const target = container.querySelector(`.hc-bubble[data-message-id="${CSS.escape(link.dataset.target)}"]`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('hc-fred-target');
+      setTimeout(() => target.classList.remove('hc-fred-target'), 1600);
+    });
+    container.appendChild(div);
+    return div;
+  }
+
+  // Owner 13 Nov: the chat's top line is not needed. Its conversation dropdown and icons move into the task row
+  // (in line with New task / Show all tasks); the top line hides once they have moved.
+  function _hcMoveBarTools() {
+    const bar = document.getElementById('home-chat-input-tasks');
+    const top = document.getElementById('home-chat-bar');
+    if (!bar || !top) return;
+    let tools = bar.querySelector(':scope > .hb-chat-tools');
+    if (!tools) { tools = document.createElement('span'); tools.className = 'hb-chat-tools'; bar.appendChild(tools); }
+    ['home-chat-env-badge', 'home-chat-thread-select', 'home-chat-new-btn', 'home-chat-expand-btn', 'home-chat-agents-toggle'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.parentElement !== tools) tools.appendChild(el);
+    });
+    const newThread = document.getElementById('home-chat-new-btn');
+    if (newThread) { newThread.textContent = '+ Thread'; newThread.title = 'Start a new conversation thread'; }
+    top.classList.add('hb-moved');
+  }
+
+  // Owner 13 Nov: APEX replies were long text rows. Receipt IDs and backend check notes become small tags; a long reply shows
+  // its opening and folds the rest (pasted files, long lists) into "Show the rest".
+  function _hcApexTidy(raw) {
+    let text = String(raw || '');
+    const tags = [];
+    text = text.replace(/\s*\[Backend ([a-z ]+?) check: ([^\]]{0,600})\]/gi, (_, kind, note) => {
+      tags.push({ label: 'Backend ' + kind.trim() + ' check', title: note.trim() }); return ''; });
+    text = text.replace(/\s*\(?\b(?:receipt(?: id)?|action id|id):?\s*([0-9a-f]{32})\)?\.?/gi, (_, id) => {
+      tags.push({ label: 'receipt ' + id.slice(0, 6), title: id }); return ''; });
+    text = text.replace(/\n{3,}/g, '\n\n').trim();
+    let head = text, rest = '';
+    if (text.length > 700) {
+      const cut = text.indexOf('\n\n', 250);
+      const at = cut > 0 && cut < 900 ? cut : Math.max(text.lastIndexOf('. ', 600) + 1, 400);
+      head = text.slice(0, at).trim(); rest = text.slice(at).trim();
+    }
+    return { head, rest, tags };
+  }
+
   function _hcAppendBubble(msg) {
     const container = document.getElementById('home-chat-messages');
     if (!container) return;
+    if (msg.id) {
+      const existing = container.querySelector(`[data-message-id="${CSS.escape(String(msg.id))}"]`);
+      if (existing) {
+        existing._chatMessage=msg;
+        if(msg.task && typeof hbUpdateContinue==='function') {
+          if(!existing.querySelector('.hb-bubble-controls[data-hb-task]'))existing.querySelector('.hc-bubble-body')?.insertAdjacentHTML('beforebegin',hbTaskBadge(msg.task,msg.conversation_id || _hcConvId,msg.reply_to_message_id,msg.id));
+          hbUpdateContinue(msg.task);
+          if(msg.task.acceptance && typeof hbAcceptanceControl==='function') {
+            const row=existing.querySelector('.hb-acceptance-controls');
+            if(!row)existing.querySelector('.hc-bubble-body')?.insertAdjacentHTML('beforebegin',hbAcceptanceControl(msg.task));
+            else if(!row.querySelector('button:disabled') || msg.task.acceptance.state!=='pending')row.innerHTML=hbAcceptanceInner(msg.task.acceptance);
+          }
+        }
+        if(msg.request_control && typeof hbRequestControl==='function') {
+          if(!existing.querySelector('.hb-request-controls'))existing.querySelector('.hc-bubble-body')?.insertAdjacentHTML('beforebegin',hbRequestControl(msg.request_control,msg.conversation_id || _hcConvId));
+          hbUpdateApproval(msg.request_control);
+        }
+        return existing;
+      }
+    } else if (Number.isFinite(msg._afterId)) {
+      const existing = Array.from(container.querySelectorAll('.hc-bubble[data-message-id]')).find(el =>
+        Number(el.dataset.messageId) > msg._afterId && el._chatMessage?.content === msg.content
+        && String(el._chatMessage.sender || el._chatMessage.from_agent).toLowerCase()
+          === String(msg.sender || msg.from_agent).toLowerCase());
+      if (existing) return existing;
+    }
     _hcShowWelcome(false);
+    const fred = _hcFredAdvice(msg);
+    if (fred) return _hcFredBubble(msg, fred, container);
 
     const sender = (msg.sender || msg.from_agent || '').toLowerCase();
     const isUser = sender === 'user' || sender === 'you' || msg.message_type === 'user';
@@ -388,7 +842,23 @@
     const agentLabel = isUser ? 'You' : _hcAgentDisplayName(sender);
 
     const time = msg.created_at ? _hcFormatTime(msg.created_at) : '';
-    const content = _hcRenderContent(msg.content || '');
+    let content = !isUser && typeof renderHummingbirdChatBody === 'function'
+      ? renderHummingbirdChatBody(msg.content || '', msg.message_type, _hcRenderContent)
+      : _hcRenderContent(msg.content || '');
+    if (sender === 'hummingbird' && !/^\s*[\[{]/.test(String(msg.content || ''))) {
+      // Owner 13 Nov: HB's messages read plainly; ids, checks and commands sit folded under Details.
+      const raw = String(msg.content || '');
+      const at = raw.indexOf('\nDetails: ');
+      if (at > 0) content = _hcRenderContent(raw.slice(0, at)) +
+        `<details class="hc-hb-details"><summary>Details</summary><div>${_hcEsc(raw.slice(at + 10))}</div></details>`;
+    }
+    if (sender === 'apex' && !isSystem && !/^\s*[\[{]/.test(String(msg.content || ''))) {
+      const tidy = _hcApexTidy(msg.content);
+      const restLines = tidy.rest ? tidy.rest.split('\n').length : 0;
+      content = `<div class="hc-apex-lead">${_hcRenderContent(tidy.head)}</div>` +
+        (tidy.rest ? `<details class="hc-apex-rest"><summary>Show the rest (${restLines} line${restLines === 1 ? '' : 's'})</summary>${_hcRenderContent(tidy.rest)}</details>` : '') +
+        (tidy.tags.length ? `<div class="hc-apex-tags">${tidy.tags.map(t => `<span class="hc-apex-tag" title="${_hcEsc(t.title)}">${_hcEsc(t.label)}</span>`).join('')}</div>` : '');
+    }
     const rawText = _hcEsc(String(msg.content || '').trim().slice(0, 4000));
     const msgId = msg.id || '';
     const convId = msg.conversation_id || _hcConvId || '';
@@ -417,6 +887,7 @@
     }
 
     const div = document.createElement('div');
+    div._chatMessage = msg;
     div.className = `hc-bubble ${type}`;
     if (hasIds) div.dataset.messageId = msgId;
     if (msg._placeholderId) div.dataset.ph = msg._placeholderId;
@@ -425,10 +896,17 @@
         `<span class="hc-bubble-sender">${_hcEsc(agentLabel)}</span>` +
         (time ? `<span class="hc-bubble-time">${time}</span>` : '') +
       `</div>` +
+      (typeof hbTaskBadge==='function' ? hbTaskBadge(msg.task,convId,msg.reply_to_message_id,msg.id) : '') +
+      (typeof hbRequestControl==='function' ? hbRequestControl(msg.request_control,convId) : '') +
+      (!isUser && String(sender).toLowerCase()!=='hummingbird' && typeof hbUsageLabel==='function' ? `<span class="hb-usage">${_hcEsc(hbUsageLabel(msg.usage,msg.tokens_used))}</span>` : '') +
       `<div class="hc-bubble-body">${content}</div>` +
+      (String(sender).toLowerCase()==='hummingbird' && typeof hbCommandButtons==='function' ? hbCommandButtons(msg.content) : '') +
       actionHtml;
 
+    if(msg.task)div.dataset.hbTaskId=msg.task.task_id;
+    if(typeof hbTaskBar==='function'){hbTaskBar('home-chat-input',convId);_hcMoveBarTools();}
     container.appendChild(div);
+    return div;
   }
 
   // ── Home-chat action handlers (global) ─────────────────────────────────
@@ -628,6 +1106,9 @@
 	  window.homeLoadProofTrail = _hcLoadProofTrail;
 
 	  function _hcAgentDisplayName(name) {
+    if (name === 'apex' || name === 'codex-instructor' || name === 'copilot-instructor' || name === 'gemini-advisor' || name === 'claude-code' || name === 'peer-bridge') {
+      return _chatAgentLabel(name);
+    }
     const agents = _hcAgentOptions();
     const match = agents.find(a => a.value === name || a.label?.toLowerCase() === name);
     return match ? match.label : (name.charAt(0).toUpperCase() + name.slice(1));
@@ -836,14 +1317,8 @@
 
   function _hcUpdateMeta() {
     const countEl = document.getElementById('home-chat-agent-count');
-    const isManual = localStorage.getItem(HC_MANUAL_KEY) === '1';
     if (countEl) {
-      if (isManual) {
-        const n = document.querySelectorAll('#home-chat-agents .home-chat-agent-pill.active').length;
-        countEl.textContent = `${n} agent${n !== 1 ? 's' : ''} on`;
-      } else {
-        countEl.textContent = 'auto-route';
-      }
+      countEl.textContent = `To: ${chatRecipientSummary(document.getElementById('home-chat-input')?.value, _chatAgentLabel)}`;
     }
   }
 
@@ -951,11 +1426,15 @@
       return;
     }
 
-    const enabled = getAutomaticLocalChatAgents();
+    const enabled = getChatDispatchAgents(text);
     if (!enabled.length) {
       if (typeof showToast === 'function') showToast('No local agent is available. Check the local runtime in Agents.', 'error');
       return;
     }
+    const sendAfterId = Math.max(0, ...Array.from(
+      document.querySelectorAll('#home-chat-messages .hc-bubble[data-message-id]'),
+      el => Number(el.dataset.messageId)));
+    _hcSendVersion += 1;
 
     // Show user bubble immediately
     _hcAppendBubble({
@@ -996,6 +1475,7 @@
       agents: enabled,
       local_only: true,
       conversation_id: _hcConvId || null,
+      task_id:typeof hbTaskSelection==='function' ? hbTaskSelection(_hcConvId) : null,
       new_thread: !_hcConvId,
       history_mode: 'recent',
       history_limit: 12,
@@ -1010,6 +1490,7 @@
       .then(r => r.json())
       .then(data => {
         if (viewVersion !== _hcViewVersion) return;
+        // Only the explicit Continue button/picker selects a task for later messages.
         if (data.conversation_id && String(data.conversation_id) !== String(_hcConvId)) {
           _hcConvId = data.conversation_id;
           localStorage.setItem(HC_ACTIVE_THREAD_KEY, String(_hcConvId));
@@ -1054,6 +1535,7 @@
         // Render completed (non-pending) agent responses
         (Array.isArray(data.tool_receipts) ? data.tool_receipts : []).forEach(receipt => {
           _hcAppendBubble({
+            _afterId: sendAfterId,
             sender: 'apex', message_type: 'tool_result',
             content: `[tool:${receipt.tool}] ${receipt.status} (receipt ${receipt.id})\n` +
               JSON.stringify(receipt.arguments) + '\n' + receipt.output +
@@ -1064,6 +1546,8 @@
         if (immediate.length > 0) {
           immediate.forEach(resp => {
             _hcAppendBubble({
+              _afterId: sendAfterId,
+              task:resp.task||data.task,usage:resp.usage,tokens_used:resp.tokens,conversation_id:data.conversation_id,
               sender: resp.agent || 'agent',
               message_type: 'agent',
               content: resp.response || resp.text || '(empty response)',
@@ -1072,6 +1556,7 @@
           });
         } else if (!pendingAcks.length && !pendingJobIds.length && data.response) {
           _hcAppendBubble({
+            _afterId: sendAfterId,
             sender: data.agent || 'agent',
             message_type: 'agent',
             content: data.response,
@@ -1098,6 +1583,8 @@
             status: 'running',
           });
         });
+
+        (Array.isArray(data.peer_statuses) ? data.peer_statuses : []).forEach(_hcApplyPeerProgress);
 
         if (pendingJobIds.length) {
           _hcPollJobs(pendingJobIds);
@@ -1130,6 +1617,7 @@
         }
         // Keep Offline/Recovery visible; only a healthy lane reads "Ready".
         if (statusEl && _hcLaneState === 'ok') statusEl.textContent = 'Ready';
+        if (viewVersion === _hcViewVersion && _hcConvId) _hcSilentRefresh(_hcConvId, true);
       });
   }
 
@@ -1175,8 +1663,8 @@
       `<div class="hc-think-item done"><span class="hc-think-done">✓</span><span class="hc-think-text">${_hcEsc(s)}</span></div>`
     ).join('');
     const currentItem = hist.length
-      ? `<div class="hc-think-item current"><span class="hc-think-spinner"></span><span class="hc-think-text">${_hcEsc(hist[hist.length - 1])}</span></div>`
-      : `<div class="hc-think-item current"><span class="hc-think-spinner"></span><span class="hc-think-text">initializing…</span></div>`;
+      ? `<div class="hc-think-item current"><span class="hc-think-bird" aria-hidden="true"><svg viewBox="0 0 32 32" width="16" height="16"><path class="hb-beak" d="M2 13.5 L11 15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="13" cy="15" r="3" fill="currentColor"/><ellipse cx="19" cy="18" rx="6" ry="3.4" fill="currentColor" transform="rotate(22 19 18)"/><path d="M23.5 21 L30 27 L26.5 21.5 L31 22.5 Z" fill="currentColor"/><path class="hb-wing" d="M17 16 Q21 4 28 6 Q23 12 19 17 Z" fill="currentColor" opacity=".8"/></svg></span><span class="hc-think-text">${_hcEsc(hist[hist.length - 1])}</span></div>`
+      : `<div class="hc-think-item current"><span class="hc-think-bird" aria-hidden="true"><svg viewBox="0 0 32 32" width="16" height="16"><path class="hb-beak" d="M2 13.5 L11 15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="13" cy="15" r="3" fill="currentColor"/><ellipse cx="19" cy="18" rx="6" ry="3.4" fill="currentColor" transform="rotate(22 19 18)"/><path d="M23.5 21 L30 27 L26.5 21.5 L31 22.5 Z" fill="currentColor"/><path class="hb-wing" d="M17 16 Q21 4 28 6 Q23 12 19 17 Z" fill="currentColor" opacity=".8"/></svg></span><span class="hc-think-text">initializing…</span></div>`;
 
     body.innerHTML =
       `<div class="hc-think-checklist">${doneItems}${currentItem}</div>` +
@@ -1245,6 +1733,7 @@
           } else {
             document.removeEventListener('sse:chat', onSse);
             if (statusEl && _hcLaneState === 'ok') statusEl.textContent = 'Ready';
+            _hcSilentRefresh(convId, true);
           }
         })
         .catch(() => {

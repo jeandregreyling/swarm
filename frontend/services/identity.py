@@ -32,7 +32,18 @@ def _resolve_identity_or_response(data):
     Returns (identity_dict, None) or (None, flask_response).
     """
     payload = data or {}
-    acting = (payload.get('acting_user') or payload.get('user') or 'ghost').strip().lower()
+    from core import agent_identity
+    if agent_identity.enabled():
+        from .auth import get_current_user
+        authenticated = get_current_user()
+        if not authenticated:
+            return None, (jsonify(ok=False, error='Authenticated user session required'), 401)
+        acting = authenticated['username']
+        claimed = str(payload.get('acting_user') or payload.get('user') or acting).strip().lower()
+        if claimed != acting:
+            return None, (jsonify(ok=False, error='Request body cannot choose the authenticated actor'), 403)
+    else:
+        acting = (payload.get('acting_user') or payload.get('user') or 'ghost').strip().lower()
     proxy_as = (payload.get('proxy_as') or '').strip().lower()
 
     actor_profile = get_user_profile(acting)
@@ -64,33 +75,32 @@ def _resolve_identity_or_response(data):
 
 
 def _validate_agent_request():
-    """
-    Validate that request is from a local agent with valid AGENT_API_KEY.
-    Returns (agent_id, error_response) tuple.
-    - On success: (agent_id_string, None)
-    - On failure: (None, Flask error response tuple)
-    """
-    agent_key = request.headers.get('X-Agent-Key', '').strip()
-    agent_id = request.headers.get('X-Agent-Id', '').strip()
-
-    if not agent_key or not agent_id:
-        return None, (jsonify({'ok': False, 'error': 'X-Agent-Key and X-Agent-Id headers required'}), 401)
-
-    expected_key = os.environ.get('AGENT_API_KEY', '').strip()
-    if not expected_key:
-        return None, (jsonify({'ok': False, 'error': 'agent API not enabled (AGENT_API_KEY not set)'}), 503)
-
-    if agent_key != expected_key:
-        log_activity('terminal', 'agent_auth_failed', f'invalid key attempt from agent {agent_id}')
-        return None, (jsonify({'ok': False, 'error': 'invalid agent API key'}), 403)
-
-    # Valid agent_id should match known local agents
-    valid_agents = {a['name'].lower() for a in _reg_roster()}
-    if agent_id.lower() not in valid_agents:
-        log_activity('terminal', 'agent_auth_unknown', f'unknown agent_id: {agent_id}')
-        # Still allow it; agents can register themselves
-
-    return agent_id, None
+    """Authenticate one machine token; a supplied name cannot choose the caller."""
+    from contextlib import closing
+    from flask import g
+    from core import agent_identity as runtime
+    from utils.db._connection import get_connection
+    import uuid
+    scheme, _, bearer = request.headers.get('Authorization', '').partition(' ')
+    raw = bearer.strip() if scheme.lower() == 'bearer' else request.headers.get('X-Agent-Key', '').strip()
+    claimed = request.headers.get('X-Agent-Id', '').strip()
+    if not raw:
+        return None, (jsonify(ok=False,error='Individual agent credential required'),401)
+    try:
+        with closing(get_connection()) as conn:
+            principal = runtime.authenticate(conn,raw,claimed or None,scope='agent.api')
+            conn.commit()
+        if getattr(g,'agent_execution_reset',None) is None:
+            identity = {'principal':principal['id'],'credential_id':principal['credential_id'],
+                'run_id':uuid.uuid4().hex,'model':'','requested_by':'','conversation_id':None}
+            runtime.event(identity,identity['run_id'],'http:'+request.method+' '+request.path,'started')
+            g.agent_execution_reset = runtime.CURRENT.set(identity)
+            g.authenticated_agent_execution = identity
+        return principal['id'],None
+    except PermissionError as exc:
+        return None,(jsonify(ok=False,error=str(exc)),403)
+    except (OSError,RuntimeError) as exc:
+        return None,(jsonify(ok=False,error=str(exc)),503)
 
 
 def _ollama_runtime_running():

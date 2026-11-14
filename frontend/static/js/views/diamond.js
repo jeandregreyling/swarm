@@ -24,8 +24,8 @@ const SUNDIAL_ICONS = {
 const SUNDIAL_METRICS = [
   { key: 'cpu',    label: 'CPU',     tip: 'Processor load — how busy the CPU is right now' },
   { key: 'ram',    label: 'RAM',     tip: 'Memory usage — allocated system memory' },
-  { key: 'swap',   label: 'V-RAM',   tip: 'Virtual RAM — 48 GB SSD swap for bigger models' },
-  { key: 'gpu',    label: 'GPU',     tip: 'GPU VRAM — dedicated graphics memory for models' },
+  { key: 'swap',   label: 'V-RAM',   tip: 'Virtual RAM (swap) for bigger models — shows "off" when none is configured' },
+  { key: 'gpu',    label: 'GPU',     tip: 'GPU VRAM in use (amdgpu), with GPU busy % and every model loaded on it' },
   { key: 'temp',   label: 'Temp',    tip: 'CPU temperature — thermal sensor reading' },
   { key: 'disk',   label: 'Disk',    tip: 'Primary disk utilisation — storage capacity' },
   { key: 'agents', label: 'Members', tip: 'Active swarm members — enabled agents in roster' },
@@ -48,20 +48,33 @@ function _sundialResidencyHtml(metricKey) {
   if (!bucket) return '';
   const entries = Array.isArray(residency[bucket]) ? residency[bucket] : [];
   const title = bucket === 'ram' ? 'Loaded in RAM' : bucket === 'swap' ? 'Loaded in V-RAM' : 'Loaded on GPU';
+  const vitals = system || {};
+  let note = '';
+  if (bucket === 'gpu' && vitals.gpu_vram_used_gb != null) {
+    note = '<div class="stip-empty">VRAM ' + vitals.gpu_vram_used_gb + ' / ' + vitals.gpu_vram_total_gb + ' GB' +
+      (vitals.gpu_busy_percent != null ? ' · GPU busy ' + vitals.gpu_busy_percent + '%' : '') + '</div>';
+  }
+  if (bucket === 'swap' && vitals.swap_total_gb === 0) {
+    return '<div class="stip-section"><div class="stip-section-title">' + title + '</div><div class="stip-empty">Swap is off (0 GB configured). Larger models will need virtual RAM.</div></div>';
+  }
   if (!entries.length) {
-    return '<div class="stip-section"><div class="stip-section-title">' + title + '</div><div class="stip-empty">No resident agents reported.</div></div>';
+    return '<div class="stip-section"><div class="stip-section-title">' + title + '</div>' + note + '<div class="stip-empty">No models loaded.</div></div>';
   }
   return '<div class="stip-section"><div class="stip-section-title">' + title + '</div><div class="stip-list">' + entries.map(entry => {
     const modelBits = [];
-    if (entry.model) modelBits.push(_escapeDiamondHtml(entry.model));
-    if (bucket === 'gpu' && entry.size_vram_gb) modelBits.push(_escapeDiamondHtml(entry.size_vram_gb + ' GB VRAM'));
-    else if (entry.size_gb) modelBits.push(_escapeDiamondHtml(entry.size_gb + ' GB'));
-    // M11: per-loaded-model unload button
-    const unloadBtn = entry.model
-      ? '<button class="stip-unload-btn" data-model="' + _escapeDiamondHtml(entry.model) + '" title="Unload ' + _escapeDiamondHtml(entry.model) + '" style="margin-left:6px;background:transparent;border:1px solid #f7b84b66;color:#f7b84b;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:9px;">Unload</button>'
-      : '';
+    if (entry.model && entry.model !== entry.label) modelBits.push(_escapeDiamondHtml(entry.model));
+    if (entry.size_vram_gb) modelBits.push(_escapeDiamondHtml(entry.size_vram_gb + ' GB VRAM'));
+    if (entry.size_gb) modelBits.push(_escapeDiamondHtml(entry.size_gb + ' GB RAM'));
+    const btnStyle = 'margin-left:6px;background:transparent;border:1px solid #f7b84b66;color:#f7b84b;border-radius:3px;padding:1px 6px;cursor:pointer;font-size:9px;';
+    // 12 Nov: HB-managed models unload; the APEX systemd service gets an owner Stop/Start switch.
+    const unloadBtn = entry.kind === 'service' && entry.unit
+      ? '<button class="stip-service-btn" data-unit="' + _escapeDiamondHtml(entry.unit) + '" data-action="' + (entry.service_state === 'active' ? 'stop' : 'start') +
+        '" title="Owner switch for the ' + _escapeDiamondHtml(entry.unit) + ' service" style="' + btnStyle + '">' + (entry.service_state === 'active' ? 'Stop' : 'Start') + '</button>'
+      : entry.model
+        ? '<button class="stip-unload-btn" data-model="' + _escapeDiamondHtml(entry.model) + '" title="Unload ' + _escapeDiamondHtml(entry.model) + '" style="' + btnStyle + '">Unload</button>'
+        : '';
     return '<div class="stip-list-row"><span class="stip-list-label">' + _escapeDiamondHtml(entry.label || entry.agent || 'Agent') + '</span><span class="stip-list-meta">' + modelBits.join(' · ') + unloadBtn + '</span></div>';
-  }).join('') + '</div></div>';
+  }).join('') + '</div>' + note + '</div>';
 }
 
 /* ── Sundial Initialisation ───────────────────────────────────────────────── */
@@ -224,6 +237,22 @@ function _showSundialTip(metric, node) {
         }
         return;
       }
+      const svc = e.target.closest('.stip-service-btn');
+      if (svc) {
+        e.preventDefault();
+        e.stopPropagation();
+        const unit = svc.dataset.unit, action = svc.dataset.action;
+        const what = action === 'stop' ? 'Stop the ' + unit + ' service? APEX main chat answers will be unavailable until you start it again (frees its VRAM).'
+                                       : 'Start the ' + unit + ' service? It loads the APEX model onto the GPU.';
+        if (!window.confirm(what)) return;
+        svc.textContent = '…'; svc.disabled = true;
+        try {
+          const r = await fetch('/api/diamond/model-service', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ unit, action }) });
+          const j = await r.json();
+          svc.textContent = j.ok ? (j.state === 'active' ? 'running ✓' : 'stopped ✓') : '✕ ' + (j.error || 'failed');
+        } catch (err) { svc.textContent = '✕'; }
+        return;
+      }
       const btn = e.target.closest('.stip-unload-btn');
       if (!btn) return;
       e.preventDefault();
@@ -314,8 +343,8 @@ function _updateSundial(d) {
   const metrics = {
     cpu:    { display: s.cpu_percent != null ? s.cpu_percent + '%' : '\u2014',      health: _healthLevel(s.cpu_percent, 60, 80) },
     ram:    { display: s.ram_percent != null ? s.ram_percent + '%' : '\u2014',      health: _healthLevel(s.ram_percent, 70, 85) },
-    swap:   { display: s.swap_percent != null ? s.swap_percent + '%' : '\u2014',    health: _healthLevel(s.swap_percent, 60, 85) },
-    gpu:    { display: s.gpu_vram_percent != null ? s.gpu_vram_percent + '%' : 'N/A', health: s.gpu_vram_percent != null ? _healthLevel(s.gpu_vram_percent, 70, 90) : 'ok' },
+    swap:   { display: s.swap_percent != null ? s.swap_percent + '%' : (s.swap_total_gb === 0 ? 'off' : '\u2014'), health: _healthLevel(s.swap_percent, 60, 85) },
+    gpu:    { display: s.gpu_vram_percent != null ? Math.round(s.gpu_vram_percent) + '%' : 'N/A', health: s.gpu_vram_percent != null ? _healthLevel(s.gpu_vram_percent, 80, 93) : 'ok' },
     temp:   { display: s.cpu_temp_c  != null ? s.cpu_temp_c + '°C' : '\u2014',     health: _healthLevel(s.cpu_temp_c, 65, 80) },
     disk:   { display: mainDisk.percent != null ? mainDisk.percent + '%' : '\u2014', health: _healthLevel(mainDisk.percent, 70, 90) },
     agents: { display: a.enabled     != null ? a.enabled + '/' + a.total : '\u2014', health: 'ok' },
@@ -694,9 +723,11 @@ function _initHomeChatResize() {
     if (!h) {
       chat.style.minHeight = '';
       chat.style.maxHeight = '';
+      chat.classList.remove('home-chat-user-sized');   // back to auto-fit
       return;
     }
     const clamped = Math.max(MIN_H, Math.min(maxH(), h));
+    chat.classList.add('home-chat-user-sized');        // owner's size beats the live-room auto-fit
     chat.style.minHeight = clamped + 'px';
     chat.style.maxHeight = clamped + 'px';
   };

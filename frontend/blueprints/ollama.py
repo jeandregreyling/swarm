@@ -170,7 +170,8 @@ def api_ollama_load():
 
 
 @ollama_bp.route('/api/ollama/unload', methods=['POST'])
-def api_ollama_unload():
+@require_owner
+def api_ollama_unload(current_user=None):
     """Unload a model from memory immediately."""
     import requests as _requests
     data = request.get_json(silent=True) or {}

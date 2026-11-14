@@ -762,6 +762,7 @@ function agentsConfigRefresh() {
 function agentsOpsRefresh(force) {
   const board = document.getElementById('agents-ops-board');
   if (board && force) board.innerHTML = '<div class="agents-empty">Loading agent operations…</div>';
+  agentsPeerAuditRefresh();
   return _fetchJsonOrThrow('/api/agents/ops-summary')
     .then(data => {
       window.__agentsOps = data;
@@ -774,6 +775,56 @@ function agentsOpsRefresh(force) {
     })
     .catch(err => {
       if (board) board.innerHTML = `<div class="agents-empty" style="color:#ff6b6b;">${_esc(err.message || err)}</div>`;
+    });
+}
+
+function agentsPeerAuditRefresh() {
+  const el = document.getElementById('agents-peer-audit');
+  if (!el) return Promise.resolve();
+  const when = (t) => t ? new Date(Number(t) * 1000).toLocaleString() : 'never';
+  return _fetchJsonOrThrow('/api/peer/v1/principals')
+    .then(data => {
+      if (!data.ok) throw new Error(data.error || 'peer audit failed');
+      const cards = (data.principals || []).map(p => {
+        const counts = Object.entries(p.memory_counts || {}).map(([k, v]) => `${k} ${v}`).join(' · ') || 'empty';
+        const recent = (p.recent_memory || []).map(m =>
+          `<li><strong>${_esc(m.kind)}</strong> ${_esc(m.excerpt)} <span class="agents-peer-receipt">${_esc(m.receipt)} · ${_esc(when(m.created_at))}</span></li>`
+        ).join('');
+        return `<div class="agents-agent-card" data-peer="${_esc(p.id)}">
+          <div class="agents-agent-top">
+            <span class="agents-pill ${p.enabled ? 'ready' : 'disabled'}">${p.enabled ? 'enabled' : 'disabled'}</span>
+            <span class="agents-agent-name">${_esc(p.display_name)}</span>
+            <span class="agents-pill">service peer</span>
+          </div>
+          <div class="agents-agent-meta">
+            ${_esc(p.id)} · scopes: ${_esc((p.scopes || []).join(', ') || 'no active token')}<br>
+            Token issued ${_esc(when(p.token_issued_at))} · last seen ${_esc(when(p.last_seen))} · pending ${_esc(p.pending)}<br>
+            Memory pool: ${_esc(counts)}
+          </div>
+          <ul class="agents-peer-memory">${recent || '<li>No memory entries yet.</li>'}</ul>
+          <div class="agents-card-actions">
+            <button type="button" data-peer-toggle="${_esc(p.id)}" data-enabled="${p.enabled ? '1' : '0'}">${p.enabled ? 'Disable' : 'Enable'}</button>
+          </div>
+        </div>`;
+      }).join('');
+      el.innerHTML = `<div class="agents-agent-group-title">Service participants (${(data.principals || []).length})</div>
+        <div class="agents-section-label">Address them in Chat with @instructor or @gemini. Peers authenticate with loopback-only scoped tokens; every message is recorded in their memory pool.</div>
+        <div class="agents-agent-grid">${cards}</div>`;
+      el.querySelectorAll('button[data-peer-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          fetch(`/api/peer/v1/principals/${encodeURIComponent(btn.dataset.peerToggle)}/enabled`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: btn.dataset.enabled !== '1' }),
+          }).then(r => r.json()).then(d => {
+            if (typeof showToast === 'function') showToast(d.ok ? `${d.principal} ${d.enabled ? 'enabled' : 'disabled'}` : (d.error || 'Toggle failed'), d.ok ? 'success' : 'error');
+            agentsPeerAuditRefresh();
+          });
+        });
+      });
+    })
+    .catch(err => {
+      el.innerHTML = `<div class="agents-empty">Service participants unavailable: ${_esc(err.message || err)}</div>`;
     });
 }
 

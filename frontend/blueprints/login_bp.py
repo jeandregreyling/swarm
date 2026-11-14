@@ -117,11 +117,33 @@ def _ensure_owner():
 
 # ── Routes ───────────────────────────────────────────────────────────────────
 
+SESSION_DAYS = 30
+
+
+def _is_local():
+    """Owner 13 Nov: HB on this machine keeps the owner signed in (no daily sign-in screens)."""
+    return (request.remote_addr or '') in ('127.0.0.1', '::1', 'localhost')
+
+
 @login_bp.route('/api/auth/me')
 def auth_me():
-    """Return the currently logged-in user, or null."""
+    """Return the currently logged-in user, or null. A session in use renews itself to 30 days (at most once a day)."""
     user = get_current_user()
-    return jsonify({'ok': True, 'user': user})
+    resp = make_response(jsonify({'ok': True, 'user': user}))
+    token = request.cookies.get('friday_session')
+    if user and token:
+        renew_before = (datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS - 1)).strftime('%Y-%m-%d %H:%M:%S')
+        new_expiry = (datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)).strftime('%Y-%m-%d %H:%M:%S')
+        conn = get_connection()
+        try:
+            renewed = conn.execute("UPDATE user_sessions SET expires_at=? WHERE session_token=? AND is_active=1 AND expires_at<?",
+                                   (new_expiry, token, renew_before)).rowcount
+            conn.commit()
+        finally:
+            conn.close()
+        if renewed:
+            resp.set_cookie('friday_session', token, httponly=True, samesite='Lax', max_age=SESSION_DAYS * 86400)
+    return resp
 
 
 @login_bp.route('/api/auth/setup-status')
@@ -166,14 +188,14 @@ def auth_setup():
     conn.commit()
     conn.close()
 
-    # Auto-login with the same non-persistent default as a normal sign-in.
-    token, expires = _create_session('ghost', days=1)
+    # Auto-login; on this machine the owner stays signed in (renews while in use).
+    token, expires = _create_session('ghost', days=SESSION_DAYS if _is_local() else 1)
     resp = make_response(jsonify({'ok': True, 'user': {
         'username': 'ghost',
         'display_name': display_name or 'Ghost',
         'role': 'owner',
     }}))
-    resp.set_cookie('friday_session', token, httponly=True, samesite='Lax')
+    resp.set_cookie('friday_session', token, httponly=True, samesite='Lax', **({'max_age': SESSION_DAYS * 86400} if _is_local() else {}))
     return resp
 
 
@@ -184,7 +206,7 @@ def auth_login():
     data = request.get_json() or {}
     username = (data.get('username') or '').strip().lower()
     password = (data.get('password') or '').strip()
-    remember = bool(data.get('remember'))
+    remember = bool(data.get('remember')) or _is_local()       # this machine: stay signed in (renews while in use)
     if not username or not password:
         return jsonify({'ok': False, 'error': 'Username and password required'}), 400
 
@@ -500,3 +522,159 @@ def auth_create_user(current_user=None):
         return jsonify({'ok': False, 'error': f'Failed to create user: {e}'}), 500
     conn.close()
     return jsonify({'ok': True, 'username': username, 'email': email, 'display_name': display_name}), 201
+
+
+# ── Sign in with a linked GitHub / Google / Microsoft account (owner 13 Nov) ──────────────────────────────────────
+def _oauth_fail(where, message):
+    from urllib.parse import quote
+    from flask import redirect
+    return redirect(f'{where}?oauth_error=' + quote(str(message)[:200]))
+
+
+@login_bp.route('/api/auth/oauth/providers')
+def oauth_providers():
+    """Public: which sign-in buttons to show. The signed-in owner also sees links, callback URLs and where to register apps."""
+    from core import hb_oauth
+    user = get_current_user()
+    out = []
+    conn = get_connection()
+    try:
+        mine = {l['provider']: l for l in hb_oauth.links(conn, user['username'])} if user else {}
+        conn.commit()
+    finally:
+        conn.close()
+    for key, spec in hb_oauth.PROVIDERS.items():
+        item = {'provider': key, 'label': spec['label'], 'configured': hb_oauth.configured(key)}
+        if user and user.get('role') == 'owner':
+            item.update(callback_url=hb_oauth.redirect_uri(request.host_url, key), register_url=spec['register'],
+                        linked=bool(mine.get(key)), linked_as=(mine.get(key) or {}).get('label', ''))
+        out.append(item)
+    return jsonify({'ok': True, 'providers': out})
+
+
+@login_bp.route('/api/auth/oauth/keys', methods=['POST'])
+@require_owner
+def oauth_keys(current_user=None):
+    """Owner only: save or remove a provider's app keys (stored in an owner-only file, never in chat or the database)."""
+    from core import hb_oauth
+    origin = request.headers.get('Origin')
+    from urllib.parse import urlsplit
+    if request.headers.get('Sec-Fetch-Site') == 'cross-site' or origin and urlsplit(origin).netloc != request.host:
+        return jsonify({'ok': False, 'error': 'Use the HB window to change sign-in keys'}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        if data.get('remove'):
+            hb_oauth.remove_keys(str(data.get('provider')))
+            return jsonify({'ok': True, 'removed': True})
+        return jsonify({'ok': True, **hb_oauth.save_keys(str(data.get('provider')), data.get('client_id'), data.get('client_secret'))})
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+
+@login_bp.route('/api/auth/oauth/unlink', methods=['POST'])
+@require_owner
+def oauth_unlink(current_user=None):
+    from core import hb_oauth
+    data = request.get_json(silent=True) or {}
+    conn = get_connection()
+    try:
+        n = hb_oauth.unlink(conn, current_user['username'], str(data.get('provider')))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({'ok': True, 'removed': n})
+
+
+@login_bp.route('/auth/oauth/<provider>/start')
+def oauth_start(provider):
+    from flask import redirect
+    from core import hb_oauth
+    mode = request.args.get('mode', 'login')
+    user = get_current_user() if mode == 'link' else None
+    if mode == 'link' and (not user or user.get('role') != 'owner'):
+        return _oauth_fail('/', 'Sign in as the owner first, then link the account')
+    conn = get_connection()
+    try:
+        url = hb_oauth.start(conn, provider, mode, request.host_url, username=user['username'] if user else None)
+        conn.commit()
+    except (ValueError, PermissionError) as exc:
+        return _oauth_fail('/auth/accounts' if mode == 'link' else '/', exc)
+    finally:
+        conn.close()
+    return redirect(url)
+
+
+@login_bp.route('/auth/oauth/<provider>/callback')
+def oauth_callback(provider):
+    from flask import redirect
+    from core import hb_oauth
+    conn = get_connection()
+    try:
+        result = hb_oauth.finish(conn, provider, request.args.get('state'), request.args.get('code'), request.host_url)
+        conn.commit()
+    except Exception as exc:          # provider errors, refused or unlinked accounts: say so plainly, never sign in
+        conn.commit()
+        return _oauth_fail('/', exc)
+    finally:
+        conn.close()
+    if result['mode'] == 'link':
+        return redirect(f"/auth/accounts?linked={provider}")
+    try:
+        from core import auth_rate_limit as _rl
+        _rl.audit('login', username=result['username'], ip=request.remote_addr or '-', ok=True, extra={'via': provider})
+    except Exception:
+        pass
+    token, _ = _create_session(result['username'], days=SESSION_DAYS)
+    resp = make_response(redirect('/'))
+    resp.set_cookie('friday_session', token, httponly=True, samesite='Lax', max_age=SESSION_DAYS * 86400)
+    return resp
+
+
+_ACCOUNTS_HTML = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HB sign-in accounts</title><style>
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1622;color:#e6edf7;margin:0;padding:28px}
+main{max-width:760px;margin:0 auto}h1{font-size:20px}section{border:1px solid #2a3a52;border-radius:12px;padding:16px 18px;margin:14px 0;background:#141d2c}
+h2{font-size:16px;margin:0 0 6px}small,.dim{color:#9fb0c8}code{background:#0b111b;padding:2px 6px;border-radius:5px;user-select:all}
+input{width:100%;box-sizing:border-box;padding:7px 9px;margin:4px 0 8px;border-radius:7px;border:1px solid #2a3a52;background:#0b111b;color:#e6edf7}
+button,a.btn{display:inline-block;padding:7px 13px;border-radius:8px;border:1px solid #4a8;background:#4a8;color:#000;font-weight:700;cursor:pointer;text-decoration:none;margin-right:6px}
+button.ghost{background:transparent;color:#e6edf7;border-color:#2a3a52}.ok{color:#6c6}.err{color:#f88}ol{padding-left:20px}</style></head>
+<body><main><h1>Sign in to HB with GitHub, Google or Microsoft</h1>
+<p class="dim">Link your accounts once; after that any linked account signs you in. On this machine HB also keeps you signed in for 30 days and renews while you use it.
+App keys are saved in an owner-only file on this machine, never in chat or the database.</p><div id="note"></div><div id="list">Loading…</div>
+<p><a class="btn ghost" href="/">Back to HB</a></p></main>
+<script>
+const note=document.getElementById('note');const q=new URLSearchParams(location.search);
+if(q.get('linked'))note.innerHTML='<p class="ok">Linked: '+q.get('linked')+'. You can now sign in with it.</p>';
+if(q.get('oauth_error'))note.innerHTML='<p class="err">'+q.get('oauth_error').replace(/</g,'&lt;')+'</p>';
+const steps={github:'GitHub → Settings → Developer settings → OAuth Apps → New OAuth App. Homepage URL: '+location.origin+'. Authorization callback URL: the one below. Then "Generate a new client secret".',
+google:'Google Cloud console → APIs & Services → Credentials → Create credentials → OAuth client ID → Web application. Authorised redirect URI: the one below. (First time: set up the OAuth consent screen as External, add your Gmail as a test user.)',
+microsoft:'Microsoft Entra → App registrations → New registration. Supported accounts: personal and work accounts. Redirect URI: Web, the one below. Then Certificates & secrets → New client secret.'};
+function esc(s){return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function load(){const r=await fetch('/api/auth/oauth/providers',{credentials:'same-origin'});const d=await r.json();
+document.getElementById('list').innerHTML=d.providers.map(p=>`<section><h2>${esc(p.label)} ${p.linked?'<span class="ok">· linked as '+esc(p.linked_as)+'</span>':''}</h2>
+${p.callback_url===undefined?'<p class="err">Sign in as the owner to set this up.</p>':`
+<ol><li>${esc(steps[p.provider])} <a href="${esc(p.register_url)}" target="_blank" rel="noopener">Open ${esc(p.label)}</a></li>
+<li>Callback / redirect URL to register: <code>${esc(p.callback_url)}</code></li>
+<li>Paste the app keys here: ${p.configured?'<span class="ok">saved</span>':''}
+<input id="id-${p.provider}" placeholder="Client ID" autocomplete="off"><input id="sec-${p.provider}" type="password" placeholder="Client secret" autocomplete="off">
+<button onclick="save('${p.provider}')">Save keys</button>${p.configured?`<button class="ghost" onclick="removeKeys('${p.provider}')">Remove keys</button>`:''}</li>
+<li>${p.configured?`<a class="btn" href="/auth/oauth/${p.provider}/start?mode=link">${p.linked?'Re-link':'Link'} my ${esc(p.label)} account</a>${p.linked?`<button class="ghost" onclick="unlink('${p.provider}')">Unlink</button>`:''}`:'<span class="dim">Save the keys first, then link.</span>'}</li></ol>`}
+</section>`).join('');}
+async function post(url,body){const r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();
+if(!d.ok)note.innerHTML='<p class="err">'+esc(d.error||'Not saved')+'</p>';else note.innerHTML='<p class="ok">Saved.</p>';load();}
+function save(p){post('/api/auth/oauth/keys',{provider:p,client_id:document.getElementById('id-'+p).value,client_secret:document.getElementById('sec-'+p).value});}
+function removeKeys(p){post('/api/auth/oauth/keys',{provider:p,remove:true});}
+function unlink(p){post('/api/auth/oauth/unlink',{provider:p});}
+load();</script></body></html>"""
+
+
+@login_bp.route('/auth/accounts')
+def oauth_accounts_page():
+    """Owner page: set up and link GitHub / Google / Microsoft sign-in."""
+    from flask import redirect
+    user = get_current_user()
+    if not user or user.get('role') != 'owner':
+        return redirect('/')
+    resp = make_response(_ACCOUNTS_HTML)
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp

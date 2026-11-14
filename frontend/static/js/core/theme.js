@@ -1057,7 +1057,7 @@ function applyTimeTheme(time, explicitValue = null) {
     document.documentElement.style.setProperty(key, value);
   });
 
-  document.body.classList.remove('theme-galaxy', 'theme-cyber', 'theme-warm', 'theme-ocean', 'theme-minimal', 'theme-obsidian', 'theme-void', 'theme-aurora', 'theme-ember', 'theme-graphite', 'theme-rose', 'theme-lumen', 'theme-sky', 'theme-solar', 'theme-midnight', 'theme-copper', 'theme-neon', 'theme-arctic', 'theme-apple', 'theme-nature', 'theme-mint');
+  _applyNamedTheme(_getSavedNamedTheme());
   document.body.classList.toggle('mode-dark', resolvedFoundation === 'dark');
   document.body.classList.toggle('mode-light', resolvedFoundation !== 'dark');
   document.body.dataset.atmosphereSegment = mode.segment;

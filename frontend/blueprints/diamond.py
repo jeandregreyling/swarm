@@ -281,24 +281,12 @@ def _get_system_vitals():
                               'free_gb': round(u.free / (1024**3), 1)})
             except Exception:
                 continue
-        # GPU VRAM — nvidia-smi if available, else None
-        gpu_vram_percent = None
-        gpu_vram_used_gb = None
-        gpu_vram_total_gb = None
-        try:
-            import subprocess
-            nv = subprocess.run(
-                ['nvidia-smi', '--query-gpu=memory.used,memory.total', '--format=csv,noheader,nounits'],
-                capture_output=True, text=True, timeout=3
-            )
-            if nv.returncode == 0 and nv.stdout.strip():
-                parts = nv.stdout.strip().split(',')
-                used_mb, total_mb = float(parts[0].strip()), float(parts[1].strip())
-                gpu_vram_used_gb = round(used_mb / 1024, 2)
-                gpu_vram_total_gb = round(total_mb / 1024, 2)
-                gpu_vram_percent = round((used_mb / total_mb) * 100, 1) if total_mb > 0 else 0
-        except Exception:
-            pass
+        # GPU: amdgpu sysfs first (this machine is AMD), nvidia-smi fallback (core/hb_hardware.py).
+        from core.hb_hardware import gpu_stats
+        gpu = gpu_stats()
+        gpu_vram_percent = gpu['vram_percent']
+        gpu_vram_used_gb = gpu['vram_used_gb']
+        gpu_vram_total_gb = gpu['vram_total_gb']
 
         agent_residency = _get_agent_residency()
 
@@ -307,13 +295,15 @@ def _get_system_vitals():
             'ram_percent': round(mem.percent, 1),
             'ram_used_gb': round(mem.used / (1024**3), 2),
             'ram_total_gb': round(mem.total / (1024**3), 2),
-            'swap_percent': round(swap.percent, 1),
+            'swap_percent': round(swap.percent, 1) if swap.total else None,      # None = no swap configured
             'swap_used_gb': round(swap.used / (1024**3), 2),
             'swap_total_gb': round(swap.total / (1024**3), 2),
             'cpu_temp_c': round(temp_c, 1) if temp_c else None,
             'gpu_vram_percent': gpu_vram_percent,
             'gpu_vram_used_gb': gpu_vram_used_gb,
             'gpu_vram_total_gb': gpu_vram_total_gb,
+            'gpu_busy_percent': gpu['busy_percent'],
+            'gpu_source': gpu['source'],
             'agent_residency': agent_residency,
             'disks': disks,
         }
@@ -333,83 +323,67 @@ def _model_aliases(name):
 
 
 def _get_agent_residency():
-    try:
-        from core import llm as _llm
-        from utils.db.registry import get_all_agents_raw
+    """What is really loaded: every running llama-server, with kernel-reported VRAM / RAM.
 
-        roster = get_all_agents_raw() or []
-        agent_rows = []
+    12 Nov: this used core.llm.ps(), which reported HB's registry (e.g. 'apex-direct:7b 6 GB') and
+    missed APEX's own 14B service; Ollama is not running at all. Agent labels are kept where the
+    model belongs to a roster agent; 'managed' models unload via /api/ollama/unload, the APEX
+    service has an owner Stop/Start switch (/api/diamond/model-service).
+    """
+    try:
+        from core.hb_hardware import model_processes, service_state
+        try:
+            from utils.db.registry import get_all_agents_raw
+            roster = get_all_agents_raw() or []
+        except Exception:
+            roster = []
+        labels = {}
         for row in roster:
             name = str(row.get('name') or '').strip().lower()
-            if not name:
-                continue
-            label = str(row.get('display_label') or row.get('label') or name).strip()
-            number = row.get('number')
-            model = str(row.get('model') or '').strip()
-            agent_rows.append({
-                'name': name,
-                'label': f'{number} · {label}' if number is not None else label,
-                'model': model,
-            })
-
-        model_map = {}
-        for agent in agent_rows:
-            for alias in _model_aliases(agent['model']):
-                model_map.setdefault(alias, []).append(agent)
-
-        running = _llm.ps()
-        models = list(running.models if hasattr(running, 'models') else [])
+            model = str(row.get('model') or '').strip().lower()
+            if name and model:
+                number = row.get('number')
+                label = str(row.get('display_label') or row.get('label') or name).strip()
+                for alias in _model_aliases(model):
+                    labels.setdefault(alias, f'{number} · {label}' if number is not None else label)
         residency = {'ram': [], 'swap': [], 'gpu': []}
-        seen = {'ram': set(), 'swap': set(), 'gpu': set()}
-        swap_pref_agents = {'qwen', 'eight', 'sniffles'}
-
-        for model in models:
-            model_name = str(getattr(model, 'model', '') or getattr(model, 'name', '') or '').strip()
-            if not model_name:
-                continue
-            size_bytes = int(getattr(model, 'size', 0) or 0)
-            vram_bytes = int(getattr(model, 'size_vram', 0) or 0)
-            matched = []
-            for alias in _model_aliases(model_name):
-                matched.extend(model_map.get(alias, []))
-            unique = []
-            used_names = set()
-            for agent in matched:
-                if agent['name'] in used_names:
-                    continue
-                used_names.add(agent['name'])
-                unique.append(agent)
-
-            for agent in unique:
-                if vram_bytes > 0:
-                    bucket = 'gpu'
-                elif agent['name'] in swap_pref_agents or size_bytes >= 8 * (1024 ** 3):
-                    bucket = 'swap'
-                else:
-                    bucket = 'ram'
-                if agent['name'] in seen[bucket]:
-                    continue
-                seen[bucket].add(agent['name'])
-                residency[bucket].append({
-                    'agent': agent['name'],
-                    'label': agent['label'],
-                    'model': model_name,
-                    'size_gb': round(size_bytes / (1024 ** 3), 2),
-                    'size_vram_gb': round(vram_bytes / (1024 ** 3), 2),
-                })
-
-        for bucket in residency.values():
-            bucket.sort(key=lambda item: item.get('label') or item.get('agent') or '')
+        for proc in model_processes():
+            label = labels.get(proc['model'].lower()) or ('APEX (Qwen2.5-14B service)' if proc['unit'] == 'apex-server' else proc['model'])
+            residency['gpu' if proc['placement'] == 'gpu' else 'ram'].append({
+                'agent': proc['model'], 'label': label, 'model': proc['model'], 'pid': proc['pid'], 'port': proc['port'],
+                'size_vram_gb': proc['vram_gb'], 'size_gb': proc['ram_gb'], 'kind': proc['kind'], 'unit': proc['unit'],
+                'service_state': service_state(proc['unit']) if proc['unit'] else None})
         return residency
     except Exception as exc:
-        # Ollama unreachable is the common case when the daemon is stopped;
-        # don't spam WARNING for it, just trace at debug level.
-        msg = str(exc)
-        if 'Connection refused' in msg or 'Errno 111' in msg or 'Max retries' in msg or 'NewConnectionError' in msg:
-            logger.debug('[Diamond] residency: ollama unreachable (%s)', msg)
-        else:
-            logger.warning(f'[Diamond] residency: {exc}')
+        logger.warning(f'[Diamond] residency: {exc}')
         return {'ram': [], 'swap': [], 'gpu': []}
+
+
+@diamond_bp.route('/api/diamond/model-service', methods=['POST'])
+def api_model_service_switch():
+    """Owner switch for a model service (APEX 14B): stop frees its ~11 GB of VRAM, start loads it again."""
+    from flask import request
+    from urllib.parse import urlsplit
+    try:
+        from services.auth import get_current_user
+        user = get_current_user()
+    except Exception:
+        user = None
+    if not user or user.get('role') != 'owner':
+        return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+    origin = request.headers.get('Origin')
+    if request.headers.get('Sec-Fetch-Site') == 'cross-site' or origin and urlsplit(origin).netloc != request.host:
+        return jsonify({'ok': False, 'error': 'Use the authenticated HB interface'}), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        from core.hb_hardware import service_action
+        state = service_action(str(data.get('unit') or ''), str(data.get('action') or ''))
+        logger.info('[Diamond] owner %s %s model service %s -> %s', user.get('username'), data.get('action'), data.get('unit'), state)
+        return jsonify({'ok': True, 'unit': data.get('unit'), 'state': state})
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
 def _get_queue_status():

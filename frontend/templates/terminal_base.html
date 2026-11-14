@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fridays — Seven's Swarm</title>
+<title>Hummingbird — APEX</title>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 <script>
@@ -101,7 +101,7 @@
 <link rel="stylesheet" href="/static/css/components.css?v=6">
 <link rel="stylesheet" href="/static/css/windows.css">
 <link rel="stylesheet" href="/static/css/taskbar.css?v=31-themepicker">
-<link rel="stylesheet" href="/static/css/views/chat.css?v=5">
+<link rel="stylesheet" href="/static/css/views/chat.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/modals.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/library.css">
 <link rel="stylesheet" href="/static/css/diamond.css?v={{ ASSET_VERSION }}">
@@ -111,7 +111,7 @@
 <link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
 <link rel="stylesheet" href="/static/css/views/downloads.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/responsive.css">
-<link rel="stylesheet" href="/static/css/home-chat.css?v=33">
+<link rel="stylesheet" href="/static/css/home-chat.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/login.css?v=28">
 <link rel="stylesheet" href="/static/css/skills.css?v=27">
 <link rel="stylesheet" href="/static/css/views/tasker.css?v=1">
@@ -714,7 +714,10 @@
     <div id="world-clocks"></div>
     <div id="time-display" style="display:none;"></div>
     <div id="home-controls">
-      <button id="spotlight-tip" onclick="openSpotlight()" title="Spotlight search — Ctrl+Space"
+      <!-- 12 Nov (owner): the header controls form a second sundial, the same size as the one on the left:
+           search, Trace, needs-you, Services, themes and help on the ring; your account in the centre. -->
+      <svg class="control-dial-rays" viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="58"/><circle class="control-dial-core" cx="75" cy="75" r="31"/><line x1="75.0" y1="45.0" x2="75.0" y2="31.0"/><line x1="101.0" y1="60.0" x2="113.1" y2="53.0"/><line x1="101.0" y1="90.0" x2="113.1" y2="97.0"/><line x1="75.0" y1="105.0" x2="75.0" y2="119.0"/><line x1="49.0" y1="90.0" x2="36.9" y2="97.0"/><line x1="49.0" y1="60.0" x2="36.9" y2="53.0"/></svg>
+      <button id="spotlight-tip" data-dial-label="search" onclick="openSpotlight()" title="Spotlight search — Ctrl+Space"
         aria-label="Spotlight search (Ctrl+Space)"
         style="width:32px;height:32px;border-radius:50%;border:1px solid color-mix(in srgb,var(--accent) 45%,var(--border));background:color-mix(in srgb,var(--accent) 9%,var(--card));color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;">
         <svg viewBox="0 0 20 20" width="14" height="14" fill="none" style="color:var(--accent);flex-shrink:0;" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -722,12 +725,14 @@
       <button id="auth-user-pill" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Identity & proxy user">
         <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 13.5c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span id="auth-user-pill-label">ghost</span>
       </button>
-      <button id="troubleshoot-btn" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Open diagnostics and error log"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Trace</button>
-      <button id="home-help-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Help">?</button>
-      <button id="home-settings-btn" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings &amp; Themes"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+      <button id="troubleshoot-btn" data-dial-label="trace" style="height: 32px; border-radius: 16px; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 12px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; padding: 0 10px; gap:6px;" title="Open diagnostics and error log"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Trace</button>
+      <button id="home-help-btn" data-dial-label="help" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; font-size: 16px; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Help">?</button>
+      <button id="home-settings-btn" data-dial-label="themes" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings &amp; Themes"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+      <button id="dial-needs-you" type="button" data-dial-label="needs you" data-count="0" onclick="hbNeedsFocusBar()"
+        title="Nothing is waiting for you"><span id="dial-needs-count">0</span></button>
       <!-- Services dropdown (swapped to end — S7) -->
       <div id="services-dropdown-wrap" style="position:relative;">
-        <button id="services-dropdown-btn" onclick="toggleServicesDropdown()"
+        <button id="services-dropdown-btn" data-dial-label="services" onclick="toggleServicesDropdown()"
           style="height:32px;border-radius:16px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);cursor:pointer;font-size:12px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;padding:0 10px;gap:5px;"
           title="Services">
           <span id="services-dropdown-dot" style="font-size:9px;color:var(--success);line-height:1;">●</span>
@@ -792,29 +797,14 @@
                 aria-label="Dismiss welcome banner"
                 style="float:right;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;line-height:1;padding:0 4px;">×</button>
       </div>
-      <div class="today-strip" aria-label="Today workspace">
-        <div>
-          <div class="today-title">Today</div>
-          <div class="today-subtitle">Chat, track the work, and keep the evidence.</div>
-        </div>
-        <div class="today-actions">
-          <button type="button" class="today-action today-action-primary" onclick="openWindow('chat','Chat','view-chat')">Open Chat</button>
-          <button type="button" class="today-action" onclick="openWindow('studio','Studio','view-studio')">Studio Tasks</button>
-          <button type="button" class="today-action" onclick="openWindow('knowledge','Knowledge','view-knowledge')">Knowledge</button>
-        </div>
+      <!-- 12 Nov: "Today" strip removed (owner: useless; its three buttons duplicated tiles). -->
+      <!-- 12 Nov: Proof Trail removed from home (owner: it did nothing on the main chat screen; evidence lives in Studio and KC). -->
+
       </div>
-      <div class="proof-trail" id="home-proof-trail" aria-label="Proof Trail">
-        <div class="proof-trail-head">
-          <div>
-            <div class="proof-trail-title">Proof Trail</div>
-            <div class="proof-trail-subtitle" id="home-proof-trail-summary">Reading latest Studio and Knowledge evidence...</div>
-          </div>
-          <button type="button" class="proof-trail-refresh" onclick="homeLoadProofTrail()" title="Refresh proof trail">Refresh</button>
-        </div>
-        <div class="proof-trail-items" id="home-proof-trail-items">
-          <div class="proof-trail-empty">Loading evidence...</div>
-        </div>
-      </div>
+    {% endset %}
+
+    <!-- ═══ Core Workspace: top of home, collapsible (click its title; remembered) ═══ -->
+    <div class="home-section home-workspace-section" id="home-workspace">
       <div class="home-section-title" id="quick-access-title"><span class="card-title-icon-svg"><svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true"><path d="M8 2v2M8 12v2M2 8h2M12 8h2M4 4l1.4 1.4M10.6 10.6L12 12M4 12l1.4-1.4M10.6 5.4L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/></svg></span> Core Workspace
         <button id="quick-access-add-btn" onclick="event.stopPropagation(); if(typeof openWindow==='function'){openWindow('studio','Studio','view-studio'); setTimeout(()=>{const b=document.querySelector('#view-studio .proposal-new-btn, [onclick*=\"newProposal\"]'); if(b) b.click();},600);}"
           title="Propose a new tile or feature"
@@ -841,55 +831,45 @@
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4h10M3 8h10M3 12h10M5 4v0M5 8v0M5 12v0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span><span>Services</span></div>
           <div class="card-desc">Runtime truth &amp; restart controls</div>
         </div>
-      </div>
+        <!-- 12 Nov: former "Lab surfaces" tiles, now part of the one workspace grid -->
 
-      <details class="home-lab-drawer">
-        <summary>
-          <span>Lab surfaces</span>
-          <span>Unfinished, specialist, or lower-trust tools</span>
-        </summary>
-        <div class="card-grid" id="lab-cards">
-        <div class="home-card home-card-lab" data-win-id="terminal" data-win-title="Terminal" data-win-template="view-terminal">
+        <div class="home-card home-card-tool" data-win-id="terminal" data-win-title="Terminal" data-win-template="view-terminal">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 3.5h11v9h-11zM5 6l2 2-2 2M8.5 10h2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Terminal</span></div>
           <div class="card-desc">Shell commands</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="monitor" data-win-title="Monitor" data-win-template="view-monitor">
-          <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 8l2.5-2.5M4.5 11.5A5 5 0 0 1 11.5 4.5M2.8 13.2a7.4 7.4 0 0 1 10.4-10.4M8 8l-1.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Monitor</span></div>
-          <div class="card-desc">System status &amp; health digest</div>
-        </div>
-        <div class="home-card home-card-lab" data-win-id="trace" data-win-title="Trace" data-win-template="view-trace">
+        <div class="home-card home-card-tool" data-win-id="trace" data-win-title="Trace" data-win-template="view-trace">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4M5.5 2v4.5L3 11.5a1 1 0 00.9 1.5h8.2a1 1 0 00.9-1.5L10.5 6.5V2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Trace</span><span id="trace-tile-errors" style="display:none;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:var(--danger,#f44336);color:#fff;" title="Errors"></span><span id="trace-tile-warnings" style="display:none;margin-left:4px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:var(--warning,#f7b84b);color:#000;" title="Warnings"></span></div>
           <div class="card-desc">End-to-end message tracing</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="time-wizard" data-win-title="Vortex" data-win-template="view-time-wizard">
+        <div class="home-card home-card-tool" data-win-id="time-wizard" data-win-title="Vortex" data-win-template="view-time-wizard">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 4.1 2.3M8 1.8v2.4M8 8h2.3M12 3.3l.4 2.3-2.3.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Vortex</span></div>
           <div class="card-desc">State timeline</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="access" data-win-title="Access" data-win-template="view-access">
+        <div class="home-card home-card-tool" data-win-id="access" data-win-title="Access" data-win-template="view-access">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Access</span></div>
           <div class="card-desc">Senders &amp; permissions</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="agents-config" data-win-title="Agents" data-win-template="view-agents-config">
+        <div class="home-card home-card-tool" data-win-id="agents-config" data-win-title="Agents" data-win-template="view-agents-config">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="4" y="5" width="8" height="6.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 3v2M6 8h0M10 8h0M6.2 10.1h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Agents</span></div>
           <div class="card-desc">Roster, skills, Local AI & nodes</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="potato-farm" data-win-title="Potato Farm" data-win-template="view-potato-farm">
+        <div class="home-card home-card-tool" data-win-id="potato-farm" data-win-title="Potato Farm" data-win-template="view-potato-farm">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="11" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 6.5l1.5 2M9.5 6.5l-1.5 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span><span>Potato Farm</span><span id="home-potato-badge" style="display:inline-block;margin-left:6px;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700;background:#4caf5022;color:#4caf50;border:1px solid #4caf5055;">GPU OK</span></div>
           <div class="card-desc" id="home-potato-desc">Samsung handoff completed · potato-2</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="media-center" data-win-title="Media Center" data-win-template="view-media-center">
+        <div class="home-card home-card-tool" data-win-id="media-center" data-win-title="Media Center" data-win-template="view-media-center">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="4" width="11" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 3v10M11 6.2c0 1.6-1.2 3.1-3 3.6V6.2c1.8.5 3 2 3 3.6Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Media Center</span></div>
           <div class="card-desc">Music, video, compilation &amp; AI render queues</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="email" data-win-title="Email" data-win-template="view-email" data-shortcut="Ctrl+E">
+        <div class="home-card home-card-tool" data-win-id="email" data-win-title="Email" data-win-template="view-email" data-shortcut="Ctrl+E">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 5.5L8 9l6-3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Email</span></div>
           <div class="card-desc">Inbox &amp; compose</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="downloads" data-win-title="Downloads" data-win-template="view-downloads">
+        <div class="home-card home-card-tool" data-win-id="downloads" data-win-title="Downloads" data-win-template="view-downloads">
           <div class="card-title"><span>Downloads</span></div>
           <div class="card-desc">qBittorrent search, seeds &amp; download controls</div>
         </div>
-        <div class="home-card home-card-lab" data-win-id="feeds" data-win-title="Feeds" data-win-template="view-feeds">
+        <div class="home-card home-card-tool" data-win-id="feeds" data-win-title="Feeds" data-win-template="view-feeds">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 12a1 1 0 1 0 2 0 1 1 0 0 0-2 0ZM3 8.5a4.5 4.5 0 0 1 4.5 4.5M3 5a8 8 0 0 1 8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span><span>Feeds</span></div>
           <div class="card-desc">Social &amp; developer feeds</div>
         </div>
@@ -898,7 +878,7 @@
              Y.58: Cyber Security removed from home tiles — lives inside Vortex.
              Y.58: Financial + Trading + Business merged into single "Show Me The
              Money" tile that opens a hub with three tabs. -->
-        <div class="home-card home-card-lab home-card-wishlist" data-win-id="money-hub" data-win-title="Show Me The Money" data-win-template="view-money-hub" data-wishlist-status="active-v0">
+        <div class="home-card home-card-tool home-card-wishlist" data-win-id="money-hub" data-win-title="Show Me The Money" data-win-template="view-money-hub" data-wishlist-status="active-v0">
           <div class="card-title"><span class="card-title-icon card-title-icon-svg"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 12.5h11M4 11V7M7 11V4M10 11V8M13 11V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><span>Show Me The Money</span><span class="wishlist-badge">Hub</span></div>
           <div class="card-desc">Financial · Trading · Business · NASDAQ/ASX feeds</div>
         </div>
@@ -910,10 +890,8 @@
         <div class="home-card home-card-wishlist" data-win-id="wishlist-financial" data-win-title="Financial Analytics" data-win-template="view-wishlist-financial" data-wishlist-pillar="financial" data-wishlist-status="active-v0" hidden style="display:none !important;" aria-hidden="true"></div>
         <div class="home-card home-card-wishlist" data-win-id="wishlist-trading" data-win-title="Online Trading" data-win-template="view-wishlist-trading" data-wishlist-pillar="trading" data-wishlist-status="active-v0" hidden style="display:none !important;" aria-hidden="true"></div>
         <div class="home-card home-card-wishlist" data-win-id="wishlist-business" data-win-title="Business Centre" data-win-template="view-wishlist-business" data-wishlist-pillar="business" data-wishlist-status="active-v0" hidden style="display:none !important;" aria-hidden="true"></div>
-        </div>
-      </details>
       </div>
-    {% endset %}
+    </div>
 
     <!-- ═══ Home Chat — primary interaction surface ═══ -->
     <div class="home-section home-chat-section home-chat-prominent">
@@ -956,6 +934,7 @@
               </button>
             </div>
           </div>
+          <section class="chat-team" data-chat-participants="home" aria-label="Conversation participants"></section>
           <div id="home-chat-messages">
             <div class="home-chat-welcome">
               <canvas id="home-mini-landscape" class="home-mini-landscape"></canvas>
@@ -981,8 +960,22 @@
             </div>
           </div>
           <div id="home-chat-input-area">
-            <div class="home-chat-compose">
-              <textarea id="home-chat-input" placeholder="Ask Fridays to help with a program, game, or task…" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
+            <details id="hb-hf-controls" style="margin:0 0 6px 0;font-size:11px;">
+              <summary style="cursor:pointer;opacity:.8;">Hugging Face jobs · status and controls</summary>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0;">
+                <span id="hb-hf-status" role="status" aria-live="polite">Status not refreshed</span>
+                <button id="hb-hf-refresh" type="button">Refresh status</button>
+                <button id="hb-hf-pause" type="button">Pause after current file</button>
+                <button id="hb-hf-curate" type="button">Apply local LLM/agent scope and pause</button>
+                <input id="hb-hf-repo" type="text" maxlength="200" placeholder="owner/repo (optional full package)" aria-label="Hugging Face repository to include" />
+                <button id="hb-hf-include" type="button">Add package</button>
+                <button id="hb-hf-resume" type="button">Resume</button>
+              </div>
+              <small>Curated mode keeps catalogue discovery, filters unrelated downloads, and retains every verified file. Add a repository explicitly to include its full package. Resume only when ready.</small>
+            </details>
+            <div class="home-chat-compose" style="position:relative;">
+              <div id="home-chat-mention-menu" class="chat-mention-menu" role="listbox" aria-label="Conversation participants"></div>
+              <textarea id="home-chat-input" aria-label="Message Hummingbird" placeholder="Message Hummingbird — @ to address a teammate, / for commands" rows="1" spellcheck="true" autocapitalize="sentences"></textarea>
               <button id="home-chat-fav-btn" class="voice-mic-btn" title="Save current input as favourite shortcut" onclick="homeChatToggleFavourite()" aria-label="Favourites">
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M8 2.5l1.7 3.5 3.8.5-2.8 2.7.7 3.8L8 11.2 4.6 13l.7-3.8L2.5 6.5l3.8-.5L8 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
               </button>
@@ -991,7 +984,7 @@
               </button>
               <button id="home-chat-capture-btn" class="home-chat-capture-main" title="Capture typed text or latest reply into Studio" onclick="hcCaptureWork(this)">Capture Work</button>
               <button id="home-chat-send-btn" title="Send message">
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2 8l12-5-5 12-2-5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M14 3L7 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+                Send
               </button>
             </div>
             <div id="home-chat-meta">
@@ -1171,8 +1164,8 @@
           <div>
             <div class="chat-topbar-row">
               <div class="chat-topbar-title-col" id="chat-topbar-title-col" data-collapsed="0">
-                <div class="chat-title" onclick="chatTopbarToggle()" title="Click to collapse" style="cursor:pointer;user-select:none;"><span id="chat-topbar-caret" style="display:inline-block;width:10px;color:var(--text-dim);font-size:10px;">▾</span> Fridays Chat Console</div>
-                <div class="chat-subtitle" id="chat-topbar-subtitle">Multi-agent conversation with live orchestration <span class="chat-mini-system">CPU --% · RAM --%</span></div>
+                <div class="chat-title" onclick="chatTopbarToggle()" title="Click to collapse" style="cursor:pointer;user-select:none;"><span id="chat-topbar-caret" style="display:inline-block;width:10px;color:var(--text-dim);font-size:10px;">▾</span> APEX</div>
+                <div class="chat-subtitle" id="chat-topbar-subtitle">Your assistant in Hummingbird <span class="chat-mini-system">CPU --% · RAM --%</span></div>
               </div>
               <div class="chat-topbar-font-col">
                 <span class="chat-topbar-font-label">Font Size</span>
@@ -1199,6 +1192,7 @@
             <button id="chat-notify-toggle-btn" class="chat-control-btn" onclick="toggleDesktopNotifications()">Notifications Off</button>
           </div>
         </div>
+        <section class="chat-team" data-chat-participants="chat" aria-label="Conversation participants"></section>
         <div id="chat-section-main" class="chat-section chat-main-shell">
           <div class="chat-section-header" aria-controls="chat-section-main-content" aria-expanded="true">
             <span class="chat-section-title"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M3 4.5h10v6H7l-3 2v-2H3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg> Main Chat</span>
@@ -1223,7 +1217,7 @@
             <div class="chat-compose-shell">
               <button class="chat-attach-btn" onclick="pickChatAttachments()" title="Attach up to 6 files. Text and image files are supported."><svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M7.5 4.5l-3 3a2.8 2.8 0 0 0 4 4l4.5-4.5a2 2 0 0 0-2.8-2.8L5.7 8.7a1 1 0 0 0 1.4 1.4L11 6.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <span id="chat-attach-inline-state" class="chat-attach-inline-state" aria-live="polite"></span>
-              <textarea id="question-input" placeholder="Ask the swarm..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
+              <textarea id="question-input" placeholder="Message APEX..." rows="1" spellcheck="true" autocapitalize="sentences" autocorrect="on"
                 onkeydown="handleQuestionInputKeydown(event)"
                 oninput="this.style.height='1px';this.style.height=Math.min(this.scrollHeight,200)+'px';this.style.overflowY=this.scrollHeight>=200?'auto':'hidden';_debouncedClassify()"></textarea>
               <button id="send-btn" onclick="sendMessage()">Send</button>
@@ -1500,6 +1494,7 @@
         <div id="agents-ops-board" class="agents-ops-board"></div>
         <aside id="agents-ops-detail" class="agents-ops-detail"></aside>
       </div>
+      <section id="agents-peer-audit" class="agents-peer-audit" aria-label="Service participants"></section>
     </div>
     <div id="agents-queue-body" class="agents-tab-body">
       <div id="agents-queue-panel" class="agents-panel"></div>
@@ -3302,7 +3297,7 @@
 <script src="/static/js/core/app.js?v={{ ASSET_VERSION }}-taskbar2"></script>
 
 <!-- Views -->
-<script src="/static/js/views/conversations.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/conversations.js?v={{ ASSET_VERSION }}-shared-room1"></script>
 <script src="/static/js/views/terminal.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/terminal-commands.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/files.js?v={{ ASSET_VERSION }}"></script>
@@ -3323,8 +3318,8 @@
 <script src="/static/js/views/records-files.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/projects.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/traced.js?v={{ ASSET_VERSION }}"></script>
-<script src="/static/js/core/trace-bus.js?v=30"></script>
-<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-local-chat6"></script>
+<script src="/static/js/core/trace-bus.js?v=31"></script>
+<script src="/static/js/views/chat.js?v={{ ASSET_VERSION }}-live-team9"></script>
 <script src="/static/js/views/services.js?v={{ ASSET_VERSION }}-services3"></script>
 <script src="/static/js/views/ollama.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/time-wizard.js?v={{ ASSET_VERSION }}"></script>
@@ -3351,8 +3346,15 @@
 <script src="/static/js/views/home_banner.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/orientation_card.js?v={{ ASSET_VERSION }}"></script>
 
-<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}-hc-local-chat4"></script>
-<script src="/static/js/friday-auth.js?v=28"></script>
+<script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}-hc-live-team10"></script>
+<script src="/static/js/views/hb-needs-you.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/hb-brand-icons.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/hb-activity.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/hb-queue.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/hb-approval-popup.js?v={{ ASSET_VERSION }}"></script>
+<script>window.HB_ASSET_VERSION = "{{ ASSET_VERSION }}";</script>
+<script src="/static/js/hb-maintenance.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/friday-auth.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/core/aig_focus.js?v={{ ASSET_VERSION }}"></script>
 <!-- Init (must be last — depends on all above) -->
 <script src="/static/js/core/sse-client.js?v=2"></script>

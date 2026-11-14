@@ -36,6 +36,7 @@ body.theme-void {
   --text-faint:   #555555;
   --accent:       #0070F3;
   --accent-hover: #338EF7;
+  --text-on-accent: #FFFFFF;
   --window-bg:    #111111;
   --window-header:#060606;
   --shadow:       0 0 0 1px rgba(255,255,255,0.06), 0 24px 80px rgba(0,0,0,0.9);

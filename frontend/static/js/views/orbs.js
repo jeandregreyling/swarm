@@ -1744,7 +1744,7 @@
     requestAnimationFrame(draw);
     ctx.setTransform(DPR,0,0,DPR,0,0);
     ctx.clearRect(0,0,W,H);
-    if(document.body.dataset.sceneEffect==='off')return;
+    if(document.body.dataset.sceneEffect==='off'||document.body.dataset.sceneOrbs==='off')return;
 
     readColors();
     const dt=Math.min(ts-lastTs,64); lastTs=ts; const t=ts/1000;
@@ -1846,8 +1846,13 @@
     setOrbDragState(false);
   }
 
+  // 12 Nov: the background orbs must never steal clicks/drags meant for the interface
+  // (chat window and its resize edges, floating windows, buttons, fields, links).
+  const ORB_IGNORE='.home-chat-section,.home-chat-edge,.floating-window,.window-wrap,#home-header,#home-taskbar,.taskbar,button,a,input,textarea,select,label,summary,[role="separator"],[role="button"],[contenteditable="true"]';
+  function orbIgnoreTarget(target){ return !!(target && target.closest && target.closest(ORB_IGNORE)); }
+
   document.addEventListener('mousemove',function(e){
-    if(document.body.dataset.sceneEffect==='off')return;
+    if(document.body.dataset.sceneEffect==='off'||document.body.dataset.sceneOrbs==='off')return;
     if(dragOrb||carriedOrb)e.preventDefault();
     const now=performance.now();
     const mdt=Math.max(now-prevMT,8);
@@ -1860,13 +1865,14 @@
     clearTimeout(sleepTimer);sleepTimer=setTimeout(()=>{sleeping=true;},10000);
     if(dragOrb){dragOrb.x=mouse.x;dragOrb.y=mouse.y;dragHistory.push({x:mouse.x,y:mouse.y,ts:now});if(dragHistory.length>10)dragHistory.shift();updateTrail(dragOrb);}
     if(carriedOrb){carriedOrb.x=mouse.x;carriedOrb.y=mouse.y;carriedOrb.vx=0;carriedOrb.vy=0;updateTrail(carriedOrb);}
-    const hit=orbAt(mouse.x,mouse.y);
+    const hit=(!dragOrb && !carriedOrb && orbIgnoreTarget(e.target))?null:orbAt(mouse.x,mouse.y);
     const cur=carriedOrb?'grabbing':(hit?(dragOrb?'grabbing':'grab'):'');
     if(cur!==document.body._oc){document.body._oc=cur;document.body.style.cursor=cur||'';}
   });
 
   document.addEventListener('mousedown',function(e){
-    if(document.body.dataset.sceneEffect==='off')return;
+    if(document.body.dataset.sceneEffect==='off'||document.body.dataset.sceneOrbs==='off')return;
+    if(!carriedOrb && orbIgnoreTarget(e.target))return;
     // If carrying, a mousedown drops the orb at this spot (single click = place).
     if(carriedOrb){
       // Don't start a drag on another orb while carrying; always drop.
@@ -1918,7 +1924,8 @@
   });
 
   document.addEventListener('click',function(e){
-    if(document.body.dataset.sceneEffect==='off')return;
+    if(document.body.dataset.sceneEffect==='off'||document.body.dataset.sceneOrbs==='off')return;
+    if(!carriedOrb && orbIgnoreTarget(e.target))return;
     // If a throw drag just happened, the click event still fires — ignore it when
     // the pointer moved meaningfully between mousedown and click.
     if(dist(e.clientX,e.clientY,dragPX,dragPY)>10)return;
@@ -1978,7 +1985,8 @@
   // Touch
   let lastTouch=null, lastTouchTS=0, lastTouchOrb=null;
   document.addEventListener('touchstart',e=>{
-    if(document.body.dataset.sceneEffect==='off')return;
+    if(document.body.dataset.sceneEffect==='off'||document.body.dataset.sceneOrbs==='off')return;
+    if(!carriedOrb && orbIgnoreTarget(e.target))return;
     const t=e.touches[0];lastTouch={x:t.clientX,y:t.clientY};mouse.x=t.clientX;mouse.y=t.clientY;
     if(carriedOrb){ endCarry(t.clientX, t.clientY); e.preventDefault(); return; }
     const hit=orbAt(t.clientX,t.clientY);
@@ -1996,7 +2004,7 @@
     }
   },{passive:false});
   document.addEventListener('touchmove',e=>{
-    if(document.body.dataset.sceneEffect==='off')return;
+    if(document.body.dataset.sceneEffect==='off'||document.body.dataset.sceneOrbs==='off')return;
     const t=e.touches[0];mouse.x=t.clientX;mouse.y=t.clientY;
     if(carriedOrb){carriedOrb.x=t.clientX;carriedOrb.y=t.clientY;carriedOrb.vx=0;carriedOrb.vy=0;updateTrail(carriedOrb);e.preventDefault();return;}
     if(dragOrb){dragOrb.x=t.clientX;dragOrb.y=t.clientY;dragHistory.push({x:t.clientX,y:t.clientY,ts:performance.now()});if(dragHistory.length>10)dragHistory.shift();updateTrail(dragOrb);e.preventDefault();}

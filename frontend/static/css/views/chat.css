@@ -1,4 +1,105 @@
 /* views/chat.css — extracted from terminal_base.html */
+.floating-window.chat-shared-room { opacity: 1 !important; }
+.chat-team {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.chat-team-heading,
+.chat-team-people,
+.chat-team-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.chat-team-heading { justify-content: space-between; }
+.chat-team-people { flex: 1; margin: 0; }
+.chat-team > [data-chat-options] { order: 1; }
+.chat-team > [data-chat-options][open] { flex-basis: 100%; }
+.chat-team > .chat-live-board { order: 2; flex-basis: 100%; }
+.chat-team button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.chat-team button:hover:not(:disabled),
+.chat-team button:focus-visible { border-color: var(--accent); }
+.chat-team button:disabled { opacity: 0.55; cursor: not-allowed; }
+.chat-team small { display: block; font-size: 11px; color: var(--text-dim); }
+.chat-team-you { padding: 6px; }
+.chat-team summary { cursor: pointer; color: var(--text-dim); }
+.chat-team details[open] .chat-team-actions { margin-top: 6px; }
+.chat-live-board { margin: 0; font-size: 12px; }
+[data-chat-live-details] > summary { padding: 6px 0; line-height: 1.8; }
+[data-chat-live-details] > summary > strong { color: var(--text); margin-right: 12px; }
+[data-chat-live-summary] > span { display: inline-block; margin-right: 14px; color: var(--text-dim); }
+[data-chat-live-content] { padding-top: 8px; height: min(34vh, 280px); min-height: 120px; max-height: 65vh; overflow-y: auto; resize: vertical; }
+.chat-team summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-chat-live-error] { color: var(--text); padding: 6px 0; }
+.chat-live-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.chat-live-heading > strong { color: var(--text); }
+.chat-live-people { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0; }
+.chat-live-stacks { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px; margin: 6px 0; }
+.chat-live-stacks > .chat-live-heading { grid-column: 1 / -1; }
+.chat-live-stack { display: grid; gap: 2px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; min-width: 0; }
+.chat-live-stack span { color: var(--accent); font-weight: 700; }
+.chat-live-stack progress { width: 100%; height: 7px; }
+.chat-live-person { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; min-width: 0; }
+.chat-live-excerpt { max-height: 34px; overflow: auto; white-space: pre-wrap; margin: 4px 0; }
+.chat-live-person button { font-size: 10px; padding: 2px 5px; }
+.chat-live-tasks { border-top: 1px solid var(--border); padding-top: 5px; }
+.chat-live-tasks ol { max-height: 110px; overflow-y: auto; padding: 0; margin: 5px 0; list-style: none; }
+.chat-live-tasks li { display: flex; gap: 8px; padding: 4px; border-bottom: 1px solid var(--border); }
+.chat-live-task-state { min-width: 55px; font-weight: 700; }
+.chat-live-pages { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.chat-live-pages button { padding: 2px 8px; font-size: 11px; }
+/* Auto-fit to the screen only until the owner resizes the chat (diamond.js adds .home-chat-user-sized). */
+.home-chat-section:has(.chat-live-board):not(.home-chat-user-sized) {
+  min-height: min(760px, var(--chat-live-room-height, calc(100vh - 260px))) !important;
+  max-height: var(--chat-live-room-height, calc(100vh - 260px)) !important;
+}
+/* The board scrolls inside its own cap so the transcript and composer stay visible. */
+.home-chat-section .chat-team,
+.chat-shared-room .chat-team {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+@media (max-height: 750px) {
+  .home-chat-section .chat-team { max-height: 180px; overflow-y: auto; }
+  .home-chat-section:has(.chat-live-board) #home-chat-messages { min-height: 100px; }
+}
+@media (max-width: 650px) {
+  .chat-live-people { grid-template-columns: 1fr; max-height: 150px; overflow-y: auto; }
+  .chat-live-heading { flex-wrap: wrap; gap: 2px; }
+}
+.chat-shared-room #chat-section-main { min-height: 100px; }
+@media (max-height: 520px) {
+  .chat-shared-room #chat-topbar > div:first-child,
+  .chat-shared-room #chat-notify-toggle-btn,
+  .chat-shared-room #chat-section-main > .chat-section-header,
+  .chat-shared-room #chat-thread-runtime {
+    display: none;
+  }
+  .chat-shared-room #chat-topbar { padding: 3px 8px; flex-shrink: 0; }
+  .chat-shared-room .chat-team { padding: 5px 8px; }
+}
+
 #chat-right-dock,
 #chat-dock-resizer,
 #chat-dock-restore-btn {
@@ -1963,11 +2064,17 @@
     flex-direction: column;
   }
   #chat-thread-rail {
+    flex: 0 1 auto;
+    max-height: 120px;
+    overflow: hidden;
     width: 100%;
     min-width: 0;
     max-width: 100%;
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+  #chat-layout.threads-collapsed #chat-thread-rail {
+    display: none;
   }
   #chat-thread-restore-btn {
     display: none !important;
@@ -2334,6 +2441,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .chat-topbar-row {
   display: flex;
@@ -2578,3 +2687,183 @@
   font-size: 10px;
   color: var(--text-dim);
 }
+
+/* Keep chat controls readable when the room is narrower than the desktop. */
+@media (max-width: 860px) {
+  #chat-topbar .chat-topbar-row { flex-wrap: wrap; gap: 6px 12px; }
+  #chat-topbar .chat-topbar-title-col { min-width: 140px; }
+  #chat-topbar .chat-title { white-space: nowrap; }
+  #chat-topbar .chat-subtitle { display: none; }
+  #chat-controls { min-width: 0; }
+  #chat-controls .chat-control-select { min-width: 0; max-width: 100%; flex: 1 1 160px; }
+  #chat-controls .chat-control-btn { min-width: 0; }
+}
+@media (max-width: 768px) {
+  .floating-window:has(#chat-layout):not(.minimized) {
+    top: 0 !important;
+    bottom: 50px !important;
+    height: calc(100dvh - 50px) !important;
+  }
+}
+
+.chat-team > .chat-team-people { gap: 10px; }
+.chat-team > .chat-team-people > strong { font-size: 14px; color: var(--text); }
+.chat-team > .chat-team-people > span { color: var(--text-dim); }
+.chat-support-team { order: 1; }
+.chat-support-team[open] { flex-basis: 100%; }
+.chat-support-team .chat-team-people { margin: 8px 0; }
+.hummingbird-desktop #taskbar { display: none; }
+.hummingbird-desktop #win-chat { height: 100dvh !important; bottom: 0 !important; }
+
+.chat-tool-evidence { font-size: 12px; color: var(--text-dim); }
+.chat-tool-evidence summary { cursor: pointer; padding: 5px 0; }
+.chat-tool-evidence pre { max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.hb-task-bar,.hb-task-link {display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;font-size:11px;margin:5px 0;color:var(--text-dim);}
+.hb-task-bar select {max-width:200px;font:inherit;font-size:11px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 6px;text-overflow:ellipsis;}
+.hb-task-bar-main {display:contents;}
+.hb-chat-tools {display:inline-flex;align-items:center;gap:6px;margin-left:auto;}
+.hb-chat-tools select {font-size:11px;padding:3px 6px;}
+.hb-chat-tools #home-chat-expand-btn,.hb-chat-tools #home-chat-agents-toggle {display:inline-flex;align-items:center;padding:3px 5px;}
+#home-chat-bar.hb-moved {display:none;}
+.hb-task-bar button,.hb-task-link button {font:inherit;color:inherit;background:transparent;border:1px solid currentColor;border-radius:5px;padding:3px 6px;cursor:pointer;}
+.hb-task-link span,.hb-usage {font-size:10px;opacity:.8;}
+.chat-bubble[hidden],.hc-bubble[hidden] {display:none!important;}
+.hb-bubble-controls {display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:6px 0;font-size:11px;color:var(--text-dim);}
+.hb-bubble-controls button {font:inherit;color:inherit;background:var(--bg-panel,transparent);border:1px solid currentColor;border-radius:5px;padding:4px 8px;cursor:pointer;}
+.hb-bubble-controls button[aria-pressed="true"] {color:var(--accent);box-shadow:inset 0 0 0 1px currentColor;}
+.hb-bubble-controls button:disabled {opacity:.6;cursor:wait;}
+.hb-control-feedback {max-width:100%;overflow-wrap:anywhere;}
+
+/* Keep task controls outside the editor row; preserve usable writing space. */
+#question-input-tasks {box-sizing:border-box;max-height:76px;overflow:auto;flex-shrink:0;}
+.chat-compose-shell {display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;}
+.chat-compose-shell #question-input {grid-column:1/-1;grid-row:1;width:100%;min-height:88px;resize:vertical;overflow-y:auto;}
+.chat-compose-shell .chat-attach-btn,.chat-compose-shell .chat-attach-inline-state {grid-row:2;}
+.chat-compose-shell #send-btn {grid-row:2;grid-column:3;justify-self:end;}
+.hb-project-board { padding:10px; border:1px solid var(--border); margin-top:8px; max-height:65vh; overflow:auto; }
+.hb-project-board article { padding:10px 0; border-bottom:1px solid var(--border); }
+.hb-project-board small { display:block; color:var(--text-dim); }
+
+/* Owner approval of a finished Studio step (separate from Keep working / Continue). */
+.hb-acceptance-controls {display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:6px 0;padding:5px 7px;font-size:11px;color:var(--text-dim);border:1px solid var(--accent, #6aa9ff);border-radius:6px;}
+.hb-acceptance-controls button {font:inherit;padding:2px 8px;border-radius:4px;border:1px solid var(--border, #555);background:transparent;color:inherit;cursor:pointer;}
+.hb-acceptance-controls button[aria-pressed="true"] {background:var(--accent, #6aa9ff);color:#fff;border-color:transparent;}
+.hb-acceptance-controls button:disabled {cursor:default;opacity:.75;}
+.hb-command-actions {display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 2px;}
+.hb-command-actions button {font:inherit;font-size:11px;padding:3px 9px;border-radius:4px;border:1px solid var(--accent, #6aa9ff);background:transparent;color:inherit;cursor:pointer;}
+.hb-command-actions button:hover {background:var(--accent, #6aa9ff);color:#fff;}
+.hb-command-actions button:disabled {opacity:.5;cursor:default;}
+
+/* 12 Nov: the APEX / support team / live task board banner can collapse to one line. */
+.chat-team .chat-team-toggle {margin-left:auto;font:inherit;font-size:11px;background:transparent;border:1px solid var(--border,#888);border-radius:5px;padding:2px 8px;color:inherit;cursor:pointer;}
+.chat-team.chat-team-collapsed > :not(.chat-team-people) {display:none !important;}
+.chat-team.chat-team-collapsed {max-height:none;}
+.chat-team .chat-team-people {display:flex;align-items:center;gap:8px;}
+/* DOES: KC tags on task bubbles (saved task record + chat transcript). */
+.hb-task-link .hb-kc-tag {border-style:dashed;}
+/* HB machine packets to APEX: one readable line, full packet one click away. */
+.hb-machine-note summary {cursor:pointer;font-size:12px;opacity:.85;}
+.hb-machine-note pre {max-height:280px;overflow:auto;font-size:11px;}
+
+/* HB "Needs you" bar (owner 12 Nov): pinned under the team & tasks banner in main chat and the Chat window.
+   Hover a tag: the card shows what it is and its chat message lights up. Click: opens what it points to. */
+.hb-needs-you {display:flex;align-items:center;gap:8px;flex:0 0 auto;min-width:0;padding:5px 10px;font-size:11px;
+  border-bottom:1px solid var(--border);background:color-mix(in srgb, var(--accent, #6aa9ff) 7%, var(--card, #161616));}
+.hb-needs-you[hidden] {display:none;}
+.hb-needs-head {flex:0 0 auto;font-weight:700;color:var(--text);white-space:nowrap;cursor:default;}
+.hb-needs-head b {display:inline-block;min-width:17px;margin-left:3px;padding:0 5px;border-radius:9px;text-align:center;
+  background:var(--accent, #6aa9ff);color:#fff;}
+.hb-needs-chips {display:flex;flex-wrap:wrap;gap:5px 6px;min-width:0;max-height:56px;overflow-y:auto;padding:2px 1px;scrollbar-width:thin;}
+.hb-needs-chip {flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;max-width:300px;padding:2px 9px;border-radius:12px;
+  font:inherit;font-size:11px;white-space:nowrap;cursor:pointer;color:var(--text);background:transparent;
+  border:1px solid var(--hb-needs-c, var(--accent, #6aa9ff));}
+.hb-needs-chip:hover,.hb-needs-chip:focus-visible,.hb-needs-chip[aria-expanded="true"] {outline:none;
+  background:color-mix(in srgb, var(--hb-needs-c, var(--accent, #6aa9ff)) 24%, transparent);}
+.hb-needs-icon {font-weight:700;color:var(--hb-needs-c, var(--accent));}
+.hb-needs-word {color:var(--text-dim);}
+.hb-needs-label {overflow:hidden;text-overflow:ellipsis;}
+.hb-needs-accept {--hb-needs-c:#3fb68b;}
+.hb-needs-halted {--hb-needs-c:#e0a030;}
+.hb-needs-confirm {--hb-needs-c:#6aa9ff;}
+.hb-needs-review {--hb-needs-c:#b48ce8;}
+.hb-needs-step {--hb-needs-c:#8a94a6;}
+.hb-needs-plan {--hb-needs-c:#4fb3c8;}
+.hb-needs-workflow {--hb-needs-c:#6aa9ff;}
+.hb-needs-status {--hb-needs-c:#8a94a6;}
+.hb-needs-chip.hb-needs-info {border-style:dashed;color:var(--text-dim);}
+.hb-needs-quiet {font-weight:600;color:var(--text-dim);}
+[data-hb-needs-lit="plan"] {outline-color:#4fb3c8 !important;background-color:color-mix(in srgb, #4fb3c8 10%, transparent) !important;}
+[data-hb-needs-lit="workflow"],[data-hb-needs-lit="status"] {outline-color:#6aa9ff !important;background-color:color-mix(in srgb, #6aa9ff 10%, transparent) !important;}
+.hb-needs-new {animation:hb-needs-arrive 1.1s ease-out 3;}
+@keyframes hb-needs-arrive {0% {box-shadow:0 0 0 0 var(--hb-needs-c);} 100% {box-shadow:0 0 0 7px transparent;}}
+.hb-needs-card {position:fixed;z-index:10050;width:min(470px, 92vw);max-height:min(72vh, 600px);overflow:auto;display:flex;flex-direction:column;
+  gap:6px;padding:10px 12px;border-radius:8px;font-size:12px;color:var(--text);background:var(--card, #161616);
+  border:1px solid var(--hb-needs-c, var(--accent, #6aa9ff));box-shadow:0 10px 36px rgba(0,0,0,.45);}
+.hb-needs-card[hidden] {display:none;}
+.hb-needs-card-head {display:flex;align-items:center;gap:8px;font-size:10px;}
+.hb-needs-kind {font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--hb-needs-c, var(--accent));}
+.hb-needs-ids {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;color:var(--text-dim);}
+.hb-needs-x {padding:0 3px;border:0;background:transparent;font:inherit;font-size:15px;line-height:1;color:var(--text-dim);cursor:pointer;}
+.hb-needs-title {font-size:12.5px;line-height:1.35;}
+.hb-needs-why {font-size:11px;color:var(--text-dim);}
+.hb-needs-detail {max-height:38vh;overflow:auto;padding:7px 9px;border-left:3px solid var(--hb-needs-c, var(--accent));border-radius:4px;
+  white-space:pre-wrap;line-height:1.45;font-size:11.5px;background:color-mix(in srgb, var(--hb-needs-c, var(--accent, #6aa9ff)) 13%, transparent);}
+.hb-needs-where {font-size:10.5px;color:var(--text-dim);}
+.hb-needs-actions {display:flex;flex-wrap:wrap;gap:6px;}
+.hb-needs-actions button {padding:3px 10px;border-radius:4px;font:inherit;font-size:11px;color:inherit;cursor:pointer;
+  background:transparent;border:1px solid var(--border, #555);}
+.hb-needs-actions button.hb-needs-primary {border-color:var(--hb-needs-c, var(--accent));
+  background:color-mix(in srgb, var(--hb-needs-c, var(--accent, #6aa9ff)) 26%, transparent);}
+.hb-needs-actions button:disabled {opacity:.6;cursor:default;}
+.hb-needs-feedback {font-size:11px;color:var(--text);}
+.hb-needs-feedback:empty {display:none;}
+.hb-needs-comment {width:100%;box-sizing:border-box;margin:6px 0 2px;padding:5px 7px;font:inherit;font-size:12px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:6px;resize:vertical;min-height:34px;}
+[data-hb-needs-lit] {outline:2px solid #3fb68b !important;outline-offset:2px;border-radius:8px;
+  background-color:color-mix(in srgb, #3fb68b 10%, transparent) !important;}
+[data-hb-needs-lit="halted"] {outline-color:#e0a030 !important;background-color:color-mix(in srgb, #e0a030 10%, transparent) !important;}
+[data-hb-needs-lit="confirm"] {outline-color:#6aa9ff !important;background-color:color-mix(in srgb, #6aa9ff 10%, transparent) !important;}
+[data-hb-needs-lit="review"] {outline-color:#b48ce8 !important;background-color:color-mix(in srgb, #b48ce8 10%, transparent) !important;}
+.hb-needs-flash {animation:hb-needs-flash 2.4s ease-out;}
+@keyframes hb-needs-flash {0%, 45% {box-shadow:0 0 0 3px #3fb68b;} 100% {box-shadow:0 0 0 0 transparent;}}
+#home-chat-messages .hb-acceptance-controls strong,#chat-messages .hb-acceptance-controls strong {cursor:pointer;
+  text-decoration:underline dotted;text-underline-offset:2px;}
+.alm-step-note {margin:0 0 8px;padding:7px 9px;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--text);}
+.alm-step-note-pending {border-color:#3fb68b;background:color-mix(in srgb, #3fb68b 12%, transparent);}
+.alm-step-link {padding:2px 8px;border-radius:4px;font:inherit;font-size:10.5px;color:var(--accent);cursor:pointer;
+  background:transparent;border:1px solid var(--border);}
+@media (prefers-reduced-motion: reduce) {.hb-needs-new, .hb-needs-flash {animation:none;}}
+
+/* Studio step window: what Hummingbird is asking about this step, with the bar's buttons */
+.hb-needs-panel {display:flex;flex-direction:column;gap:8px;margin:0 0 10px;}
+.hb-needs-panel-item {display:flex;flex-direction:column;gap:6px;padding:8px 10px;border-radius:6px;
+  border:1px solid var(--hb-needs-c, var(--accent, #6aa9ff));background:color-mix(in srgb, var(--hb-needs-c, var(--accent, #6aa9ff)) 7%, transparent);}
+.hb-needs-panel-item .hb-needs-detail {max-height:30vh;}
+.hb-needs-panel-done {padding:6px 10px;border-radius:6px;font-size:11px;color:var(--text);border:1px solid #3fb68b;
+  background:color-mix(in srgb, #3fb68b 10%, transparent);}
+
+/* Owner 13 Nov: local model switches in Live status */
+.hb-models { display:flex; flex-direction:column; gap:4px; }
+.hb-model-row { display:flex; align-items:center; gap:8px; font-size:11.5px; }
+.hb-model-dot { width:8px; height:8px; border-radius:50%; background:var(--border); flex:none; }
+.hb-model-dot.on { background:#4caf50; box-shadow:0 0 6px #4caf5088; }
+.hb-model-name { flex:1; min-width:0; display:flex; flex-direction:column; }
+.hb-model-name small { opacity:.75; font-size:10.5px; }
+.hb-model-switch { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; flex:none; }
+.hb-model-switch button { font:inherit; font-size:10.5px; padding:2px 7px; background:transparent; color:var(--text-dim); border:none; cursor:pointer; }
+.hb-model-switch button + button { border-left:1px solid var(--border); }
+.hb-model-switch button[aria-pressed="true"] { background:var(--accent, #4a8); color:var(--bg, #000); }
+.hb-model-switch button[data-mode="off"][aria-pressed="true"] { background:#b54; color:#fff; }
+.hb-model-switch button:disabled { opacity:.5; cursor:wait; }
+
+/* Owner 13 Nov: the chat's task list (All tasks) */
+.hb-task-list { display:flex; flex-direction:column; gap:2px; height:140px; min-height:60px; max-height:60vh; overflow-y:auto; resize:vertical; margin:0 0 6px; padding:4px 6px;
+  border:1px solid var(--border); border-radius:6px; font-size:11px; background:color-mix(in srgb, var(--bg) 85%, transparent); }
+.hb-task-list-row { display:flex; align-items:center; gap:6px; padding:2px 0; }
+.hb-task-list-row.selected .hb-task-list-title { color:var(--accent); }
+.hb-task-list-row.filtered { box-shadow:inset 2px 0 0 var(--accent); padding-left:4px; }
+.hb-task-list-state { min-width:62px; color:var(--text-dim); }
+.hb-task-list-state[data-state="active"] { color:var(--accent); }
+.hb-task-list-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
+.hb-task-list button { font:inherit; color:var(--text-dim); background:transparent; border:1px solid var(--border); border-radius:5px; padding:1px 6px; cursor:pointer; }
+.hb-task-list button:hover { color:var(--text); border-color:var(--accent); }

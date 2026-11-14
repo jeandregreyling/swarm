@@ -267,6 +267,12 @@
         const p = pd.project;
         const runs = (rd && rd.items) || [];
         det.innerHTML = _renderDetail(p, runs);
+        if (typeof window.hbOpenTaskBoard === 'function') {
+          const workflow = document.createElement('div');
+          workflow.className = 'projects-task-workflow';
+          det.appendChild(workflow);
+          window.hbOpenTaskBoard(pid, workflow);
+        }
         // Seven sees — propose-only insight panel.
         try {
           if (window.SevenPanel) {
@@ -946,8 +952,18 @@
         const s = data.step || {};
         const cases = s.test_cases || [];
         const runs = s.test_runs || [];
+        const hbTasks = s.hb_tasks || [];
+        const pending = s.acceptance && s.acceptance.state === 'pending';
+        const label = 'font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:6px 0 4px;';
         body.innerHTML = `
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">${_esc(s.title || stepId)}</div>
+          ${s.residual_risk ? `<div class="alm-step-note${pending ? ' alm-step-note-pending' : ''}">${pending ? '<strong>Waiting for your approval.</strong> ' : ''}${_esc(s.residual_risk)}</div>` : ''}
+          ${pending && typeof hbAcceptanceInner === 'function'
+            ? `<div class="hb-acceptance-controls" data-hb-step="${_esc(s.step_id)}" title="Approving marks this Studio step done. Send back returns it to the task with your reason.">${hbAcceptanceInner(s.acceptance)}</div>` : ''}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;">
+            ${s.project_id && typeof hbOpenTaskProject === 'function'
+              ? `<button type="button" class="alm-step-link" onclick="document.getElementById('alm-detail-modal').style.display='none';hbOpenTaskProject('${_esc(s.project_id)}')">Open project ${_esc(s.project_id)} in Studio</button>` : ''}
+          </div>
           <div style="border:1px solid var(--border);border-radius:5px;padding:8px;margin-bottom:10px;background:var(--window-header,#1a1a1a);">
             ${_kvRow('id', s.step_id)}
             ${_kvRow('project', s.project_id)}
@@ -957,6 +973,14 @@
             ${_kvRow('created', _fmtTs(s.created_at))}
             ${_kvRow('updated', _fmtTs(s.updated_at))}
           </div>
+          ${hbTasks.length ? `<div style="${label}">Work in HB chat (${hbTasks.length})</div>
+          <div style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;margin-bottom:10px;">${hbTasks.map(t => `
+            <div style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:11px;flex-wrap:wrap;">
+              <span style="font-family:monospace;color:var(--text-dim);">${_esc(t.task_id)}</span>
+              <span>${_esc(t.state)}${t.manager_state ? ' · HB: ' + _esc(t.manager_state) : ''}</span>
+              ${t.manager_detail ? `<span style="color:var(--text-dim);flex-basis:100%;">${_esc(String(t.manager_detail).slice(0, 220))}</span>` : ''}
+              ${typeof hbNeedsShowMessage === 'function' ? `<button type="button" class="alm-step-link" onclick="document.getElementById('alm-detail-modal').style.display='none';hbNeedsShowMessage(${Number(t.conversation_id)},${Number(t.root_message_id)})">Show in chat</button>` : ''}
+            </div>`).join('')}</div>` : ''}
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:6px 0 4px;">Description</div>
           <div style="border:1px solid var(--border);border-radius:5px;padding:8px;margin-bottom:10px;white-space:pre-wrap;color:var(--text);font-size:11px;line-height:1.45;">${_esc(s.description || '(no description — use the rename/edit button to add one)')}</div>
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:6px 0 4px;">Linked Test Cases (${cases.length})</div>
@@ -972,6 +996,8 @@
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;margin:14px 0 4px;">Test Runs (${runs.length})</div>
           ${_renderRunsBlock(runs)}
         `;
+        // What HB is asking you about this step, with the same buttons as the Needs-you bar.
+        if (typeof window.hbNeedsPanel === 'function') window.hbNeedsPanel(s.step_id || stepId, body);
       })
       .catch(err => {
         body.innerHTML = `<div style="color:var(--danger,#f77);font-size:11px;">Open step failed: ${_esc(err.message || err)}</div>`;

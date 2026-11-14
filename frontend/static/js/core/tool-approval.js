@@ -24,7 +24,7 @@
       panel.setAttribute('aria-label', 'APEX tool approvals');
       panel.style.cssText = 'position:fixed;right:20px;bottom:20px;z-index:20000;' +
         'width:min(700px,95vw);max-height:85vh;overflow:auto;padding:16px;' +
-        'background:var(--bg-card,#fff);color:var(--text,#172033);' +
+        'background:var(--card,#fff);color:var(--text,#172033);' +
         'border:2px solid #d69b25;border-radius:12px;box-shadow:0 8px 32px #0005;';
       document.body.appendChild(panel);
     }
@@ -61,6 +61,7 @@
             body: JSON.stringify({ transaction_id: transaction.transaction_id, decision: decision })
           });
           const data = await response.json();
+          if (response.status === 401) window.dispatchEvent(new Event('hummingbird:auth-required'));
           if (!response.ok || !data.ok) throw new Error(
             data.error || data.receipt?.output || 'Approval request failed (' + response.status + ')');
           status.textContent = data.receipt.output;
@@ -89,6 +90,7 @@
       const response = await fetch('/api/tool-approval', { credentials: 'same-origin', cache: 'no-store' });
       if (response.status === 401) {
         if (panel) panel.hidden = true;
+        window.dispatchEvent(new Event('hummingbird:auth-required'));
         return;
       }
       const data = await response.json();
