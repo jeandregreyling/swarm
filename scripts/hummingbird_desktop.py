@@ -11,6 +11,10 @@ import gi
 gi.require_version('Gtk', '3.0')
 gi.require_version('WebKit2', '4.1')
 from gi.repository import Gio, GLib, Gtk, WebKit2
+import subprocess
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import hummingbird_startup as startup    # owner 12 Nov: the app starts the services itself and shows the start-up live
 
 ORIGIN = 'http://127.0.0.1:5050'
 
@@ -25,6 +29,8 @@ class Hummingbird(Gtk.Application):
         self.loaded = False
         self.connect('activate', self.activate_window)
         self.connect('shutdown', lambda *_: self.pool.shutdown(wait=False, cancel_futures=True))
+        self.connect('shutdown', lambda *_: self.journal and self.journal.poll() is None and self.journal.terminate())
+        self.journal = None
 
     def activate_window(self, *_):
         if self.window:
@@ -34,9 +40,20 @@ class Hummingbird(Gtk.Application):
         self.window.set_default_size(1200, 820)
         self.window.set_icon_name('applications-internet')
         self.stack = Gtk.Stack()
-        self.status = Gtk.Label(label='Connecting to Hummingbird…')
+        self.status = Gtk.Label(label='Starting Hummingbird…')
         self.status.set_line_wrap(True)
-        self.stack.add_named(self.status, 'status')
+        self.services = Gtk.Label(label='')
+        self.log = Gtk.TextView(editable=False, cursor_visible=False, monospace=True)
+        self.log.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        scroller = Gtk.ScrolledWindow()
+        scroller.add(self.log)
+        startup_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, margin=16)
+        startup_box.pack_start(self.status, False, False, 0)
+        startup_box.pack_start(self.services, False, False, 0)
+        startup_box.pack_start(scroller, True, True, 0)
+        self.stack.add_named(startup_box, 'status')
+        self.journal = None
+        self.start_services()
         root = Path(GLib.get_user_data_dir()) / 'hummingbird' / 'webview'
         cache = Path(GLib.get_user_cache_dir()) / 'hummingbird' / 'webview'
         root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -58,6 +75,48 @@ class Hummingbird(Gtk.Application):
         GLib.timeout_add_seconds(3, self.check_backend)
         if self.receipt:
             GLib.timeout_add_seconds(45, self.smoke_timeout)
+
+    def start_services(self):
+        """Start the services in the background, follow their log lines live, and keep the one-line service status fresh."""
+        def begin():
+            return startup.start_all()
+        self.pool.submit(begin).add_done_callback(lambda f: GLib.idle_add(self.started, f.result()))
+        try:
+            self.journal = subprocess.Popen(startup.journal_command(), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
+            GLib.io_add_watch(self.journal.stdout, GLib.IO_IN | GLib.IO_HUP, self.journal_line)
+        except Exception as exc:
+            self.append_log(f'(could not follow the service log: {exc})')
+        GLib.timeout_add_seconds(2, self.refresh_services)
+
+    def started(self, results):
+        for _unit, words, state in results:
+            self.append_log(f'{words}: {state}')
+        return False
+
+    def append_log(self, line):
+        buffer = self.log.get_buffer()
+        buffer.insert(buffer.get_end_iter(), line.rstrip('\n') + '\n')
+        if buffer.get_line_count() > 400:
+            buffer.delete(buffer.get_start_iter(), buffer.get_iter_at_line(100))
+        self.log.scroll_to_iter(buffer.get_end_iter(), 0.0, False, 0.0, 1.0)
+
+    def journal_line(self, source, condition):
+        if condition & GLib.IO_HUP and not condition & GLib.IO_IN:
+            return False
+        line = source.readline()
+        if not line:
+            return False
+        if not self.loaded:
+            self.append_log(line)
+        return True
+
+    def refresh_services(self):
+        if self.loaded:
+            if self.journal and self.journal.poll() is None:
+                self.journal.terminate()
+            return False
+        self.pool.submit(startup.status_line).add_done_callback(lambda f: GLib.idle_add(self.services.set_text, f.result()))
+        return True
 
     def navigation_policy(self, _view, decision, kind):
         if kind not in (WebKit2.PolicyDecisionType.NAVIGATION_ACTION, WebKit2.PolicyDecisionType.NEW_WINDOW_ACTION):
@@ -92,7 +151,7 @@ class Hummingbird(Gtk.Application):
             self.web.load_uri(uri)
             self.stack.set_visible_child_name('chat')
         else:
-            self.status.set_text('Hummingbird is starting. This window will reconnect automatically.')
+            self.status.set_text('Hummingbird is starting. The services\' own log lines appear below; the chat opens as soon as HB answers.')
         return False
 
     def load_failed(self, *_):
