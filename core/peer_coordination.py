@@ -243,6 +243,11 @@ def start():
                             sap_notes_tick(conn)
                         except Exception:
                             LOG.exception('SAP notes job tick failed')
+                        try:  # Owner 15 Nov: every email, inbox file and notes job is recorded in Studio (core/hb_intake_records.py)
+                            from core.hb_intake_records import sync as intake_records_sync
+                            intake_records_sync(conn)
+                        except Exception:
+                            LOG.exception('Intake records sync failed')
                         try:  # Owner 14 Nov: daily grounding - HB opens the day once JD is here (core/hb_grounding.py)
                             from core.hb_grounding import tick as grounding_tick
                             grounding_tick(conn)
