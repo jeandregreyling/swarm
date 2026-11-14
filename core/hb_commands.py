@@ -57,6 +57,7 @@ COMMANDS = [
     ('swap', '/swap [plan <model GB>]', 'NVMe swap for very large models: is one on, and what a model of that size would need', False),
     ('scorecards', '/scorecards', "Per model and task type: checked successes, corrections, turns answered and time, from HB's own records", False),
     ('examples', '/examples <words>', 'Worked examples: how a similar change was done before and which check passed', False),
+    ('note', '/note <number>', 'Look up an SAP Note with your S-user (from the keyring) and keep it in the Knowledge Centre', False),
     ('yes', '/yes', 'Confirm what HB just asked', False),
     ('no', '/no', 'Decline what HB just asked', False),
 ]
@@ -125,6 +126,8 @@ def parse(body):
         return ('bench', words[1:])
     if cmd == 'agents':
         return ('agents', words[1:])
+    if cmd == 'note':   # owner 15 Nov: SAP Notes (core/hb_sap_notes.py)
+        return ('note', [words[1]]) if len(words) > 1 else None
     if cmd == 'scorecards':   # owner 14 Nov: model scorecards and worked examples (core/hb_scorecards.py)
         return ('scorecards', [])
     if cmd == 'examples':
@@ -823,6 +826,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'examples':
         from core import hb_scorecards
         return hb_scorecards.examples_text(conn, args[0])
+    if command == 'note':
+        from core import hb_sap_notes
+        return hb_sap_notes.command(conn, args[0])
     if command == 'agents':
         from core import hb_agents
         if len(args) >= 2 and args[0].lower() == 'retire':
