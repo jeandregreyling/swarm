@@ -239,7 +239,14 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
     if api.call('/api/agent/v1/whoami')['principal']!=agent:raise RuntimeError('Agent login mismatch')
     state=agent_identity.directory(agent)
     lock=(state/'hb-worker.lock').open('a')
-    fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    try:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError:
+        # audit 15 Nov: the web app starts each agent's worker itself, and so do the hummingbird-*-peer services. The second one
+        # crashed here with a traceback and systemd restarted it every 15 s until it gave up as "failed". One worker is enough:
+        # the latecomer says so and exits cleanly (exit 0: systemd does not restart it and does not call it failed).
+        print(f'Another HB worker for {agent} is already running; this one steps aside.',flush=True)
+        return
     import os
     db_path=state/'hb-worker.sqlite'
     if db_path.is_symlink():raise PermissionError('Worker state cannot be a symlink')
