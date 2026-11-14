@@ -53,6 +53,7 @@ COMMANDS = [
     ('unload', '/unload model-name', 'Unload an HB-managed local model to free memory', False),
     ('stop', '/stop', 'Stop all current work now', False),
     ('roles', '/roles [set <role> <model>]', 'Which model plays each role (APEX, Fred, counsel, reviewer, homework); set changes one', False),
+    ('net', '/net [bench [name] | budget <GB left> <floor GB> | mobile <name> on|off | pick <GB>]', 'Connections, their measured speed, the mobile data budget, and which one a job should use', False),
     ('yes', '/yes', 'Confirm what HB just asked', False),
     ('no', '/no', 'Decline what HB just asked', False),
 ]
@@ -121,6 +122,8 @@ def parse(body):
         return ('bench', words[1:])
     if cmd == 'agents':
         return ('agents', words[1:])
+    if cmd == 'net':   # owner 14 Nov: HB network manager (core/hb_network.py)
+        return ('net', words[1:])
     if cmd == 'roles':   # owner 14 Nov: roles, not names (core/hb_roles.py)
         return ('roles', words[1:])
     if cmd == 'consult':   # owner 12 Nov: consultant protocol (core/hb_consultant.py)
@@ -799,6 +802,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
         if len(args) == 3 and args[0].lower() == 'set':
             return hb_roles.assign(conn, args[1].lower(), args[2], actor)
         return hb_roles.table(conn)
+    if command == 'net':
+        from core import hb_network
+        return hb_network.command(conn, args, actor)
     if command == 'agents':
         from core import hb_agents
         if len(args) >= 2 and args[0].lower() == 'retire':
