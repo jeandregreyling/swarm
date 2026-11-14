@@ -47,9 +47,42 @@ def claude_binary():
     raise FileNotFoundError('Claude Code CLI not found (set HB_CLAUDE_BIN)')
 
 
-def build_command(binary, prompt, session_id=None, *, resume=True):
-    cmd = [binary, '-p', prompt, '--output-format', 'json', '--max-turns', str(MAX_TURNS), '--tools', TOOLS,
-           '--append-system-prompt', CONTEXT]
+# Owner 15 Nov: "build in VS to main chat then I don't want to chat here anymore". For JD's own messages Claude Code gets the tools of
+# its working method - and no more: write practice scripts in the audit folder, run them (queue_practice proves the change and hands
+# it to APEX), run tests, look at git and the database read-only, and speak in main chat. It still cannot edit HB's code directly,
+# run arbitrary shell commands, or use sudo. Requests from agents keep the read-only tools.
+AUDIT = '/srv/archive/Hummingbird/Hummingbird-Nanny-Audit-20261112'
+PY = '/home/jd/projects/swarm/.venv/bin/python'
+OWNER_TOOLS = 'Read,Grep,Glob,Write,Edit,Bash'
+OWNER_ALLOWED = ['Read', 'Grep', 'Glob', f'Write({AUDIT}/**)', f'Edit({AUDIT}/**)',
+                 f'Bash({PY} {AUDIT}/studio_practice:*)', f'Bash({PY} -m pytest:*)', f'Bash(python3 {AUDIT}/claude_say.py:*)',
+                 'Bash(git status:*)', 'Bash(git log:*)', 'Bash(git diff:*)', 'Bash(ls:*)', 'Bash(systemctl --user status:*)',
+                 'Bash(sqlite3 file:/srv/archive/projects/swarm/swarm_memory.db?mode=ro:*)']
+OWNER_TURNS = 60
+OWNER_TIMEOUT_S = 1800
+OWNER_CONTEXT = (' This message is from the owner, so you may also WORK: write a practice script in ' + AUDIT + ' (copy the shape of the '
+                 'newest studio_practice*.py there: exact old/new edits, new files and a test), run it with ' + PY + ' - it proves the change '
+                 'and queues it for APEX, who applies it; every code change goes through APEX this way, never by editing HB files yourself. '
+                 'Read ' + AUDIT + '/HANDOFF.md (last CHECKPOINT) first when you need the current state. Report what you did and what you '
+                 'verified in a few plain numbered lines.')
+
+
+def owner_request(request):
+    return str((request or {}).get('sender') or '').lower() in ('user', 'ghost', 'jd', 'owner')
+
+
+def hb_usage(usage):
+    """The usage HB accepts on a reply: whole-number counts and a source - no cost, no floats (15 Nov: every @claude answer was
+    rejected with HTTP 400 for carrying cost_usd, so JD paid for four answers he never saw)."""
+    counts = {k: int(usage[k]) for k in ('input_tokens', 'output_tokens', 'total_tokens') if type(usage.get(k)) is int and usage[k] >= 0}
+    return {'source': 'provider', **counts}
+
+
+def build_command(binary, prompt, session_id=None, *, resume=True, owner=False):
+    cmd = [binary, '-p', prompt, '--output-format', 'json', '--max-turns', str(OWNER_TURNS if owner else MAX_TURNS),
+           '--tools', OWNER_TOOLS if owner else TOOLS, '--append-system-prompt', CONTEXT + (OWNER_CONTEXT if owner else '')]
+    if owner:
+        cmd += ['--add-dir', AUDIT, '--allowedTools', *OWNER_ALLOWED]
     if session_id and resume:
         cmd += ['--resume', session_id]
     return cmd
@@ -86,15 +119,16 @@ def parse_output(stdout):
              **({'cost_usd': round(float(cost), 4)} if cost is not None else {})})
 
 
-def ask(prompt, session_id=None, *, runner=None):
+def ask(prompt, session_id=None, *, runner=None, owner=False):
     """Run the CLI; resume the conversation's session when there is one, else start fresh. Returns (answer, session_id, usage)."""
     binary = claude_binary()
     env = {**os.environ, 'HOME': os.path.expanduser('~'), 'PATH': os.environ.get('PATH', '/usr/bin:/bin') + ':' + os.path.dirname(binary)}
-    run = runner or (lambda cmd: subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True, timeout=TIMEOUT_S, stdin=subprocess.DEVNULL))
+    run = runner or (lambda cmd: subprocess.run(cmd, cwd=ROOT, env=env, capture_output=True, text=True,
+                                                timeout=OWNER_TIMEOUT_S if owner else TIMEOUT_S, stdin=subprocess.DEVNULL))
     attempts = [True, False] if session_id else [False]
     last = None
     for resume in attempts:
-        result = run(build_command(binary, prompt, session_id, resume=resume))
+        result = run(build_command(binary, prompt, session_id, resume=resume, owner=owner))
         if result.returncode == 0 and result.stdout.strip():
             try:
                 return parse_output(result.stdout)
@@ -160,7 +194,11 @@ def serve(*, once=False, api_factory=AgentAPI, asker=ask):
                     with agent_identity.execution(AGENT, model='claude-code', requested_by=str(request.get('sender') or ''), conversation_id=conversation) as actor:
                         agent_identity.event(actor, action, 'claude.inference', 'started', result={'request_id': request['id']})
                         try:
-                            answer, session_id, usage = asker(build_prompt(request), session[0] if session else None)
+                            import inspect as _inspect
+                            if owner_request(request) and 'owner' in _inspect.signature(asker).parameters:
+                                answer, session_id, usage = asker(build_prompt(request), session[0] if session else None, owner=True)
+                            else:
+                                answer, session_id, usage = asker(build_prompt(request), session[0] if session else None)
                         except Exception as exc:
                             agent_identity.event(actor, action, 'claude.inference', 'failed', result={'error_type': type(exc).__name__})
                             raise
@@ -174,7 +212,7 @@ def serve(*, once=False, api_factory=AgentAPI, asker=ask):
                     for offset in range(0, len(answer), 3800):
                         api.post(conversation, answer[offset:offset + 3800], reply_to_request_id=request['id'],
                                  route_reply=offset + 3800 >= len(answer),
-                                 **({'usage': usage, 'model': 'claude-code'} if offset == 0 else {}))
+                                 **({'usage': hb_usage(usage), 'model': 'claude-code'} if offset == 0 else {}))
                     api.call('/api/peer/v1/inbox/ack', {'ids': [request['id']]})
                     db.execute("UPDATE jobs SET state='completed' WHERE request_id=?", (request['id'],)); db.commit()
                     _progress(api, request, 'completed', 'Claude answer saved in the main chat')
