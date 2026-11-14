@@ -124,6 +124,8 @@ def run(conn, source_id, fetch=None, keep=None, pause=PAUSE_S, sleep=time.sleep,
     todo = json.loads(row[1])
     added, had, failed, state, note = [], [], [], 'done', ''
     conn.execute("UPDATE hb_sap_note_jobs SET state='running', updated_at=? WHERE source_id=?", (time.time(), source_id))
+    if commit:
+        commit()                                         # 15 Nov: never hold the database while SAP is being asked (minutes)
     for n, number in enumerate(todo, 1):
         if have(conn, number):
             had.append(number)
@@ -132,6 +134,8 @@ def run(conn, source_id, fetch=None, keep=None, pause=PAUSE_S, sleep=time.sleep,
         if ok:
             keep(conn, number, text)
             added.append(number)
+            if commit:
+                commit()
         elif 'sign-in' in text.lower() or 'second factor' in text.lower() or 'no sap login' in text.lower():
             state, note = 'stopped', text[:300]
             break
@@ -155,9 +159,22 @@ def run(conn, source_id, fetch=None, keep=None, pause=PAUSE_S, sleep=time.sleep,
     return state
 
 
+STALE_S = 600
+
+
+def visible(conn, source_id):
+    try:
+        conn.rollback()                                  # look at the database as it is now, not at an old snapshot
+    except Exception:
+        pass
+    return conn.execute('SELECT 1 FROM hb_sap_note_jobs WHERE source_id=?', (source_id,)).fetchone() is not None
+
+
 def tick(conn):
     """HB's loop: turn newly arrived spreadsheets into jobs and run one pending job in the background."""
     find_new(conn)
+    # 15 Nov: a job cut off by a restart (still "running", untouched for 10 minutes) goes back in line; notes already saved are skipped
+    conn.execute("UPDATE hb_sap_note_jobs SET state='pending' WHERE state='running' AND updated_at<?", (time.time() - STALE_S,))
     row = conn.execute("SELECT source_id FROM hb_sap_note_jobs WHERE state='pending' ORDER BY created_at LIMIT 1").fetchone()
     if not row or not _RUNNING.acquire(blocking=False):
         return None
@@ -168,6 +185,10 @@ def tick(conn):
         try:
             from utils.db._connection import get_connection
             with closing(get_connection()) as own:
+                for _ in range(60):                      # 15 Nov: the job row is only visible once HB's loop has committed it
+                    if visible(own, sid):
+                        break
+                    time.sleep(1)
                 run(own, sid, commit=own.commit)
                 own.commit()
         except Exception:

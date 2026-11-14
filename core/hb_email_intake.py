@@ -265,6 +265,7 @@ def check(conn, mailbox=_mailbox, now=None):
     ensure_schema(conn)
     since = conn.execute('SELECT since FROM hb_email_intake WHERE id=1').fetchone()[0]
     allowed, taken, ignored = trusted(conn), 0, 0
+    conn.commit()                                        # 15 Nov: never hold the database while the mail server is being asked
     box = mailbox()
     try:
         box.select('inbox')
@@ -286,6 +287,7 @@ def check(conn, mailbox=_mailbox, now=None):
                               'left alone: not a trusted sender' if sender not in allowed else 'left alone: older than the intake', now))
                 continue
             ingest(conn, msg, now=now)
+            conn.commit()
             box.store(num, '+FLAGS', '\\Seen')
             taken += 1
     finally:
