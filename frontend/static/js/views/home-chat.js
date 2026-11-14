@@ -1401,8 +1401,62 @@
   }
 
   // ── Send message ─────────────────────────────────────────────────────────
+  // Owner 15 Nov: "why can't I queue messages yet". A message typed while an earlier one is still being answered used to be
+  // dropped silently. It now waits in an outbox right above the box: visible, editable, removable, sent in order when HB is free.
+  const _hcOutbox = [];
+
+  function _hcOutboxRender() {
+    const input = document.getElementById('home-chat-input');
+    if (!input || !input.parentNode) return;
+    let box = document.getElementById('home-chat-outbox');
+    if (!_hcOutbox.length) { if (box) box.remove(); return; }
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'home-chat-outbox';
+      box.style.cssText = 'margin:0 0 6px;padding:6px 8px;border:1px dashed var(--border,#2c3a50);border-radius:8px;font-size:12px;color:var(--text-dim,#9aa7b8)';
+      const host = input.closest('form') || input.parentNode;
+      host.parentNode.insertBefore(box, host);
+      box.addEventListener('click', e => {
+        const b = e.target.closest('button[data-outbox]');
+        if (!b) return;
+        const at = Number(b.dataset.at);
+        if (b.dataset.outbox === 'remove') _hcOutbox.splice(at, 1);
+        if (b.dataset.outbox === 'first' && at > 0) _hcOutbox.unshift(_hcOutbox.splice(at, 1)[0]);
+        if (b.dataset.outbox === 'edit') { const text = _hcOutbox.splice(at, 1)[0]; input.value = text; input.focus(); }
+        _hcOutboxRender();
+      });
+    }
+    const btn = 'font:inherit;font-size:10px;margin-left:4px;padding:0 6px;border-radius:6px;border:1px solid var(--border,#2c3a50);background:transparent;color:inherit;cursor:pointer';
+    box.innerHTML = `<div style="margin-bottom:3px">Waiting to send (${_hcOutbox.length}) - HB takes them in this order when it is free:</div>` +
+      _hcOutbox.map((text, at) => `<div style="display:flex;gap:4px;align-items:center;padding:1px 0"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">` +
+        `${at + 1}. ${_hcEsc(text)}</span><button type="button" data-outbox="first" data-at="${at}" style="${btn}" title="Send this one first">first</button>` +
+        `<button type="button" data-outbox="edit" data-at="${at}" style="${btn}" title="Put it back in the box to change it">edit</button>` +
+        `<button type="button" data-outbox="remove" data-at="${at}" style="${btn}" title="Do not send this">remove</button></div>`).join('');
+  }
+
+  function _hcOutboxAdd() {
+    const input = document.getElementById('home-chat-input');
+    const text = input ? input.value.trim() : '';
+    if (!text) return;
+    _hcOutbox.push(text);
+    input.value = '';
+    input.style.height = 'auto';
+    _hcOutboxRender();
+  }
+
+  function _hcOutboxNext() {
+    if (_hcSending || !_hcOutbox.length) return;
+    const input = document.getElementById('home-chat-input');
+    if (!input) return;
+    const draft = input.value;                         // what JD is typing right now is kept
+    input.value = _hcOutbox.shift();
+    _hcOutboxRender();
+    _hcSend();
+    input.value = draft;
+  }
+
   function _hcSend() {
-    if (_hcSending) return;
+    if (_hcSending) { _hcOutboxAdd(); return; }
     const input = document.getElementById('home-chat-input');
     const sendBtn = document.getElementById('home-chat-send-btn');
     if (!input) return;
@@ -1460,7 +1514,7 @@
     _hcUpdateTokenCount(input);
     _hcSending = true;
     if (sendBtn) sendBtn.classList.add('sending');
-    sendBtn && (sendBtn.disabled = true);
+    if (sendBtn) sendBtn.title = 'HB is answering: what you send now waits in the outbox';   // owner 15 Nov: the button stays usable
 
     const statusEl = document.getElementById('home-chat-status');
     if (statusEl) statusEl.textContent = 'Sending…';
@@ -1614,7 +1668,9 @@
         if (sendBtn) {
           sendBtn.classList.remove('sending');
           sendBtn.disabled = false;
+          sendBtn.title = '';
         }
+        setTimeout(_hcOutboxNext, 150);                // owner 15 Nov: the next waiting message goes out by itself
         // Keep Offline/Recovery visible; only a healthy lane reads "Ready".
         if (statusEl && _hcLaneState === 'ok') statusEl.textContent = 'Ready';
         if (viewVersion === _hcViewVersion && _hcConvId) _hcSilentRefresh(_hcConvId, true);
