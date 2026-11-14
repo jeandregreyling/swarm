@@ -124,6 +124,12 @@ def authorized(actor):
     return True
 
 
+def same_file(a,b):
+    """Two spellings of one file (a link and its target) are the same file."""
+    try:return Path(a).resolve()==Path(b).resolve()
+    except OSError:return str(a)==str(b)
+
+
 def stop_held_executors(task_id=None):
     """Interrupt only verified HB peer workers; never signal the web server."""
     from contextlib import closing
@@ -143,7 +149,9 @@ def stop_held_executors(task_id=None):
         try:
             args=(Path('/proc')/str(identity['pid'])/'cmdline').read_bytes().decode().split('\0')
             expected=str(ROOT/'scripts/hummingbird_peer_worker.py')
-            if len(args)<4 or args[1]!=expected or args[2:4]!=['--agent',record['agent']]:continue
+            # owner 15 Nov: the worker is started through the /home/jd/projects/swarm link, HB's ROOT is the real folder - the two
+            # spellings never matched, so a paused or stopped task's running turn was NEVER interrupted. Compare the real paths.
+            if len(args)<4 or not same_file(args[1],expected) or args[2:4]!=['--agent',record['agent']]:continue
         except (OSError,UnicodeError):continue
         with ProcessLock('source-write',ROOT),closing(get_connection()) as conn,conn:
             task=hb_tasks.get(conn,record['task_id'])

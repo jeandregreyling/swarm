@@ -106,6 +106,9 @@ def local_help(conn,task):
     hb_local_jobs.ensure_schema(conn)
     progress=conn.execute("SELECT COALESCE(MAX(created_at),0) FROM hb_task_events WHERE task_id=? AND (kind='mutation' OR "
                           "(kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]
+    # Owner 15 Nov: a chat line with no Studio step ("share the open tasks") went to Fred, who held the queue for ten minutes.
+    if not task.get('step_id'):
+        return 'unavailable: a chat line with no Studio step - Fred only takes over planned steps'
     # Owner 14 Nov: "APEX is throwing everything at Fred" - Fred only takes over steps that have a real spec, never vague ones.
     if task.get('step_id'):
         try:
@@ -164,7 +167,9 @@ def stuck_reason(conn,task_id):
     since=max(last("SELECT MAX(event_id) FROM hb_task_events WHERE task_id=? AND kind='test_result' "
                    "AND json_extract(payload,'$.alm_run_status')='pass'"),
               last("SELECT MAX(event_id) FROM hb_task_events WHERE task_id=? AND kind='continuation_control' AND agent='user' "
-                   "AND json_extract(payload,'$.mode')='on'"))
+                   "AND json_extract(payload,'$.mode')='on'"),
+              # owner 15 Nov ("it's stalled again"): a newly prepared, tested change set is new information - failures from before it do not count
+              last("SELECT MAX(event_id) FROM hb_task_events WHERE task_id=? AND kind='change_set_prepared'"))
     checkpoints=conn.execute("SELECT COUNT(*) FROM hb_task_events WHERE task_id=? AND kind='checkpoint' AND event_id>?",
                              (task_id,since)).fetchone()[0]
     if checkpoints>=MAX_CHECKPOINTS_WITHOUT_PASS:
@@ -184,19 +189,13 @@ def stuck_reason(conn,task_id):
     return None
 
 
-def review_recipient(conn):
-    """Independent review goes to Codex when it is usable; otherwise to the attached VS Code instructor
-    (its link used the peer API in the last 15 minutes); otherwise Codex, and the caller reports it."""
-    from core.hb_online import usable as codex_usable
-    if codex_usable(conn,'codex'):
-        return 'codex-instructor'
+def retired_agent(conn,agent):
+    """True when HB's agent register says this agent was retired (owner removed it). Unknown agents are not retired."""
     try:
-        row=conn.execute("SELECT last_used_at FROM service_tokens WHERE principal_id='copilot-instructor' AND revoked_at IS NULL AND last_used_at IS NOT NULL ORDER BY id DESC LIMIT 1").fetchone()
+        row=conn.execute("SELECT status FROM hb_agents WHERE agent_id=?",(agent,)).fetchone()
     except Exception:
-        row=None
-    if row and time.time()-row[0]<900:
-        return 'copilot-instructor'
-    return 'codex-instructor'
+        return False
+    return bool(row and row[0]=='retired')
 
 
 def review_recipient(conn):
@@ -347,6 +346,11 @@ def tick(conn,*,now=None,memory=None):
                           f"why: {stuck} · /continue {task['task_id']} gives it a fresh try; /cancel {task['task_id']} drops it.")
             _set(conn,task['task_id'],'needs_owner','Stopped, not looping: '+stuck);continue
         live=conn.execute("SELECT p.id,w.state,p.recipient FROM hb_task_requests r JOIN peer_messages p ON p.id=r.request_id JOIN hb_peer_work w ON w.request_id=p.id WHERE r.task_id=? AND p.delivered_at IS NULL AND w.state IN ('queued','running') ORDER BY p.id DESC LIMIT 1",(task['task_id'],)).fetchone()
+        if live and live[1]=='queued' and retired_agent(conn,live[2]):
+            # owner 15 Nov: the git agent was retired while its review request was queued; the queue waited for it all night
+            conn.execute("UPDATE hb_peer_work SET state='cancelled',stage='Agent retired; request dropped',updated_at=? WHERE request_id=?",(now,live[0]))
+            hb_tasks.event(conn,task,'hummingbird','review_deferred',{'request_id':live[0],'reason':'Recipient '+str(live[2])+' is retired; request dropped, HB continues.'},request_id=live[0])
+            live=None
         if live and live[1]=='queued' and live[2]=='codex-instructor' and row['phase']=='execute' and pending(conn,task,agent=live[2]):
             # Older schedulers could queue a review that the delivery gate then
             # correctly held. Retain it without blocking a newer local action.
@@ -368,7 +372,9 @@ def tick(conn,*,now=None,memory=None):
         passed=conn.execute("SELECT MAX(created_at) FROM hb_task_events WHERE task_id=? AND kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'",(task['task_id'],)).fetchone()[0]
         plan_time=conn.execute("SELECT created_at FROM hb_task_events WHERE event_id=?",(row['plan_event_id'],)).fetchone()
         ready=bool(cases and all(c[0]=='passed' for c in cases) and passed and passed>=max(last_mutation or 0,last_instruction or 0,plan_time[0] if plan_time else 0))
-        progress=conn.execute("SELECT COALESCE(MAX(event_id),0) FROM hb_task_events WHERE task_id=? AND (kind='mutation' OR (kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]
+        # 14 Nov: a recorded deliverable (studio_note/studio_task) is progress too - research steps produce notes, not
+        # mutations, and without this they ratcheted recovery_count into an endless review loop (DAW/potato farm, 14 Nov).
+        progress=conn.execute("SELECT COALESCE(MAX(event_id),0) FROM hb_task_events WHERE task_id=? AND (kind IN ('mutation','studio_note','studio_task') OR (kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]
         stagnant=0 if progress>row['progress_event_id'] or row['phase']=='review' else row['recovery_count']+1
         previous=conn.execute('SELECT recipient FROM peer_messages WHERE id=?',(row['request_id'],)).fetchone()
         from core.agent_identity import INSTRUCTORS

@@ -760,7 +760,13 @@ def run(conn, conversation_id, command, args, actor, after=None):
         from core.hb_dream_cycle import build_report
         return build_report(conn)['text']
     if command in ('pause', 'continue'):
-        return _set_mode(conn, args[0], 'off' if command == 'pause' else 'on', actor + ' via /' + command)
+        said = _set_mode(conn, args[0], 'off' if command == 'pause' else 'on', actor + ' via /' + command)
+        if command == 'pause' and after is not None:   # owner 15 Nov: pause also stops the turn that is running right now
+            def stop(task_id=args[0]):
+                from core.hb_executions import stop_held_executors
+                stop_held_executors(task_id)
+            after.append(stop)
+        return said
     if command == 'cancel':
         return cancel_task(conn, args[0], actor + ' via /cancel', after)
     if command in ('done', 'clipboard'):
