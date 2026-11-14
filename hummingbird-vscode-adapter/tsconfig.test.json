@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "rootDir": ".",
+    "outDir": ".test-build"
+  },
+  "include": ["src/protocol.ts", "src/transport.ts", "test/**/*.ts"]
+}

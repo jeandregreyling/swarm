@@ -188,7 +188,7 @@ def test_fixture_can_execute_without_host_write_or_network_access(supervisor):
             "class TestIsolation(unittest.TestCase):\n"
             " def test_value(self): self.assertEqual(value(),42)\n"
             " def test_host_write_denied(self):\n"
-            "  with self.assertRaises(OSError): open('/usr/DEOS-must-not-write','w')\n"
+            "  with self.assertRaises(OSError): open('/usr/DOES-must-not-write','w')\n"
             " def test_network_unavailable(self):\n"
             "  with self.assertRaises(OSError): socket.create_connection(('127.0.0.1',5050),timeout=1)\n"
         ),

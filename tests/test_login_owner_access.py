@@ -184,7 +184,9 @@ def test_login_remember_me_controls_cookie_and_session_duration(tmp_path, monkey
 
     now = datetime.now(timezone.utc)
 
-    resp = client.post('/api/auth/login', json={'username': 'jeandre', 'password': '------', 'remember': False})
+    # Another machine without "remember me": a browser-session cookie (the owner's own machine stays signed in, see below).
+    resp = client.post('/api/auth/login', json={'username': 'jeandre', 'password': '------', 'remember': False},
+                       environ_base={'REMOTE_ADDR': '10.0.0.5'})
     assert resp.status_code == 200
     session_cookie = resp.headers.get('Set-Cookie', '')
     assert 'Max-Age=' not in session_cookie
@@ -243,7 +245,7 @@ def test_owner_setup_uses_non_persistent_session_defaults(tmp_path, monkeypatch)
 
     now = datetime.now(timezone.utc)
 
-    resp = client.post('/api/auth/setup', json={'password': '------', 'display_name': 'Jeandre'})
+    resp = client.post('/api/auth/setup', json={'password': '------', 'display_name': 'Jeandre'}, environ_base={'REMOTE_ADDR': '10.0.0.5'})  # another machine
     assert resp.status_code == 200
     session_cookie = resp.headers.get('Set-Cookie', '')
     assert 'Max-Age=' not in session_cookie
@@ -445,3 +447,30 @@ def test_logout_deactivates_session_and_expires_cookie(tmp_path, monkeypatch):
         conn.close()
 
     assert session_row['is_active'] == 0
+
+
+def test_owner_machine_stays_signed_in_and_renews(tmp_path, monkeypatch):
+    """Owner 13 Nov: on this machine HB keeps the owner signed in (30 days) and renews the session while it is used."""
+    db_path = tmp_path / 'auth.db'
+    _seed_db(db_path)
+    monkeypatch.setattr(_MOD, 'get_connection', lambda: _connect(db_path))
+    app = Flask(__name__)
+    app.register_blueprint(login_bp)
+    client = app.test_client()
+    resp = client.post('/api/auth/login', json={'username': 'jeandre', 'password': '------', 'remember': False})
+    assert resp.status_code == 200 and 'Max-Age=2592000' in resp.headers.get('Set-Cookie', '')
+    conn = _connect(db_path)
+    try:
+        conn.execute("UPDATE user_sessions SET expires_at=datetime('now','+2 days')")
+        conn.commit()
+    finally:
+        conn.close()
+    monkeypatch.setattr(_MOD, 'get_current_user', lambda: {'username': 'jeandre', 'role': 'owner'})
+    me = client.get('/api/auth/me')
+    assert me.get_json()['user'] and 'Max-Age=2592000' in me.headers.get('Set-Cookie', '')
+    conn = _connect(db_path)
+    try:
+        renewed = conn.execute("SELECT expires_at FROM user_sessions ORDER BY rowid DESC LIMIT 1").fetchone()[0]
+    finally:
+        conn.close()
+    assert renewed > datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')[:10]

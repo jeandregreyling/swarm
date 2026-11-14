@@ -103,8 +103,10 @@ def score_social(text):
     return ok, 'short, kind, with a next step' if ok else ', '.join(why)
 
 
-TESTS = [('programmer', CODE_PROMPT, score_code, 400), ('tools', TOOLS_PROMPT, score_tools, 120),
-         ('researcher', RESEARCH_PROMPT, score_research, 200), ('social', SOCIAL_PROMPT, score_social, 160)]
+# Owner 14 Nov: give models room to finish - reasoning models (gpt-oss) spent the old caps (120/160) thinking and never answered.
+# The scorers still judge length ("too long"), so a bigger cap only stops cut-off answers.
+TESTS = [('programmer', CODE_PROMPT, score_code, 1600), ('tools', TOOLS_PROMPT, score_tools, 800),
+         ('researcher', RESEARCH_PROMPT, score_research, 800), ('social', SOCIAL_PROMPT, score_social, 800)]
 
 
 def tags(results):
@@ -292,6 +294,14 @@ def run_all(only=None):
             where = 'on the GPU (already loaded)' if m.get('endpoint') else f"on the CPU, loaded in {record.get('load_s', 0)} s"
             _post(c, (f"🧪 {m['label']} done: {', '.join(record.get('tags') or [])} - {record.get('tok_s', 0)} tok/s {where}."
                       if not record.get('error') else f"🧪 {m['label']} skipped: {record['error']}") + ('\n' + '\n'.join(details) if details else ''))
+    try:   # owner 14 Nov: new results update the onboarded agents (status, exam, tags) without anyone asking
+        from core import hb_agents
+        with closing(get_connection()) as c, c:
+            done = hb_agents.onboard_local_models(c, actor='HB after the benchmark')
+            _post(c, f"🌱 HB updated {len(done)} local agents from the new benchmark results; /agents shows who is active.")
+    except Exception as exc:
+        with closing(get_connection()) as c, c:
+            _post(c, f"↺ HB could not update the agents after the benchmark ({type(exc).__name__}); /agents onboard-local does it by hand.")
 
 
 def start(only=None):

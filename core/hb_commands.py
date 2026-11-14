@@ -32,7 +32,7 @@ COMMANDS = [
     ('clipboard', '/clipboard T-xxxx', "Show HB's DREAM clipboard for a task", False),
     ('clip', '/clip up|down|top|clear S-xxxx · importance S-xxxx 1-5 · doer S-xxxx hb|small|apex|fred', "Edit HB's clipboard (order, importance, who does it)", False),
     ('pick', '/pick S-xxxx N', "Choose option N from HB counsel's review of a vague step; it becomes the step's spec", False),
-    ('agents', '/agents [onboard-local | retire <id> | model <id> <model>]', 'Onboarded HB agents (own memory, KC page, tools); onboard-local makes every benchmarked local model an agent', False),
+    ('agents', '/agents [onboard-local | onboard <id> <profile> <about> | examine <id|@handle> | handles <id> <h1,h2> | retire <id> | model <id> <model>]', 'Onboarded HB agents (own memory, KC page, tools); onboard-local makes every benchmarked local model an agent', False),
     ('bench', '/bench [all|model name|status]', 'Benchmark the local models: GPU fit and programmer / researcher / social / useless (results in main chat and Studio)', False),
     ('merits', '/merits', "How each agent is doing: checked successes, fixes for others, tags and badges", False),
     ('downloads', '/downloads', 'Big downloads HB is tracking: progress, connection, Studio step', False),
@@ -766,6 +766,18 @@ def run(conn, conversation_id, command, args, actor, after=None):
             return hb_agents.retire(conn, args[1], actor)
         if len(args) >= 3 and args[0].lower() == 'model':
             return hb_agents.swap_model(conn, args[1], args[2], actor)
+        if len(args) >= 2 and args[0].lower() == 'examine':                 # HB examines an agent itself, through its inbox
+            agent_id = hb_agents.resolve(conn, args[1])
+            return hb_agents.examine(conn, agent_id, conversation_id, actor, say=lambda _t: None) if agent_id else f'HB does not know {args[1]}.'
+        if len(args) >= 3 and args[0].lower() == 'handles':                 # /agents handles copilot-instructor github,copilot
+            agent_id = hb_agents.resolve(conn, args[1])
+            if not agent_id:
+                return f'HB does not know {args[1]}.'
+            return f"{agent_id} answers to @" + ', @'.join(hb_agents.set_handles(conn, agent_id, ' '.join(args[2:]).replace(',', ' ').split()))
+        if len(args) >= 4 and args[0].lower() == 'onboard':                 # /agents onboard <id> <profile> <what it is for>
+            a = hb_agents.onboard(conn, args[1], kind='online', profile=args[2], about=' '.join(args[3:]), actor=actor, say=lambda _t: None)
+            return (f"{a['agent_id']} is registered (own login, memory, KC page) as {args[2]}, provisional. "
+                    + hb_agents.examine(conn, a['agent_id'], conversation_id, actor, say=lambda _t: None))
         if args and args[0].lower() == 'onboard-local':
             done = hb_agents.onboard_local_models(conn, actor)
             return f"Onboarded {len(done)} local model(s) as HB agents: {', '.join(done) or 'none benchmarked yet'}."

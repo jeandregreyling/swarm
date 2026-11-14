@@ -1,6 +1,6 @@
 {
   "id": "hb.agent.profiles",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "source": "Owner (JD) 14 Nov 2026: onboarding a new agent must not be hard-coded into roles. An agent is given a profile; the profile decides its tools and its rules.",
   "profiles": {
     "advisor": {
@@ -66,6 +66,13 @@
   "agents": {
     "gemini-advisor": "advisor",
     "codex-instructor": "advisor",
-    "deepseek": "advisor"
-  }
+    "deepseek": "advisor",
+    "copilot-instructor": "advisor",
+    "claude-code": "advisor"
+  },
+  "inbox_agents": [
+    "copilot-instructor",
+    "claude-code"
+  ],
+  "inbox_note": "Agents that read their HB inbox themselves (owner 14 Nov): JD's @handle for them goes to their inbox, even if a provider route exists."
 }

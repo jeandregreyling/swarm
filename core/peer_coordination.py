@@ -210,6 +210,19 @@ def start():
                                 agents_kc_tick(conn)
                         except Exception:
                             LOG.exception('Agent KC mirror failed')
+                        try:  # Owner 14 Nov: HB scores onboarding exam answers from agents' inboxes as they arrive
+                            from core.hb_agents import exam_tick, welcome_tick
+                            with conn:
+                                exam_tick(conn)
+                                welcome_tick(conn)
+                        except Exception:
+                            LOG.exception('Agent exam scoring failed')
+                        try:  # Owner 14 Nov: HB manages the GPU model server (restart after ErrorDeviceLost, resume the work)
+                            from core.hb_gpu_guard import tick as gpu_guard_tick
+                            with conn:
+                                gpu_guard_tick(conn)
+                        except Exception:
+                            LOG.exception('GPU guard failed')
                         try:  # Owner 14 Nov: model benchmark requests (/bench) run inside HB so main chat shows them
                             from core.hb_model_bench import tick as bench_tick
                             bench_tick(conn)

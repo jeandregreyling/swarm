@@ -467,6 +467,8 @@ function getChatPeerTargets(text) {
     apex: 'apex',
     instructor: 'copilot-instructor', 
     copilot: 'copilot-instructor', 
+    git: 'copilot-instructor',
+    github: 'copilot-instructor',
     gemini: 'gemini-advisor', 
     codex: 'codex-instructor',
     'tiered-assistant': 'tiered-assistant',
@@ -476,7 +478,7 @@ function getChatPeerTargets(text) {
     vibe: 'mistral-vibe'
   };
   return [...new Set(Array.from(String(text || '').matchAll(
-    /(?<![\w@])@(apex|instructor|copilot|gemini|codex|tiered(-assistant)?|mistral(-vibe)?|vibe)\b/gi
+    /(?<![\w@])@(apex|instructor|copilot|git|github|gemini|codex|tiered(-assistant)?|mistral(-vibe)?|vibe)\b/gi
   ), match => aliases[match[1].toLowerCase()]))];
 }
 

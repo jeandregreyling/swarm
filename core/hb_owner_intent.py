@@ -35,11 +35,16 @@ _ACTION = re.compile(r"\b(?:build|fix|implement|create|make|add|update|change|in
                      r"explain|list|check|review|design|research|find|compare|summari[sz]e|draft|audit|verify|expose|complete|integrate|plan)\b", re.I)
 
 
+_ONBOARD = re.compile(r'\bon-?board(ing|ed)?\b', re.I)
+
+
 def classify(text):
-    """'drive', 'remark' or None (a real request: a new task)."""
+    """'drive', 'remark', 'agents' (onboard @X: HB answers) or None (a real request: a new task)."""
     body = _FILLER.sub('', str(text or '')).strip()
     if not body or body.startswith('/'):
         return None
+    if _ONBOARD.search(body) and [h for h in re.findall(r'@([A-Za-z][\w.-]*)', body) if h.lower() not in ('apex', 'hb', 'hummingbird')]:
+        return 'agents'                                  # 14 Nov: "onboard @X" is HB's job (core/hb_agents.onboard_request), not a task
     words = len(body.split())
     if _CONCRETE.search(body) or words > 80:
         return None

@@ -3086,6 +3086,16 @@ def api_chat():
                         resolve_question(_id_conn, conv_id, message, owner_intent)
                     except Exception:
                         pass
+                    try:   # owner 14 Nov: "@git ..." goes to that onboarded agent's inbox (core/hb_agents.inbox_route), not to APEX as a task
+                        from core import hb_agents
+                        _inbox = hb_agents.inbox_route(_id_conn, conv_id, operator_message_id, message)
+                    except Exception:
+                        _inbox = []
+                    if _inbox:
+                        g.hb_inbox_routed = ('📨 HB passed this to ' + ', '.join(_inbox) + "'s inbox; the answer appears here.")
+                        _id_conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
+                                         "VALUES (?,'hummingbird','user',?,'response',0)", (conv_id, g.hb_inbox_routed))
+                        owner_intent = owner_intent or 'inbox'
                     if owner_intent:
                         tracked_task = hb_owner_intent.chat_task(_id_conn, conv_id, operator_message_id)
                         hb_tasks.event(_id_conn, tracked_task, 'hummingbird', 'owner_intent', {'intent': owner_intent, 'message_id': operator_message_id})
@@ -3097,6 +3107,12 @@ def api_chat():
                                     hb_merits.try_better(_id_conn, message)
                             except Exception:
                                 pass
+                        if owner_intent == 'agents':   # 14 Nov: HB answers "onboard @X" itself and starts its own exam when needed
+                            from core import hb_agents
+                            _agents_text = hb_agents.onboard_request(_id_conn, conv_id, message, f"{(current_user or {}).get('username') or 'owner'} via chat")
+                            if _agents_text:
+                                _id_conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
+                                                 "VALUES (?,'hummingbird','user',?,'response',0)", (conv_id, _agents_text))
                         if owner_intent == 'drive' and (current_user or {}).get('role') == 'owner':
                             from core import hb_queue
                             _drive_text = hb_queue.drive_on(_id_conn, f"{current_user.get('username') or 'owner'} via chat go-ahead", conv_id, operator_message_id)
@@ -3114,6 +3130,19 @@ def api_chat():
             finally:
                 _id_conn.close()
 
+        if getattr(g, 'hb_inbox_routed', None):   # owner 14 Nov: only an onboarded agent's handle was used - its inbox has it
+            try:
+                from core import hb_agents as _hba
+                _cx = get_connection()
+                try:
+                    _others = [a for a in normalized_agents if not _hba.resolve(_cx, a)]
+                finally:
+                    _cx.close()
+            except Exception:
+                _others = list(normalized_agents)
+            if not _chat_extract_explicit_agent_mentions(message, set(_others)):
+                return jsonify({'ok': True, 'mode': 'inbox', 'agent': 'hummingbird', 'response': g.hb_inbox_routed, 'tokens': 0,
+                                'responses': [{'agent': 'hummingbird', 'response': g.hb_inbox_routed}]})
         if normalized_agents == ['watchdog']:
             clarify = (
                 'What do you mean? I need a target agent or a more specific action before I route this. '

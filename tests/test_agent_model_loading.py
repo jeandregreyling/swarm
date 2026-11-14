@@ -100,7 +100,7 @@ def test_cold_start_reports_low_vram_then_health_confirmed_ready(monkeypatch, tm
     model_path = tmp_path / 'model.gguf'
     model_path.write_bytes(b'GGUF')
     entry = SimpleNamespace(name='pytest-loading', driver='llamacpp', path=str(model_path),
-                            options={'server': str(model_path)}, ctx=4096, ram_gb=10)
+                            options={'server': str(model_path)}, ctx=4096, ram_gb=10, endpoint=None)
     monkeypatch.setattr(llama_server.registry, 'get', lambda model: entry)
     monkeypatch.setattr(llama_server, '_PROCS', {})
     monkeypatch.setattr(llama_server, '_cross_process_lock', contextlib.nullcontext)

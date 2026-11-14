@@ -371,7 +371,7 @@ def test_seven_direct_runtime_failure_falls_back_to_state(monkeypatch):
     assert tokens == 0
     payload = json.loads(answer)
     assert payload["kind"] == "error"
-    assert "My model is offline right now" in payload["summary"]
+    assert "I couldn't produce an answer to that just now — my model returned nothing usable." in payload["summary"]
     assert stopped == ["seven-direct:daily"]
 
 

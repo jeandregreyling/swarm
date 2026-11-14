@@ -110,6 +110,7 @@ def test_api_chat_does_not_intercept_slash_messages(monkeypatch):
         raising=False,
     )
     app.register_blueprint(chat_bp_mod.chat_bp)
+    monkeypatch.setattr('core.chat_continuity.storage_fault', lambda connect: None)
     client = app.test_client()
 
     r = client.post('/api/chat', json={'message': '/curiosity', 'agent': 'seven'})

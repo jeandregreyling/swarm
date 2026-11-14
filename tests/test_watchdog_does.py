@@ -26,9 +26,9 @@ def _multi_model_mode(monkeypatch):
 
 
 def test_resident_policy_marks_direct_seven_model_as_not_ollama(tmp_path):
-    from utils import watchdog_deos
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-direct-policy.db'
+    db_path = tmp_path / 'does-direct-policy.db'
     conn = _conn(db_path)
     try:
         conn.executescript(
@@ -53,7 +53,7 @@ def test_resident_policy_marks_direct_seven_model_as_not_ollama(tmp_path):
         )
         conn.commit()
 
-        targets = {row['agent']: row for row in watchdog_deos._resident_targets(conn)}
+        targets = {row['agent']: row for row in watchdog_does._resident_targets(conn)}
     finally:
         conn.close()
 
@@ -62,10 +62,10 @@ def test_resident_policy_marks_direct_seven_model_as_not_ollama(tmp_path):
     assert targets['seven']['is_ollama'] is False
 
 
-def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_records_control_plane_and_does_not_prewarm_by_default(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos.db'
+    db_path = tmp_path / 'does.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -109,14 +109,14 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: [])
     monkeypatch.setattr(
-        watchdog_deos,
+        watchdog_does,
         '_diamond_sch_health',
         lambda *_args, **_kwargs: {'recovered': False, 'reason': 'inactive', 'state': {'is_council_active': 0}},
     )
-    monkeypatch.setattr(watchdog_deos, '_direct_runtime_snapshot', lambda: {
+    monkeypatch.setattr(watchdog_does, '_direct_runtime_snapshot', lambda: {
         'ok': True,
         'models': [{'name': 'seven-direct:daily'}],
         'servers': [],
@@ -124,7 +124,7 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
         'inventory_roots': [],
         'warnings': [],
     })
-    monkeypatch.setattr(watchdog_deos, '_seven_service_snapshot', lambda: {
+    monkeypatch.setattr(watchdog_does, '_seven_service_snapshot', lambda: {
         'ok': True,
         'service': 'seven-runtime',
         'model': 'seven-direct:daily',
@@ -137,7 +137,7 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
         'warning': '',
     })
     warmed = []
-    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: warmed.append(a) or (True, 'warm ok'))
+    monkeypatch.setattr(watchdog_does, '_warm_model', lambda *a, **k: warmed.append(a) or (True, 'warm ok'))
     run_calls = []
     task_runner = importlib.import_module('fridays.task_runner')
     monkeypatch.setattr(
@@ -146,7 +146,7 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
         lambda name, args='': run_calls.append((name, args)) or (True, f'{name}:{args}'),
     )
 
-    report = watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=1 agent_timeout_seconds=45')
+    report = watchdog_does.run_does_cycle('prewarm=0 execute_recovery=1 agent_timeout_seconds=45')
 
     assert warmed == []
     assert report['operates']['expired_leases_cleared'] == 1
@@ -161,10 +161,10 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
     conn = _conn(db_path)
     try:
         step = conn.execute(
-            "SELECT status, owner_route FROM project_steps WHERE step_id='S-DEOS-CONTROL-PLANE'"
+            "SELECT status, owner_route FROM project_steps WHERE step_id='S-DOES-CONTROL-PLANE'"
         ).fetchone()
         evidence = conn.execute(
-            "SELECT COUNT(*) FROM project_step_evidence WHERE step_id='S-DEOS-CONTROL-PLANE'"
+            "SELECT COUNT(*) FROM project_step_evidence WHERE step_id='S-DOES-CONTROL-PLANE'"
         ).fetchone()[0]
         lease = conn.execute(
             "SELECT lease_owner, lease_until FROM chat_relay_recoveries WHERE recovery_id='recovery-old'"
@@ -173,16 +173,16 @@ def test_deos_cycle_records_control_plane_and_does_not_prewarm_by_default(monkey
         conn.close()
 
     assert step['status'] == 'doing'
-    assert step['owner_route'] == 'watchdog:deos'
+    assert step['owner_route'] == 'watchdog:does'
     assert evidence >= 1
     assert lease['lease_owner'] == ''
     assert lease['lease_until'] == ''
 
 
-def test_deos_cycle_can_run_direct_runtime_smoke_when_requested(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_can_run_direct_runtime_smoke_when_requested(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-direct-smoke.db'
+    db_path = tmp_path / 'does-direct-smoke.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -208,9 +208,9 @@ def test_deos_cycle_can_run_direct_runtime_smoke_when_requested(monkeypatch, tmp
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
-    monkeypatch.setattr(watchdog_deos, '_direct_runtime_snapshot', lambda: {
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_does, '_direct_runtime_snapshot', lambda: {
         'ok': True,
         'models': [{'name': 'seven-direct:daily'}],
         'servers': [],
@@ -220,19 +220,19 @@ def test_deos_cycle_can_run_direct_runtime_smoke_when_requested(monkeypatch, tmp
     })
     smoke_calls = []
     monkeypatch.setattr(
-        watchdog_deos,
+        watchdog_does,
         '_direct_runtime_smoke',
         lambda timeout_seconds: smoke_calls.append(timeout_seconds) or (True, 'direct smoke ok=True tokens=4 chunks=4'),
     )
 
-    report = watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=0 execute_work=0 direct_smoke=1 warm_timeout_seconds=30')
+    report = watchdog_does.run_does_cycle('prewarm=0 execute_recovery=0 execute_work=0 direct_smoke=1 warm_timeout_seconds=30')
 
     assert smoke_calls == [30]
     assert any('direct smoke ok=True' in item for item in report['executes'])
     conn = _conn(db_path)
     try:
         rows = conn.execute(
-            "SELECT project_id, step_id, source_ref, status FROM project_step_evidence WHERE source_ref='watchdog-deos:direct-smoke'"
+            "SELECT project_id, step_id, source_ref, status FROM project_step_evidence WHERE source_ref='watchdog-does:direct-smoke'"
         ).fetchall()
     finally:
         conn.close()
@@ -242,10 +242,10 @@ def test_deos_cycle_can_run_direct_runtime_smoke_when_requested(monkeypatch, tmp
     assert rows[0]['status'] == 'ok'
 
 
-def test_deos_cycle_records_seven_runtime_service(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_records_seven_runtime_service(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-seven-service.db'
+    db_path = tmp_path / 'does-seven-service.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -271,9 +271,9 @@ def test_deos_cycle_records_seven_runtime_service(monkeypatch, tmp_path):
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
-    monkeypatch.setattr(watchdog_deos, '_direct_runtime_snapshot', lambda: {
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_does, '_direct_runtime_snapshot', lambda: {
         'ok': True,
         'models': [{'name': 'seven-direct:daily'}],
         'servers': [],
@@ -281,7 +281,7 @@ def test_deos_cycle_records_seven_runtime_service(monkeypatch, tmp_path):
         'inventory_roots': [],
         'warnings': [],
     })
-    monkeypatch.setattr(watchdog_deos, '_seven_service_snapshot', lambda: {
+    monkeypatch.setattr(watchdog_does, '_seven_service_snapshot', lambda: {
         'ok': True,
         'service': 'seven-runtime',
         'model': 'seven-direct:daily',
@@ -294,7 +294,7 @@ def test_deos_cycle_records_seven_runtime_service(monkeypatch, tmp_path):
         'warning': '',
     })
 
-    report = watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=0 execute_work=0')
+    report = watchdog_does.run_does_cycle('prewarm=0 execute_recovery=0 execute_work=0')
 
     assert report['decides']['seven_service_policy']['ok'] is True
     assert report['decides']['seven_service_policy']['flask_required'] is False
@@ -302,7 +302,7 @@ def test_deos_cycle_records_seven_runtime_service(monkeypatch, tmp_path):
     conn = _conn(db_path)
     try:
         rows = conn.execute(
-            "SELECT project_id, step_id, source_ref, status FROM project_step_evidence WHERE source_ref='watchdog-deos:seven-runtime-service'"
+            "SELECT project_id, step_id, source_ref, status FROM project_step_evidence WHERE source_ref='watchdog-does:seven-runtime-service'"
         ).fetchall()
     finally:
         conn.close()
@@ -312,10 +312,10 @@ def test_deos_cycle_records_seven_runtime_service(monkeypatch, tmp_path):
     assert rows[0]['status'] == 'ok'
 
 
-def test_deos_cycle_prewarm_is_bounded_and_support_only(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_prewarm_is_bounded_and_support_only(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-prewarm.db'
+    db_path = tmp_path / 'does-prewarm.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -346,27 +346,27 @@ def test_deos_cycle_prewarm_is_bounded_and_support_only(monkeypatch, tmp_path):
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: ['qwen:latest'])
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: ['qwen:latest'])
     warmed = []
 
     def fake_warm(model, keep_alive, timeout_seconds):
         warmed.append((model, keep_alive, timeout_seconds))
         return True, f'{model} warm ok'
 
-    monkeypatch.setattr(watchdog_deos, '_warm_model', fake_warm)
+    monkeypatch.setattr(watchdog_does, '_warm_model', fake_warm)
 
-    report = watchdog_deos.run_deos_cycle('prewarm=1 execute_recovery=0 warm_timeout_seconds=20')
+    report = watchdog_does.run_does_cycle('prewarm=1 execute_recovery=0 warm_timeout_seconds=20')
 
     assert warmed == [('qwen2.5:latest', 600, 20)]
     assert any('librarian:qwen:latest already resident' in item for item in report['executes'])
     assert any('seven is control/logical role' in item for item in report['executes'])
 
 
-def test_deos_cycle_executes_with_ready_support_agent_only(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_executes_with_ready_support_agent_only(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-ready.db'
+    db_path = tmp_path / 'does-ready.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -396,9 +396,9 @@ def test_deos_cycle_executes_with_ready_support_agent_only(monkeypatch, tmp_path
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: ['qwen:latest'])
-    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'duck cold'))
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: ['qwen:latest'])
+    monkeypatch.setattr(watchdog_does, '_warm_model', lambda *a, **k: (False, 'duck cold'))
     run_calls = []
     task_runner = importlib.import_module('fridays.task_runner')
     monkeypatch.setattr(
@@ -407,12 +407,12 @@ def test_deos_cycle_executes_with_ready_support_agent_only(monkeypatch, tmp_path
         lambda name, args='': run_calls.append((name, args)) or (True, 'ok'),
     )
     monkeypatch.setattr(
-        watchdog_deos,
+        watchdog_does,
         '_claim_local_agent_step',
         lambda *_args, **_kwargs: pytest.fail('local work must wait until the next one-task cycle'),
     )
 
-    report = watchdog_deos.run_deos_cycle(
+    report = watchdog_does.run_does_cycle(
         'prewarm=1 execute_recovery=1 execute_work=1 warm_timeout_seconds=20'
     )
 
@@ -424,10 +424,10 @@ def test_deos_cycle_executes_with_ready_support_agent_only(monkeypatch, tmp_path
     assert 'local agent work deferred: recovery attempt consumed this one-task cycle' in report['executes']
 
 
-def test_deos_cycle_claims_one_local_agent_work_step(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_claims_one_local_agent_work_step(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-work.db'
+    db_path = tmp_path / 'does-work.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -491,18 +491,18 @@ def test_deos_cycle_claims_one_local_agent_work_step(monkeypatch, tmp_path):
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
-    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'cold'))
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_does, '_warm_model', lambda *a, **k: (False, 'cold'))
     calls = []
 
     def fake_run(agent, prompt, timeout_seconds):
         calls.append((agent, prompt, timeout_seconds))
-        return True, 'Proof: pytest passed\nDEOS_STATUS: done', 12
+        return True, 'Proof: pytest passed\nDOES_STATUS: done', 12
 
-    monkeypatch.setattr(watchdog_deos, '_run_local_agent_work', fake_run)
+    monkeypatch.setattr(watchdog_does, '_run_local_agent_work', fake_run)
 
-    report = watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=0 execute_work=1 work_timeout_seconds=120')
+    report = watchdog_does.run_does_cycle('prewarm=0 execute_recovery=0 execute_work=1 work_timeout_seconds=120')
 
     assert calls and calls[0][0] == 'mistral'
     assert 'Step: S-WORK-1' in calls[0][1]
@@ -523,15 +523,15 @@ def test_deos_cycle_claims_one_local_agent_work_step(monkeypatch, tmp_path):
     assert step['status'] == 'done'
     assert step['residual_risk'] == ''
     assert evidence['status'] == 'ok'
-    assert 'DEOS_STATUS: done' in evidence['summary']
+    assert 'DOES_STATUS: done' in evidence['summary']
     assert 'coaching=passed' in evidence['summary']
     assert [r['source_ref'] for r in claimed_evidence] == ['claim:S-WORK-1', 'agent-work:S-WORK-1']
 
 
-def test_deos_claim_refuses_second_local_agent_task_while_one_is_doing(tmp_path):
-    from utils import watchdog_deos
+def test_does_claim_refuses_second_local_agent_task_while_one_is_doing(tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-one-task-gate.db'
+    db_path = tmp_path / 'does-one-task-gate.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -554,7 +554,7 @@ def test_deos_claim_refuses_second_local_agent_task_while_one_is_doing(tmp_path)
     )
     conn.commit()
 
-    claimed = watchdog_deos._claim_local_agent_step(conn)
+    claimed = watchdog_does._claim_local_agent_step(conn)
     waiting = conn.execute(
         "SELECT status FROM project_steps WHERE step_id='S-WAITING'"
     ).fetchone()
@@ -564,10 +564,10 @@ def test_deos_claim_refuses_second_local_agent_task_while_one_is_doing(tmp_path)
     assert waiting['status'] == 'todo'
 
 
-def test_deos_cycle_blocks_unverified_local_agent_result(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_blocks_unverified_local_agent_result(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-work-blocked.db'
+    db_path = tmp_path / 'does-work-blocked.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -607,16 +607,16 @@ def test_deos_cycle_blocks_unverified_local_agent_result(monkeypatch, tmp_path):
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
-    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'cold'))
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_does, '_warm_model', lambda *a, **k: (False, 'cold'))
     monkeypatch.setattr(
-        watchdog_deos,
+        watchdog_does,
         '_run_local_agent_work',
         lambda *a, **k: (True, 'I looked at it but did not prove it.', 3),
     )
 
-    watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=0 execute_work=1')
+    watchdog_does.run_does_cycle('prewarm=0 execute_recovery=0 execute_work=1')
 
     conn = _conn(db_path)
     try:
@@ -627,23 +627,23 @@ def test_deos_cycle_blocks_unverified_local_agent_result(monkeypatch, tmp_path):
     finally:
         conn.close()
     assert step['status'] == 'blocked'
-    assert 'DEOS_STATUS: done' in step['residual_risk']
+    assert 'DOES_STATUS: done' in step['residual_risk']
     assert evidence['status'] == 'warn'
     assert 'did not prove it' in evidence['summary']
 
 
-def test_deos_cycle_blocks_refusal_even_with_done_status(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_blocks_refusal_even_with_done_status(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    assert watchdog_deos._looks_like_refusal(
-        "I'm sorry, but I am unable to assist you with this request.\nDEOS_STATUS: done"
+    assert watchdog_does._looks_like_refusal(
+        "I'm sorry, but I am unable to assist you with this request.\nDOES_STATUS: done"
     )
 
 
-def test_deos_cycle_returns_stale_local_work_claim_to_board(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_returns_stale_local_work_claim_to_board(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-stale-work.db'
+    db_path = tmp_path / 'does-stale-work.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -683,11 +683,11 @@ def test_deos_cycle_returns_stale_local_work_claim_to_board(monkeypatch, tmp_pat
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
-    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'cold'))
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_does, '_warm_model', lambda *a, **k: (False, 'cold'))
 
-    report = watchdog_deos.run_deos_cycle(
+    report = watchdog_does.run_does_cycle(
         'prewarm=0 execute_recovery=0 execute_work=0 local_work_stale_seconds=300'
     )
 
@@ -705,10 +705,10 @@ def test_deos_cycle_returns_stale_local_work_claim_to_board(monkeypatch, tmp_pat
     assert evidence['status'] == 'warn'
 
 
-def test_deos_cycle_reroutes_blocked_failed_local_work(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_reroutes_blocked_failed_local_work(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-reroute-work.db'
+    db_path = tmp_path / 'does-reroute-work.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -758,16 +758,16 @@ def test_deos_cycle_reroutes_blocked_failed_local_work(monkeypatch, tmp_path):
     conn.execute(
         """INSERT INTO project_step_evidence
            (project_id, step_id, source_type, source_ref, summary, status)
-           VALUES ('P-WORK', 'S-WORK-REROUTE', 'watchdog_deos', 'agent-work:S-WORK-REROUTE', 'mistral result tokens=0: ', 'warn')"""
+           VALUES ('P-WORK', 'S-WORK-REROUTE', 'watchdog_does', 'agent-work:S-WORK-REROUTE', 'mistral result tokens=0: ', 'warn')"""
     )
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
-    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'cold'))
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_does, '_warm_model', lambda *a, **k: (False, 'cold'))
 
-    report = watchdog_deos.run_deos_cycle('prewarm=0 execute_recovery=0 execute_work=0')
+    report = watchdog_does.run_does_cycle('prewarm=0 execute_recovery=0 execute_work=0')
 
     conn = _conn(db_path)
     try:
@@ -783,18 +783,18 @@ def test_deos_cycle_reroutes_blocked_failed_local_work(monkeypatch, tmp_path):
     assert evidence['status'] == 'warn'
 
 
-def test_deos_cycle_uses_direct_local_model_for_relay_recovery(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_uses_direct_local_model_for_relay_recovery(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
     calls = []
 
     def fake_direct(agent, mode, prompt, timeout_seconds):
         calls.append((agent, mode, timeout_seconds, 'Live conversation context:' in prompt))
-        return True, 'Health pulse: local recovery path is online.\nDEOS_STATUS: done', 9
+        return True, 'Health pulse: local recovery path is online.\nDOES_STATUS: done', 9
 
-    monkeypatch.setattr(watchdog_deos, '_run_local_agent_direct_guarded', fake_direct)
+    monkeypatch.setattr(watchdog_does, '_run_local_agent_direct_guarded', fake_direct)
 
-    ok, answer, tokens = watchdog_deos._run_local_agent_work(
+    ok, answer, tokens = watchdog_does._run_local_agent_work(
         'qwen',
         'Recovery ID: recovery-x\nLive conversation context:\n- user: Health pulse in one line.',
         240,
@@ -802,37 +802,37 @@ def test_deos_cycle_uses_direct_local_model_for_relay_recovery(monkeypatch, tmp_
 
     assert ok is True
     assert tokens == 9
-    assert 'DEOS_STATUS: done' in answer
+    assert 'DOES_STATUS: done' in answer
     assert calls == [('qwen', 'recovery', 120, True)]
 
 
-def test_deos_cycle_uses_direct_local_model_for_micro_task(monkeypatch):
-    from utils import watchdog_deos
+def test_does_cycle_uses_direct_local_model_for_micro_task(monkeypatch):
+    from utils import watchdog_does
 
     calls = []
 
     def fake_micro(agent, mode, prompt, timeout_seconds):
-        calls.append((agent, mode, timeout_seconds, 'DEOS_MICRO_TASK' in prompt))
-        return True, 'Mistral micro result\nDEOS_STATUS: done', 4
+        calls.append((agent, mode, timeout_seconds, 'DOES_MICRO_TASK' in prompt))
+        return True, 'Mistral micro result\nDOES_STATUS: done', 4
 
-    monkeypatch.setattr(watchdog_deos, '_run_local_agent_direct_guarded', fake_micro)
+    monkeypatch.setattr(watchdog_does, '_run_local_agent_direct_guarded', fake_micro)
 
-    ok, answer, tokens = watchdog_deos._run_local_agent_work(
+    ok, answer, tokens = watchdog_does._run_local_agent_work(
         'mistral',
-        'Project: P\nDEOS_MICRO_TASK\nTask: Return READY.',
+        'Project: P\nDOES_MICRO_TASK\nTask: Return READY.',
         180,
     )
 
     assert ok is True
     assert tokens == 4
-    assert 'DEOS_STATUS: done' in answer
+    assert 'DOES_STATUS: done' in answer
     assert calls == [('mistral', 'micro', 90, True)]
 
 
-def test_deos_cycle_filters_local_work_by_project_and_owner(monkeypatch, tmp_path):
-    from utils import watchdog_deos
+def test_does_cycle_filters_local_work_by_project_and_owner(monkeypatch, tmp_path):
+    from utils import watchdog_does
 
-    db_path = tmp_path / 'deos-filter-work.db'
+    db_path = tmp_path / 'does-filter-work.db'
     conn = _conn(db_path)
     conn.executescript(
         """
@@ -866,24 +866,24 @@ def test_deos_cycle_filters_local_work_by_project_and_owner(monkeypatch, tmp_pat
     conn.execute("INSERT INTO projects (project_id, name, created_at) VALUES ('P-DRILL', 'Drill', 1)")
     conn.execute("INSERT INTO projects (project_id, name, created_at) VALUES ('P-OTHER', 'Other', 1)")
     conn.execute(
-        "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, created_at, updated_at) VALUES ('S-OTHER-1','P-OTHER','Old other','DEOS_MICRO_TASK\\nTask: other','todo','qwen',1,1)"
+        "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, created_at, updated_at) VALUES ('S-OTHER-1','P-OTHER','Old other','DOES_MICRO_TASK\\nTask: other','todo','qwen',1,1)"
     )
     conn.execute(
-        "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, created_at, updated_at) VALUES ('S-DRILL-1','P-DRILL','Drill one','DEOS_MICRO_TASK\\nTask: drill','todo','mistral',1,2)"
+        "INSERT INTO project_steps (step_id, project_id, title, description, status, owner, created_at, updated_at) VALUES ('S-DRILL-1','P-DRILL','Drill one','DOES_MICRO_TASK\\nTask: drill','todo','mistral',1,2)"
     )
     conn.commit()
     conn.close()
 
-    monkeypatch.setattr(watchdog_deos, 'get_connection', lambda: _conn(db_path))
-    monkeypatch.setattr(watchdog_deos, '_ollama_loaded', lambda: [])
-    monkeypatch.setattr(watchdog_deos, '_warm_model', lambda *a, **k: (False, 'cold'))
+    monkeypatch.setattr(watchdog_does, 'get_connection', lambda: _conn(db_path))
+    monkeypatch.setattr(watchdog_does, '_ollama_loaded', lambda: [])
+    monkeypatch.setattr(watchdog_does, '_warm_model', lambda *a, **k: (False, 'cold'))
     monkeypatch.setattr(
-        watchdog_deos,
+        watchdog_does,
         '_run_local_agent_work',
-        lambda agent, prompt, timeout_seconds: (True, 'drill done, verified with read-back\nDEOS_STATUS: done', 2),
+        lambda agent, prompt, timeout_seconds: (True, 'drill done, verified with read-back\nDOES_STATUS: done', 2),
     )
 
-    watchdog_deos.run_deos_cycle(
+    watchdog_does.run_does_cycle(
         'prewarm=0 execute_recovery=0 execute_work=1 work_project_id=P-DRILL work_owner=mistral work_step_prefix=S-DRILL-'
     )
 
@@ -898,25 +898,25 @@ def test_deos_cycle_filters_local_work_by_project_and_owner(monkeypatch, tmp_pat
 
 
 def test_direct_local_agent_guard_times_out_hung_micro_call(monkeypatch):
-    from utils import watchdog_deos
+    from utils import watchdog_does
 
     resets = []
 
     def hung_micro(*_args, **_kwargs):
         time.sleep(10)
-        return True, 'late\nDEOS_STATUS: done', 1
+        return True, 'late\nDOES_STATUS: done', 1
 
-    monkeypatch.setattr(watchdog_deos, '_run_local_agent_micro_direct', hung_micro)
+    monkeypatch.setattr(watchdog_does, '_run_local_agent_micro_direct', hung_micro)
     monkeypatch.setattr(
-        watchdog_deos,
+        watchdog_does,
         '_hard_reset_ollama_after_timeout',
         lambda agent, mode: resets.append((agent, mode)) or 'ollama hard reset after timeout',
     )
 
-    ok, answer, tokens = watchdog_deos._run_local_agent_direct_guarded(
+    ok, answer, tokens = watchdog_does._run_local_agent_direct_guarded(
         'mistral',
         'micro',
-        'DEOS_MICRO_TASK\nTask: Return READY.',
+        'DOES_MICRO_TASK\nTask: Return READY.',
         1,
     )
 
@@ -927,7 +927,7 @@ def test_direct_local_agent_guard_times_out_hung_micro_call(monkeypatch):
 
 
 def test_one_model_mode_blocks_prewarm_work_and_recovery(monkeypatch):
-    from utils import watchdog_deos as wd
+    from utils import watchdog_does as wd
     monkeypatch.setenv('SWARM_ONE_MODEL', '1')
     assert wd._one_model_mode() is True
     monkeypatch.setenv('SWARM_ONE_MODEL', '0')
@@ -935,7 +935,7 @@ def test_one_model_mode_blocks_prewarm_work_and_recovery(monkeypatch):
 
 
 def _steps_db(tmp_path):
-    conn = _conn(tmp_path / 'deos-steps.db')
+    conn = _conn(tmp_path / 'does-steps.db')
     conn.executescript(
         """
         CREATE TABLE project_steps (
@@ -962,58 +962,58 @@ def _add(conn, sid, status, owner='fred'):
 
 
 def test_one_model_claim_skips_blocked_and_continue_carries_notes(tmp_path, monkeypatch):
-    from utils import watchdog_deos
+    from utils import watchdog_does
 
     monkeypatch.setenv('SWARM_ONE_MODEL', '1')
     conn = _steps_db(tmp_path)
     _add(conn, 'S-BLOCKED', 'blocked')
-    assert watchdog_deos._claim_local_agent_step(conn, owner='fred') is None
+    assert watchdog_does._claim_local_agent_step(conn, owner='fred') is None
     _add(conn, 'S-TODO', 'todo')
-    step = watchdog_deos._claim_local_agent_step(conn, owner='fred')
+    step = watchdog_does._claim_local_agent_step(conn, owner='fred')
     assert step['step_id'] == 'S-TODO'
 
-    out = watchdog_deos._finish_local_agent_step(
-        conn, step, True, 'part one finished\nPROGRESS: next append part two\nDEOS_STATUS: continue', 10)
+    out = watchdog_does._finish_local_agent_step(
+        conn, step, True, 'part one finished\nPROGRESS: next append part two\nDOES_STATUS: continue', 10)
     assert out == 'continue'
     assert conn.execute("SELECT status FROM project_steps WHERE step_id='S-TODO'").fetchone()[0] == 'todo'
-    notes = watchdog_deos._progress_notes(conn, step)
+    notes = watchdog_does._progress_notes(conn, step)
     assert len(notes) == 1 and 'append part two' in notes[0]
-    assert 'append part two' in watchdog_deos._agent_work_prompt(step, notes)
+    assert 'append part two' in watchdog_does._agent_work_prompt(step, notes)
 
 
 def test_continue_limit_blocks_and_failed_skill_refuses_done(tmp_path):
-    from utils import watchdog_deos
+    from utils import watchdog_does
 
     conn = _steps_db(tmp_path)
     _add(conn, 'S-LOOP', 'doing')
     step = {'step_id': 'S-LOOP', 'project_id': 'P', 'owner': 'fred', 'title': 't'}
-    for i in range(watchdog_deos.MAX_CONTINUES):
-        watchdog_deos._finish_local_agent_step(conn, step, True, 'more\nDEOS_STATUS: continue', 1)
-    assert watchdog_deos._finish_local_agent_step(conn, step, True, 'more\nDEOS_STATUS: continue', 1) == 'blocked'
+    for i in range(watchdog_does.MAX_CONTINUES):
+        watchdog_does._finish_local_agent_step(conn, step, True, 'more\nDOES_STATUS: continue', 1)
+    assert watchdog_does._finish_local_agent_step(conn, step, True, 'more\nDOES_STATUS: continue', 1) == 'blocked'
 
     _add(conn, 'S-FAIL', 'doing')
     conn.execute("INSERT INTO ghost_circle (source, entry_type, content, created_at) VALUES "
                  "('fred', 'skill_call', '[FAILED] fs_write(x) -> boom', datetime('now'))")
     conn.commit()
     step = {'step_id': 'S-FAIL', 'project_id': 'P', 'owner': 'fred', 'title': 't'}
-    status = watchdog_deos._finish_local_agent_step(
-        conn, step, True, 'I wrote and verified it, created the file.\nDEOS_STATUS: done', 5,
+    status = watchdog_does._finish_local_agent_step(
+        conn, step, True, 'I wrote and verified it, created the file.\nDOES_STATUS: done', 5,
         claimed_at=time.time() - 60)
     assert status == 'blocked'
 
 
 def test_chat_job_active_guard(tmp_path):
-    from utils import watchdog_deos
+    from utils import watchdog_does
 
     conn = _steps_db(tmp_path)
-    assert watchdog_deos._chat_job_active(conn) is False
+    assert watchdog_does._chat_job_active(conn) is False
     conn.execute("INSERT INTO chat_jobs VALUES ('j1', 'running', 'dispatching', datetime('now'))")
     conn.execute("INSERT INTO chat_jobs VALUES ('j2', 'completed', 'completed', datetime('now'))")
     conn.commit()
-    assert watchdog_deos._chat_job_active(conn) is True
+    assert watchdog_does._chat_job_active(conn) is True
     conn.execute("UPDATE chat_jobs SET updated_at='2000-01-01 00:00:00'")
     conn.commit()
-    assert watchdog_deos._chat_job_active(conn) is False
+    assert watchdog_does._chat_job_active(conn) is False
 
 
 def test_empty_fenced_write_is_an_error():
@@ -1026,19 +1026,19 @@ def test_empty_fenced_write_is_an_error():
 
 
 def test_continue_status_tolerates_trailing_punctuation():
-    from utils import watchdog_deos
+    from utils import watchdog_does
 
-    assert watchdog_deos._CONTINUE_RE.search('PROGRESS: x\n\nDEOS_STATUS: continue.')
+    assert watchdog_does._CONTINUE_RE.search('PROGRESS: x\n\nDOES_STATUS: continue.')
 
 
 def test_done_without_proof_goes_back_to_agent(tmp_path):
-    from utils import watchdog_deos
+    from utils import watchdog_does
 
     conn = _steps_db(tmp_path)
     _add(conn, 'S-NOPROOF', 'doing')
     step = {'step_id': 'S-NOPROOF', 'project_id': 'P', 'owner': 'fred', 'title': 't'}
-    out = watchdog_deos._finish_local_agent_step(
-        conn, step, True, 'Finished.\nDEOS_STATUS: done', 5, claimed_at=time.time() - 60)
+    out = watchdog_does._finish_local_agent_step(
+        conn, step, True, 'Finished.\nDOES_STATUS: done', 5, claimed_at=time.time() - 60)
     assert out == 'continue'
     assert conn.execute("SELECT status FROM project_steps WHERE step_id='S-NOPROOF'").fetchone()[0] == 'todo'
-    assert 'rejected done' in watchdog_deos._progress_notes(conn, step)[0]
+    assert 'rejected done' in watchdog_does._progress_notes(conn, step)[0]

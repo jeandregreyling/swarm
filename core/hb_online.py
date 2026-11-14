@@ -105,7 +105,8 @@ def may_dispatch(conn, recipient, sender):
         return False, f'{provider} is not authorised: it is switched Off in Live status (Auto or On lets HB use it)'
     if not s['available']:
         return False, f'{provider} unavailable: {s["reason"]}'
-    return True, ''
+    from core import hb_budget          # owner 14 Nov: online agents cost real money; HB keeps each one inside its daily budget
+    return hb_budget.check(conn, recipient, sender)
 
 
 # ---- owner 14 Nov: checked at startup and every few minutes, so JD and APEX know before anything is sent -------------
@@ -174,6 +175,21 @@ def mention_items(conn):
         if s['mode'] != 'off' and s['available']:
             out.append({'key': provider, 'label': LABELS.get(provider, provider), 'tier': 'online',
                         'note': ('online · ' + s['mode'] + ' · ' + s['reason'])[:120]})
+    # 14 Nov: the attached VS Code instructor (@git/@github) is listed while its link is live
+    # (its token used the peer API in the last 15 minutes). No switch: it is JD's own session.
+    try:
+        row = conn.execute("SELECT last_used_at FROM service_tokens WHERE principal_id='copilot-instructor' AND revoked_at IS NULL AND last_used_at IS NOT NULL ORDER BY id DESC LIMIT 1").fetchone()
+        if row and time.time() - row[0] < 900:
+            out.append({'key': 'github', 'label': 'Git (VS Code Instructor)', 'tier': 'online',
+                        'note': 'attached Copilot session · live'})
+    except Exception:
+        pass
+    try:   # owner 14 Nov: every onboarded inbox agent's handles (e.g. @claude, @git) - data in hb_agents
+        from core import hb_agents
+        keys = {o['key'] for o in out}
+        out += [m for m in hb_agents.mention_items(conn) if m['key'] not in keys]
+    except Exception:
+        pass
     return out
 
 

@@ -212,14 +212,14 @@ def test_check_due_claims_one_due_task_per_tick(hb_db):
     assert fired == ['a']
 
 
-def test_check_due_prioritizes_deos_control_plane(hb_db):
+def test_check_due_prioritizes_does_control_plane(hb_db):
     from fridays import scheduler
     from fridays.task_runner import TASK_REGISTRY
 
     fired = []
-    previous = TASK_REGISTRY.get('watchdog_deos_cycle')
-    TASK_REGISTRY['watchdog_deos_cycle'] = {
-        'fn': lambda args='': (fired.append('deos') or 'ok'),
+    previous = TASK_REGISTRY.get('watchdog_does_cycle')
+    TASK_REGISTRY['watchdog_does_cycle'] = {
+        'fn': lambda args='': (fired.append('does') or 'ok'),
         'description': 'p', 'category': 'test',
     }
     TASK_REGISTRY['_old_probe'] = {
@@ -234,7 +234,7 @@ def test_check_due_prioritizes_deos_control_plane(hb_db):
     )
     conn.execute(
         "INSERT INTO scheduled_tasks (name, schedule, action_type, action_data, next_run) "
-        "VALUES ('watchdog_deos_cycle', 'interval 5m', 'PYTHON', 'watchdog_deos_cycle', '2000-01-01 00:00:00')"
+        "VALUES ('watchdog_does_cycle', 'interval 5m', 'PYTHON', 'watchdog_does_cycle', '2000-01-01 00:00:00')"
     )
     conn.commit()
     conn.close()
@@ -243,12 +243,12 @@ def test_check_due_prioritizes_deos_control_plane(hb_db):
         scheduler.check_due()
     finally:
         if previous is None:
-            TASK_REGISTRY.pop('watchdog_deos_cycle', None)
+            TASK_REGISTRY.pop('watchdog_does_cycle', None)
         else:
-            TASK_REGISTRY['watchdog_deos_cycle'] = previous
+            TASK_REGISTRY['watchdog_does_cycle'] = previous
         TASK_REGISTRY.pop('_old_probe', None)
 
-    assert fired == ['deos']
+    assert fired == ['does']
 
 
 # S-E056DBAD19 / S-B1279A66EB ---------------------------------------------

@@ -4,7 +4,7 @@ import sys
 import pytest
 from pydantic import ValidationError
 
-from core.deos_teacher import (
+from core.does_teacher import (
     TeacherValidationExhausted, request_curriculum, validate_teacher_payload,
 )
 from core.recovery_supervisor import RecoveryPolicy, RecoverySupervisor

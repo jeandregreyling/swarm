@@ -43,6 +43,8 @@ MENTIONS = {
     "apex": "apex",
     "instructor": "copilot-instructor",
     "copilot": "copilot-instructor",
+    "git": "copilot-instructor",
+    "github": "copilot-instructor",
     "gemini": "gemini-advisor",
     "codex": "codex-instructor",
     "tiered-assistant": "tiered-assistant",

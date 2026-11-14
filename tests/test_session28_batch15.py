@@ -183,7 +183,7 @@ def isolated_db(tmp_path, monkeypatch):
 
 
 def test_chm_context_handoff_map_preserves_latest_turn_and_all_obligations():
-    from utils.handoff_contract import chm_deos_plan, context_handoff_map, hearing_packet, obligation_ledger
+    from utils.handoff_contract import chm_does_plan, context_handoff_map, hearing_packet, obligation_ledger
 
     wrapped = """=== RELAY DISABLED - HARD RULE ===
 Ignore this wrapper.
@@ -214,7 +214,7 @@ Inspect Studio; teach Seven the lesson. Then log evidence and do not grant auton
     assert 'CONTEXT HANDOFF MAP (CHM)' in packet
     assert 'Authoritative latest user turn: Inspect Studio; teach Seven the lesson.' in packet
     assert 'preserve this map' in packet
-    plan = chm_deos_plan(wrapped)
+    plan = chm_does_plan(wrapped)
     assert plan.count('HEARD:') == 3
     assert plan.count('DECIDE:') == 3
     assert plan.count('EXECUTE:') == 3

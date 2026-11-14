@@ -49,6 +49,10 @@ def test_registered_model_runtime_controls_use_llama_server(monkeypatch):
     monkeypatch.setattr(llama_server, 'ensure', lambda model: SimpleNamespace(pid=123))
     monkeypatch.setattr(llama_server, 'stop', lambda model: calls.append(('stop', model)) or 1)
     monkeypatch.setattr(llama_server, 'set_ttl', lambda model, seconds: calls.append(('ttl', model, seconds)) or seconds)
+    import sys
+    # Unload is owner-only since 13 Nov (B36); this contract runs as the owner.
+    monkeypatch.setattr(sys.modules[ollama_mod.require_owner.__module__], 'get_current_user',
+                        lambda: {'username': 'jd', 'role': 'owner'})
 
     app = Flask(__name__)
     app.register_blueprint(ollama_mod.ollama_bp)

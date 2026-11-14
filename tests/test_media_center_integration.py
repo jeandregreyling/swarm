@@ -11,6 +11,30 @@ for _mod in ('database', 'frontend', 'frontend.services', 'frontend.terminal',
 from terminal import create_app
 
 
+@pytest.fixture(autouse=True)
+def _remove_media_projects_created_by_test():
+    """Always delete Studio projects a test created, even when it fails.
+
+    The render tests write to the live Studio DB; the old cleanup only ran
+    after every assertion passed, so each failed run left ~13 junk steps behind.
+    """
+    from utils.db._connection import get_connection
+
+    def _ids():
+        conn = get_connection()
+        try:
+            return {r[0] for r in conn.execute(
+                "SELECT project_id FROM projects WHERE description LIKE 'Media Center sync%'")}
+        finally:
+            conn.close()
+
+    before = _ids()
+    yield
+    from core.knowledge.projects import delete_project
+    for pid in _ids() - before:
+        delete_project(pid)
+
+
 TEMPLATE = ROOT / "frontend" / "templates" / "terminal_base.html"
 STUDIO_JS = ROOT / "frontend" / "static" / "js" / "views" / "studio.js"
 

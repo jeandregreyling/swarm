@@ -990,8 +990,39 @@ def _run_local_agent_direct_guarded(agent: str, mode: str, prompt: str, timeout_
     return status == 'ok', answer, int(tokens or 0)
 
 
+def _ollama_serves(model: str) -> bool:
+    """True when ollama actually has this model (14 Nov: llama.cpp serves most models now;
+    never reset a runtime that is not serving the timed-out model)."""
+    try:
+        import json as _json
+        import urllib.request as _url
+        with _url.urlopen('http://127.0.0.1:11434/api/tags', timeout=5) as resp:
+            tags = _json.loads(resp.read().decode('utf-8', 'replace'))
+        names = {str(m.get('name') or m.get('model') or '') for m in tags.get('models') or []}
+        base = str(model or '').strip()
+        return bool(base) and (base in names or (base + ':latest') in names)
+    except Exception:
+        return False
+
+
+def _announce(text: str) -> None:
+    """Say watchdog resets in main chat (JD 14 Nov: which agent timed out must be visible there)."""
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (2834,'hummingbird','user',?,'response',0)",
+                         ('\U0001f415 Watchdog: ' + text,))
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+
 def _hard_reset_ollama_after_timeout(agent: str, mode: str) -> str:
-    direct = _direct_model(WORK_AGENT_MODELS.get(str(agent or '').strip().lower()) or '')
+    model = WORK_AGENT_MODELS.get(str(agent or '').strip().lower()) or ''
+    direct = _direct_model(model)
     if direct:
         try:
             from core.seven_llm import llama_server
@@ -999,6 +1030,11 @@ def _hard_reset_ollama_after_timeout(agent: str, mode: str) -> str:
             return f'llama-server {direct} stopped after {agent} {mode} timeout'
         except Exception as exc:
             return f'llama-server reset failed: {type(exc).__name__}: {exc}'
+    if not _ollama_serves(model):
+        note = (f'{agent} {mode} timed out; ollama does not serve {model or "its model"} '
+                '(llama.cpp serves the models now), so no ollama reset')
+        _announce(note)
+        return note
     try:
         kill = subprocess.run(
             ['systemctl', 'kill', '-s', 'SIGKILL', 'ollama.service'],
@@ -1013,7 +1049,9 @@ def _hard_reset_ollama_after_timeout(agent: str, mode: str) -> str:
             timeout=30,
         )
         if kill.returncode == 0 and start.returncode == 0:
-            return f'ollama hard reset after {agent} {mode} timeout'
+            note = f'ollama hard reset after {agent} {mode} timeout (model {model or "?"})'
+            _announce(note)
+            return note
         detail = (kill.stderr or start.stderr or kill.stdout or start.stdout or '').strip()[:180]
         return f'ollama hard reset failed rc={kill.returncode}/{start.returncode}: {detail}'
     except Exception as exc:

@@ -1,0 +1,78 @@
+{
+  "name": "hummingbird-vscode-adapter",
+  "displayName": "Hummingbird Peer Adapter",
+  "description": "An explicit, authenticated loopback transport boundary for supervised Hummingbird peers.",
+  "version": "0.1.1",
+  "publisher": "hummingbird-local",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.96.0",
+    "node": ">=22"
+  },
+  "categories": [
+    "Other"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "main": "./out/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": false
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "hummingbirdAdapter.pair",
+        "title": "Hummingbird: Store Peer Service Token"
+      },
+      {
+        "command": "hummingbirdAdapter.connect",
+        "title": "Hummingbird: Verify Peer Connection"
+      },
+      {
+        "command": "hummingbirdAdapter.inspectQueue",
+        "title": "Hummingbird: Inspect Pending Peer Requests"
+      },
+      {
+        "command": "hummingbirdAdapter.disconnect",
+        "title": "Hummingbird: Disconnect Peer Adapter"
+      },
+      {
+        "command": "hummingbirdAdapter.forgetToken",
+        "title": "Hummingbird: Remove Peer Service Token"
+      },
+      {
+        "command": "hummingbirdAdapter.showStatus",
+        "title": "Hummingbird: Show Adapter Status"
+      }
+    ],
+    "configuration": {
+      "title": "Hummingbird Peer Adapter",
+      "properties": {
+        "hummingbirdAdapter.endpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:5050",
+          "scope": "machine",
+          "description": "Local Hummingbird origin. Only literal loopback HTTP origins are accepted; redirects are never followed."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "compile": "tsc",
+    "test": "tsc -p tsconfig.test.json && node --test .test-build/test/*.test.js",
+    "vscode:prepublish": "npm run check && npm run compile",
+    "package": "vsce package --no-dependencies --out hummingbird-vscode-adapter.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/vscode": "1.96.0",
+    "@vscode/vsce": "4.1.0",
+    "typescript": "7.0.2"
+  }
+}

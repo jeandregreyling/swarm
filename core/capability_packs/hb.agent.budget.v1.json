@@ -1,0 +1,18 @@
+{
+  "id": "hb.agent.budget",
+  "version": "1.0.0",
+  "source": "JD 14 Nov 2026: online agents cost real money per token - 'it's not a charity'. Codex spent 25.6M tokens on 9 Nov, 14.5M on 10 Nov and 11.2M on 11 Nov, then ran out and could no longer advise or check anything. HB manages each online agent's budget; JD sets the numbers here.",
+  "meaning": "A token is a piece of a word. Every token an online agent reads (its instructions, the files and records it opens, the conversation) and writes is paid for by JD. Reading a big file costs as much as writing it. When the day's budget is used up, the agent cannot advise or check anything until the next day.",
+  "default_online": {"metered": true, "daily_tokens": 200000, "automatic_share": 0.7},
+  "agents": {
+    "codex-instructor": {"daily_tokens": 200000},
+    "gemini-advisor": {"daily_tokens": 300000},
+    "copilot-instructor": {"metered": false, "note": "GitHub Copilot in VS Code runs on JD's Copilot subscription; HB cannot see its token use, so it keeps to the same habits."}
+  },
+  "habits": [
+    "Be brief: answer in as few words as the question needs; no restating the question, no long summaries of what you read.",
+    "Read only what you need: search first (grep_repo, knowledge_search), then open the exact lines; never re-read a file you already read in this turn.",
+    "One good answer beats several partial ones: no tool loops, no repeated checks of the same thing.",
+    "If the task is local work (running, editing, testing), say so and leave it to APEX and the local models - they cost nothing per token."
+  ]
+}

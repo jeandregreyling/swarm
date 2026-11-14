@@ -1485,7 +1485,7 @@ def test_runtime_stop_ignores_current_job_for_restart_escalation(monkeypatch):
     assert 'ollama service restarted' in error
 
 
-def test_cancel_passes_job_id_to_local_cleanup(monkeypatch):
+def test_owner_cancel_never_kills_shared_model_residents(monkeypatch):
     _suppress_durable_spine_logs(monkeypatch)
     _fresh_state()
     from flask import Flask
@@ -1531,6 +1531,11 @@ def test_cancel_passes_job_id_to_local_cleanup(monkeypatch):
 
     monkeypatch.setattr(chat_mod, '_chat_try_hard_kill_local_agent', _fake_kill)
 
+    from frontend.blueprints import peer_bridge as bridge
+    from flask import jsonify
+    monkeypatch.setattr(bridge,'get_current_user',lambda:{'username':'test-owner','role':'owner'})
+    monkeypatch.setattr(bridge,'_owner_chat_stop',lambda *args:jsonify(held_tasks=[],control_receipts=[],interrupted=[]))
+
     app = Flask(__name__)
     app.register_blueprint(chat_mod.chat_bp)
     with app.test_client() as client:
@@ -1543,8 +1548,9 @@ def test_cancel_passes_job_id_to_local_cleanup(monkeypatch):
 
     assert resp.status_code == 200
     assert data['ok'] is True
-    assert calls == [('mistral', 'job-cancel-mistral')]
-    assert delayed == [('mistral', 'job-cancel-mistral', 30)]
+    assert calls == []
+    assert delayed == []
+    assert data['hard_kill'] is False
     assert data['cancelled'][0]['job_id'] == 'job-cancel-mistral'
 
 

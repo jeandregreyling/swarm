@@ -16,6 +16,18 @@ def test_direct_chat_reserves_tokens_for_a_final_answer():
     assert payload['max_tokens'] == 2048
 
 
+def test_direct_chat_reasoning_effort_is_explicit_and_validated():
+    import pytest
+
+    assert "reasoning_effort" not in llama_server._chat_payload("m", [], temperature=0, options={})
+    for effort in ("low", "medium", "high"):
+        payload = llama_server._chat_payload("m", [], temperature=0, options={"reasoning_effort": effort})
+        assert payload["reasoning_effort"] == effort
+    for effort in ("unknown", None, True, []):
+        with pytest.raises(ValueError, match="reasoning_effort"):
+            llama_server._chat_payload("m", [], temperature=0, options={"reasoning_effort": effort})
+
+
 def test_direct_chat_uses_registry_profile_and_rejects_reasoning_only(monkeypatch):
     import pytest
     from types import SimpleNamespace
@@ -36,6 +48,59 @@ def test_direct_chat_uses_registry_profile_and_rejects_reasoning_only(monkeypatc
     with pytest.raises(RuntimeError, match='no final answer'):
         llama_server.chat('test-direct', [{'role': 'user', 'content': 'hello'}])
     assert posted['stop'] == get_profile('llama3').stops or posted['stop'] == list(get_profile('llama3').stops)
+
+
+def test_apex_truncated_final_is_not_executable_but_other_chat_behavior_is_preserved(monkeypatch):
+    import pytest
+    from types import SimpleNamespace
+
+    data = {'choices': [{'finish_reason': 'length', 'message': {'content': '{"tool_calls":['}}],
+            'usage': {'prompt_tokens': 3200, 'completion_tokens': 4096}}
+    monkeypatch.setattr(llama_server.requests, 'post',
+                        lambda *_a, **_kw: SimpleNamespace(status_code=200, json=lambda: data))
+    handle = SimpleNamespace(endpoint='http://isolated')
+    payload = {'max_tokens': 4096}
+    with pytest.raises(RuntimeError, match='output budget exhausted.*finish_reason=length'):
+        llama_server._chat_once(handle, payload, {'require_complete_output': True})
+    assert llama_server._chat_once(handle, payload, {}) == ('{"tool_calls":[', 4096)
+
+
+def test_apex_reasoning_only_length_is_classified_as_budget_exhaustion(monkeypatch):
+    import pytest
+    from types import SimpleNamespace
+
+    data = {'choices': [{'finish_reason': 'length', 'message': {'content': '',
+                           'reasoning_content': 'Never execute this'}}],
+            'usage': {'prompt_tokens': 3200, 'completion_tokens': 1800}}
+    monkeypatch.setattr(llama_server.requests, 'post',
+                        lambda *_a, **_kw: SimpleNamespace(status_code=200, json=lambda: data))
+    with pytest.raises(RuntimeError, match='output budget exhausted'):
+        llama_server._chat_once(SimpleNamespace(endpoint='http://isolated'),
+                                {'max_tokens': 1800}, {'require_complete_output': True})
+
+
+def test_apex_stream_length_is_also_not_executable(monkeypatch):
+    import json
+    import pytest
+    from types import SimpleNamespace
+
+    class Response:
+        status_code = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def iter_lines(self, **_):
+            yield "data: " + json.dumps({"choices": [{"finish_reason": "length", "delta": {}}],
+                                         "usage": {"completion_tokens": 4096}})
+
+    monkeypatch.setattr(llama_server.requests, "post", lambda *_a, **_kw: Response())
+    with pytest.raises(RuntimeError, match="output budget exhausted"):
+        llama_server._chat_stream(SimpleNamespace(endpoint="http://isolated"),
+                                  {"max_tokens": 4096}, timeout=1, require_complete=True)
 
 
 def test_direct_registry_discovers_repo_local_seven_model():
@@ -573,6 +638,8 @@ def test_registry_serves_ollama_store_models_directly(monkeypatch, tmp_path):
 
     _write_ollama_store(tmp_path)
     monkeypatch.setenv("SWARM_OLLAMA_STORE", str(tmp_path))
+    # 14 Nov: HB's own list (ops/llm_registry.yaml) now overrides Fred (16K context); this test is about the store alone.
+    monkeypatch.setattr(registry, "REGISTRY_PATH", str(tmp_path / "no-registry.yaml"))
     try:
         registry.reload()
         fred = registry.get("fred-cpu:24b")
@@ -664,3 +731,69 @@ def test_chat_payload_alternates_roles_for_strict_templates():
     assert msgs[2]['content'] == 'qwen: hi\n\nllama: hey'
     assert msgs[3]['content'][0] == {'type': 'text', 'text': 'relay note\n\ngo'}
     assert msgs[3]['content'][1]['type'] == 'image_url'
+
+
+def test_gemma_schema_uses_actual_template_and_constrained_completion(monkeypatch):
+    from types import SimpleNamespace
+    from core.apex_tools import TURN_FORMAT
+    calls=[]
+    entry=ModelEntry('gemma-direct:3','llamacpp',options={'profile':'gemma'})
+    monkeypatch.setattr(registry,'get',lambda _:entry)
+    monkeypatch.setattr(llama_server,'ensure',lambda *_a,**_k:SimpleNamespace(endpoint='http://gemma'))
+    def post(url,json,timeout):
+        calls.append((url,json))
+        data=({'prompt':'<start_of_turn>user\nhello<end_of_turn>\n<start_of_turn>model\n'}
+              if url.endswith('/apply-template') else
+              {'content':'{"tool_calls":[],"answer":"Ready"}','tokens_predicted':12,'stop_type':'eos','truncated':False})
+        return SimpleNamespace(status_code=200,json=lambda:data)
+    monkeypatch.setattr(llama_server.requests,'post',post)
+    seen=[]
+    result=llama_server.chat('gemma-direct:3',[{'role':'user','content':'hello'}],
+        options={'response_format':TURN_FORMAT,'require_complete_output':True},on_token=seen.append)
+    assert result==('{"tool_calls":[],"answer":"Ready"}',12) and seen==[result[0]]
+    assert [url for url,_ in calls]==['http://gemma/apply-template','http://gemma/completion']
+    assert calls[0][1]['messages']==[{'role':'user','content':'hello'}]
+    assert calls[1][1]['prompt'].endswith('<start_of_turn>model\n')
+    assert calls[1][1]['json_schema']==TURN_FORMAT['json_schema']['schema']
+    assert 'response_format' not in calls[1][1] and calls[1][1]['stream'] is False
+
+
+def test_gemma_schema_completion_rejects_partial_empty_and_server_failures(monkeypatch):
+    from types import SimpleNamespace
+    import pytest
+    import requests
+    handle=SimpleNamespace(endpoint='http://gemma')
+    payload=llama_server._chat_payload('gemma',[],temperature=0.2,
+        options={'response_format':'json','num_predict':20})
+    responses=[{'content':'{}','tokens_predicted':20,'stop_type':'limit'},
+               {'content':'{}','truncated':True}, {'content':''}]
+    for data in responses:
+        monkeypatch.setattr(llama_server.requests,'post',lambda url,**_:SimpleNamespace(
+            status_code=200,json=lambda:({'prompt':'rendered'} if url.endswith('apply-template') else data)))
+        with pytest.raises(RuntimeError):
+            llama_server._schema_completion_chat(handle,payload,{'require_complete_output':True})
+    monkeypatch.setattr(llama_server.requests,'post',lambda url,**_:SimpleNamespace(
+        status_code=500,text='sampler failed'))
+    with pytest.raises(requests.HTTPError,match='sampler failed'):
+        llama_server._schema_completion_chat(handle,payload,{})
+
+
+def test_schema_sampler_failure_retries_same_model_and_schema_on_completion(monkeypatch):
+    from types import SimpleNamespace
+    from core.apex_tools import TURN_FORMAT
+    calls=[]
+    entry=ModelEntry('apex-direct:7b','llamacpp',options={'profile':'qwen'})
+    monkeypatch.setattr(registry,'get',lambda _:entry)
+    monkeypatch.setattr(llama_server,'ensure',lambda *_a,**_k:SimpleNamespace(endpoint='http://coder'))
+    def post(url,json,timeout):
+        calls.append((url,json))
+        if url.endswith('/v1/chat/completions'):
+            return SimpleNamespace(status_code=500,text='Failed to initialize samplers: std::exception',url=url)
+        data=({'prompt':'actual coder template'} if url.endswith('/apply-template') else
+              {'content':'{"tool_calls":[],"answer":"Ready"}','tokens_predicted':12,'stop_type':'eos'})
+        return SimpleNamespace(status_code=200,json=lambda:data)
+    monkeypatch.setattr(llama_server.requests,'post',post)
+    assert llama_server.chat('apex-direct:7b',[{'role':'user','content':'hello'}],
+        options={'response_format':TURN_FORMAT,'require_complete_output':True})[1]==12
+    assert [url for url,_ in calls]==['http://coder/v1/chat/completions','http://coder/apply-template','http://coder/completion']
+    assert calls[-1][1]['json_schema']==TURN_FORMAT['json_schema']['schema']

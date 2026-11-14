@@ -95,6 +95,13 @@ def test_patch_nonunique_match_fails_without_transaction(repository, text):
     assert store.list_for("ghost", "session-1") == []
 
 
+def test_identical_patch_text_is_rejected_as_no_op_before_matching(repository):
+    store = ApprovalStore()
+    with pytest.raises(ValueError, match="changes nothing"):
+        patch_proposal(store, repository, exact_old_text="## TODO", new_text="## TODO")
+    assert store.list_for("ghost", "session-1") == []
+
+
 def test_patch_denial_and_drift_never_write(repository):
     store = ApprovalStore()
     transaction = patch_proposal(store, repository)
@@ -115,10 +122,12 @@ def test_patch_strict_arguments_and_paths(repository, overrides):
         patch_proposal(ApprovalStore(), repository, **overrides)
 
 
-def test_patch_cannot_read_untracked_file_or_bypass_permission(repository):
+def test_patch_can_edit_nonignored_untracked_source_but_cannot_bypass_permission(repository):
     repository.root.joinpath("new.py").write_text("value = 1\n")
-    with pytest.raises(PermissionError):
-        patch_proposal(ApprovalStore(), repository, file_path="new.py")
+    untracked_store = ApprovalStore()
+    untracked = patch_proposal(untracked_store, repository, file_path="new.py")
+    assert decide(untracked_store, untracked)["status"] == "succeeded"
+    assert repository.root.joinpath("new.py").read_text() == "value = 2\n"
     store = ApprovalStore()
     transaction = patch_proposal(store, repository)
     assert store.decide(transaction.id, True, "ghost", "session-1", transaction.csrf,
@@ -192,7 +201,6 @@ def test_expiration_reserves_target_and_restart_cannot_execute(repository):
     {"path": "../outside.py", "content": "bad"},
     {"path": "/tmp/outside.py", "content": "bad"},
     {"path": "probe.py", "content": "x", "execute": True},
-    {"path": "new.py", "content": "new"},
     {"path": "other.py", "content": "\0"},
 ])
 def test_invalid_write_proposals_do_not_create_transactions(repository, args):
@@ -200,6 +208,106 @@ def test_invalid_write_proposals_do_not_create_transactions(repository, args):
     with pytest.raises((ValueError, PermissionError)):
         store.propose(repository, "propose_write_file", args, "ghost", "session-1", 1)
     assert store.list_for("ghost", "session-1") == []
+
+
+@pytest.mark.parametrize("approved", [False, True])
+def test_new_file_creation_uses_gate_and_leaves_index_untouched(repository, approved):
+    (repository.root / "core").mkdir()
+    path = repository.root / "core" / "new.py"
+    store = ApprovalStore()
+    index = repository._git("ls-files", "--stage", "-z")
+    transaction = write_proposal(store, repository, path="core/new.py", content="# new source\n")
+    assert transaction.states["core/new.py"] is None
+    assert transaction.public()["new_paths"] == ["core/new.py"]
+    assert "/dev/null" in transaction.diff and "# new source" in transaction.diff
+    assert not path.exists() and not transaction.ready.is_set()
+    result = decide(store, transaction, approved)
+    assert result["status"] == ("succeeded" if approved else "denied"), result
+    assert path.exists() is approved
+    if approved:
+        assert path.read_bytes() == b"# new source\n"
+        assert path.stat().st_mode & 0o777 == 0o644
+        assert "+# new source" in repository.call("get_diff", {"path": "core/new.py"})
+        with pytest.raises(ApprovalConflict, match="consumed"):
+            decide(store, transaction)
+    assert repository._git("ls-files", "--stage", "-z") == index
+    assert list(path.parent.glob(".apex-write-*")) == []
+
+
+@pytest.mark.parametrize("drift", ["file", "empty", "symlink", "directory", "parent", "ignored"])
+def test_new_file_creation_rejects_drift(repository, drift):
+    root = repository.root
+    (root / "core").mkdir()
+    store = ApprovalStore()
+    transaction = write_proposal(store, repository, path="core/new.py", content="proposed\n")
+    path = root / "core" / "new.py"
+    if drift == "file":
+        path.write_text("operator\n")
+    elif drift == "empty":
+        path.touch()
+    elif drift == "symlink":
+        path.symlink_to(root / "probe.py")
+    elif drift == "directory":
+        path.mkdir()
+    elif drift == "parent":
+        (root / "core").rename(root / "old-core")
+        (root / "core").mkdir()
+    else:
+        (root / ".gitignore").write_text("core/new.py\n")
+    result = decide(store, transaction)
+    assert result["status"] == "failed", result
+    if drift == "file":
+        assert path.read_text() == "operator\n"
+    elif drift == "empty":
+        assert path.read_bytes() == b""
+    elif drift == "symlink":
+        assert path.is_symlink() and (root / "probe.py").read_text() == "value = 1\n"
+    elif drift == "directory":
+        assert path.is_dir()
+    else:
+        assert not path.exists()
+    assert list(root.glob("**/.apex-write-*")) == []
+
+
+@pytest.mark.parametrize("path", [
+    "missing/new.py", ".git/new.py", "sandpits/new.py", "new.db", ".env",
+    "secret.py", "ignored.py", "linked/new.py",
+])
+def test_new_file_creation_retains_path_and_source_boundaries(repository, path):
+    (repository.root / ".gitignore").write_text("ignored.py\n")
+    (repository.root / "linked").symlink_to(repository.root, target_is_directory=True)
+    store = ApprovalStore()
+    with pytest.raises((OSError, ValueError, PermissionError)):
+        write_proposal(store, repository, path=path, content="new\n")
+    assert store.list_for("ghost", "session-1") == []
+
+
+def test_new_file_creation_cannot_overwrite_last_instant_race(repository, monkeypatch):
+    store = ApprovalStore()
+    transaction = write_proposal(store, repository, path="new.py", content="proposed\n")
+    import os
+    original_link = os.link
+
+    def racing_link(*args, **kwargs):
+        (repository.root / "new.py").write_text("operator won\n")
+        return original_link(*args, **kwargs)
+
+    monkeypatch.setattr(os, "link", racing_link)
+    assert decide(store, transaction)["status"] == "failed"
+    assert (repository.root / "new.py").read_text() == "operator won\n"
+    assert list(repository.root.glob(".apex-write-*")) == []
+
+
+def test_new_file_expiry_and_permission_denial_never_create(repository):
+    store = ApprovalStore()
+    transaction = write_proposal(store, repository, path="new.py", content="")
+    transaction.expires_at = time.time() - 1
+    assert store.list_for("ghost", "session-1") == []
+    assert not (repository.root / "new.py").exists()
+    transaction = write_proposal(store, repository, path="new.py", content="new\n")
+    result = store.decide(transaction.id, True, "ghost", "session-1", transaction.csrf, lambda _: False)
+    assert result["status"] == "denied"
+    assert not (repository.root / "new.py").exists()
 
 
 @pytest.mark.parametrize("paths", ["probe.py", [], ["."], ["*.py"], ["probe.py", "probe.py"]])
@@ -333,7 +441,8 @@ def test_skill_loop_resumes_from_denied_proposal_receipt(repository):
     answer, _, receipts = run_apex_tools(model, [{"role": "user", "content": "Propose a comment"}],
                                          lambda: True, lambda _: None, repository, handler)
     assert "denied" in answer and receipts[0]["status"] == "denied"
-    assert "User Denied Execution" in seen[1][-1]["content"]
+    assert "User Denied Execution" in answer and "new operator instruction is required" in answer
+    assert len(seen) == 1, "a denied proposal ends the turn instead of re-prompting the model"
 
 
 @pytest.fixture
@@ -430,10 +539,36 @@ def test_sse_storage_failure_does_not_grant_approval_audience(monkeypatch):
 
 def test_transport_schema_prevents_mixed_proposal_and_read_batches():
     from core.apex_tools import TURN_FORMAT
-    read, proposal, final = TURN_FORMAT["json_schema"]["schema"]["oneOf"]
+    read, proposal, studio, final = TURN_FORMAT["json_schema"]["schema"]["oneOf"]
+    assert studio["properties"]["tool_calls"]["maxItems"] == 1
     assert proposal["properties"]["tool_calls"]["maxItems"] == 1
     assert proposal["properties"]["answer"]["const"] == ""
     names = [item["properties"]["name"]["const"]
              for item in read["properties"]["tool_calls"]["items"]["oneOf"]]
     assert "propose_write_file" not in names
     assert final["properties"]["tool_calls"]["maxItems"] == 0
+
+
+def test_independent_stores_serialize_source_writes_and_recheck_stale_payloads(repository,monkeypatch):
+    import threading
+    from core.hb_process_lock import ProcessLock
+    first,second=ApprovalStore(),ApprovalStore()
+    one=write_proposal(first,repository,content='value = 11\n')
+    two=write_proposal(second,repository,content='value = 22\n')
+    entered,release=threading.Event(),threading.Event()
+    original=first._write
+    def write(transaction):
+        entered.set()
+        assert release.wait(5)
+        return original(transaction)
+    monkeypatch.setattr(first,'_write',write)
+    results={}
+    a=threading.Thread(target=lambda:results.update(first=decide(first,one)))
+    b=threading.Thread(target=lambda:results.update(second=decide(second,two)))
+    a.start();assert entered.wait(5)
+    probe=ProcessLock('source-write',repository.root)
+    assert not probe.acquire(timeout=0)
+    b.start();release.set();a.join(5);b.join(5)
+    assert results['first']['status']=='succeeded'
+    assert results['second']['status']=='failed' and 'Stale payload' in results['second']['output']
+    assert (repository.root/'probe.py').read_text()=='value = 11\n'

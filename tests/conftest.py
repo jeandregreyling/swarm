@@ -46,7 +46,14 @@ _TEST_DB = tempfile.NamedTemporaryFile(
 _TEST_DB.close()
 
 os.environ["SWARM_DB_PATH"] = _TEST_DB.name
+_TEST_AGENT_IDENTITIES = tempfile.TemporaryDirectory(prefix="swarm_test_identities_")
+os.environ["HUMMINGBIRD_AGENT_STATE"] = _TEST_AGENT_IDENTITIES.name
 os.environ["SWARM_VORTEX_LEDGER_DISABLED"] = "1"
+_TEST_HF_MIRROR = tempfile.TemporaryDirectory(prefix="swarm_test_hf_mirror_")
+os.environ["HUMMINGBIRD_HF_MIRROR_ROOT"] = _TEST_HF_MIRROR.name
+os.environ["HUMMINGBIRD_HF_TEXT_INDEX"] = os.path.join(_TEST_HF_MIRROR.name,"text.sqlite")
+_TEST_HB_LOCKS = tempfile.TemporaryDirectory(prefix="swarm_test_hb_locks_")
+os.environ["HUMMINGBIRD_LOCK_DIR"] = _TEST_HB_LOCKS.name
 _TEST_VORTEX_BACKUPS = tempfile.TemporaryDirectory(prefix="swarm_test_vortex_")
 os.environ["SWARM_VORTEX_BACKUP_ROOT"] = _TEST_VORTEX_BACKUPS.name
 
@@ -63,12 +70,23 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
+def _isolate_owner_apex_grants(tmp_path, monkeypatch):
+    """Host standing grants must never authorize edits during unrelated tests."""
+    from core import apex_permissions
+    monkeypatch.setattr(apex_permissions, 'POLICY_PATH', tmp_path / 'absent-owner-policy.json')
+
+
+@pytest.fixture(autouse=True)
 def _isolate_live_llama_servers(monkeypatch):
     """Never let tests discover, reuse or kill the machine's real llama-servers."""
     from core.seven_llm import llama_server
 
     monkeypatch.setattr(llama_server, "_foreign_servers", lambda: [])
     monkeypatch.setattr(llama_server, "_vram_free_gb", lambda: None)
+    # 12 Nov: hiding the real servers is not enough - a test that reached ensure() with the real
+    # registry then launched a REAL llama-server (3 GB model) that outlived the test run (5 orphans
+    # in one day). Tests that need a server provide their own fake binary via entry options.
+    monkeypatch.setattr(llama_server, "default_binary", lambda: "/nonexistent/llama-server-is-blocked-in-tests")
 
 
 def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
@@ -78,3 +96,48 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
             os.unlink(path)
         except OSError:
             pass
+
+
+@pytest.fixture
+def owner_turned_continuation_on(monkeypatch):
+    """Tests of managed continuation after the owner has pressed Continue/On.
+
+    Since 11 Nov the real default is Off until the owner turns it on (owner
+    request S-437AC764CB). These suites exercise the On behaviour, so they say
+    so explicitly instead of relying on the old default. An explicit owner
+    choice (revision > 0) is still respected.
+    """
+    import core.hb_chat_controls as controls
+    original = controls.continuation
+
+    def continuation(conn, task):
+        result = original(conn, task)
+        if result['revision'] == 0 and result['mode'] == 'off':
+            result = dict(result, mode='on')
+            if (task['state'] not in {'paused', 'cancelled', 'completed', 'awaiting_acceptance'}
+                    and not result['held_by_message_ids']):
+                result['effective'] = 'on'
+        return result
+
+    monkeypatch.setattr(controls, 'continuation', continuation)
+
+
+@pytest.fixture
+def online_providers_authorised(monkeypatch):
+    """Tests of review/instructor routing where the owner has authorised online providers and
+    they are up. Real gating is covered in tests/test_hb_online.py."""
+    import core.hb_online as online
+    monkeypatch.setattr(online, 'status', lambda conn, provider: {
+        'provider': provider, 'authorised': True, 'available': True, 'usable': True,
+        'reason': 'test: authorised and available', 'since': None})
+
+
+@pytest.fixture
+def owner_defined_done(monkeypatch):
+    """Tests of automatic continuation for tasks whose owner has defined what "done" means.
+
+    Since 12 Nov HB does not keep a task running automatically without done criteria
+    (DREAM "Distinguish"); the gate itself is covered in tests/test_hb_dream_method.py.
+    """
+    import core.hb_dream_method as dream
+    monkeypatch.setattr(dream, 'done_when', lambda conn, task: ('owner', ['test: the assigned checks pass']))

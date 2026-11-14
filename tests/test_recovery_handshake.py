@@ -131,7 +131,7 @@ def test_safe_stop_is_successful_control_action_not_task_success(supervisor, mon
         calls.append(True)
         assert len(calls) == 1
         assert "Never guess, never assume, and do not make shit up." in messages[0]["content"]
-        return f'SKILL deos {action} "missing target path and error log"'
+        return f'SKILL does {action} "missing target path and error log"'
 
     result = supervisor.work(task_id, model)
     assert result["status"] == "awaiting_operator"
@@ -149,7 +149,7 @@ def test_safe_stop_is_successful_control_action_not_task_success(supervisor, mon
 @pytest.mark.parametrize("reason", ['""', '"   "', "null", "123", '"reason" trailing'])
 def test_malformed_escalation_cannot_be_accepted_as_summary(supervisor, reason):
     task_id = supervisor.enqueue("Measure.", model="qwen", tools={"hardware"})
-    replies = iter(["SKILL recovery hardware", f"SKILL deos request_context {reason}"] * 3)
+    replies = iter(["SKILL recovery hardware", f"SKILL does request_context {reason}"] * 3)
     result = supervisor.work(task_id, lambda _: next(replies), max_rounds=2)
     assert result["status"] == "blocked"
     assert result["failures"] == 1
@@ -166,7 +166,7 @@ def test_bad_parameter_receipt_is_read_before_safe_stop(supervisor):
             return "SKILL recovery hardware /made/up"
         assert '"core_directive_failure": true' in messages[-1]["content"]
         assert "/made/up" in messages[-1]["content"]
-        return 'SKILL deos request_context "I supplied an unsupported path; need clarification."'
+        return 'SKILL does request_context "I supplied an unsupported path; need clarification."'
 
     result = supervisor.work(task_id, model)
     assert result["status"] == "awaiting_operator"
