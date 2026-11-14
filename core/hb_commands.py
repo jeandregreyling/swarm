@@ -54,6 +54,7 @@ COMMANDS = [
     ('stop', '/stop', 'Stop all current work now', False),
     ('roles', '/roles [set <role> <model>]', 'Which model plays each role (APEX, Fred, counsel, reviewer, homework); set changes one', False),
     ('net', '/net [bench [name] | budget <GB left> <floor GB> | mobile <name> on|off | pick <GB>]', 'Connections, their measured speed, the mobile data budget, and which one a job should use', False),
+    ('swap', '/swap [plan <model GB>]', 'NVMe swap for very large models: is one on, and what a model of that size would need', False),
     ('yes', '/yes', 'Confirm what HB just asked', False),
     ('no', '/no', 'Decline what HB just asked', False),
 ]
@@ -122,6 +123,8 @@ def parse(body):
         return ('bench', words[1:])
     if cmd == 'agents':
         return ('agents', words[1:])
+    if cmd == 'swap':   # owner 14 Nov: NVMe swap for very large models (core/hb_swap.py)
+        return ('swap', words[1:])
     if cmd == 'net':   # owner 14 Nov: HB network manager (core/hb_network.py)
         return ('net', words[1:])
     if cmd == 'roles':   # owner 14 Nov: roles, not names (core/hb_roles.py)
@@ -805,6 +808,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'net':
         from core import hb_network
         return hb_network.command(conn, args, actor)
+    if command == 'swap':
+        from core import hb_swap
+        return hb_swap.command(args)
     if command == 'agents':
         from core import hb_agents
         if len(args) >= 2 and args[0].lower() == 'retire':
