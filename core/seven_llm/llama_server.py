@@ -648,6 +648,17 @@ def ensure(
             raise RuntimeError(f"llama-server not found: {binary}")
 
         opts = dict(entry.options or {})
+        try:   # owner 14 Nov: the gatekeeper - a second model joins a busy card only when it fits (core/hb_gatekeeper.py)
+            from core import hb_gatekeeper
+            gate = hb_gatekeeper.decide(float(entry.ram_gb or 4.0), _uses_gpu(entry), *hb_gatekeeper.vram(),
+                                        float(_meminfo_gb().get("available_gb") or 0.0))
+        except Exception:
+            gate = {"placement": "gpu", "why": "gatekeeper unavailable; loaded as registered"}
+        if gate["placement"] == "refuse":
+            raise RuntimeError("HB gatekeeper: " + gate["why"])
+        if gate["placement"] == "cpu" and _uses_gpu(entry):
+            opts["ngl"] = 0
+            report("gatekeeper", placement="ram", why=gate["why"])
         ctx = int(opts.get("ctx") or entry.ctx or 2048)
         slots = int(opts.get("slots") or 1)
         cmd = [
@@ -669,6 +680,12 @@ def ensure(
             cmd.extend(["--threads", str(int(opts["threads"]))])
         if "ngl" in opts:
             cmd.extend(["--n-gpu-layers", str(int(opts["ngl"]))])
+            if int(opts["ngl"]) == 0:
+                # Owner 15 Nov (ErrorDeviceLost at 07:10): "--n-gpu-layers 0" keeps the weights in RAM, but this Vulkan build still
+                # opened the card and ran compute on it - the homework model had used 43 s of GPU time when the card reset six
+                # seconds after it started, and APEX's server lost its device. "--device none" keeps a CPU model off the card
+                # entirely (measured: the process never opens it).
+                cmd.extend(["--device", "none"])
         if opts.get("chat_template_file"):
             # e.g. gpt-oss blobs from an Ollama store carry a ChatML template;
             # harmony models need their own jinja or channels leak into content.
