@@ -233,6 +233,26 @@ def start():
                             counsel_tick(conn)
                         except Exception:
                             LOG.exception('Counsel tick failed')
+                        try:  # Owner 15 Nov: email intake - JD's mail to HB's mailbox lands in the KC (core/hb_email_intake.py)
+                            from core.hb_email_intake import tick as email_tick
+                            email_tick(conn)
+                        except Exception:
+                            LOG.exception('Email intake tick failed')
+                        try:  # Owner 14 Nov: daily grounding - HB opens the day once JD is here (core/hb_grounding.py)
+                            from core.hb_grounding import tick as grounding_tick
+                            grounding_tick(conn)
+                        except Exception:
+                            LOG.exception('Grounding tick failed')
+                        try:  # Owner 14 Nov: daily summary in main chat, once a day (core/hb_daily_summary.py)
+                            from core.hb_daily_summary import tick as daily_summary_tick
+                            daily_summary_tick(conn)
+                        except Exception:
+                            LOG.exception('Daily summary tick failed')
+                        try:  # Owner 12 Nov: consultant protocol - pending /consult questions are investigated (core/hb_consultant.py)
+                            from core.hb_consultant import tick as consultant_tick
+                            consultant_tick(conn)
+                        except Exception:
+                            LOG.exception('Consultant tick failed')
                         try:  # Owner 14 Nov: advisors' Studio proposals are checked by HB (their test), then go to APEX
                             from core.hb_proposals import tick as proposals_tick
                             proposals_tick(conn)
