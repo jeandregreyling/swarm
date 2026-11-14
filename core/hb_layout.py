@@ -14,7 +14,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG = ROOT / 'runtime' / 'change_sets' / 'layout' / 'moves.jsonl'
-PROTECTED = {'.git', '.venv', 'runtime', 'swarm_memory.db', 'node_modules'}
+PROTECTED = {'.git', '.venv', 'runtime', 'swarm_memory.db', 'node_modules',
+             # owner 15 Nov: live data and root files tools expect in place were listed as "unused" - never movable
+             'swarm_memory.db-wal', 'swarm_memory.db-shm', 'swarm_hive.db', 'mind.db', 'pyproject.toml', 'requirements.txt', 'requirements-lock.txt',
+             'Makefile', 'docker-compose.yml', 'README.md', 'SECURITY.md', 'killswitch.sh', 'config.py', 'bootstrap.sh'}
 
 
 def _rel(path, root):
@@ -22,7 +25,7 @@ def _rel(path, root):
     full = (Path(root) / rel).resolve()
     if not rel or not str(full).startswith(str(Path(root).resolve()) + os.sep):
         raise PermissionError('Path must be inside the repository')
-    if rel.split('/')[0] in PROTECTED or rel.endswith(('.db', '.sqlite')):
+    if rel.split('/')[0] in PROTECTED or rel.endswith(('.db', '.sqlite', '.db-wal', '.db-shm', '.sqlite-wal', '.sqlite-shm')):
         raise PermissionError(f'{rel} is protected (git, environment, runtime data or databases)')
     return rel, full
 
