@@ -39,7 +39,7 @@ def mail(sender='JD <jd@example.com>', subject='Pay run sheet', mid='<m1@x>', wh
     m.set_content('Sanitised copy attached.')
     if attach:
         m.add_attachment(workbook(), maintype='application', subtype='vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename='payrun.xlsx')
-        m.add_attachment(b'\xd0\xcf\x11\xe0', maintype='application', subtype='vnd.ms-excel', filename='old.xls')
+        m.add_attachment(b'\x89PNG\r\n\x1a\n\x00', maintype='image', subtype='png', filename='scan.png')
     return m
 
 
@@ -57,10 +57,10 @@ class Box:
 def test_practice_64_spreadsheet_becomes_rows_of_text():
     text = e.xlsx_text(workbook())
     assert text.splitlines() == ['## Sheet: Pay run (3 rows)', 'Wage type\tAmount', '/101\t\t1234.5', 'Total\t99']
-    assert e.attachment_text('x.xls', 'application/vnd.ms-excel', b'..')[1].startswith('old .xls format')
+    assert e.attachment_text('scan.png', 'image/png', b'\x89PNG\r\n\x1a\n\x00')[1].startswith('a picture')
     assert e.attachment_text('a.csv', 'text/csv', b'\xef\xbb\xbfa,b\n1,2')[0] == 'a,b\n1,2'
     assert e.attachment_text('big.csv', 'text/csv', b'x' * (e.MAX_ATTACHMENT + 1))[1].startswith('too large')
-    assert e.attachment_text('broken.xlsx', 'application/zip', b'not a zip')[1].startswith('could not be read')
+    assert e.attachment_text('broken.xlsx', 'application/zip', b'not a zip')[1].startswith('the file is damaged')
 
 
 def test_practice_64_only_trusted_new_mail_is_taken_in_and_marked_read(monkeypatch):
@@ -76,7 +76,7 @@ def test_practice_64_only_trusted_new_mail_is_taken_in_and_marked_read(monkeypat
     assert [t for t, _ in kept] == ['Email: Pay run sheet', 'Email attachment: payrun.xlsx (Pay run sheet)']
     assert 'Wage type\tAmount' in kept[1][1]
     line = c.execute('SELECT content FROM messages').fetchone()[0]
-    assert line.startswith('📧 Email from jd@example.com: "Pay run sheet"') and 'payrun.xlsx (KC2)' in line and 'old.xls - old .xls format' in line
+    assert line.startswith('📧 Email from jd@example.com: "Pay run sheet"') and 'payrun.xlsx (KC2)' in line and 'scan.png - a picture' in line
     assert dict(c.execute('SELECT message_id, outcome FROM hb_email_seen')) == {'<m1@x>': 'taken in', '<m2@x>': 'left alone: not a trusted sender',
                                                                              '<m3@x>': 'left alone: older than the intake'}
     assert e.check(c, lambda: box, now=NOW + 200) == '0 taken in, 0 left alone'   # nothing is taken twice

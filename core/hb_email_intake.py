@@ -41,7 +41,13 @@ def _column(ref):
 
 
 def xlsx_text(data, max_rows=MAX_ROWS):
-    """An .xlsx workbook as text: one block per sheet, one line per row, cells separated by tabs. Formulas give their saved value."""
+    """An .xlsx workbook as text (now read by the one document reader)."""
+    from lib.knowledge.sources import document_reader
+    return document_reader.xlsx_text(data, max_rows)
+
+
+def _xlsx_text_before_reader(data, max_rows=MAX_ROWS):
+    """The first version (15 Nov), kept for reference; not used."""
     book = zipfile.ZipFile(io.BytesIO(data))
     names = set(book.namelist())
     shared = []
@@ -83,7 +89,26 @@ def xlsx_text(data, max_rows=MAX_ROWS):
 
 
 def attachment_text(filename, content_type, data):
-    """(text, None) or (None, why it could not be read)."""
+    """(text, None) or (None, why it could not be read). Owner 15 Nov: everything goes through the one document reader
+    (lib/knowledge/sources/document_reader.py): spreadsheets, Word, PDF, slides, old Office formats, mail, zips."""
+    from lib.knowledge.sources import document_reader
+    name = filename or ''
+    if '.' not in name.rsplit('/', 1)[-1]:
+        guess = {'application/pdf': '.pdf', 'text/csv': '.csv', 'text/html': '.html', 'text/plain': '.txt', 'message/rfc822': '.eml',
+                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx', 'application/vnd.ms-excel': '.xls',
+                 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx', 'application/msword': '.doc',
+                 'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx', 'application/zip': '.zip'}
+        name += guess.get(str(content_type).lower(), '')
+    if len(data) > MAX_ATTACHMENT:
+        return None, f'too large ({len(data) // 1024 ** 2} MB; limit {MAX_ATTACHMENT // 1024 ** 2} MB)'
+    text, why = document_reader.read(name, data)
+    if text is None and name.lower().endswith('.rpmsg'):
+        why += f'. Save the file itself into {INBOX} on this machine instead'
+    return text, why
+
+
+def _attachment_text_before_reader(filename, content_type, data):
+    """The first version (15 Nov), kept for reference; not used."""
     name = (filename or '').lower()
     if len(data) > MAX_ATTACHMENT:
         return None, f'too large ({len(data) // 1024 ** 2} MB; limit {MAX_ATTACHMENT // 1024 ** 2} MB)'
