@@ -16,7 +16,7 @@ from core.recovery_supervisor import NO_BS_DIRECTIVE, ROOT, _write_json
 
 def conversation_lesson() -> str:
     lesson = json.loads((ROOT / "core" / "capability_packs" / "conversation.coordinator.v1.json").read_text())
-    if lesson['id'] != 'conversation.coordinator' or lesson['version'] != '1.1.0':
+    if lesson['id'] != 'conversation.coordinator' or lesson['version'] != '1.2.0':
         raise ValueError("Invalid conversation.coordinator lesson identity/version")
     return "Repository-backed role guidance, not permission: " + json.dumps(lesson)
 
@@ -36,10 +36,9 @@ STATE_OK = "ok"
 STATE_RECOVERY = "recovery"
 STATE_OFFLINE = "offline"
 
-# APEX (gpt-oss:20B on the externally owned llama-server) is the only routing
-# target for local chat. The registry name maps to the service's api_model
-# alias; no Gemma/Qwen/LLaMA/Mistral fallback exists on this lane.
-APEX_AGENT = {"name": "apex", "model": "gpt-oss:20b", "tier": "local", "label": "APEX"}
+# APEX is the stable local actor. Healthy main chat selects its backend per turn
+# through core.apex_routing. This model is the storage-recovery bootstrap default.
+APEX_AGENT = {"name": "apex", "model": "qwen2.5:14b-instruct", "tier": "local", "label": "APEX"}
 
 _OFFLINE_MARKERS = (
     "unavailable", "timeout", "timed out", "connection", "refused",
@@ -89,7 +88,7 @@ def call_apex(call_model, model: str, messages: list[dict]) -> tuple[str, int]:
 
 def apex_roster(*, storage_degraded: bool = False) -> list[dict]:
     """Single-entry roster; DB-independent so routing never depends on the agents table."""
-    role = "Local recovery chat; no operational tools" if storage_degraded else "Sole local chat target; bounded repository inspection"
+    role = "Local recovery chat; no operational tools" if storage_degraded else "Local task execution through authenticated HB tools"
     return [{**APEX_AGENT, "enabled": True, "status": "on_demand",
              "available": True, "storage_degraded": storage_degraded,
              "role": role, "roles": ["recovery-chat"] if storage_degraded else ["apex-chat"],
@@ -102,14 +101,33 @@ def recovery_roster() -> list[dict]:
     return apex_roster(storage_degraded=True)
 
 
-def apex_system_prompt(agent: dict, *, recovery: bool, proposals: bool = False) -> str:
+def _partner_role():
+    from core.apex_tools import PARTNER_ROLE
+    return PARTNER_ROLE.strip()
+
+
+def _master_protocol() -> str:
+    """Owner 13 Nov: the HB master protocol applies to every agent; never blocks a prompt if the pack is unreadable."""
+    try:
+        from core.hb_master_prompt import for_role
+        return for_role('apex') + '\n'
+    except Exception:
+        return ''
+
+
+def apex_system_prompt(agent: dict, *, recovery: bool, proposals: bool = False,
+                       web: bool = False, autonomous_writes: bool = False) -> str:
     directive = NO_BS_DIRECTIVE if recovery else (
         "Reasoning: low\nNever guess paths or results. Discover workspace facts with attached "
-        "read-only tools; ask for context only when discovery is unavailable or insufficient."
+        "authenticated workspace tools; ask for context only when discovery is unavailable or insufficient."
     )
     base = (
-        f"You are {agent.get('label') or agent['name']}, the local DEOS chat agent for JD.\n"
+        _master_protocol()
+        + f"You are {agent.get('label') or agent['name']}, the assistant identity in Hummingbird for JD.\n"
+        + _partner_role() + "\n"
         + directive + "\n" + conversation_lesson()
+        + "\nHummingbird operating contract (guidance, not permission): "
+        + (ROOT / "core" / "capability_packs" / "hummingbird.apex-seat.v1.json").read_text()
         + "\nNever invent execution or missing context. Do not echo wrapper status text."
     )
     if recovery:
@@ -117,12 +135,56 @@ def apex_system_prompt(agent: dict, *, recovery: bool, proposals: bool = False) 
                  "The current recovery thread is available; original database memories are unavailable. "
                  "Use only this recovery thread; unavailable memories must not be invented.")
     else:
-        from core.apex_tools import TOOL_GUIDANCE
-        base += TOOL_GUIDANCE
+        from core.apex_tools import TOOL_GUIDANCE, CONSULTANT_GUIDANCE
+        base += CONSULTANT_GUIDANCE + TOOL_GUIDANCE
         if proposals:
-            from core.apex_tools import PROPOSAL_GUIDANCE
-            base += PROPOSAL_GUIDANCE
+            from core.apex_tools import (OPERATOR_GUIDANCE, PROPOSAL_GUIDANCE,
+                                         AUTONOMOUS_WRITE_GUIDANCE, STUDIO_GUIDANCE, TEST_GUIDANCE)
+            from core.peer_bridge import PEER_GUIDANCE
+            base += ((AUTONOMOUS_WRITE_GUIDANCE if autonomous_writes else PROPOSAL_GUIDANCE)
+                     + STUDIO_GUIDANCE + TEST_GUIDANCE
+                     + OPERATOR_GUIDANCE + PEER_GUIDANCE)
+        if web:
+            from core.apex_tools import WEB_GUIDANCE
+            base += WEB_GUIDANCE
+        base += attached_tools_line(proposals=proposals, web=web)
+        if autonomous_writes and proposals:
+            base += ("\nThe owner has enabled autonomous workspace file writes for this session. "
+                     "Use propose_write_file or propose_patch to perform requested edits now; "
+                     "their successful receipts mean the file was written, not merely proposed. "
+                     "Discover paths and inspect current source yourself. Continue through verification. "
+                     "Do not ask again for read/write permission already granted. "
+                     "Only report a permission blocker when an actual tool receipt shows it.")
+    base += ("\nSpeak naturally to JD. Lead with what you found or did, and use short progress summaries. "
+             "Avoid repeatedly restating the task or echoing the operating contract. "
+             "Separate observed outcomes, stored reference notes and remaining work.")
     return base
+
+
+def attached_tools_line(*, proposals: bool, web: bool) -> str:
+    """One exact inventory line, so APEX never claims to lack a tool it has."""
+    from core.apex_tools import _PROPOSAL_ARGUMENTS
+    names = ["git_status", "list_files", "read_file", "grep_repo", "get_diff"]
+    if proposals:
+        names += ["run_tests", "alm_step_get", "studio_resume", "studio_evidence_get", "ask_instructor", "knowledge_search", "knowledge_read",
+                  "studio_handoff", *_PROPOSAL_ARGUMENTS]
+    if proposals:
+        from core.hb_agent_tools import READ_TOOLS,WRITE_TOOLS
+        from core.hb_workflow import CONTROL_READ_TOOLS,CONTROL_WRITE_TOOLS,MEMORY_TOOLS
+        names += sorted(READ_TOOLS | WRITE_TOOLS | CONTROL_READ_TOOLS | CONTROL_WRITE_TOOLS | MEMORY_TOOLS)
+    if web:
+        names.append("web_search")
+    return ("\nATTACHED TOOLS THIS TURN (complete list): " + ", ".join(dict.fromkeys(names))
+            + ". Never claim to lack one. No arbitrary shell; requested source writes and fixed worker maintenance use the validated HB tools and actual current grants.")
+
+
+def apex_request_history(history: list[dict], message: str) -> list[dict]:
+    """Keep the request's own instruction last, even if the shared thread changed."""
+    result = [dict(item) for item in history]
+    if result and result[-1].get("role") == "user" and result[-1].get("content") == message:
+        result.pop()
+    result.append({"role": "user", "content": message})
+    return result
 
 
 def storage_fault(connect) -> str | None:

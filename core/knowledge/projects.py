@@ -85,7 +85,7 @@ CASE_STATUSES = ('draft', 'ready', 'passed', 'failed', 'blocked', 'obsolete')
 PROJECT_STATUSES = ('active', 'archived', 'on_hold')
 BLACKBOARD_KINDS = (
     'note', 'handoff', 'decision', 'risk', 'test', 'research', 'milestone',
-    'quintum-chunk', 'quintum-synthesis',
+    'quintum-chunk', 'quintum-synthesis', 'trace',
 )
 BLACKBOARD_STATUSES = ('active', 'resolved', 'archived')
 DEFAULT_OWNER = 'seven'
@@ -698,6 +698,23 @@ def get_step(step_id: str) -> Optional[Dict[str, Any]]:
                 step['test_runs'] = [dict(r) for r in runs]
             except Exception:
                 step['test_runs'] = []
+            try:  # HB tasks working on this step and whether it waits for the owner (12 Nov: approvals show what they approve)
+                managed = conn.execute("SELECT 1 FROM sqlite_master WHERE name='hb_task_manager'").fetchone()
+                tasks = conn.execute(
+                    "SELECT t.task_id, t.title, t.state, t.conversation_id, t.root_message_id, "
+                    + ("m.state, m.detail FROM hb_tasks t LEFT JOIN hb_task_manager m ON m.task_id=t.task_id "
+                       if managed else "NULL, NULL FROM hb_tasks t ")
+                    + "WHERE t.step_id=? ORDER BY t.created_at DESC LIMIT 10", (step_id,),
+                ).fetchall()
+                step['hb_tasks'] = [dict(zip(('task_id', 'title', 'state', 'conversation_id', 'root_message_id',
+                                              'manager_state', 'manager_detail'), tuple(r))) for r in tasks]
+            except Exception:
+                step['hb_tasks'] = []
+            try:
+                from core.hb_commands import acceptance_state
+                step['acceptance'] = acceptance_state(conn, step_id)
+            except Exception:
+                step['acceptance'] = None
             return step
         finally:
             conn.close()

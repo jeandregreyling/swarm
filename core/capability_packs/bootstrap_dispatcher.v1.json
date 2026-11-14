@@ -5,8 +5,8 @@
   "prerequisites": ["An operator-created file queue task with an explicit tool allowlist"],
   "commands": [
     "SKILL recovery <authorized-tool> [argument]",
-    "SKILL deos request_context \"reason\"",
-    "SKILL deos escalate \"reason\""
+    "SKILL does request_context \"reason\"",
+    "SKILL does escalate \"reason\""
   ],
   "procedure": [
     "Read the queued assignment and authorized tool names.",

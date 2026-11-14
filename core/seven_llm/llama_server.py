@@ -340,6 +340,60 @@ def _reap_idle(state: dict[str, dict[str, Any]], *, keep: str) -> None:
             state.pop(name, None)
 
 
+GPU_IDLE_UNLOAD_S = 1800          # HB-managed GPU model idle this long is unloaded when VRAM is tight
+GPU_PRESSURE_PERCENT = 85.0
+
+
+def housekeep(*, now: float | None = None, vram_percent: float | None = None) -> dict[str, Any]:
+    """HB's scheduled model housekeeping (12 Nov), under the same locks as ensure().
+
+    Before this, cleanup only ran as a side effect of loading another model, and duplicate
+    servers of one model were never noticed (ensure() reused the first and ignored the rest),
+    so five duplicates sat in RAM for hours. Rules, safest first:
+      1. duplicates of one model: keep the one this process owns, else the oldest; stop the rest;
+      2. servers idle past their ttl_seconds: stop (the existing rule, now on a schedule);
+      3. GPU pressure (VRAM >= 85%): stop HB-managed GPU models idle for 30 minutes.
+    The external APEX systemd service is never a resident here (it has no --alias), so it is untouched.
+    """
+    now = time.time() if now is None else now
+    stopped: list[dict[str, Any]] = []
+    with _LOCK, _cross_process_lock():
+        state = _load_state()
+        by_model: dict[str, list[dict[str, Any]]] = {}
+        for resident in _residents():
+            by_model.setdefault(str(resident["model"]), []).append(resident)
+        for model, residents in by_model.items():
+            if len(residents) < 2:
+                continue
+            residents.sort(key=lambda r: (not r.get("own"), int(r["pid"])))
+            for extra in residents[1:]:
+                _stop_resident(extra)
+                stopped.append({"model": model, "pid": extra["pid"], "reason": "duplicate"})
+        before = {int(r["pid"]): r["model"] for r in _residents()}
+        _reap_idle(state, keep="")
+        after = {int(r["pid"]) for r in _residents()}
+        stopped += [{"model": before[pid], "pid": pid, "reason": "idle past its time limit"} for pid in before if pid not in after]
+        if vram_percent is None:
+            try:
+                from core.hb_hardware import gpu_stats
+                vram_percent = gpu_stats().get("vram_percent")
+            except Exception:
+                vram_percent = None
+        if vram_percent is not None and vram_percent >= GPU_PRESSURE_PERCENT:
+            for resident in _residents():
+                info = state.get(resident["model"]) or {}
+                entry = registry.get(resident["model"])
+                on_gpu = bool(info["gpu"]) if "gpu" in info else bool(entry and _uses_gpu(entry))
+                idle = now - float(info.get("last_used") or now)
+                if on_gpu and idle >= GPU_IDLE_UNLOAD_S:
+                    _stop_resident(resident)
+                    state.pop(resident["model"], None)
+                    stopped.append({"model": resident["model"], "pid": resident["pid"],
+                                    "reason": f"GPU memory at {vram_percent:.0f}% and idle {int(idle // 60)} min"})
+        _save_state(state)
+    return {"stopped": stopped}
+
+
 def resource_snapshot() -> dict[str, Any]:
     snap = _meminfo_gb()
     snap["servers"] = snapshot()
@@ -498,6 +552,21 @@ def ensure(
         endpoint = entry.endpoint.rstrip("/")
         if not _server_alive(endpoint):
             raise RuntimeError(f"External llama-server unavailable for '{entry.name}': {endpoint}")
+        expected = str(entry.options.get("api_model") or entry.name)
+        try:
+            response = requests.get(endpoint + "/v1/models", timeout=5)
+            response.raise_for_status()
+            catalogue = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise RuntimeError(f"External llama-server model identity unavailable: {endpoint}: {exc}") from exc
+        models = catalogue.get("data") if isinstance(catalogue, dict) else None
+        if not isinstance(models, list) or not any(
+            isinstance(item, dict) and (
+                item.get("id") == expected
+                or isinstance(item.get("aliases"), list) and expected in item["aliases"]
+            ) for item in models
+        ):
+            raise RuntimeError(f"External llama-server at {endpoint} does not serve '{expected}'; no fallback")
         if progress:
             progress({"stage": "ready", "model": entry.name, "endpoint": endpoint, "external": True})
         # Externally owned services never enter the pool, admission, or eviction paths.
@@ -653,6 +722,11 @@ def _chat_payload(model: str, messages: list[dict], *, temperature: float | None
         payload["stop"] = [stops] if isinstance(stops, str) else list(stops)
     if options.get("response_format") is not None:
         payload["response_format"] = _openai_response_format(options["response_format"])
+    if "reasoning_effort" in options:
+        effort = options["reasoning_effort"]
+        if effort not in ("low", "medium", "high"):
+            raise ValueError("reasoning_effort must be low, medium or high")
+        payload["reasoning_effort"] = effort
     return payload
 
 
@@ -775,6 +849,53 @@ def _retry_if_evicted(model: str, opts: dict, call: Any) -> Any:
         return call(ensure(model, timeout_s=startup))
 
 
+def _schema_completion_chat(handle, payload, opts):
+    """Keep JSON constraints while avoiding Gemma's template-grammar prefill bug.
+
+    Render this server's actual template, then constrain only newly generated
+    text on /completion. Do not feed template control tokens into the grammar.
+    Backend APEX envelope/tool/authorization validation still runs normally.
+    """
+    fmt = payload['response_format']
+    if fmt['type'] == 'json_schema':
+        schema = (fmt.get('json_schema') or {}).get('schema', fmt.get('schema'))
+    else:
+        schema = fmt.get('schema', {})
+    if not isinstance(schema, dict):
+        raise ValueError('Structured completion requires a JSON schema object')
+    base = handle.endpoint.rstrip('/')
+    timeout = int(opts.get('timeout') or 180)
+
+    def post(path, body):
+        response = requests.post(base + path, json=body, timeout=timeout)
+        if response.status_code >= 400:
+            raise requests.HTTPError(
+                f"{response.status_code} Client Error for {base + path}: {(response.text or '')[:500]}",
+                response=response)
+        return response.json()
+
+    template = {'messages': payload['messages']}
+    if 'reasoning_effort' in payload:
+        template['reasoning_effort'] = payload['reasoning_effort']
+    rendered = post('/apply-template', template)
+    prompt = rendered.get('prompt')
+    if not isinstance(prompt, str) or not prompt:
+        raise RuntimeError('Local template endpoint returned no prompt; inference not submitted')
+    request = {'prompt': prompt, 'json_schema': schema, 'n_predict': payload['max_tokens'],
+               'temperature': payload['temperature'], 'cache_prompt': True, 'stream': False}
+    if payload.get('stop'):
+        request['stop'] = payload['stop']
+    result = post('/completion', request)
+    if opts.get('require_complete_output') and (result.get('stop_type') == 'limit' or result.get('stopped_limit')):
+        raise RuntimeError('APEX output budget exhausted: finish_reason=length; incomplete output was not executed')
+    if result.get('truncated'):
+        raise RuntimeError('Local completion truncated its prompt; inference result was not executed')
+    text = result.get('content')
+    if not isinstance(text, str) or not text.strip():
+        raise RuntimeError('Direct model produced no final answer; reasoning is not an executable reply')
+    return text.strip(), int(result.get('tokens_predicted') or 0)
+
+
 def chat(
     model: str,
     messages: list[dict],
@@ -795,10 +916,40 @@ def chat(
         return _retry_if_evicted(model, opts, lambda handle: _raw_completion_chat(
             handle, messages, temperature=temperature, opts=opts))
     payload = _chat_payload(model, messages, temperature=temperature, options=opts)
+    fmt = payload.get('response_format')
+    if ((model.lower().startswith('gemma') or opts.get('profile') == 'gemma')
+            and isinstance(fmt, dict) and fmt.get('type') in {'json_schema', 'json_object'}):
+        result = _retry_if_evicted(model, opts, lambda handle: _schema_completion_chat(handle, payload, opts))
+        if callable(on_token):
+            on_token(result[0])
+        return result
     if callable(on_token) or opts.get("stream"):
         return _retry_if_evicted(model, opts, lambda handle: _chat_stream(
-            handle, payload, timeout=int(opts.get("timeout") or 180), on_token=on_token))
-    return _retry_if_evicted(model, opts, lambda handle: _chat_once(handle, payload, opts))
+            handle, payload, timeout=int(opts.get("timeout") or 180), on_token=on_token,
+            require_complete=bool(opts.get("require_complete_output"))))
+    def complete(handle):
+        try:
+            return _chat_once(handle, payload, opts)
+        except requests.HTTPError as exc:
+            response = exc.response
+            if (isinstance(fmt, dict) and fmt.get('type') in {'json_schema', 'json_object'}
+                    and response is not None and response.status_code == 500
+                    and 'Failed to initialize samplers' in (response.text or '')):
+                # This failure occurs before generation. Retry the same local
+                # model and schema without the broken template-grammar prefix.
+                return _schema_completion_chat(handle, payload, opts)
+            raise
+    return _retry_if_evicted(model, opts, complete)
+
+
+def _check_completion(choice: dict, payload: dict, usage: dict, required: bool) -> None:
+    if required and choice.get("finish_reason") == "length":
+        raise RuntimeError(
+            "APEX output budget exhausted: finish_reason=length, "
+            f"prompt_tokens={usage.get('prompt_tokens')}, "
+            f"completion_tokens={usage.get('completion_tokens')}, "
+            f"max_tokens={payload.get('max_tokens')}. Incomplete output was not executed."
+        )
 
 
 def _chat_once(handle: ServerHandle, payload: dict[str, Any], opts: dict) -> tuple[str, int]:
@@ -814,7 +965,9 @@ def _chat_once(handle: ServerHandle, payload: dict[str, Any], opts: dict) -> tup
             response=resp,
         )
     data = resp.json()
-    msg = ((data.get("choices") or [{}])[0].get("message") or {})
+    choice = (data.get("choices") or [{}])[0]
+    _check_completion(choice, payload, data.get("usage") or {}, bool(opts.get("require_complete_output")))
+    msg = choice.get("message") or {}
     text = str(msg.get("content") or "").strip()
     if not text:
         raise RuntimeError('Direct model produced no final answer; reasoning is not an executable reply')
@@ -848,7 +1001,8 @@ def embeddings(model: str, prompt: str, *, options: dict | None = None) -> list[
     return []
 
 
-def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int, on_token: Any = None) -> tuple[str, int]:
+def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int, on_token: Any = None,
+                 require_complete: bool = False) -> tuple[str, int]:
     payload = dict(payload)
     payload["stream"] = True
     content_parts: list[str] = []
@@ -881,6 +1035,7 @@ def _chat_stream(handle: ServerHandle, payload: dict[str, Any], *, timeout: int,
             except json.JSONDecodeError:
                 continue
             choice = (data.get("choices") or [{}])[0]
+            _check_completion(choice, payload, data.get("usage") or {}, require_complete)
             delta = choice.get("delta") or {}
             piece = str(delta.get("content") or "")
             think_piece = str(delta.get("reasoning_content") or "")

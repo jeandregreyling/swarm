@@ -1,4 +1,4 @@
-"""Advisory DEOS+ governor for Fridays runtime.
+"""Advisory DOES+ governor for Fridays runtime.
 
 This module does not hard-block the runtime yet. It observes focus surface
 events and state-mutating actions, emits violation notices for silent mutations
@@ -33,7 +33,7 @@ _PEOPLE_PLEASING_MARKERS = (
 
 
 class SovereignGovernor:
-    """Enforces DEOS+ in advisory form.
+    """Enforces DOES+ in advisory form.
 
     The current mode is intentionally advisory while legacy seams are still
     being instrumented. Violations are narrated and logged; they do not reject

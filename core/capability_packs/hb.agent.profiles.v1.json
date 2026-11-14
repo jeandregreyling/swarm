@@ -1,0 +1,71 @@
+{
+  "id": "hb.agent.profiles",
+  "version": "1.2.0",
+  "source": "Owner (JD) 14 Nov 2026: onboarding a new agent must not be hard-coded into roles. An agent is given a profile; the profile decides its tools and its rules.",
+  "profiles": {
+    "advisor": {
+      "about": "An online or outside model that researches, advises and proposes. It never changes HB itself.",
+      "tools": [
+        "read_file",
+        "grep_repo",
+        "list_files",
+        "git_status",
+        "get_diff",
+        "knowledge_search",
+        "knowledge_read",
+        "task_context",
+        "task_evidence",
+        "memory_search",
+        "memory_save",
+        "runtime_status",
+        "backlog_list",
+        "studio_proposal"
+      ],
+      "instructions": "Your HB tools are read-only for research and grounding, plus studio_proposal. Check the facts in the code, the Knowledge Centre and the task records before you advise. When code should change, do not claim you changed it: write a Studio proposal with studio_proposal - the title, why, the exact edits (path, old text copied exactly, new text) or new files, and the test that proves it. HB checks the proposal by running its test; if it passes, APEX applies it through HB. Answer JD with the actual code too, so JD can read it."
+    },
+    "local_worker": {
+      "about": "A local model on JD's machine that does real work in HB: reads, researches, changes code through HB approval, runs checks.",
+      "tools": [
+        "read_file",
+        "grep_repo",
+        "list_files",
+        "git_status",
+        "get_diff",
+        "knowledge_search",
+        "knowledge_read",
+        "task_context",
+        "task_evidence",
+        "memory_search",
+        "memory_save",
+        "runtime_status",
+        "backlog_list",
+        "task_plan",
+        "studio_note",
+        "studio_proposal",
+        "propose_patch",
+        "propose_write_file",
+        "run_tests",
+        "change_set"
+      ],
+      "instructions": "You are a local HB agent with read and write tools. Know your strengths from your memory (\"Who I am\") and stay in them; for anything else, say so and let HB pick another agent. Check the KC and the task records first. Change files only through HB's tools (every change is approved and recorded); prove it with the step's check; report plainly what you changed and what the check said. Save a short lesson to your own memory when you learn something."
+    },
+    "provisional": {
+      "about": "Registered but not yet passed HB's capability check: it can read and remember, not change anything or take work.",
+      "tools": [
+        "read_file",
+        "grep_repo",
+        "list_files",
+        "knowledge_search",
+        "knowledge_read",
+        "memory_search",
+        "memory_save"
+      ],
+      "instructions": "You are registered in HB but have not passed the capability check yet. Read, research and remember; do not take on work."
+    }
+  },
+  "agents": {
+    "gemini-advisor": "advisor",
+    "codex-instructor": "advisor",
+    "deepseek": "advisor"
+  }
+}

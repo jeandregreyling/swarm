@@ -1,0 +1,24 @@
+{
+  "id": "coding.lessons",
+  "version": "1.6.1",
+  "source": "Claude Code coaching of APEX, teaching rounds 1-4 (13 Nov), project P-2AB8250A87, scorecard step 'Learning scorecard'",
+  "lessons": [
+    "Copy old_text exactly from a fresh raw read, including every leading space; lines inside a function or rule start with spaces.",
+    "Patch only the lines you were asked to change; do not add lines that are not in the file to old_text.",
+    "new_text contains ONLY the lines you were given (or the old line plus your added lines); never paste lines you read elsewhere in the file into new_text. A pasted block duplicates code and breaks the file (practice 11).",
+    "After a patch succeeds, do not patch the same text again: run the test next.",
+    "Trust the file over any note: if a fresh read shows that a requested change is already in the file, that step is done; go on to the next step. Do not redo it and do not wait for a new note.",
+    "If a patch succeeded and a test fails, first read WHICH test failed and why, before changing anything.",
+    "Run only the test named in your step (use the keyword argument); other failing tests may belong to other work.",
+    "Do the action first and report it after; never end a turn with 'I will' or 'the next step is'.",
+    "run_tests: leave case_id out; HB uses your step's own test case.",
+    "A decorator is written once and not called: @require_owner, and the function then takes current_user=None.",
+    "When coaching (a task_plan from the reviewer) is in your packet, follow it before anything else.",
+    "Keep the line breaks of the text you are given: every line of new_text stays its own line (practice 14 joined two lines).",
+    "Anything that grows (chat messages, logs, task lists) is loaded in pages, never all at once: main chat shows the latest 20 and loads 20 more when you scroll up (practices 16-18). Build new lists the same way.",
+    "For bulk or risky work use HB's guarded tools, not hand copies: does_rename for the DOES rename, layout to map and move files. They check the result, keep a before-copy and record the change.",
+    "To split one line into two, new_text must contain a real line break (in the JSON string that is \\n, never \\\\n). If HB says a patch does not parse twice in a row, stop and say exactly which line you cannot write, instead of trying again (practice 14: eight refused attempts).",
+    "Only change what your step is about (14 Nov: during DOES rename 4, a patch to agents/seven/seven_agent.py turned startswith('seven-direct:') into startswith('do') and broke Seven). A file the tool refuses ('patch these lines by hand first') belongs to another step: skip it. Never edit a line just because it contains the letters of the word you are renaming.",
+    "If read_file or grep_repo answers 'Workspace source file not found', the file is gone (an earlier step may have deleted or moved it). Run list_files once, find where the code actually lives now, and never ask for the missing path again this turn. Repeating the same failing call is a stall: HB parks the task after three identical failures (14 Nov: rename step T-17F1BDFC4465 looped on the old agents/seven teacher path, which the DOES rename had already moved to agents/seven/does.py)."
+  ]
+}

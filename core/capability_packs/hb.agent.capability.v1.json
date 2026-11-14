@@ -1,0 +1,9 @@
+{
+  "id": "hb.agent.capability",
+  "version": "1.0.0",
+  "source": "Owner (JD) 14 Nov 2026: agent registration must complete with a measured pass for agency and capability; HB handles it through measured tests and weights; nothing is permanent.",
+  "weights": {"programmer": 0.35, "tools": 0.25, "researcher": 0.25, "social": 0.15},
+  "agency": ["tools", "researcher"],
+  "agency_means": "tools = it follows an exact instruction (one exact JSON tool call); researcher = it answers from the facts and says 'not in the text' instead of making things up",
+  "pass_score": 0.6
+}

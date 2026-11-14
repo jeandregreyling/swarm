@@ -7,7 +7,7 @@
       "An operator-authorized teaching assignment delivered through the existing wrapper, with an explicit tool allowlist. This payload does not enqueue itself.",
       "Gemma coordinates; Qwen proposes implementation and tests; LLaMA supplies independent evidence where authorized; Seven observes read-only. No participant can grant itself permissions.",
       "Start with repository inspection, not game execution. Preserve unrelated worktree changes. Runtime or permission changes require the backend's existing approval policy.",
-      "Use agents/skills_loop.py, fridays/skills.py, core/recovery_supervisor.py, core/deos_teacher.py and utils/db/watchdog_lessons.py as verified starting paths; discover other paths through actual tool receipts."
+      "Use agents/skills_loop.py, fridays/skills.py, core/recovery_supervisor.py, core/does_teacher.py and utils/db/watchdog_lessons.py as verified starting paths; discover other paths through actual tool receipts."
     ],
     "procedure": [
       "Goal: make bounded tool use and feedback work through existing infrastructure before attempting application compatibility. Do not ask the operator to select infrastructure facts that authorized read-only tools can discover.",

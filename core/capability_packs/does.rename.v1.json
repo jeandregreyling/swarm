@@ -1,0 +1,99 @@
+{
+  "id": "does.rename",
+  "version": "1.0.0",
+  "source": "Owner 13 Nov 2026: DEOS (Decide, Execute, Operate, Sustain) becomes DOES (Do, Operate, Execute, Sustain) everywhere in HB. Operate moves before Execute: work through HB's tools and records first, then act. Mapping reviewed by Claude Code; applied file by file by APEX with the does_rename tool (plan step S-CFA2CA7023).",
+  "rules": [
+    [
+      "DEOSTeacherPayload",
+      "DOESTeacherPayload"
+    ],
+    [
+      "DEOS",
+      "DOES"
+    ],
+    [
+      "(?<![A-Za-z])Deos",
+      "Does"
+    ],
+    [
+      "(?<![A-Za-z])deos",
+      "does"
+    ]
+  ],
+  "keep_line_markers": [
+    "DOES-compat",
+    "replaces the older DEOS",
+    "replaces DEOS",
+    "DOES replaces DEOS"
+  ],
+  "manual": {
+    "core/capability_packs/hummingbird.apex-seat.v1.json": "The DEOS definition changes meaning (Decides, Executes, Operates, Sustains -> Do, Operate, Execute, Sustain); edited by hand.",
+    "utils/config.py": "The DEOS definition changes meaning (Directives, Environment, Operations, Systems -> Do, Operate, Execute, Sustain); edited by hand."
+  },
+  "skip_files": [
+    "fridays/thinking_tree_log.json",
+    "core/hb_master_prompt.py",
+    "core/capability_packs/hb.master.protocol.v1.json",
+    "core/capability_packs/does.rename.v1.json",
+    "core/hb_rename.py",
+    "tests/test_hb_master_prompt.py",
+    "tests/test_does_rename.py"
+  ],
+  "moves": [
+    [
+      "core/deos_teacher.py",
+      "core/does_teacher.py"
+    ],
+    [
+      "utils/deos_teaching.py",
+      "utils/does_teaching.py"
+    ],
+    [
+      "utils/watchdog_deos.py",
+      "utils/watchdog_does.py"
+    ],
+    [
+      "agents/seven/deos.py",
+      "agents/seven/does.py"
+    ],
+    [
+      "tests/test_deos_teacher.py",
+      "tests/test_does_teacher.py"
+    ],
+    [
+      "tests/test_deos_teaching.py",
+      "tests/test_does_teaching.py"
+    ],
+    [
+      "tests/test_watchdog_deos.py",
+      "tests/test_watchdog_does.py"
+    ]
+  ],
+  "roots": [
+    "core",
+    "utils",
+    "agents",
+    "fridays",
+    "frontend",
+    "scripts",
+    "tests"
+  ],
+  "extensions": [
+    ".py",
+    ".json",
+    ".js",
+    ".css"
+  ],
+  "rules_note": "Uppercase DEOS occurs in no ordinary word, so it is replaced everywhere (also after \\n or _). Lowercase deos only when not preceded by a letter: 'videos' must stay 'videos'.",
+  "after_tool": {
+    "fridays/task_runner.py": "After the tool: the cycle description 'decide, execute, operate, sustain' becomes 'do, operate, execute, sustain' (hand edit)."
+  },
+  "manual_first": {
+    "agents/seven/seven_agent.py": [
+      "'chm' in msg and 'deos' in msg",
+      "['deos', 'deos path', 'deos standard',",
+      "if cmd in ('deos', 'proof', 'prove'):"
+    ]
+  },
+  "manual_first_note": "Seven's chat triggers use the word 'deos'; 'does' is ordinary English. These three lines are patched by hand first; the tool refuses the file until they are gone."
+}

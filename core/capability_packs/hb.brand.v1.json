@@ -1,0 +1,20 @@
+{
+  "id": "hb.brand",
+  "version": "1.0.0",
+  "source": "Owner (JD) 14 Nov 2026: generic icons (clapping hands, spanner and hammer) are off-brand and distracting; HB and APEX should have flagged it.",
+  "principles": [
+    "HB is a hummingbird. Its world is the garden: hummingbirds, flowers, nectar, the sundial (the day). Use these motifs, not generic office symbols.",
+    "Icons are HB line icons: SVG on a 16 grid, stroke 1.3, round caps and joins, currentColor - like core/icons.js. Never a coloured emoji in the finished interface; HB messages may start with a marker emoji that the page swaps for the HB icon (frontend/static/js/views/hb-brand-icons.js).",
+    "Colour follows the theme: icons and highlights use var(--accent), so a yellow theme makes every icon yellow. No hard-coded colours in icons.",
+    "Animation is small and alive: a wing flutter, a gentle hover, a breathing sleep - never flashy, and off for people who prefer reduced motion.",
+    "Words are plain, warm and short. Credit is a flower given to whoever did the work; a correction is the better way, never blame."
+  ],
+  "icons": {
+    "credit / thank-you": "a flower (marker 🌺) given to the one who did the work",
+    "asking Fred / Fred taking over": "a hummingbird flying to a flower (markers 🤔 and 🛠)",
+    "maintenance / restart": "a sleeping hummingbird, recharging",
+    "working / thinking": "a hummingbird hovering, wings fluttering",
+    "the day": "the sundial shows the real day name"
+  },
+  "check": "Before anything visible ships: does it use HB motifs, the theme colour and HB line icons? If not, say so and propose the HB version."
+}

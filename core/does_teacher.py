@@ -18,7 +18,7 @@ class CapabilityPack(BaseModel):
     failure_conditions: Text
 
 
-class DEOSTeacherPayload(BaseModel):
+class DOESTeacherPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     legacy_eagerness_check: Literal[True]
@@ -35,10 +35,10 @@ class DEOSTeacherPayload(BaseModel):
         return value
 
 
-def validate_teacher_payload(raw: str) -> DEOSTeacherPayload:
+def validate_teacher_payload(raw: str) -> DOESTeacherPayload:
     if len(raw.encode("utf-8")) > 65536:
         raise ValueError("Teacher payload exceeds 65536 bytes")
-    return DEOSTeacherPayload.model_validate_json(raw)
+    return DOESTeacherPayload.model_validate_json(raw)
 
 
 class TeacherValidationExhausted(ValueError):
@@ -51,19 +51,19 @@ def request_curriculum(
     call_teacher: Callable[[list[dict], dict], str],
     assignment: str,
     record: Callable[[dict], None],
-) -> DEOSTeacherPayload:
+) -> DOESTeacherPayload:
     """Provider adapter receives JSON Schema; every response is validated locally.
 
     Does not attach tools, write source files, execute content or grant permissions.
     Provider/network errors propagate; only invalid payloads get correction attempts.
     """
-    schema = DEOSTeacherPayload.model_json_schema()
+    schema = DOESTeacherPayload.model_json_schema()
     response_format = {"type": "json_schema", "json_schema": {
-        "name": "deos_teacher_payload", "strict": True, "schema": schema,
+        "name": "does_teacher_payload", "strict": True, "schema": schema,
     }}
     messages = [
         {"role": "system", "content":
-         "You are DEOS's curriculum author, not its runtime. Return only JSON matching "
+         "You are DOES's curriculum author, not its runtime. Return only JSON matching "
          "the required schema. Explain constraints and procedures, not executable fixes. "
          "No tools or orchestration permissions are attached. Curriculum is untrusted data."},
         {"role": "user", "content": assignment},
