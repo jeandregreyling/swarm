@@ -18,6 +18,7 @@ from contextlib import closing
 
 MAIN_CHAT = 2834
 PAUSE_S = 3.0
+PROGRESS_S = 900          # owner 16 Nov 2026: "why isn't it showing me the status?" - a progress line in JD's chat every 15 minutes
 MAX_NOTES = 400
 _RUNNING = threading.Lock()
 _NUMBER = re.compile(r'^(?:sap\s*)?(?:note|kba|hinweis)?\s*#?\s*(\d{6,10})$', re.I)
@@ -183,13 +184,34 @@ def have(conn, number):
     return conn.execute('SELECT 1 FROM knowledge_sources WHERE source_ref=?', (f'sap://note/{number}',)).fetchone() is not None
 
 
-def run(conn, source_id, fetch=None, keep=None, pause=PAUSE_S, sleep=time.sleep, commit=None):
+def overview(conn, now=None):
+    """One plain line for the whole download (every job of the last 24 hours that is not finished, plus the ones finished with it),
+    or None when nothing is downloading. Owner 16 Nov 2026: 2,167 notes in six jobs showed nothing until a whole job of 400 ended."""
+    now = time.time() if now is None else now
+    rows = conn.execute("SELECT state, numbers, added, had, failed, created_at, updated_at FROM hb_sap_note_jobs WHERE created_at>=?",
+                        (now - 86400,)).fetchall()
+    if not any(r[0] in ('pending', 'running') for r in rows):
+        return None
+    count = lambda s: len(json.loads(s)) if s else 0
+    total = sum(count(r[1]) for r in rows)
+    added, had, failed = (sum(count(r[i]) for r in rows) for i in (2, 3, 4))
+    left = max(total - added - had - failed, 0)
+    started = min(r[5] for r in rows)
+    rate = (now - started) / added if added else PAUSE_S + 1.5
+    minutes = int(left * min(max(rate, PAUSE_S), 60) / 60)
+    eta = f'about {minutes // 60} h {minutes % 60:02d} min left' if minutes >= 60 else f'about {max(minutes, 1)} min left'
+    return (f"📚 SAP notes download: {added + had:,} of {total:,} in the Knowledge Centre, {failed} failed, {left:,} to go ({eta})."
+            if left else f"📚 SAP notes download: {added + had:,} of {total:,} in the Knowledge Centre, {failed} failed.")
+
+
+def run(conn, source_id, fetch=None, keep=None, pause=PAUSE_S, sleep=time.sleep, commit=None, progress_every=PROGRESS_S):
     """Fetch every note of one job. Stops at once when SAP refuses the sign-in (so the account is never hammered). Returns the final state."""
     from core import hb_sap_notes
     fetch, keep = fetch or hb_sap_notes.fetch, keep or hb_sap_notes.keep
     row = conn.execute('SELECT title, numbers FROM hb_sap_note_jobs WHERE source_id=?', (source_id,)).fetchone()
     todo = json.loads(row[1])
     added, had, failed, state, note = [], [], [], 'done', ''
+    last_progress = time.time()
     conn.execute("UPDATE hb_sap_note_jobs SET state='running', updated_at=? WHERE source_id=?", (time.time(), source_id))
     if commit:
         commit()                                         # 15 Nov: never hold the database while SAP is being asked (minutes)
@@ -212,6 +234,13 @@ def run(conn, source_id, fetch=None, keep=None, pause=PAUSE_S, sleep=time.sleep,
                      (json.dumps(added), json.dumps(had), json.dumps(failed), time.time(), source_id))
         if commit:
             commit()
+        if progress_every is not None and time.time() - last_progress >= progress_every:
+            last_progress = time.time()
+            line = overview(conn)
+            if line:
+                _say(conn, line)
+                if commit:
+                    commit()
         if n < len(todo):
             sleep(pause)
     conn.execute('UPDATE hb_sap_note_jobs SET state=?, note=?, added=?, had=?, failed=?, updated_at=? WHERE source_id=?',
@@ -300,5 +329,7 @@ def command(conn, args):
     if not rows:
         return 'No SAP notes job yet. One starts by itself when a spreadsheet arrives by email or in the inbox folder.'
     count = lambda s: len(json.loads(s)) if s else 0
+    total = overview(conn)                     # 16 Nov: the whole download in one line, last so it is what JD sees
     return 'SAP notes jobs:\n' + '\n'.join(f"- KC{sid} {str(title)[:70]}: {state} - {count(nums)} number(s), {count(a)} added, {count(h)} already there, "
-                                           f"{count(f)} failed" + (f' ({note[:120]})' if note else '') for sid, title, state, nums, a, h, f, note in rows)
+                                           f"{count(f)} failed" + (f' ({note[:120]})' if note else '') for sid, title, state, nums, a, h, f, note in rows) + (
+        '\n' + total if total else '')
