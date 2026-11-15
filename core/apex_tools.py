@@ -563,7 +563,8 @@ class ReadOnlyRepository:
               max_bytes: int = MAX_FILE_BYTES) -> str:
         path = self._source_path(relative)
         if not path.exists():
-            raise FileNotFoundError("Workspace source file not found: "+relative+". Use list_files or grep_repo to resolve the actual import location.")
+            from core.apex_paths import not_found   # owner 14 Nov: suggest the closest real paths instead of letting APEX guess again
+            raise FileNotFoundError(not_found(relative, tracked))
         if relative not in tracked:
             if not allow_untracked or relative not in set(
                     self._git("ls-files", "--others", "--exclude-standard", "-z").split("\0")):
@@ -700,7 +701,7 @@ class ReadOnlyRepository:
                         "searched. Repeat with a narrower path, e.g. tests]")
             try:
                 content = self._text(relative, tracked, allow_untracked=True)
-            except PermissionError:
+            except (PermissionError, FileNotFoundError):   # owner 15 Nov: a tracked file deleted from disk failed every whole-repo search
                 if single_file:
                     raise
                 continue
@@ -836,6 +837,39 @@ _PERMISSION_EXCUSE = re.compile(
     r"\b(?:lack|lacking) (?:the |necessary )?(?:permissions?|access|tools?)\b|"
     r"\b(?:can'?t|cannot|unable to) (?:directly )?(?:read|write|edit|access|modify)\b|"
     r"\b(?:not authorized|not permitted)\b|\bblocked by\b", re.I)
+
+
+# Owner 15 Nov 2026: "read it from the downloads directory directly /home/jd/Downloads SAPKE608F9 - G4.xlsx" - APEX's read tools
+# only reach the repository, so "I cannot read that folder" was TRUE, yet the permission guard replaced it with "No current tool receipt
+# establishes that permission blocker". A file outside the repository reaches HB through the inbox folder (core/hb_email_intake.INBOX).
+_OUTSIDE_PATH = re.compile(r"(?:~|/home/[\w.-]+|/mnt|/media|/tmp|/srv)(?:/[^\s'\"]*)?")
+_OUTSIDE_WORDS = re.compile(r"\b(?:downloads?|desktop|documents) (?:folder|directory|dir)\b|\bfrom (?:my |the )?(?:downloads?|desktop)\b|"
+                            r"\battach (?:it|the file|a file|files?|the spreadsheet)\b|\bwhere (?:should|do|can) i (?:save|put|drop)\b|"
+                            r"\bwhat folder\b.{0,40}\baccess\b", re.I)
+
+
+def inbox_folder() -> str:
+    try:
+        from core.hb_email_intake import INBOX
+        return INBOX
+    except Exception:
+        return '/home/jd/HB-Inbox'
+
+
+def outside_files(text: str) -> bool:
+    """The operator asks about a file or folder APEX's repository tools cannot reach."""
+    text = str(text or '')
+    root = str(ReadOnlyRepository().root)
+    for found in _OUTSIDE_PATH.finditer(text):
+        path = found.group(0)
+        if not (path == root or path.startswith(root + '/')):
+            return True
+    return bool(_OUTSIDE_WORDS.search(text))
+
+
+def inbox_hint() -> str:
+    return (f"\n\nTo give HB a file from outside the project, save it in {inbox_folder()}. HB takes it in by itself, keeps it in the "
+            "Knowledge Centre as confidential, and a spreadsheet of SAP notes starts the SAP notes job (/notes shows it).")
 
 
 def permission_excuse(answer: str) -> bool:
@@ -1069,12 +1103,16 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     tokens, receipts)
         if studio_handler is None or no_tools or not authorize():
             raise RuntimeError(reason)
-        result = studio_handler("studio_capacity_handoff", {
-            "title": "Hummingbird APEX continuation",
-            "summary": reason[:2000],
-            "tasks": ["Read saved operator context and verified receipt handles",
-                      "Continue one bounded task through the existing human approval gate"],
-        })
+        try:
+            result = studio_handler("studio_capacity_handoff", {
+                "title": "Hummingbird APEX continuation",
+                "summary": reason[:2000],
+                "tasks": ["Read saved operator context and verified receipt handles",
+                          "Continue one bounded task through the existing human approval gate"],
+            })
+        except Exception as exc:   # owner 14 Nov: a refused handoff (403) crashed the whole request; end the turn as unfinished instead
+            return (f"APEX ran out of tool rounds before finishing: {reason[:600]} The task remains unfinished; HB continues it next turn. "
+                    f"(Capacity handoff not available: {str(exc)[:160]})", tokens, receipts)
         receipt = {"id": uuid.uuid4().hex, "tool": "studio_handoff", "arguments": {},
                    "status": "succeeded", "output": json.dumps(result), "truncated": False}
         receipts.append(receipt)
@@ -1167,7 +1205,10 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         'give one concrete next action. Do not guess paths or resume downloads.')
                 return None
             answer += '\n[Backend inventory check: the current file inventory was not inspected this turn; filenames and remaining file scope are unverified.]'
-        if (not no_tools and not any(r.get('status')=='denied' for r in receipts) and permission_excuse(answer)
+        if outside_files(latest_user):
+            if inbox_folder() not in answer:
+                answer += inbox_hint()
+        elif (not no_tools and not any(r.get('status')=='denied' for r in receipts) and permission_excuse(answer)
                 and re.search(r"\b(read|open|inspect|search|find|list|edit|patch|write|create|fix|repair|implement|download|complete|start)\b",
                               latest_user, re.I) and authorize()):
             if can_retry and not permission_retry_used:
@@ -1181,8 +1222,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         "receipt means the edit was applied. Report a blocker only from a real receipt. "
                         "Never invent a missing permission or ask the operator to repeat an existing grant.")
                 return None
-            return ("No current tool receipt establishes that permission blocker. "
-                    "The requested result is still unverified; use the saved local evidence and next authorized action.")
+            return ("APEX said it was not allowed to do this, but nothing refused it this turn, so that is not the reason. "
+                    "The work is not done yet. Say what you want done again, or \"go\" to let HB continue the open tasks.")
         blocked = any(r.get('status') in {'failed', 'denied'}
                       and not any(later.get('tool') == r.get('tool') and later.get('status') == 'succeeded'
                                   for later in receipts[i + 1:])
