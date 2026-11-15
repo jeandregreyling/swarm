@@ -1192,9 +1192,14 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     inventory_retry_used = False
     repeat_retry_used = False
     duplicate_read_retries = set()
-    inventory_request = (bool(re.search(r'\bfiles?\b', latest_user, re.I)) and
+    # Owner 16 Nov 2026: APEX told JD "I'm unable to call archive_status because it isn't an available tool" while it worked on a
+    # SAP notes step. SAP notes are not model-archive files, and HB's own continuation (a JSON instruction that says "Continue")
+    # is not JD asking about the archive just because an old reply in the chat used archive_status.
+    sap_notes = bool(re.search(r'\b(?:sap|notes?|motes?|kbas?)\b', latest_user, re.I))
+    inventory_request = (not sap_notes and bool(re.search(r'\bfiles?\b', latest_user, re.I)) and
                          bool(re.search(r'\b(download(?:ed|ing|s)?|indexed|indexing)\b', latest_user, re.I)))
-    if not inventory_request and re.search(r'\b(plan|next|continue)\b', latest_user, re.I):
+    if (not inventory_request and not sap_notes and not latest_user.lstrip().startswith('{')
+            and re.search(r'\b(plan|next|continue)\b', latest_user, re.I)):
         inventory_request = any(message.get('role') == 'assistant' and '[tool:archive_status]' in str(message.get('content', ''))
                                 for message in messages)
 
