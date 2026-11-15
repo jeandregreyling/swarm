@@ -36,6 +36,10 @@ _ACTION = re.compile(r"\b(?:build|fix|implement|create|make|add|update|change|in
 
 
 _ONBOARD = re.compile(r'\bon-?board(ing|ed)?\b', re.I)
+# Owner 16 Nov 2026: "ok go on and download all the motes" went to APEX, which reached for the model-archive download tool and
+# answered with a permission refusal. Downloading SAP notes is HB's own job (core/hb_sap_note_job.from_chat), like onboarding.
+_SAP_NOTES = re.compile(r"\b(?:download|fetch|get|pull|grab)\b.{0,40}?\b(?:(?:sap|all|the|those|these|my|rest of the|remaining)\s+)+"
+                        r"(?:sap\s+)?(?:notes?|motes?|kbas?)\b", re.I)
 _HANDLE = re.compile(r'(?<![\w.+-])@([A-Za-z][\w-]*(?:\.[A-Za-z][\w-]+)*)')   # 15 Nov: never the domain of an email address
 
 
@@ -74,6 +78,8 @@ def classify(text):
     if _ONBOARD.search(body) and [h for h in _HANDLE.findall(body) if h.lower() not in ('apex', 'hb', 'hummingbird')]:
         return 'agents'                                  # 14 Nov: "onboard @X" is HB's job (core/hb_agents.onboard_request), not a task
     words = len(body.split())
+    if words <= 40 and _SAP_NOTES.search(body):
+        return 'sap_notes'                               # 16 Nov: HB queues the SAP notes job itself, no model, no archive tool
     if _CONCRETE.search(body) or words > 80:
         return None
     if _DRIVE_WHOLE.match(body) or _DRIVE.search(body):

@@ -3121,6 +3121,10 @@ def api_chat():
                         if owner_intent == 'status':   # 15 Nov: "share the open tasks" - HB answers at once from its own records
                             _id_conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
                                              "VALUES (?,'hummingbird','user',?,'response',0)", (conv_id, hb_owner_intent.status_text(_id_conn, conv_id)))
+                        if owner_intent == 'sap_notes':   # 16 Nov: "download all the notes" is HB's SAP notes job, not APEX's archive tool
+                            from core import hb_sap_note_job
+                            _id_conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
+                                             "VALUES (?,'hummingbird','user',?,'response',0)", (conv_id, hb_sap_note_job.from_chat(_id_conn, conv_id, message)))
                         if owner_intent == 'agents':   # 14 Nov: HB answers "onboard @X" itself and starts its own exam when needed
                             from core import hb_agents
                             _agents_text = hb_agents.onboard_request(_id_conn, conv_id, message, f"{(current_user or {}).get('username') or 'owner'} via chat")

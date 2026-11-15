@@ -123,6 +123,62 @@ def find_new(conn):
     return added
 
 
+_BARE = re.compile(r'(?<![\d/#=])(\d{6,10})(?!\d)')
+_NAMED = re.compile(r'\b(?:sap\s*)?(?:note|kba|hinweis)\s*#?\s*(\d{6,10})\b', re.I)
+
+
+def numbers_in(text):
+    """SAP note numbers in a chat message, in order: its note links (a pasted list links every row; a title that mentions
+    "after SAP Note 3430313" is not a row), else "note 1234567", else a list of at least three bare numbers."""
+    text = str(text or '')
+    found = list(dict.fromkeys(_LINK.findall(text))) or list(dict.fromkeys(_NAMED.findall(text)))
+    if not found:
+        bare = list(dict.fromkeys(_BARE.findall(text)))
+        found = bare if len(bare) >= 3 else []
+    return found
+
+
+def from_chat(conn, conversation_id, text, now=None):
+    """Owner 16 Nov 2026: "ok go on and download all the motes". HB takes the note numbers from this message, else from the latest
+    message of JD's in this chat that has some (his pasted list), skips notes already in the Knowledge Centre or already queued, and
+    queues the rest in jobs of MAX_NOTES. Returns the plain text HB answers with."""
+    from core.hb_plain import message
+    ensure_schema(conn)
+    now = time.time() if now is None else now
+    found, source = numbers_in(text), 'your message'
+    if not found:
+        for (content,) in conn.execute("SELECT content FROM messages WHERE conversation_id=? AND from_agent='user' ORDER BY id DESC LIMIT 300",
+                                       (conversation_id,)):
+            found = numbers_in(content)
+            if found:
+                source = 'the list you pasted earlier in this chat'
+                break
+    if not found:
+        return message('📚 HB found no SAP note numbers to download.',
+                       'Paste the list (note links or numbers) into this chat, or save the spreadsheet in the HB inbox folder. A spreadsheet '
+                       'with a company protection label cannot be opened here: paste its rows instead.')
+    queued = set()
+    for (numbers,) in conn.execute("SELECT numbers FROM hb_sap_note_jobs WHERE state IN ('pending','running')"):
+        try:
+            queued |= set(json.loads(numbers or '[]'))
+        except ValueError:
+            pass
+    have_now = [n for n in found if have(conn, n)]
+    todo = [n for n in found if n not in queued and n not in have_now]
+    chunks = [todo[i:i + MAX_NOTES] for i in range(0, len(todo), MAX_NOTES)]
+    for i, chunk in enumerate(chunks):
+        sid = -int(now * 1000) - i                       # a pasted list has no spreadsheet in the Knowledge Centre: a negative id marks it
+        conn.execute('INSERT INTO hb_sap_note_jobs(source_id, title, sheet, numbers, state, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+                     (sid, f"pasted list, part {i + 1} of {len(chunks)} ({len(chunk)} notes), {time.strftime('%d %b %H:%M', time.localtime(now))}",
+                      'pasted', json.dumps(chunk), 'pending', now + i * 0.001, now))
+    done = f'{len(have_now)} already in the Knowledge Centre' + (f', {len(found) - len(todo) - len(have_now)} already queued' if len(found) - len(todo) - len(have_now) else '')
+    if not todo:
+        return message(f'📚 Nothing new to download: all {len(found)} SAP notes from {source} are in the Knowledge Centre or already queued.', done + '. /notes shows progress.')
+    return message(f'📚 Downloading {len(todo)} SAP notes from {source}.',
+                   f'{len(chunks)} job(s) of up to {MAX_NOTES}, one after another, a few seconds apart; HB says here when each is done. {done}.',
+                   details=['/notes shows progress', 'SAP notes are HB\'s own job: no archive download, no extra permission needed'])
+
+
 def have(conn, number):
     return conn.execute('SELECT 1 FROM knowledge_sources WHERE source_ref=?', (f'sap://note/{number}',)).fetchone() is not None
 
