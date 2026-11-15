@@ -45,6 +45,30 @@ def _column(ref):
     return n - 1
 
 
+def _sheet_links(book, names, path, root):
+    """{cell ref: address} for a sheet's hyperlinks. Owner 15 Nov 2026: JD's SAP notes list links each note; the reader kept only
+    the visible text, so a cell showing a title or "click here" lost the note number that sits in its address."""
+    rels_path = path.rsplit('/', 1)[0] + '/_rels/' + path.rsplit('/', 1)[-1] + '.rels'
+    targets = {}
+    if rels_path in names:
+        for rel in ElementTree.fromstring(book.read(rels_path)):
+            if rel.get('Id') and rel.get('Target'):
+                targets[rel.get('Id')] = rel.get('Target')
+    links = {}
+    box = root.find('m:hyperlinks', _S)
+    for link in (box if box is not None else []):
+        target, ref = targets.get(link.get('{%s}id' % _S['r']), ''), link.get('ref', '').split(':')[0]
+        if target and ref:
+            links[ref] = target
+    return links
+
+
+def _formula_link(formula):
+    """The address in =HYPERLINK("address", "text"), else an empty string."""
+    m = re.match(r'\s*HYPERLINK\(\s*"([^"]+)"', str(formula or ''), re.I)
+    return m.group(1) if m else ''
+
+
 def xlsx_text(data, max_rows=MAX_ROWS):
     book = zipfile.ZipFile(io.BytesIO(data))
     names = set(book.namelist())
@@ -64,19 +88,29 @@ def xlsx_text(data, max_rows=MAX_ROWS):
         if path not in names:
             continue
         lines = []
-        for row in ElementTree.fromstring(book.read(path)).iter('{%s}row' % _S['m']):
+        root = ElementTree.fromstring(book.read(path))
+        links = _sheet_links(book, names, path, root)          # owner 15 Nov 2026: keep the address behind linked cells
+        for row in root.iter('{%s}row' % _S['m']):
             cells = {}
             for c in row.findall('m:c', _S):
-                v, kind = c.find('m:v', _S), c.get('t')
+                v, kind, ref = c.find('m:v', _S), c.get('t'), c.get('r', 'A1')
                 if kind == 'inlineStr':
                     value = ''.join(t.text or '' for t in c.iter('{%s}t' % _S['m']))
                 elif v is None or v.text is None:
-                    continue
+                    value = None
                 elif kind == 's':
                     value = shared[int(v.text)] if int(v.text) < len(shared) else ''
                 else:
                     value = v.text
-                cells[_column(c.get('r', 'A1'))] = ' '.join(str(value).split())
+                f = c.find('m:f', _S)
+                target = links.get(ref) or (_formula_link(f.text) if f is not None else '')
+                if value is None:
+                    if not target:
+                        continue
+                    value = ''
+                if target and target not in str(value):
+                    value = f'{value} {target}'.strip()
+                cells[_column(ref)] = ' '.join(str(value).split())
             if cells:
                 lines.append('\t'.join(cells.get(i, '') for i in range(max(cells) + 1)))
             if len(lines) >= max_rows:

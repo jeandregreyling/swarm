@@ -22,6 +22,9 @@ MAX_NOTES = 400
 _RUNNING = threading.Lock()
 _NUMBER = re.compile(r'^(?:sap\s*)?(?:note|kba|hinweis)?\s*#?\s*(\d{6,10})$', re.I)
 _HEADER = re.compile(r'\b(notes?|kbas?|hinweis)\b', re.I)
+# Owner 15 Nov 2026: a link to a note counts, in any column: me.sap.com/notes/N, launchpad #/notes/N, sapnotes/Detail?q=N,
+# ?note=N, and KBA links .../knowledge/en/N.
+_LINK = re.compile(r'(?:/notes?/|sapnotes/Detail\?q=|[?&]note=|/knowledge/(?:[a-z]{2}/)?)(\d{6,10})\b', re.I)
 
 
 def ensure_schema(conn):
@@ -67,6 +70,9 @@ def numbers(rows):
             break
     for row in rows:
         cells = [row[column]] if column is not None and column < len(row) else ([] if column is not None else row)
+        for n in (n for cell in row for n in _LINK.findall(str(cell))):
+            if n not in found:
+                found.append(n)
         for cell in cells:
             for piece in re.split(r'[,;/\s]+(?=(?:sap|note|kba|\d))', str(cell).strip(), flags=re.I):
                 m = _NUMBER.match(re.sub(r'\.0$', '', piece.strip()))
@@ -85,8 +91,13 @@ def plan(text, want='needs check'):
 
 
 def _say(conn, text):
+    try:   # owner 15 Nov 2026: in the chat JD last typed in, not the old main chat 2834 where he never saw the notes job
+        row = conn.execute("SELECT conversation_id FROM messages WHERE from_agent='user' ORDER BY id DESC LIMIT 1").fetchone()
+        chat = int(row[0]) if row else MAIN_CHAT
+    except Exception:
+        chat = MAIN_CHAT
     conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
-                 (MAIN_CHAT, text))
+                 (chat, text))
 
 
 def find_new(conn):
