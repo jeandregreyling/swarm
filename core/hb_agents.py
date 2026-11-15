@@ -356,10 +356,15 @@ def exam_tick(conn, say=None, now=None):
             pass
 
 
+# Owner 15 Nov 2026: JD pasted an email signature and HB answered "HB does not know @deloitte.com.au yet" - the domain of an
+# email address is not a handle. A handle's @ never follows a letter, digit, dot, plus or dash.
+HANDLE_RE = re.compile(r'(?<![\w.+-])@([A-Za-z][\w-]*(?:\.[A-Za-z][\w-]+)*)')
+
+
 def onboard_request(conn, conversation_id, text, actor):
     """JD: "@apex can you onboard the @github identity" - HB answers this itself (onboarding is HB's job, not a task for APEX)."""
     ensure_schema(conn)
-    names = [h for h in re.findall(r'@([A-Za-z][\w.-]*)', str(text or '')) if h.lower() not in ('apex', 'hb', 'hummingbird')]
+    names = [h for h in HANDLE_RE.findall(str(text or '')) if h.lower() not in ('apex', 'hb', 'hummingbird')]
     if not names:
         return None
     out = []
@@ -464,7 +469,7 @@ def inbox_route(conn, conversation_id, message_id, text, sender='user'):
     """JD's @handle for an onboarded online agent goes to that agent's inbox. Returns the agent ids it went to."""
     ensure_schema(conn)
     out = []
-    for h in re.findall(r'@([A-Za-z][\w.-]*)', str(text or '')):
+    for h in HANDLE_RE.findall(str(text or '')):
         agent_id = resolve(conn, h)
         a = get(conn, agent_id) if agent_id else None
         if not a or a['kind'] != 'online' or a['status'] == 'retired' or agent_id in out or agent_id in _routed_elsewhere():

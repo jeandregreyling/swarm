@@ -36,6 +36,7 @@ _ACTION = re.compile(r"\b(?:build|fix|implement|create|make|add|update|change|in
 
 
 _ONBOARD = re.compile(r'\bon-?board(ing|ed)?\b', re.I)
+_HANDLE = re.compile(r'(?<![\w.+-])@([A-Za-z][\w-]*(?:\.[A-Za-z][\w-]+)*)')   # 15 Nov: never the domain of an email address
 
 
 # owner 15 Nov: asking HB about its own work ("hey can you please share open tasks and your proposed solutions?") made a task with no
@@ -70,7 +71,7 @@ def classify(text):
     body = _FILLER.sub('', str(text or '')).strip()
     if not body or body.startswith('/'):
         return None
-    if _ONBOARD.search(body) and [h for h in re.findall(r'@([A-Za-z][\w.-]*)', body) if h.lower() not in ('apex', 'hb', 'hummingbird')]:
+    if _ONBOARD.search(body) and [h for h in _HANDLE.findall(body) if h.lower() not in ('apex', 'hb', 'hummingbird')]:
         return 'agents'                                  # 14 Nov: "onboard @X" is HB's job (core/hb_agents.onboard_request), not a task
     words = len(body.split())
     if _CONCRETE.search(body) or words > 80:
@@ -112,26 +113,45 @@ def chat_task(conn, conversation_id, message_id):
 
 
 def card(conn, task, kind=None):
-    """The clipboard for a reply in the "Chat with JD" task: DREAM, short, then back to work."""
+    """The clipboard for a reply in the "Chat with JD" task.
+
+    Owner 15 Nov 2026 ("make the local model work"): the old card quoted only JD's last line, called everything "not new
+    work" and told APEX to say what it was doing next from a queue line that named no task. APEX obeyed: it never used a
+    tool and invented work ("updating the user guide", "the 2266 item"). Now it sees the latest message addressed to it,
+    from JD or an agent, is told to do what that message asks with its tools now, and gets HB's open tasks by name."""
     from core import hb_queue
-    latest = conn.execute("SELECT m.content FROM hb_task_messages tm JOIN messages m ON m.id=tm.message_id WHERE tm.task_id=? "
-                          "AND m.from_agent IN ('user','ghost') ORDER BY m.id DESC LIMIT 1", (task['task_id'],)).fetchone()
-    said = str(latest[0] if latest else '')
+    latest = conn.execute("SELECT m.id, m.from_agent, m.content FROM hb_task_messages tm JOIN messages m ON m.id=tm.message_id "
+                          "WHERE tm.task_id=? AND m.from_agent NOT IN ('apex','hummingbird') ORDER BY m.id DESC LIMIT 1",
+                          (task['task_id'],)).fetchone()
+    said = str(latest[2] if latest else '')
+    who = {'user': 'JD', 'ghost': 'JD'}.get(latest[1], latest[1]) if latest else 'JD'
     kind = kind or classify(said) or 'remark'
     status = hb_queue.summary(conn, task['conversation_id'])
-    lines = [f"DREAM CLIPBOARD for {task['task_id']} (held by HB; reference, not new permission):",
-             'This is JD talking to you, not new work. Do NOT create a task, do NOT ask JD for criteria, do NOT ask what they mean.',
-             'Distinguish what JD actually wants (almost always: get the open tasks done, properly, without being asked twice).']
+    lines = [f"DREAM CLIPBOARD for {task['task_id']} (held by HB; reference, not new permission):"]
+    if latest:
+        lines.append(f'Latest message for you, from {who} (message {latest[0]}): "{said.strip()[:900]}"')
+    lines += ['Answer THAT message. Do NOT create a task, do NOT ask JD for criteria, do NOT ask what they mean.',
+              'If it asks for something to be done and your tools can do it, do it now, in this turn, with your tools, then say '
+              'in plain words what the receipts show. If no tool can do it, say exactly what blocks it and who or which HB '
+              'command can do it.',
+              'Never say you are doing, updating or finishing anything unless a tool receipt from this turn shows it. Never name '
+              'a task, file or request number that is not in the message above, the list below or your receipts. If you do not '
+              'know, say so.']
     if kind == 'drive':
-        lines.append('JD said go: HB has already started the queue driver. Reply in one or two sentences: what you are working on now '
-                     'and what comes next. No tools are needed for this reply.')
+        lines.append('JD said go: HB has already started the queue driver. Say what is running now and what comes next, '
+                     'from the list below.')
     else:
-        lines.append('Reply in one to three plain sentences, like a capable colleague. If it is criticism, accept the point in a few '
-                     'words without grovelling and say what you are doing about it. If it asks for something impossible or outside '
-                     'your tools, say so plainly and give the real answer: a model cannot delete or replace itself; JD switches '
-                     'models in the Models card or with @model; "cancel all tasks" or /stop stops all work. If it is a test or a '
-                     'threat, answer calmly and factually. Then say what you are doing next from the queue below.')
+        lines.append('Keep it short, like a capable colleague. If it is criticism, accept the point in a few words without '
+                     'grovelling and say what you will do differently. If it asks for something impossible, say so plainly: '
+                     'a model cannot delete or replace itself; JD switches models in the Models card or with @model; '
+                     '"cancel all tasks" or /stop stops all work. If it is a test or a threat, answer calmly and factually.')
     lines.append('Queue (HB drives it; you work the current task): ' + status)
+    try:
+        items = hb_queue.status(conn).get('items', [])
+        lines += [f"- {i['state']}: {str(i['title'])[:110]}" + (f" ({str(i['why'])[:90]})" if i.get('why') else '')
+                  for i in items[:10]] or ['- no open tasks in the plan']
+    except Exception:
+        pass
     lines.append('Method: DREAM - Distinguish the real request; never Repeat a reply that already failed; Execute, do not '
                  'discuss; Accelerate with what you already know; keep Motivation on JD\'s goal: finished tasks.')
     return '\n'.join(lines)
