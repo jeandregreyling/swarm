@@ -192,16 +192,29 @@ def overview(conn, now=None):
                         (now - 86400,)).fetchall()
     if not any(r[0] in ('pending', 'running') for r in rows):
         return None
-    count = lambda s: len(json.loads(s)) if s else 0
-    total = sum(count(r[1]) for r in rows)
-    added, had, failed = (sum(count(r[i]) for r in rows) for i in (2, 3, 4))
-    left = max(total - added - had - failed, 0)
-    started = min(r[5] for r in rows)
-    rate = (now - started) / added if added else PAUSE_S + 1.5
-    minutes = int(left * min(max(rate, PAUSE_S), 60) / 60)
+    # Practice 92 (owner 16 Nov 2026): the first lines said "448 of 2,194 ... 7 failed ... about 7 h 32 min left" while ~13 notes a minute
+    # were arriving: a retried note was counted twice and still as failed, and the speed was averaged from the first job of the morning.
+    # Now each note counts once, "in" is what the Knowledge Centre really holds, and the time left comes from the last 15 minutes.
+    load = lambda s: json.loads(s) if s else []
+    numbers = list(dict.fromkeys(n for r in rows for n in load(r[1])))
+    try:
+        in_kc = {ref.rsplit('/', 1)[-1] for (ref,) in conn.execute("SELECT source_ref FROM knowledge_sources WHERE source_ref LIKE 'sap://note/%'")}
+    except Exception:
+        in_kc = set()
+    done = {n for n in numbers if n in in_kc} | {n for r in rows for i in (2, 3) for n in load(r[i])}
+    failed = {n for r in rows for n in load(r[4])} - done
+    total, got = len(numbers), len(done & set(numbers))
+    left = max(total - got - len(failed), 0)
+    try:
+        recent = conn.execute("SELECT COUNT(*) FROM knowledge_sources WHERE source_ref LIKE 'sap://note/%' AND created_at >= datetime(?, 'unixepoch')",
+                              (now - 900,)).fetchone()[0]
+    except Exception:
+        recent = 0
+    per_minute = recent / 15 if recent else 60 / (PAUSE_S + 1.5)
+    minutes = int(left / per_minute) if per_minute else 0
     eta = f'about {minutes // 60} h {minutes % 60:02d} min left' if minutes >= 60 else f'about {max(minutes, 1)} min left'
-    return (f"📚 SAP notes download: {added + had:,} of {total:,} in the Knowledge Centre, {failed} failed, {left:,} to go ({eta})."
-            if left else f"📚 SAP notes download: {added + had:,} of {total:,} in the Knowledge Centre, {failed} failed.")
+    return (f"📚 SAP notes download: {got:,} of {total:,} in the Knowledge Centre, {len(failed)} failed, {left:,} to go ({eta})."
+            if left else f"📚 SAP notes download: {got:,} of {total:,} in the Knowledge Centre, {len(failed)} failed.")
 
 
 def run(conn, source_id, fetch=None, keep=None, pause=PAUSE_S, sleep=time.sleep, commit=None, progress_every=PROGRESS_S):
