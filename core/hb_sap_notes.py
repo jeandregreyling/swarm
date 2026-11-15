@@ -12,17 +12,37 @@ SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'hb_sap_note.py'
 PYTHON = '/usr/bin/python3'
 
 
+def _env():
+    """The fetch script's environment. Owner 16 Nov 2026: HB was started without the desktop session bus, so the SAP login in the
+    keyring (libsecret over D-Bus) could not be read; once the saved SAP session expired every note "failed" (7 of the first 20).
+    The user's session bus lives at /run/user/<uid>/bus - point the script at it when HB's own environment lacks it."""
+    import os
+    env = dict(os.environ)
+    if not env.get('DBUS_SESSION_BUS_ADDRESS'):
+        bus = Path(f'/run/user/{os.getuid()}/bus')
+        if bus.exists():
+            env['DBUS_SESSION_BUS_ADDRESS'] = f'unix:path={bus}'
+            env.setdefault('XDG_RUNTIME_DIR', str(bus.parent))
+    return env
+
+
+_KEYRING = re.compile(r'D-Bus|dbus|keyring|libsecret|org\.freedesktop\.secrets|GError', re.I)
+
+
 def fetch(number, run=subprocess.run):
     """(ok, text): the note as plain text, or SAP's / the sign-in's reason in plain words."""
     number = str(number).strip()
     if not re.fullmatch(r'\d{4,10}', number):
         return False, 'Give a note number, for example /note 2382421.'
     try:
-        done = run([PYTHON, str(SCRIPT), number], capture_output=True, text=True, timeout=180)
+        done = run([PYTHON, str(SCRIPT), number], capture_output=True, text=True, timeout=180, env=_env())
     except subprocess.TimeoutExpired:
         return False, 'SAP did not answer in 3 minutes.'
     if done.returncode != 0 or not done.stdout.strip():
-        return False, (done.stderr or 'SAP returned nothing for that number.').strip().splitlines()[-1][:400]
+        last = (done.stderr or 'SAP returned nothing for that number.').strip().splitlines()[-1][:400]
+        if _KEYRING.search(last):   # the login could not be read: a sign-in problem, so the job stops instead of failing every note
+            return False, f'SAP sign-in failed: HB could not open the keyring that holds the SAP login ({last[:160]})'
+        return False, last
     return True, done.stdout.strip()
 
 
