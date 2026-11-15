@@ -872,6 +872,34 @@ def inbox_hint() -> str:
             "Knowledge Centre as confidential, and a spreadsheet of SAP notes starts the SAP notes job (/notes shows it).")
 
 
+# Owner 15 Nov 2026 (main chat): APEX answered five different messages with the same sentence, "I'm not requesting any
+# confidential emails...", and JD asked "what is wrong with this model it repeats itself". The loop guard (core/hb_loop_guard.py) leaves
+# JD's own questions alone on purpose - the same question twice may get the same answer. A different message never should.
+def _plain(text) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(text or "").replace("\u2019", "'").lower()).strip()
+
+
+def repeats_earlier(answer: str, messages: list[dict]) -> bool:
+    """The answer is word for word an earlier reply in this chat that was given to a DIFFERENT operator message."""
+    now = _plain(answer)
+    if len(now) < 40:
+        return False                                       # "Done." / "Yes." may repeat
+    latest = next((_plain(m.get("content")) for m in reversed(messages) if m.get("role") == "user"), "")
+    asked = ""
+    for message in messages[:-1]:
+        if message.get("role") == "user":
+            asked = _plain(message.get("content"))
+        elif message.get("role") == "assistant" and not message.get("rejected_answer"):
+            if _plain(message.get("content")) == now and asked != latest:
+                return True
+    return False
+
+
+REPEAT_ERROR = ("BACKEND REPEAT CHECK: your answer was not delivered. It is word for word a reply you already gave earlier in this "
+                "chat, and the operator's new message is different. Read the newest operator message again and answer that message "
+                "itself. If you cannot do what it asks, say in one or two plain sentences what stops you and what you will do next.")
+
+
 def permission_excuse(answer: str) -> bool:
     text=answer.replace("\u2019", "'")
     for sentence in re.split(r'(?<=[.!?])\s+|[;\n]',text):
@@ -1162,6 +1190,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     search_retry_used = False
     permission_retry_used = False
     inventory_retry_used = False
+    repeat_retry_used = False
     duplicate_read_retries = set()
     inventory_request = (bool(re.search(r'\bfiles?\b', latest_user, re.I)) and
                          bool(re.search(r'\b(download(?:ed|ing|s)?|indexed|indexing)\b', latest_user, re.I)))
@@ -1169,7 +1198,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         inventory_request = any(message.get('role') == 'assistant' and '[tool:archive_status]' in str(message.get('content', ''))
                                 for message in messages)
 
-    def grounded(answer, can_retry, can_fix=False):
+    def _grounded(answer, can_retry, can_fix=False):
         """Return the answer to deliver, or None after queueing one grounding correction.
 
         can_fix allows an answer-only correction even when no tool round remains."""
@@ -1331,6 +1360,17 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             return None
         return (answer + "\n[Backend grounding warning: these IDs appear in no receipt or message "
                 f"this turn and are unverified: {', '.join(unknown[:10])}]")
+
+    def grounded(answer, can_retry, can_fix=False):
+        """The answer checks above first; an answer they would deliver is then checked for parroting (Practice 87)."""
+        nonlocal repeat_retry_used
+        delivered = _grounded(answer, can_retry, can_fix)
+        if delivered is not None and can_retry and not repeat_retry_used and repeats_earlier(answer, messages):
+            repeat_retry_used = True
+            working.append({"role": "assistant", "content": answer, "rejected_answer": True})
+            working.append({"role": "user", "content": REPEAT_ERROR})
+            return None
+        return delivered
 
     final_reason = "its context window filled"
     round_started, longest_round = time.monotonic(), 0.0
