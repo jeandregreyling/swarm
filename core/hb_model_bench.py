@@ -275,8 +275,7 @@ def run_all(only=None):
     for m in models():
         if only and m['label'] not in only and not set(only) & set(m['aliases']):
             continue
-        from contextlib import closing
-        from core.hb_chat import owner_chat   # Practice 105
+        from core.hb_chat import owner_chat   # Practice 105 (Practice 121: closing comes from the module import, not a local one)
         with closing(get_connection()) as c0:
             chat = owner_chat(c0)
         task = {'task_id': None, 'title': f"Benchmark {m['label']}", 'conversation_id': chat}
