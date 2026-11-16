@@ -1,4 +1,5 @@
 models:
+  # Owner 15 Nov 2026: Qwen 14B is retired from :8080. Kept for rollback only; HB skips it because :8080 now serves gpt-oss:20B.
   - name: qwen2.5:14b-instruct
     driver: llamacpp
     endpoint: http://127.0.0.1:8080
@@ -61,6 +62,27 @@ models:
       threads: 6
       temperature: 0.15
 
+  # Owner 16 Nov (the ArtyomITA test): MiniCPM5-2B on the CPU with the author's DSpark draft (adriandj3/MiniCPM5-2B-DSpark-FRSpec32k-GGUF,
+  # pinned 63f0695b; base openbmb/MiniCPM5-2B-GGUF 8ad02b78; both SHA-256 checked). Measured 18-25 tok/s (10 without the draft),
+  # word-for-word the same output. A small, fast CPU helper that never touches APEX's card.
+  - name: minicpm5-cpu:2b
+    driver: llamacpp
+    role: general
+    path: /srv/archive/models/gguf/minicpm5-2b/MiniCPM5-2B-Q8_0.gguf
+    ctx: 8192
+    quant: Q8_0
+    ram_gb: 4
+    ttl_seconds: 600
+    options:
+      mode: server
+      slots: 1
+      ngl: 0
+      threads: 6
+      temperature: 0.2
+      draft_model: /srv/archive/models/gguf/minicpm5-2b/MiniCPM5-DSpark-fr32k-Q8_0.gguf
+      spec_type: draft-dspark
+      draft_n_max: 5
+
   # Owner 14 Nov: homework on the CPU. Qwen 2.5 7B in system RAM (no GPU layers) writes spec cards so the GPU model
   # starts with the reading and thinking done (core/hb_homework.py). Never on the GPU: APEX owns the card.
   - name: homework-cpu:7b
@@ -79,7 +101,7 @@ models:
       threads: 6
       slots: 1
 
-  # Retained for rollback; these aliases are not served while Qwen owns :8080.
+  # APEX on :8080 since 15 Nov 2026 (owner): gpt-oss:20B (systemd user apex-server, drop-in gpu-offload.conf). gpt-oss:20b below is the routed entry (switch On).
   # Endpoint failure is explicit: never spawn a second 13GB model copy.
   # api_model maps registry names to the service's case-sensitive API alias.
   - name: apex-direct:20b
@@ -104,7 +126,7 @@ models:
     endpoint: http://127.0.0.1:8080
     role: general
     path: /mnt/archive/models/blobs/sha256-8ecb5d4ad6172c63f9cbf1a07a04e525985a8a11a6e516da02b674c4010de716
-    ctx: 8192
+    ctx: 16384   # hint only: HB routes with the window :8080 actually serves (llama.cpp --fit, owner 15 Nov: dynamic)
     quant: MXFP4
     ram_gb: 14
     ttl_seconds: 1800

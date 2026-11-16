@@ -690,6 +690,14 @@ def ensure(
             # e.g. gpt-oss blobs from an Ollama store carry a ChatML template;
             # harmony models need their own jinja or channels leak into content.
             cmd.extend(["--chat-template-file", str(opts["chat_template_file"])])
+        if opts.get("draft_model"):
+            # Practice 104 (owner 16 Nov 2026, the ArtyomITA test): a speculative "draft" model guesses a few tokens ahead and the main
+            # model keeps only what it agrees with - same output, faster. MiniCPM5-2B on the CPU: 10 tok/s alone, 18-25 with the
+            # DSpark draft. A CPU model keeps its draft off the card too (Practice 80).
+            cmd.extend(["-md", str(opts["draft_model"]), "--spec-type", str(opts.get("spec_type") or "draft-simple"),
+                        "--spec-draft-n-max", str(int(opts.get("draft_n_max") or 5)), "--spec-draft-n-min", "0"])
+            if "ngl" in opts and int(opts["ngl"]) == 0:
+                cmd.extend(["-ngld", "0", "--device-draft", "none"])
         if opts.get("mmproj"):
             cmd.extend(["--mmproj", str(opts["mmproj"])])
         if bool(opts.get("embedding")):
