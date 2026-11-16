@@ -74,7 +74,7 @@ def local_turn(api,request,context,tools):
     from core import llm
     from core.apex_routing import choose_local_model,use_model,assigned_local_model,owner_chosen_model
     from core.apex_tools import run_apex_tools,TURN_FORMAT,TOOL_GUIDANCE,TOOL_SCHEMAS,AUTONOMOUS_WRITE_GUIDANCE,response_format_for_turn,scoped_tool_guidance
-    from core.apex_context import prepare_context,budget_receipts,generation_budget,context_tokens,time_budget
+    from core.apex_context import prepare_context,budget_receipts,generation_budget,context_tokens,time_budget,APEX_REASONING_EFFORT
     from core.hb_workflow import CONTROL_READ_TOOLS,CONTROL_WRITE_TOOLS
     from core.chat_continuity import conversation_lesson
     question=request['body']
@@ -136,7 +136,11 @@ def local_turn(api,request,context,tools):
         return llm.chat_via_gateway(model,current,temperature=0.2,idle_timeout_s=300 if assigned else 60,
             absolute_timeout_s=900 if assigned else 180,queue_timeout_s=10,
             options={'num_ctx':context_tokens(),'num_predict':min(generation_budget(current),time_budget(900 if assigned else 180)),   # Practice 100
-                     'require_complete_output':True},response_format=response_format_for_turn(fmt))
+                     'require_complete_output':True,
+                     # Practice 101 (owner 16 Nov 2026): the chat lane asked gpt-oss for low reasoning effort, task turns did not, so on
+                     # a task it reasoned ~40x longer (3,180 vs 78 characters on the same question) and ran out of room before any
+                     # tool call ("output budget exhausted ... completion_tokens=4320"). Fred's model has no such setting.
+                     **({} if fred_hands else {'reasoning_effort':APEX_REASONING_EFFORT})},response_format=response_format_for_turn(fmt))
     history_pointer=request.get('routing',{}).get('history_pointer')   # DOES: where compacted history lives in the KC
     pointer_kw={'pointer':history_pointer} if history_pointer else {}
     if history_pointer:
@@ -160,7 +164,7 @@ def decision_turn(api,request,context):
     """One schema-constrained APEX decision; no operational tools are attached."""
     from core import llm
     from core.apex_routing import choose_local_model,use_model
-    from core.apex_context import prepare_context,context_tokens,generation_budget
+    from core.apex_context import prepare_context,context_tokens,generation_budget,APEX_REASONING_EFFORT
     route=choose_local_model('Decide the next bounded HB peer round')
     schema={'type':'json_schema','json_schema':{'name':'hb_round_decision','strict':True,'schema':{
         'type':'object','properties':{
@@ -193,7 +197,7 @@ def decision_turn(api,request,context):
         text,tokens=llm.chat_via_gateway(route.model,messages,temperature=0.2,idle_timeout_s=60,
             absolute_timeout_s=180,queue_timeout_s=10,
             options={'num_ctx':context_tokens(),'num_predict':min(1536,generation_budget(messages)),
-                     'require_complete_output':True},response_format=schema)
+                     'require_complete_output':True,'reasoning_effort':APEX_REASONING_EFFORT},response_format=schema)   # Practice 101
     value=json.loads(text)
     if not isinstance(value,dict):raise RuntimeError('HB decision was not an object')
     return {'answer':'APEX round decision: '+str(value.get('action'))+'. '+str(value.get('reason')),
