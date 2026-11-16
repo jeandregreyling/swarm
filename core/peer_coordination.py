@@ -251,6 +251,11 @@ def start():
                                 chat_terminal_recover.done = True
                         except Exception:
                             LOG.exception('Chat terminal recovery failed')
+                        try:  # Owner 16 Nov (Practice 109): commits made outside HB's change sets show in main chat and on their Studio step
+                            from core.hb_git_watch import tick as git_watch_tick
+                            git_watch_tick(conn)
+                        except Exception:
+                            LOG.exception('Commit watch failed')
                         try:  # Owner 15 Nov: every email, inbox file and notes job is recorded in Studio (core/hb_intake_records.py)
                             from core.hb_intake_records import sync as intake_records_sync
                             intake_records_sync(conn)
