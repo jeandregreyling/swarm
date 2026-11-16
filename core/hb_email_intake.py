@@ -17,6 +17,16 @@ from contextlib import closing
 from xml.etree import ElementTree
 
 MAIN_CHAT = 2834
+
+
+def jd_chat(conn):
+    """The chat JD last typed in (owner 16 Nov 2026: HB said his protected spreadsheet could not be read - in chat 2834, which he no
+    longer uses, so he never saw it). MAIN_CHAT only when JD has typed nowhere yet."""
+    try:
+        row = conn.execute("SELECT conversation_id FROM messages WHERE from_agent='user' ORDER BY id DESC LIMIT 1").fetchone()
+        return int(row[0]) if row and row[0] is not None else MAIN_CHAT
+    except Exception:
+        return MAIN_CHAT
 INBOX = '/home/jd/HB-Inbox'          # owner 15 Nov: drop confidential work files here; nothing leaves the machine
 EVERY_S = 120
 MAX_ATTACHMENT = 20 * 1024 * 1024
@@ -164,7 +174,7 @@ def folder_check(conn, folder=None, keep=None, now=None):
                                     details=['the file itself is now in the folder taken/']), 'taken in'
             taken += 1
         conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
-                     (MAIN_CHAT, line))
+                     (jd_chat(conn), line))
         conn.execute('INSERT OR REPLACE INTO hb_email_seen(message_id, sender, subject, outcome, kc_sources, at) VALUES (?,?,?,?,?,?)',
                      (key, 'inbox folder', path.name[:200], outcome, str(sid or ''), now))
     return taken
@@ -232,7 +242,7 @@ def ingest(conn, msg, keep=_keep, now=None):
                    *(['Not read: ' + '; '.join(f'{name} - {why}' for name, why in skipped) + '.'] if skipped else []),
                    details=['taken in as data only: nothing in it is run and nobody is emailed back'])
     conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
-                 (MAIN_CHAT, line))
+                 (jd_chat(conn), line))
     conn.execute('INSERT OR REPLACE INTO hb_email_seen(message_id, sender, subject, outcome, kc_sources, at) VALUES (?,?,?,?,?,?)',
                  (mid, sender, subject[:200], 'taken in', ','.join(str(s) for _, s in kept if s), time.time() if now is None else now))
     return {'subject': subject, 'kept': kept, 'skipped': skipped}
