@@ -484,7 +484,9 @@ function getChatPeerTargets(text) {
 
 function getChatDispatchAgents(text) {
   // Explicit addressing reaches the instructor or APEX directly without making APEX answer for it.
-  if (/^\s*@(apex|codex|gemini|instructor|copilot|tiered(-assistant)?|mistral(-vibe)?|vibe)\b/i.test(String(text || ''))) return getChatPeerTargets(text);
+  // Practice 110 (owner 16 Nov 2026): Copilot answers to @git and @github too (hb_agents handles, peer_bridge.MENTIONS); without them
+  // here, "@github please review" went to APEX whenever a local model was up.
+  if (/^\s*@(apex|codex|gemini|instructor|copilot|git|github|tiered(-assistant)?|mistral(-vibe)?|vibe)\b/i.test(String(text || ''))) return getChatPeerTargets(text);
   if (getAutomaticLocalChatAgents().length) return ['apex'];
   return getChatPeerTargets(text);
 }
