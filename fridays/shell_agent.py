@@ -194,6 +194,15 @@ def _match_whitelist(command_str):
     Check command against whitelist. Returns (trust_level, description) or None.
     """
     cmd = command_str.strip()
+    # Practice 108 (owner 16 Nov 2026): /api/shell/execute, /api/shell/stream and run() execute a match with shell=True, and several
+    # patterns accept any non-space text (\S+, .+), so "cat /var/log/x;id" matched "read system log" and the shell also ran "id". A match
+    # may not carry shell syntax: no ; & ` $ < > backslash or control characters, and a pipe only in "ps aux | grep <word>". A double-quoted
+    # argument without $ ` or backslash is inert (the read-only db_query skill quotes its SQL, ending ";" included).
+    bare = re.sub(r'"[^"`$\\]*"', '""', cmd)
+    if re.search(r'[\x00-\x1f;&`$<>\\]', bare):
+        return None
+    if '|' in bare and not re.fullmatch(r'ps\s+aux\s+\|\s+grep\s+[\w.\-]+', cmd):
+        return None
     for pattern, level, desc in WHITELIST:
         if re.match(pattern, cmd, re.IGNORECASE):
             return level, desc
