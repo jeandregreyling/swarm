@@ -16,6 +16,23 @@ CONNECTION_WORDS = {'enp5s0': 'home line (Orbi)', 'wlo1': 'Samsung hotspot S9FE 
                     'enx92eaa5a7a96e': 'tablet USB tethering (mobile data)'}
 
 
+def connection(interface):
+    """Plain name of a connection. Practice 102 (owner 16 Nov 2026): after a restart the tablet's USB link came back as
+    enx12d050f6667f, so HB said "over the enx12d050f6667f". A USB network link (enx...) is the tablet whatever its address."""
+    if interface in CONNECTION_WORDS:
+        return CONNECTION_WORDS[interface]
+    if str(interface or '').startswith('enx'):
+        return 'tablet USB tethering (mobile data)'
+    return interface or 'default connection'
+
+
+def _chat(conn):
+    """Practice 102: download lines went to chat 2834, which JD no longer uses ("I still can't see these downloads in HB").
+    They go where JD last typed, as the email intake does (Practice 93)."""
+    from core.hb_email_intake import jd_chat
+    return jd_chat(conn)
+
+
 def ensure_schema(conn):
     conn.execute('''CREATE TABLE IF NOT EXISTS hb_downloads(id INTEGER PRIMARY KEY, name TEXT NOT NULL, url TEXT, path TEXT NOT NULL UNIQUE,
         total_bytes INTEGER NOT NULL, interface TEXT, step_id TEXT, started_at REAL, last_pct INTEGER NOT NULL DEFAULT 0,
@@ -30,7 +47,7 @@ def register(conn, name, path, total_bytes, *, url=None, interface=None, step_id
                  'VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(path) DO UPDATE SET name=excluded.name, interface=excluded.interface, '
                  'step_id=excluded.step_id, total_bytes=excluded.total_bytes',
                  (name, url, str(path), int(total_bytes), interface, step_id, now, size, now, now))
-    return _post(conn, f"⬇ Download started: {name} ({_gb(total_bytes)} GB) over the {CONNECTION_WORDS.get(interface, interface or 'default connection')}"
+    return _post(conn, f"⬇ Download started: {name} ({_gb(total_bytes)} GB) over the {connection(interface)}"
                        f"{'; ' + _gb(size) + ' GB already here' if size else ''}.",
                  [f'for Studio step {step_id}' if step_id else '', f'file {path}'])
 
@@ -50,7 +67,7 @@ def _post(conn, lead, details):
     from core.hb_plain import message
     text = message(lead, details=[d for d in details if d])
     return conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
-                        "VALUES (?,'hummingbird','user',?,'response',0)", (MAIN_CHAT, text)).lastrowid
+                        "VALUES (?,'hummingbird','user',?,'response',0)", (_chat(conn), text)).lastrowid
 
 
 def rows(conn):
@@ -77,7 +94,7 @@ def tick(conn, now=None):
         size, pct = d['bytes'], d['pct']
         grew = size > d['last_bytes']
         rate = (size - d['last_bytes']) / max(1.0, now - (d['last_at'] or now)) if grew else 0
-        where = CONNECTION_WORDS.get(d['interface'], d['interface'] or 'default connection')
+        where = connection(d['interface'])
         step = f"for Studio step {d['step_id']}" if d['step_id'] else ''
         if size >= d['total_bytes'] > 0:
             posted.append(_post(conn, f"✅ Downloaded: {d['name']} ({_gb(size)} GB) over the {where}.", [step, f"file {d['path']}"]))
@@ -110,6 +127,6 @@ def status_text(conn):
     for d in items:
         state = 'done' if d['done_at'] else 'stalled' if d['stalled'] else 'downloading'
         lines.append(f"- {d['name']}: {state}, {d['pct']}% ({_gb(d['bytes'])} of {_gb(d['total_bytes'])} GB) over the "
-                     f"{CONNECTION_WORDS.get(d['interface'], d['interface'] or 'default connection')}"
+                     f"{connection(d['interface'])}"
                      + (f"; Studio step {d['step_id']}" if d['step_id'] else ''))
     return 'Downloads:\n' + '\n'.join(lines)
