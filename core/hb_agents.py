@@ -338,7 +338,12 @@ def exam_tick(conn, say=None, now=None):
         conn.execute('UPDATE hb_agent_exams SET answer=?, passed=?, why=?, answered_at=? WHERE id=?', ((text or '')[:4000], int(bool(ok)), why, now, rid))
         say(f"🧪 {agent_id}: {'✔' if ok else '✘'} {test}: {why}")
     for exam_id, agent_id in conn.execute('SELECT DISTINCT exam_id, agent_id FROM hb_agent_exams e WHERE NOT EXISTS (SELECT 1 FROM hb_agent_exams x '
-                                          'WHERE x.exam_id=e.exam_id AND x.answered_at IS NULL)').fetchall():
+                                          'WHERE x.exam_id=e.exam_id AND x.answered_at IS NULL) '
+                                          # Practice 123 (monitoring 17 Nov 06:12): with two finished exams (14 Nov and 16 Nov) each tick
+                                          # finished both; each overwrote the agent's latest exam, so the other was 'new' again -
+                                          # "copilot-instructor passed HB's exam" twice every ten minutes (147 lines), the score flipping.
+                                          'AND e.exam_id=(SELECT y.exam_id FROM hb_agent_exams y WHERE y.agent_id=e.agent_id '
+                                          'ORDER BY y.sent_at DESC, y.id DESC LIMIT 1)').fetchall():
         a = get(conn, agent_id)
         try:
             done = json.loads(a.get('exam') or '{}').get('exam_id') == exam_id
