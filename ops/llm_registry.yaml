@@ -65,6 +65,24 @@ models:
   # Owner 16 Nov (the ArtyomITA test): MiniCPM5-2B on the CPU with the author's DSpark draft (adriandj3/MiniCPM5-2B-DSpark-FRSpec32k-GGUF,
   # pinned 63f0695b; base openbmb/MiniCPM5-2B-GGUF 8ad02b78; both SHA-256 checked). Measured 18-25 tok/s (10 without the draft),
   # word-for-word the same output. A small, fast CPU helper that never touches APEX's card.
+  # Practice 120 (17 Nov 2026): Mixtral 8x7B Instruct (~47B, 8 experts) in system RAM, never on the GPU. kostakoff/Mixtral-8x7B-Instruct-v0.1-GGUF
+  # pinned 1fc534e5, SHA-256 checked; it replaces the Dec 2023 file current llama.cpp cannot read. Measured 1.6 tok/s on the CPU while
+  # other CPU work ran: a slow, deep worker for jobs JD does not wait on (S-B4C07AFD21, "a bigger CPU model than Fred").
+  - name: mixtral-cpu:8x7b
+    driver: llamacpp
+    role: general
+    path: /srv/archive/models/gguf/mixtral-8x7b-instruct-v2/Mixtral-8x7B-Instruct-v0.1-Q4_K_M.gguf
+    ctx: 8192
+    quant: Q4_K_M
+    ram_gb: 30
+    ttl_seconds: 600
+    options:
+      mode: server
+      slots: 1
+      ngl: 0
+      threads: 6
+      temperature: 0.2
+
   - name: minicpm5-cpu:2b
     driver: llamacpp
     role: general

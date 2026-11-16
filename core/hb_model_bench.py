@@ -34,7 +34,9 @@ GPU_GB = 16.0
 GPU_HEADROOM_GB = 1.5
 RECORD_STEP_TITLE = 'Model benchmark record: every local model - GPU fit, programmer / researcher / social / useless'
 PLAN = 'P-2AB8250A87'
-EXTRA = [('mixtral-8x7b-instruct', '/mnt/archive/models/gguf/mixtral-8x7b-instruct/mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf'),
+# Practice 120 (16-17 Nov 2026): the Dec 2023 Mixtral file stores each expert separately; current llama.cpp cannot read it
+# ("tensor 'blk.0.ffn_down_exps.weight' not found"). The new file (kostakoff, current layout, SHA-256 checked) loads and answers.
+EXTRA = [('mixtral-8x7b-instruct', '/srv/archive/models/gguf/mixtral-8x7b-instruct-v2/Mixtral-8x7B-Instruct-v0.1-Q4_K_M.gguf'),
          ('qwen2.5-32b-instruct', '/mnt/archive/models/gguf/qwen2.5-32b-instruct/Qwen2.5-32B-Instruct-Q4_K_M.gguf')]
 _RUNNING = threading.Lock()
 
