@@ -74,7 +74,7 @@ def local_turn(api,request,context,tools):
     from core import llm
     from core.apex_routing import choose_local_model,use_model,assigned_local_model,owner_chosen_model
     from core.apex_tools import run_apex_tools,TURN_FORMAT,TOOL_GUIDANCE,TOOL_SCHEMAS,AUTONOMOUS_WRITE_GUIDANCE,response_format_for_turn,scoped_tool_guidance
-    from core.apex_context import prepare_context,budget_receipts,generation_budget,context_tokens
+    from core.apex_context import prepare_context,budget_receipts,generation_budget,context_tokens,time_budget
     from core.hb_workflow import CONTROL_READ_TOOLS,CONTROL_WRITE_TOOLS
     from core.chat_continuity import conversation_lesson
     question=request['body']
@@ -135,7 +135,7 @@ def local_turn(api,request,context,tools):
     def inference(model,current):
         return llm.chat_via_gateway(model,current,temperature=0.2,idle_timeout_s=300 if assigned else 60,
             absolute_timeout_s=900 if assigned else 180,queue_timeout_s=10,
-            options={'num_ctx':context_tokens(),'num_predict':generation_budget(current),
+            options={'num_ctx':context_tokens(),'num_predict':min(generation_budget(current),time_budget(900 if assigned else 180)),   # Practice 100
                      'require_complete_output':True},response_format=response_format_for_turn(fmt))
     history_pointer=request.get('routing',{}).get('history_pointer')   # DOES: where compacted history lives in the KC
     pointer_kw={'pointer':history_pointer} if history_pointer else {}
@@ -144,7 +144,7 @@ def local_turn(api,request,context,tools):
         messages.insert(1,{'role':'user','content':POINTER_HEADER+history_pointer})
     dream_card=request.get('routing',{}).get('dream_card')
     if dream_card:   # DREAM: HB's clipboard (goal, done criteria, current step, last failure, related work, method)
-        messages.insert(1,{'role':'user','content':str(dream_card)[:3000]})
+        messages.insert(1,{'role':'user','content':str(dream_card)})   # owner 15 Nov 2026: no fixed cut; the card's builder bounds it and prepare_context budgets the prompt
     with use_model(route),agent_identity.execution('apex',model=route.model,conversation_id=request['conversation_id']):
         answer,tokens,receipts=run_apex_tools(inference,messages,lambda:True,receipt,
             repository=Remote(),proposal_handler=proposal if {'propose_write_file','propose_patch'}.intersection(tools) else None,

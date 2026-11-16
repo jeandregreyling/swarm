@@ -2991,8 +2991,9 @@ def api_chat():
             if remaining <= 0:
                 raise RuntimeError('APEX turn deadline exceeded; inference not submitted')
             from core.apex_tools import response_format_for_turn
-            from core.apex_context import APEX_REASONING_EFFORT, context_tokens, generation_budget
+            from core.apex_context import APEX_REASONING_EFFORT, context_tokens, generation_budget, time_budget
             output_tokens = generation_budget(messages) if apex_lane and not (fault or continuing_recovery) else 1800
+            output_tokens = min(output_tokens, time_budget(remaining))     # Practice 100: never more than fits the time left
             remaining = int(apex_deadline - time.monotonic())
             if remaining <= 0:
                 raise RuntimeError('APEX turn deadline exceeded during context budgeting; inference not submitted')

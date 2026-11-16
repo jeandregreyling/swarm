@@ -6,6 +6,7 @@ import contextvars
 import hashlib
 import json
 import logging
+import os
 
 import requests
 
@@ -14,11 +15,22 @@ from core.seven_llm import registry
 from core.seven_llm.llama_server import _chat_payload
 
 LOG = logging.getLogger(__name__)
-CONTEXT_TOKENS = 16384
+CONTEXT_TOKENS = 16384   # fallback only, when no route is known; the real window is the route's (owner 15 Nov 2026: dynamic)
 OUTPUT_RESERVE = 2048
-MAX_OUTPUT_TOKENS = 4096
 # A tool-free closing answer needs far less room than a proposal payload.
 FINAL_ANSWER_RESERVE = 1024
+# Practice 100 (owner 16 Nov 2026): with the fixed 4096 cap gone (15 Nov, "let the system decide") a turn could ask for ~100k tokens of
+# the 113k window. At the measured ~38 tokens/s gpt-oss wrote past the worker's 180 s limit and HB threw the whole turn away (the GitHub
+# step: 8 timeouts, then Fred looping on the CPU). The system still decides: an answer gets the room the window has left, but no more
+# than the model can write in the time the call has.
+DECODE_TOKENS_PER_S = float(os.environ.get('APEX_DECODE_TOKENS_PER_S', '30'))   # measured 38/s on gpt-oss:20b (Vulkan), 16 Nov
+TIME_SHARE = 0.8
+
+
+def time_budget(seconds, tokens_per_s=None) -> int:
+    """How many tokens the model can write in `seconds` (80% of it, at a safe speed); never less than FINAL_ANSWER_RESERVE."""
+    rate = DECODE_TOKENS_PER_S if tokens_per_s is None else float(tokens_per_s)
+    return max(FINAL_ANSWER_RESERVE, int(max(0.0, float(seconds)) * TIME_SHARE * rate))
 _RESERVE = contextvars.ContextVar("apex_output_reserve", default=None)
 APEX_REASONING_EFFORT = "low"
 READ_BUDGET_WARNING = (
@@ -116,7 +128,9 @@ def generation_budget(messages: list[dict], count_tokens=None) -> int:
             f"APEX context budget exceeded: {count} prompt tokens leave {available} output tokens; "
             f"required reserve {reserve}. Save unfinished work in Studio."
         )
-    return min(MAX_OUTPUT_TOKENS, available)
+    # Owner 15 Nov 2026: "let the system decide". The answer gets all the room the window has left; a fixed 4096 cap
+    # cut gpt-oss off mid-thought (finish_reason=length) because it reasons before it answers.
+    return available
 
 
 def _receipt_stub(content: str) -> str:
@@ -273,7 +287,7 @@ def prepare_context(messages: list[dict], count_tokens=None, *, archive_history:
         )
     if telemetry is not None:
         entry = {"phase": phase, "prompt_tokens_before": original_count, "prompt_tokens_after": count,
-                 "input_budget": budget, "output_tokens": min(MAX_OUTPUT_TOKENS, context_tokens() - count),
+                 "input_budget": budget, "output_tokens": context_tokens() - count,
                  "compacted_messages": changed}
         last = str(messages[-1].get("content", "")) if messages else ""
         if last.startswith("BACKEND ") and not last.startswith("BACKEND TOOL RECEIPTS"):
