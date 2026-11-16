@@ -17,10 +17,30 @@
     var host = document.getElementById('chat-messages') || document.getElementById('home-chat-messages');
     if (host && node.parentNode !== host) host.appendChild(node);
   }
+  // Practice 126 (owner 17 Nov 2026): "I can't really see what HB is busy with at the moment, I just hear the fans". The box below sits at
+  // the end of the message list (out of sight when scrolled up, gone for a moment on every redraw) and shows nothing at all when idle.
+  // The chat bar now always says what HB is doing: the first line of the activity, or "idle"; hover for every line.
+  function now(data) {
+    var bar = document.querySelector('#home-chat-bar .home-chat-bar-left');
+    if (!bar) return;
+    var pill = document.getElementById('hb-now');
+    if (!pill) {
+      pill = document.createElement('span');
+      pill.id = 'hb-now';
+      pill.style.cssText = 'margin-left:10px;font-size:11px;color:var(--text-dim,#888);white-space:nowrap;overflow:hidden;' +
+        'text-overflow:ellipsis;max-width:46vw;display:inline-block;vertical-align:middle;';
+      bar.appendChild(pill);
+    }
+    var lines = (data && data.running && data.lines) ? data.lines : [];
+    pill.textContent = 'HB now: ' + (lines.length ? String(lines[0]).replace(/\s+/g, ' ') : 'idle');
+    pill.title = lines.length ? lines.join('\n') : 'Nothing is running: no APEX turn, no Fred turn, no background job.';
+    pill.style.color = lines.length ? 'var(--accent,#0f9)' : 'var(--text-dim,#888)';
+  }
   function tick() {
     if (document.hidden) return;
     fetch('/api/peer/v1/hb/activity', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
       var node = ensure();
+      now(data);                                          // Practice 126
       if (!data || !data.running) { node.style.display = 'none'; return; }
       node.textContent = data.lines.join('\n');
       place(node);
