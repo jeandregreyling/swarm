@@ -69,6 +69,7 @@ def search(query):
         raise ValueError('Knowledge query must contain 2-200 characters')
     query=query.strip()
     items=[]
+    more_matches=False
     with closing(get_connection()) as conn:
         tables=_tables(conn)
         if 'knowledge_sources' in tables:
@@ -113,7 +114,10 @@ def search(query):
                         LIMIT {int(limit-len(rows))}''',params).fetchall()
                     if len(rows)>=limit:break
                 return rows[:limit]
-            library=grouped('NOT '+hb_kind,5)
+            # Practice 127 (owner 17 Nov 2026): "What do our SAP notes say about STP Phase 2 issues" - APEX cited 3 of ~14 STP2 notes; one
+            # search returned at most 5 documents. Now up to 10, and the result says when more match.
+            library=grouped('NOT '+hb_kind,10)
+            more_matches=len(library)>=10
             records=grouped(hb_kind,3)
             import re as _re
             hb_reference=bool(_re.search(r'\b(T-[0-9A-F]{12}|S-[0-9A-F]{10}|P-[0-9A-F]{10}|chat:\d+)\b|#\d{3,}',query,_re.I))
@@ -139,7 +143,9 @@ def search(query):
     if any(confidential(i.get('tags')) for i in items) and online_reader():
         items=[i for i in items if not confidential(i.get('tags'))]      # owner 15 Nov: confidential sources never reach an online agent
     return {'status':'found' if items else 'not_found','source':'knowledge_library_and_project_docs',
-            'query':query,'items':items[:8],'notice':NOTICE}
+            'query':query,'items':items[:12],'notice':NOTICE,
+            **({'more_matches':True,'more_hint':'More documents match than are listed: search again with other or narrower words '
+                'and list every matching note.'} if more_matches else {})}
 
 
 def read(document_id, offset=0):

@@ -1277,12 +1277,16 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                                 r"\b(?:integrat\w*|implement\w*|patch\w*|edit\w*|add\w*|build\w*|write|writ\w+|fix\w*|updat\w+|chang\w+|"
                                 r"modif\w+|apply\w*|correct\w*|replac\w+|creat\w+|run\w*|test\w*|proceed\w*)\b",answer,re.I|re.S)
         acted=any(r.get('tool') in ('propose_patch','propose_write_file','run_tests') and r.get('status')=='succeeded' for r in receipts)
-        if (proposal_handler is not None and not no_tools and not blocked and promises_edit and not acted
+        # Practice 127 (owner 17 Nov 2026): a research answer ("...they would need to be identified by fetching the notes via /notes add")
+        # was marked "Backend action check: this turn ended with a promise; no file was changed". That check is for change requests only.
+        wants_change=bool(re.search(r"\b(build|fix|repair|implement|connect|clean|enable|change|patch|edit|write|update|add|create|"
+                                    r"rename|remove|delete|refactor|apply)\b", latest_user, re.I))
+        if (proposal_handler is not None and not no_tools and not blocked and promises_edit and not acted and wants_change
                 and not (can_retry and not give_up_retry_used)):
             answer += ('\n[Backend action check: this turn ended with a promise; no file was changed and no test was run. '
                        'Next turn: act first (propose_patch / run_tests), or answer "blocked because ..." naming the missing tool or fact.]')
         if (proposal_handler is not None and not no_tools and not blocked and can_retry
-                and not give_up_retry_used and promises_edit and not acted):
+                and not give_up_retry_used and promises_edit and not acted and wants_change):
             give_up_retry_used=True
             correct('BACKEND EXECUTION CHECK: your answer names an authorized source action that is still unfinished. '
                     'Do that action now using the attached tools. Read the narrow target if needed, then submit one exact '
