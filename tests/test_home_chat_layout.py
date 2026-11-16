@@ -107,11 +107,11 @@ def test_practice_11_double_click_arrow_toggles_auto_scroll_on_by_default():
     fn = js[js.index('function _hcInitJumpButton'):js.index('window.initHomeChat')]
     assert "let auto = localStorage.getItem('hc-auto-follow') !== '0';" in fn
     assert "btn.addEventListener('dblclick'" in fn and "btn.classList.toggle('auto', auto);" in fn
-    assert "btn.classList.toggle('show', away || auto);" in fn
+    assert "btn.classList.toggle('idle', !(away || auto));" in fn   # Practice 124
     assert 'if (auto) list.scrollTop = list.scrollHeight;' in fn and 'subtree: true' in fn
     # 13 Nov: APEX once put the 'show' line where the 'auto' line belongs; 'away' only exists inside update().
-    assert fn.count("btn.classList.toggle('show', away || auto);") == 1
-    assert fn.index("btn.classList.toggle('show', away || auto);") > fn.index('const update = () => {')
+    assert fn.count("btn.classList.toggle('idle', !(away || auto));") == 1
+    assert fn.index("btn.classList.toggle('idle', !(away || auto));") > fn.index('const update = () => {')
     _run_in_node(fn)
 
 

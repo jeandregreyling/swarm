@@ -160,7 +160,11 @@
     main.appendChild(btn);
     const update = () => {
       const away = list.scrollHeight - list.scrollTop - list.clientHeight > 120;
-      btn.classList.toggle('show', away || auto);
+      // Practice 124 (owner 17 Nov 2026): "the auto scroll and lock or not arrow ... went missing". It was shown only while scrolled up or
+      // with auto scroll on - once auto scroll was double-clicked off, the arrow vanished at the bottom and could not be turned back on.
+      // It now always shows; faint ('idle') when there is nothing to jump to and auto scroll is off.
+      btn.classList.toggle('show', true);
+      btn.classList.toggle('idle', !(away || auto));
       const input = document.getElementById('home-chat-input-area');
       btn.style.bottom = ((input ? input.offsetHeight : 0) + 14) + 'px';
     };
