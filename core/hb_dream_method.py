@@ -132,6 +132,12 @@ def card(conn, task):
     past = related(conn, task)
     lines.append('Related past work: ' + ('; '.join(f"{p['task_id']} \"{p['title']}\" ({p['state']}, KC document {p['document_id']})"
                                                     for p in past) if past else 'none found'))
+    try:   # Practice 98 (owner 16 Nov 2026): "make sure HB knows how to do research properly"
+        from core.hb_learning import research_method, skills_for_text
+        if 'research' in skills_for_text(str(task.get('title') or '') + ' ' + str(task.get('objective') or '')[:800]):
+            lines.append(research_method())
+    except Exception:
+        pass
     try:  # Learning step 0: verified worked examples of the same kind of work
         from core.hb_learning import examples_block
         block = examples_block(conn, task)

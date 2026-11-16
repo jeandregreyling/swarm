@@ -174,3 +174,11 @@ def coding_lessons():
     from pathlib import Path
     pack = json.loads((Path(__file__).resolve().parent / 'capability_packs' / 'coding.lessons.v1.json').read_text())
     return 'Coding lessons learned in earlier tasks (follow them): ' + ' '.join(f'({i}) {l}' for i, l in enumerate(pack['lessons'], 1))
+
+
+def research_method():
+    """Practice 98 (owner 16 Nov 2026): "make sure HB knows how to do research properly". The method HB puts on the clipboard of a
+    research task or question (core/capability_packs/research.method.v1.json)."""
+    from pathlib import Path
+    pack = json.loads((Path(__file__).resolve().parent / 'capability_packs' / 'research.method.v1.json').read_text())
+    return 'Research method (follow it): ' + ' '.join(f'({i}) {s}' for i, s in enumerate(pack['steps'], 1))

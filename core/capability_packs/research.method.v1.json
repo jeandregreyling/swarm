@@ -1,0 +1,14 @@
+{
+  "id": "research.method",
+  "version": "1.0.0",
+  "source": "Owner 16 Nov 2026: \"make sure HB knows how to do research properly\" (SAP payroll research, Practice 98)",
+  "steps": [
+    "Knowledge Centre first: knowledge_search with the exact terms (note number, component such as PY-AU, wage type, report, table, legal change), then knowledge_read the best 2-5 sources. Do not answer from memory when the KC can answer.",
+    "Read before you write: say only what the sources say, and cite each point as KC<id> or SAP Note <number> (version, release date).",
+    "Newest wins: when sources disagree, the later version or release wins; say which one you used.",
+    "Follow references: when a source cites a note HB does not have, name it and say HB can fetch it (/notes add <number>, or /notes follow PY-AU for a whole area). Never guess what an unread note says.",
+    "Keep what the sources say apart from your own inference, and label the inference.",
+    "Online only when the KC has nothing and it is allowed: public pages only; never ask for or use anyone's credentials.",
+    "End with the answer in 2-5 lines, the sources, and what is still unknown and how to find it out."
+  ]
+}

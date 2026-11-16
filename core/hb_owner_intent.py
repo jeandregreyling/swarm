@@ -151,6 +151,12 @@ def card(conn, task, kind=None):
                      'grovelling and say what you will do differently. If it asks for something impossible, say so plainly: '
                      'a model cannot delete or replace itself; JD switches models in the Models card or with @model; '
                      '"cancel all tasks" or /stop stops all work. If it is a test or a threat, answer calmly and factually.')
+    try:   # Practice 98 (owner 16 Nov 2026): a research question from JD gets HB's research method
+        from core.hb_learning import research_method, skills_for_text
+        if 'research' in skills_for_text(said):
+            lines.append(research_method())
+    except Exception:
+        pass
     lines.append('Queue (HB drives it; you work the current task): ' + status)
     try:
         items = hb_queue.status(conn).get('items', [])
