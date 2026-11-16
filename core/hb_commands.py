@@ -40,6 +40,7 @@ COMMANDS = [
     ('bench', '/bench [all|model name|status]', 'Benchmark the local models: GPU fit and programmer / researcher / social / useless (results in main chat and Studio)', False),
     ('merits', '/merits', "How each agent is doing: checked successes, fixes for others, tags and badges", False),
     ('downloads', '/downloads', 'Big downloads HB is tracking: progress, connection, Studio step', False),
+    ('audit', '/audit [on|off]', 'HB\'s file audit: the reviewer model goes through the interface files (Practice 114)', False),
     ('tidy', '/tidy [yes]', 'Close chat lines HB wrongly made into tasks (remarks, go-aheads); lists them first', False),
     ('drive', '/drive [on|off|status]', 'HB drives the open tasks to the finish (same as saying "go")', False),
     ('today', '/today', "HB's opening for today: self-check, the real date, what is next, and a short grounding checkpoint", False),
@@ -122,6 +123,8 @@ def parse(body):
         return ('clip', words[1:]) if len(words) > 2 else None
     if cmd == 'downloads':
         return ('downloads', [])
+    if cmd == 'audit':
+        return ('audit', words[1:2])
     if cmd == 'merits':
         return ('merits', [])
     if cmd == 'bench':
@@ -877,6 +880,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'merits':
         from core import hb_merits
         return hb_merits.status_text(conn)
+    if command == 'audit':
+        from core import hb_file_audit
+        return hb_file_audit.command(conn, args)
     if command == 'downloads':
         from core import hb_downloads
         return hb_downloads.status_text(conn)

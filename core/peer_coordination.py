@@ -256,6 +256,11 @@ def start():
                             git_watch_tick(conn)
                         except Exception:
                             LOG.exception('Commit watch failed')
+                        try:  # Owner 16 Nov (Practice 114): the reviewer model goes through the interface files, one block when the CPU is free
+                            from core.hb_file_audit import tick as file_audit_tick
+                            file_audit_tick(conn)
+                        except Exception:
+                            LOG.exception('File audit tick failed')
                         try:  # Owner 15 Nov: every email, inbox file and notes job is recorded in Studio (core/hb_intake_records.py)
                             from core.hb_intake_records import sync as intake_records_sync
                             intake_records_sync(conn)
