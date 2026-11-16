@@ -121,6 +121,33 @@ def find_new(conn):
                            'HB fetches them from SAP now and saves each in the Knowledge Centre.' if p['numbers'] else 'Nothing to fetch.',
                            details=[f'spreadsheet KC{sid}; /notes shows progress']))
         added += 1
+    # Practice 95 (owner 16 Nov 2026): JD emailed "SAP HRSP F2 to F8" - 2,989 note links pasted into the email body, 2,826 of them new.
+    # HB saved the email (KC7358) and did nothing more: only spreadsheets became jobs. An email body with at least three note links
+    # is a list too. Notes already in the Knowledge Centre or already queued are left out; when none are left, the email is marked
+    # "nothing to fetch" quietly so it is not looked at again.
+    queued = set()
+    for (nums,) in conn.execute("SELECT numbers FROM hb_sap_note_jobs WHERE state IN ('pending','running')").fetchall():
+        try:
+            queued |= set(json.loads(nums or '[]'))
+        except ValueError:
+            pass
+    for sid, title, text in conn.execute("SELECT source_id, title, raw_text FROM knowledge_sources WHERE status='active' AND domain_tags LIKE '%confidential%' "
+                                         "AND title LIKE 'Email:%' AND source_id NOT IN (SELECT source_id FROM hb_sap_note_jobs)").fetchall():
+        found = list(dict.fromkeys(_LINK.findall(str(text or ''))))
+        if len(found) < 3:
+            continue
+        todo = [n for n in found if n not in queued and not have(conn, n)]
+        now = time.time()
+        conn.execute('INSERT INTO hb_sap_note_jobs(source_id, title, sheet, numbers, state, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+                     (sid, str(title)[:200], 'email body', json.dumps(todo), 'pending' if todo else 'nothing to fetch', now, now))
+        queued |= set(todo)
+        if todo:
+            from core.hb_plain import message
+            _say(conn, message(f"🔎 {str(title)[:120]}: {len(todo)} new SAP note(s) in the email.",
+                               'HB fetches them from SAP now and saves each in the Knowledge Centre.'
+                               + (f' {len(found) - len(todo)} were already there or queued.' if len(found) > len(todo) else ''),
+                               details=[f'email KC{sid}; /notes shows progress']))
+            added += 1
     return added
 
 
