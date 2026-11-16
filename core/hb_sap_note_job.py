@@ -211,6 +211,87 @@ def have(conn, number):
     return conn.execute('SELECT 1 FROM knowledge_sources WHERE source_ref=?', (f'sap://note/{number}',)).fetchone() is not None
 
 
+# Practice 97 (owner 16 Nov 2026): "find notes that haven't been downloaded and do research" on Australian payroll and payroll in
+# general. SAP for Me has no search HB may use, so HB researches the way a consultant does: read the payroll notes it has, fetch the
+# notes they cite, then read those and follow what they cite, a few levels deep. Only notes of the chosen components are followed.
+FOLLOW = ('PY-AU', 'PY-XX')
+FOLLOW_DEPTH = 3
+_SEVEN = re.compile(r'(?<![\d/:#-])(?<!\d[.,])([1-3]\d{6})(?!\d|[.,:/-]\d)')
+_COMPONENT = re.compile(r'^component (\S+)', re.M)
+
+
+def cited(text, own=None):
+    """The SAP notes a saved note cites: "SAP Note 1234567" / "KBA 1234567", note links, and 7-digit note numbers on a line that
+    mentions notes or KBAs (a list such as "SAP Notes: 2345678, 2456789"). Amounts and dates on other lines are not notes."""
+    text = str(text or '')
+    found = _NAMED.findall(text) + _LINK.findall(text)
+    for line in text.splitlines():
+        if re.search(r'\b(?:notes?|kbas?|hinweis)\b', line, re.I):
+            found += _SEVEN.findall(line)
+    return [n for n in dict.fromkeys(found) if n != own]
+
+
+def _queued(conn):
+    queued = set()
+    for (nums,) in conn.execute("SELECT numbers FROM hb_sap_note_jobs WHERE state IN ('pending','running')").fetchall():
+        try:
+            queued |= set(json.loads(nums or '[]'))
+        except ValueError:
+            pass
+    return queued
+
+
+def follow(conn, components=FOLLOW, depth=FOLLOW_DEPTH, now=None, say=True):
+    """Queue the notes that saved notes of these components cite and HB does not have yet. With depth > 1, once they are in HB
+    follows the new ones too (next_level). Returns the plain line HB says."""
+    from core.hb_plain import message
+    ensure_schema(conn)
+    now = time.time() if now is None else now
+    components = tuple(str(c).upper() for c in components) or FOLLOW
+    rows = conn.execute("SELECT source_ref, raw_text FROM knowledge_sources WHERE source_ref LIKE 'sap://note/%'").fetchall()
+    have_now = {ref.rsplit('/', 1)[-1] for ref, _ in rows}
+    queued, todo, read = _queued(conn), [], 0
+    for ref, text in rows:
+        comp = _COMPONENT.search(str(text or ''))
+        if not comp or not comp.group(1).upper().startswith(components):
+            continue
+        read += 1
+        for n in cited(text, ref.rsplit('/', 1)[-1]):
+            if n not in have_now and n not in queued and n not in todo:
+                todo.append(n)
+    chunks = [todo[i:i + MAX_NOTES] for i in range(0, len(todo), MAX_NOTES)]
+    label = ', '.join(components)
+    for i, chunk in enumerate(chunks):
+        conn.execute('INSERT INTO hb_sap_note_jobs(source_id, title, sheet, numbers, state, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+                     (-int(now * 1000) - i, f"notes cited by {label} notes, part {i + 1} of {len(chunks)} ({len(chunk)} notes), "
+                      f"{time.strftime('%d %b %H:%M', time.localtime(now))}", f"follow:{','.join(components)}:{depth}", json.dumps(chunk),
+                      'pending', now + i * 0.001, now))
+    if todo:
+        line = message(f'🔎 Research: {read} saved {label} notes cite {len(todo)} SAP notes HB does not have yet; downloading them.',
+                       f'When they are in, HB reads those too and follows what they cite ({depth - 1} more level(s)).' if depth > 1
+                       else 'This is the last level.', details=['/notes shows progress'])
+    else:
+        line = message(f'🔎 Research: the {read} saved {label} notes cite no SAP note HB does not already have.')
+    if say:
+        _say(conn, line)
+    return line
+
+
+def next_level(conn):
+    """When nothing is downloading and a level of followed notes is done, follow the next level (once per level)."""
+    if conn.execute("SELECT 1 FROM hb_sap_note_jobs WHERE state IN ('pending','running')").fetchone():
+        return None
+    row = conn.execute("SELECT sheet FROM hb_sap_note_jobs WHERE sheet LIKE 'follow:%' AND sheet NOT LIKE '%:next' "
+                       "ORDER BY created_at DESC LIMIT 1").fetchone()
+    if not row:
+        return None
+    conn.execute("UPDATE hb_sap_note_jobs SET sheet=sheet || ':next' WHERE sheet=?", (row[0],))
+    _, comps, depth = row[0].split(':')
+    if int(depth) <= 1:
+        return None
+    return follow(conn, comps.split(','), int(depth) - 1)
+
+
 def overview(conn, now=None):
     """One plain line for the whole download (every job of the last 24 hours that is not finished, plus the ones finished with it),
     or None when nothing is downloading. Owner 16 Nov 2026: 2,167 notes in six jobs showed nothing until a whole job of 400 ended."""
@@ -309,6 +390,7 @@ def visible(conn, source_id):
 def tick(conn):
     """HB's loop: turn newly arrived spreadsheets into jobs and run one pending job in the background."""
     find_new(conn)
+    next_level(conn)                                     # Practice 97: research goes one level deeper when a level is in
     # 15 Nov: a job cut off by a restart (still "running", untouched for 10 minutes) goes back in line; notes already saved are skipped
     conn.execute("UPDATE hb_sap_note_jobs SET state='pending' WHERE state='running' AND updated_at<?", (time.time() - STALE_S,))
     row = conn.execute("SELECT source_id FROM hb_sap_note_jobs WHERE state='pending' ORDER BY created_at LIMIT 1").fetchone()
@@ -354,6 +436,9 @@ def command(conn, args):
                       'pending', now, now))
         return (f'{len(found[:MAX_NOTES])} SAP Note number(s) taken; HB starts fetching within a minute and says when they are in the Knowledge Centre. '
                 '/notes shows progress.')
+    if args and args[0].lower() == 'follow':   # Practice 97: /notes follow [PY-AU PY-XX ...] - research by following cited notes
+        comps = [a.upper() for a in args[1:] if re.fullmatch(r'[A-Za-z]{2,4}(?:-[A-Za-z0-9]{1,8}){0,3}', a)] or list(FOLLOW)
+        return follow(conn, comps, say=False)
     if len(args) == 2 and args[0].lower() == 'run' and re.fullmatch(r'(?i)(kc)?\d+', args[1]):
         sid = int(re.sub(r'\D', '', args[1]))
         row = conn.execute('SELECT title, raw_text FROM knowledge_sources WHERE source_id=?', (sid,)).fetchone()
