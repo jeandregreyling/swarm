@@ -166,9 +166,68 @@ def write(conn, task, model=call_model):
     card.update(ready=ready, not_ready=reasons, facts=gathered, model=MODEL, seconds=round(time.time() - started, 1),
                 task_version=task.get('version'))
     hb_tasks.event(conn, task, 'homework', 'spec_card', card)
+    handoff(conn, task, card)                            # Practice 113: a READY backlog card goes to APEX
     bg.finish('homework', conn, task, (f"📝 Homework card for {str(task.get('title') or '')[:70]}: READY - check: {card.get('check')}"
                                        if ready else f"📝 Homework card for {str(task.get('title') or '')[:70]}: not ready - {'; '.join(reasons)[:160]}"))
     return card
+
+
+# Practice 113 (owner 16 Nov 2026): "the little bots should be doing some more specs on them to add to APEX to work on properly". Homework
+# only carded APEX's own coming steps; the 15 open living-plan steps owned by claude-code never got a spec (last card: 16 Nov 09:03).
+# Now those get a task so homework can card them, two at a time; a READY card (concrete goal and check) hands the step to APEX with the
+# spec written into it. JD's own steps and steps that were carded before are left alone.
+BACKLOG_OWNERS = ('claude-code',)
+
+
+def backlog(conn, limit=2):
+    """Open living-plan steps owned by claude-code with no spec card yet: their tasks (made when missing)."""
+    from core import hb_plan_workflow as wf
+    from core.hb_chat import owner_chat
+    from core.hb_plain import message
+    out = []
+    marks = ','.join('?' * len(BACKLOG_OWNERS))
+    rows = conn.execute(f"SELECT step_id, title, description FROM project_steps WHERE project_id=? AND status IN ('todo','partial') "
+                        f"AND owner IN ({marks}) ORDER BY rowid", (wf.DEFAULT_PROJECT, *BACKLOG_OWNERS)).fetchall()
+    for step_id, title, desc in rows:
+        if len(out) >= limit:
+            break
+        if conn.execute("SELECT 1 FROM hb_task_events e JOIN hb_tasks t ON t.task_id=e.task_id WHERE t.step_id=? AND e.kind='spec_card'",
+                        (step_id,)).fetchone():
+            continue                                     # carded before: never twice
+        row = conn.execute("SELECT task_id FROM hb_tasks WHERE step_id=? AND state NOT IN ('completed','cancelled') "
+                           "ORDER BY created_at DESC LIMIT 1", (step_id,)).fetchone()
+        if row:
+            task = hb_tasks.get(conn, row[0])
+        else:
+            chat = owner_chat(conn)
+            mid = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
+                               "VALUES (?,'hummingbird','user',?,'response',0)",
+                               (chat, message(f'📐 Homework: HB writes a spec for "{str(title)[:120]}" so APEX can work on it.',
+                                              details=[f'Studio step {step_id}']))).lastrowid
+            task = hb_tasks.bind(conn, chat, mid, objective=f'Studio step {step_id} ({wf.DEFAULT_PROJECT}): {title}\n{desc or ""}',
+                                 title=f'{step_id} {title}'[:140], project_id=wf.DEFAULT_PROJECT, step_id=step_id)
+        if task and not latest(conn, task):
+            out.append(task)
+    return out
+
+
+def handoff(conn, task, card):
+    """A READY card on a backlog step: the step goes to APEX with the spec written into it. Returns True/False, or None when not a backlog step."""
+    step_id = task.get('step_id') if task else None
+    row = conn.execute('SELECT owner, title, description FROM project_steps WHERE step_id=?', (step_id,)).fetchone() if step_id else None
+    if not row or row[0] not in BACKLOG_OWNERS or not card.get('ready'):
+        return None if not row or row[0] not in BACKLOG_OWNERS else False
+    from core.hb_chat import owner_chat
+    from core.hb_plain import message
+    plan = '\n'.join(f'{n}. {p}' for n, p in enumerate(card.get('plan') or [], 1))
+    spec = (f"\n\nSPEC (homework card by {card.get('model')}, {time.strftime('%d %b %H:%M')}):\nGoal: {card.get('goal')}\n"
+            + (f'Plan:\n{plan}\n' if plan else '') + (f"Files: {', '.join(card.get('files') or [])}\n" if card.get('files') else '')
+            + f"Done when: {card.get('check')}\nHB restart after: ui\n")
+    conn.execute("UPDATE project_steps SET owner='apex', description=?, updated_at=? WHERE step_id=?", ((row[2] or '') + spec, time.time(), step_id))
+    conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                 (owner_chat(conn), message(f'📐 Spec ready for "{str(row[1])[:120]}": APEX takes it.', f"Done when: {card.get('check')}",
+                                            details=[f'Studio step {step_id}', f"goal: {str(card.get('goal'))[:200]}"])))
+    return True
 
 
 def summary(card):
@@ -206,6 +265,9 @@ def candidates(conn):
         if classify(task['objective'] if task else ''):
             continue                                     # a remark or go-ahead that became a task before 14 Nov: no homework
         if task and not is_chat_task(task) and not latest(conn, task) and task not in out:
+            out.append(task)
+    for task in backlog(conn):                           # Practice 113: the claude-code backlog gets specs too
+        if task not in out:
             out.append(task)
     return out
 
