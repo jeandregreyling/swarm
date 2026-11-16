@@ -243,6 +243,14 @@ def start():
                             sap_notes_tick(conn)
                         except Exception:
                             LOG.exception('SAP notes job tick failed')
+                        try:  # Owner 16 Nov (S-9B9907AF1F): a main-chat terminal command cut off by a restart is marked, leftovers stopped
+                            from core.hb_chat_terminal import recover as chat_terminal_recover
+                            if not getattr(chat_terminal_recover, 'done', False):
+                                chat_terminal_recover(conn)
+                                conn.commit()
+                                chat_terminal_recover.done = True
+                        except Exception:
+                            LOG.exception('Chat terminal recovery failed')
                         try:  # Owner 15 Nov: every email, inbox file and notes job is recorded in Studio (core/hb_intake_records.py)
                             from core.hb_intake_records import sync as intake_records_sync
                             intake_records_sync(conn)

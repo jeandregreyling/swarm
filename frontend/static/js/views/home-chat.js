@@ -1465,6 +1465,58 @@
     input.value = draft;
   }
 
+  // Terminal in main chat (owner 16 Nov 2026, step S-9B9907AF1F): "$ df -h" or "/sh df -h" runs one whitelisted command through
+  // core/hb_chat_terminal.py instead of going to APEX. Its reply bubble shows the live output, how it ended, and Stop while it runs.
+  function _hcTerminalCommand(text) {
+    const m = /^(?:\$\s+|\/sh\s+)([\s\S]+)$/.exec(String(text || '').trim());
+    return m ? m[1].trim() : null;
+  }
+
+  function _hcTerminalRun(command) {
+    const convId = _hcConvId;
+    if (!convId) {
+      if (typeof showToast === 'function') showToast('Open a conversation first, then run the command.', 'error');
+      return;
+    }
+    fetch('/api/chat-terminal/run', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+                                     body: JSON.stringify({conversation_id: convId, command})})
+      .then(r => r.json())
+      .then(data => _hcSilentRefresh(convId).then(() => {
+        if (data && data.ok) _hcTerminalFollow(convId, data.command_id, data.message_id);
+      }))
+      .catch(() => { if (typeof showToast === 'function') showToast('The command could not be sent to HB.', 'error'); });
+  }
+
+  function _hcTerminalFollow(convId, commandId, messageId) {
+    const paint = (st) => {
+      const bubble = document.querySelector(`#home-chat-messages [data-message-id="${CSS.escape(String(messageId))}"]`);
+      const body = bubble && bubble.querySelector('.hc-bubble-body');
+      if (!body) return;
+      body.innerHTML = _hcRenderContent(st.content || '');
+      if (st.state === 'running') {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'hc-terminal-stop';
+        btn.textContent = 'Stop';
+        btn.addEventListener('click', () => fetch('/api/chat-terminal/stop', {method: 'POST', credentials: 'same-origin',
+          headers: {'Content-Type': 'application/json'}, body: JSON.stringify({command_id: commandId})}));
+        body.appendChild(btn);
+      }
+    };
+    const tick = () => {
+      if (_hcConvId !== convId) return;
+      fetch(`/api/chat-terminal/${encodeURIComponent(commandId)}`, {credentials: 'same-origin'})
+        .then(r => (r.ok ? r.json() : null))
+        .then(st => {
+          if (!st) return;
+          paint(st);
+          if (st.state === 'running') setTimeout(tick, 1000);
+        })
+        .catch(() => setTimeout(tick, 3000));
+    };
+    tick();
+  }
+
   function _hcSend() {
     if (_hcSending) { _hcOutboxAdd(); return; }
     const input = document.getElementById('home-chat-input');
@@ -1472,6 +1524,14 @@
     if (!input) return;
     const text = input.value.trim();
     if (!text) return;
+    const terminalCommand = _hcTerminalCommand(text);     // S-9B9907AF1F: "$ <command>" runs in the HB terminal, not APEX
+    if (terminalCommand !== null) {
+      input.value = '';
+      input.style.height = 'auto';
+      _hcUpdateTokenCount(input);
+      _hcTerminalRun(terminalCommand);
+      return;
+    }
     const viewVersion = _hcViewVersion;
 
     // Seven Ask short-circuit — leading "?" routes to /api/seven/explain +

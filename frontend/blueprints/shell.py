@@ -141,6 +141,49 @@ def api_shell_stream():
 
 
 
+# Terminal in main chat (owner 16 Nov 2026, step S-9B9907AF1F): JD's own commands from main chat. Owner only. The command is checked
+# against HB's whitelist (read and status commands), runs without a shell, and is saved in the chat (core/hb_chat_terminal.py).
+def _chat_terminal_owner():
+    from services.auth import get_current_user
+    user = get_current_user()
+    return user if user and user['role'] == 'owner' else None
+
+
+@shell_bp.route('/api/chat-terminal/run', methods=['POST'])
+def api_chat_terminal_run():
+    user = _chat_terminal_owner()
+    if not user:
+        return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+    from core import hb_chat_terminal
+    data = request.get_json() or {}
+    try:
+        conversation_id = int(data.get('conversation_id') or 0)
+    except (TypeError, ValueError):
+        conversation_id = 0
+    if conversation_id <= 0:
+        return jsonify({'ok': False, 'error': 'Open a conversation first, then run the command.'}), 400
+    out = hb_chat_terminal.start(conversation_id, data.get('command'), user['username'])
+    return jsonify(out), (200 if out.get('ok') or out.get('state') == 'refused' else 500)
+
+
+@shell_bp.route('/api/chat-terminal/stop', methods=['POST'])
+def api_chat_terminal_stop():
+    if not _chat_terminal_owner():
+        return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+    from core import hb_chat_terminal
+    command_id = str((request.get_json() or {}).get('command_id') or '').strip()
+    return jsonify({'ok': True, 'command_id': command_id, 'stopped': hb_chat_terminal.stop(command_id)})
+
+
+@shell_bp.route('/api/chat-terminal/<command_id>', methods=['GET'])
+def api_chat_terminal_status(command_id):
+    if not _chat_terminal_owner():
+        return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+    from core import hb_chat_terminal
+    found = hb_chat_terminal.status(command_id)
+    return (jsonify(found), 200) if found else (jsonify({'ok': False, 'error': 'No such command'}), 404)
+
+
 @shell_bp.route('/api/terminal/run', methods=['POST'])
 def api_terminal_run():
     """Alias for /api/shell/execute for backward compatibility."""
