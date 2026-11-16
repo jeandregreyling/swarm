@@ -177,6 +177,8 @@ def write(conn, task, model=call_model):
 # Now those get a task so homework can card them, two at a time; a READY card (concrete goal and check) hands the step to APEX with the
 # spec written into it. JD's own steps and steps that were carded before are left alone.
 BACKLOG_OWNERS = ('claude-code',)
+_SKIP = {}            # Practice 115: step_id -> when binding its homework task failed; skipped for SKIP_S
+SKIP_S = 3600
 
 
 def backlog(conn, limit=2):
@@ -191,6 +193,8 @@ def backlog(conn, limit=2):
     for step_id, title, desc in rows:
         if len(out) >= limit:
             break
+        if time.time() - _SKIP.get(step_id, 0) < SKIP_S:
+            continue
         if conn.execute("SELECT 1 FROM hb_task_events e JOIN hb_tasks t ON t.task_id=e.task_id WHERE t.step_id=? AND e.kind='spec_card'",
                         (step_id,)).fetchone():
             continue                                     # carded before: never twice
@@ -204,8 +208,18 @@ def backlog(conn, limit=2):
                                "VALUES (?,'hummingbird','user',?,'response',0)",
                                (chat, message(f'📐 Homework: HB writes a spec for "{str(title)[:120]}" so APEX can work on it.',
                                               details=[f'Studio step {step_id}']))).lastrowid
-            task = hb_tasks.bind(conn, chat, mid, objective=f'Studio step {step_id} ({wf.DEFAULT_PROJECT}): {title}\n{desc or ""}',
-                                 title=f'{step_id} {title}'[:140], project_id=wf.DEFAULT_PROJECT, step_id=step_id)
+            # Practice 115 (owner 16 Nov 2026): bind() links only APEX's own steps to Studio ("Selected Studio step is not assigned to
+            # APEX"), and the line above was already posted - so every 6 s HB posted it again and failed again (30 lines in 3 minutes).
+            # Homework's task is bound without that check and carries its step itself; any failure removes the line and skips the step.
+            try:
+                task = hb_tasks.bind(conn, chat, mid, objective=f'Studio step {step_id} ({wf.DEFAULT_PROJECT}): {title}\n{desc or ""}',
+                                     title=f'{step_id} {title}'[:140], studio=False)
+                conn.execute('UPDATE hb_tasks SET project_id=?, step_id=? WHERE task_id=?', (wf.DEFAULT_PROJECT, step_id, task['task_id']))
+                task = hb_tasks.get(conn, task['task_id'])
+            except Exception:
+                conn.execute('DELETE FROM messages WHERE id=?', (mid,))
+                _SKIP[step_id] = time.time()
+                continue
         if task and not latest(conn, task):
             out.append(task)
     return out

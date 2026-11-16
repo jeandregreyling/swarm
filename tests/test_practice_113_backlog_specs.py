@@ -20,18 +20,7 @@ def _db():
     return c
 
 
-def test_practice_113_backlog_steps_get_a_task_for_homework(monkeypatch):
-    c = _db()
-    bound = []
-
-    def bind(conn, chat, mid, **kw):
-        bound.append((chat, kw['step_id']))
-        return {'task_id': 'T-' + kw['step_id'], 'step_id': kw['step_id']}
-    monkeypatch.setattr(hb_tasks, 'bind', bind)
-    monkeypatch.setattr(h, 'latest', lambda conn, task: None)
-    tasks = h.backlog(c, limit=5)
-    assert [t['step_id'] for t in tasks] == ['S-A', 'S-D']          # not JD's step, not done, not carded before
-    assert bound == [(2845, 'S-A'), (2845, 'S-D')]
+# The backlog-binding test moved to tests/test_practice_115_backlog_bind.py: it now uses the real hb_tasks.bind (Practice 115).
 
 
 def test_practice_113_a_ready_card_hands_the_step_to_apex():
