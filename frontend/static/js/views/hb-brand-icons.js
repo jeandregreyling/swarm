@@ -117,6 +117,19 @@
   /** The one place icons come from: HBIcons.svg('sleeping') - never an emoji or a glyph typed into a component. */
   const svg = name => `<span class="hb-ico" data-hb-icon="${name}" data-hb-filled="1">${ICONS[name] || ''}</span>`;
   window.HBIcons = { ICONS, MARKERS, split, marker, decorate, svg };
-  setInterval(() => decorate(document), 1500);
-  setTimeout(() => decorate(document), 300);
+  // Practice 112 (owner 16 Nov 2026): "the old icons still show before the SVG style is applied". decorate() ran 300 ms after load and
+  // then every 1.5 s, so each new bubble showed its emoji first. A MutationObserver now decorates new or changed content in a microtask -
+  // before the browser paints it. Only childList/characterData are watched (decorate itself sets attributes), and decorate is idempotent.
+  // The timer stays as a slow safety net.
+  let queued = false;
+  const soon = () => {
+    if (queued) return;
+    queued = true;
+    queueMicrotask(() => { queued = false; decorate(document); });
+  };
+  if (typeof MutationObserver === 'function' && document.documentElement) {
+    new MutationObserver(soon).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  }
+  setInterval(() => decorate(document), 5000);
+  soon();
 })();
