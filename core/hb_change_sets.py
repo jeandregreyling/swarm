@@ -63,6 +63,28 @@ def _target(root, rel):
     return full
 
 
+def _edit_in(text, edit):
+    """Is this edit already in the file? An edit that INSERTS (its new text still contains the old text) is in when the new text is
+    there; a replacement is in when the old text is gone and the new text is there. 15 Nov: practice 47 was applied twice because
+    an insertion never counted as applied.
+    16 Nov (Practice 94): Practices 86 and 87 both inserted above the same line, and 87 renamed grounded -> _grounded while a new
+    grounded() wrapper kept the old name; both read "partly applied" after a clean apply, so HB never committed 87. An insertion is
+    also in when every piece it inserted is there; and once HB applied the set itself, status() counts a replacement as in when its
+    new text is there, even if the old text is used elsewhere too."""
+    old, new = edit['old'], edit['new']
+    if old in new:
+        pieces = [p for p in new.split(old) if p.strip()]
+        return new in text or (bool(pieces) and all(p in text for p in pieces))
+    return new in text and old not in text
+
+
+def _applied(step_id, root):
+    """HB applied this set itself (applied.json) and has not reverted it since."""
+    d = _dir(step_id, root)
+    done, back = d / 'applied.json', d / 'reverted.json'
+    return done.is_file() and (not back.is_file() or back.stat().st_mtime < done.stat().st_mtime)
+
+
 def _after(root, cs):
     """{path: (before, after)} for the whole set, or raises with the first edit that does not fit."""
     out = {}
@@ -76,6 +98,9 @@ def _after(root, cs):
         before = out[rel][1] if rel in out else (full.read_text() if full.is_file() else None)
         if before is None:
             raise ValueError(f'edit {n}: {rel} does not exist')
+        if _edit_in(before, edit):
+            out[rel] = (out[rel][0] if rel in out else before, before)    # already in: never apply an edit twice
+            continue
         found = before.count(edit['old'])
         if found != 1:
             if found == 0 and before.count(edit['new']) == 1:
@@ -98,14 +123,14 @@ def status(step_id, root=ROOT):
     cs = load(step_id, root)
     if not cs:
         return {'step_id': step_id, 'state': 'none', 'note': 'No prepared change set for this step.'}
-    done = []
+    done, applied = [], _applied(step_id, root)
     for rel, content in (cs.get('new_files') or {}).items():
         full = Path(root) / rel
         done.append(full.is_file() and full.read_text() == content)
     for edit in cs.get('edits') or []:
         full = Path(root) / edit['path']
         text = full.read_text() if full.is_file() else ''
-        done.append(edit['old'] not in text and text.count(edit['new']) >= 1)
+        done.append(_edit_in(text, edit) or (applied and edit['new'] in text))   # Practice 94
     state = 'applied' if all(done) else 'not applied' if not any(done) else 'partly applied'
     return {'step_id': step_id, 'state': state, 'parts': len(done), 'parts_in': sum(done), 'test': cs.get('test')}
 
@@ -135,6 +160,7 @@ def apply(step_id, root=ROOT):
         tmp.write_text(after)
         tmp.replace(full)
         changed.append(rel)
+    (_dir(step_id, root) / 'applied.json').write_text(json.dumps({'at': time.strftime('%Y-%m-%d %H:%M'), 'files': changed}))
     return {'state': 'applied', 'files': changed, 'before_copies': str(backup.relative_to(root)) if changed else None, 'next': _next(cs)}
 
 
@@ -161,6 +187,81 @@ def call(args, step_id, root=ROOT):
     return {'step_id': step_id, 'why': cs.get('why', ''), 'files': sorted({e['path'] for e in cs.get('edits') or []} | set(cs.get('new_files') or {})),
             'diff': diff_text(root, cs), 'test': cs.get('test'), 'prepared_by': cs.get('prepared_by'), 'verified': cs.get('verified'),
             'next': 'Read the diff. Then change_set apply, then run the test.'}
+
+
+# ------------------------------------------------------------------ change control (owner 13 Nov: "a GIT inside the system")
+def files(cs):
+    return sorted({e['path'] for e in cs.get('edits') or []} | set(cs.get('new_files') or {}))
+
+
+def revert(step_id, root=ROOT):
+    """One action: put every file of the step's change set back from its saved before-copy (files the set created are removed)."""
+    cs = load(step_id, root)
+    if not cs:
+        return {'state': 'none', 'note': 'No change set for this step.'}
+    backups = sorted(p for p in (_dir(step_id, root) / 'before').glob('*') if p.is_dir())
+    restored, removed = [], []
+    for rel in files(cs):
+        full = _target(root, rel)
+        copy = backups[-1] / rel if backups else None
+        if copy is not None and copy.is_file():
+            full.write_text(copy.read_text())
+            restored.append(rel)
+        elif rel in (cs.get('new_files') or {}) and full.is_file() and full.read_text() == cs['new_files'][rel]:
+            full.unlink()
+            removed.append(rel)
+    if not restored and not removed:
+        return {'state': 'nothing to revert', 'note': 'The change set was not applied (no before-copies).'}
+    (_dir(step_id, root) / 'reverted.json').write_text(json.dumps({'at': time.strftime('%Y-%m-%d %H:%M'), 'restored': restored, 'removed': removed}))
+    return {'state': 'reverted', 'restored': restored, 'removed': removed}
+
+
+def commit(step_id, title='', root=ROOT):
+    """After Approve: commit ONLY this change set's files to the local git repository (never pushed). Returns what happened in 'state'."""
+    cs = load(step_id, root)
+    if not cs:
+        return {'state': 'none'}
+    if status(step_id, root)['state'] != 'applied':
+        return {'state': 'not applied'}
+    if (Path(root) / '.git' / 'index.lock').exists():
+        return {'state': 'git locked', 'note': 'another git command holds .git/index.lock'}
+    paths = [rel for rel in files(cs) if (Path(root) / rel).is_file()]
+
+    def git(*args):
+        return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True, timeout=60)
+    if git('rev-parse', '--git-dir').returncode != 0:
+        return {'state': 'no git repository'}
+    if git('add', '--', *paths).returncode != 0:
+        return {'state': 'git add failed'}
+    if git('diff', '--cached', '--quiet', '--', *paths).returncode == 0:
+        return {'state': 'nothing to commit'}
+    # 16 Nov (Practice 94): git commits whole files, so a file that already had uncommitted edits before this set was applied carries
+    # them into this commit (Practice 86 carried earlier core/apex_tools.py work). Say so in the message instead of hiding it.
+    backups = sorted(p for p in (_dir(step_id, root) / 'before').glob('*') if p.is_dir())
+    carried = []
+    for rel in paths:
+        copy = backups[-1] / rel if backups else None
+        head = git('show', f'HEAD:{rel}')
+        if copy is not None and copy.is_file() and head.returncode == 0 and head.stdout != copy.read_text():
+            carried.append(rel)
+    message = f"HB change set {step_id}: {' '.join(str(title or cs.get('why', '')).split())[:140]}\n\nFiles: {', '.join(paths)}\nApproved in Hummingbird; committed locally by HB."
+    if carried:
+        message += f"\nAlso carries earlier uncommitted edits in: {', '.join(carried)} (they were in the file before this change set)."
+    done = git('commit', '--only', '-m', message, '--', *paths)
+    if done.returncode != 0:
+        return {'state': 'git commit failed', 'note': (done.stderr or done.stdout)[-300:]}
+    sha = git('rev-parse', '--short', 'HEAD').stdout.strip()
+    (_dir(step_id, root) / 'commit.json').write_text(json.dumps({'commit': sha, 'at': time.strftime('%Y-%m-%d %H:%M'), 'files': paths}))
+    return {'state': 'committed', 'commit': sha, 'files': paths}
+
+
+def record(step_id, root=ROOT):
+    """What HB shows for a step's change set: files, applied state, commit and revert marks."""
+    cs = load(step_id, root)
+    if not cs:
+        return None
+    read = lambda name: json.loads((_dir(step_id, root) / name).read_text()) if (_dir(step_id, root) / name).is_file() else None
+    return {'step_id': step_id, 'files': files(cs), 'state': status(step_id, root)['state'], 'commit': read('commit.json'), 'reverted': read('reverted.json')}
 
 
 # ------------------------------------------------------------------ preparing (Claude Code / a capable model)
