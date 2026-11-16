@@ -231,6 +231,12 @@ def handoff(conn, task, card):
     row = conn.execute('SELECT owner, title, description FROM project_steps WHERE step_id=?', (step_id,)).fetchone() if step_id else None
     if not row or row[0] not in BACKLOG_OWNERS or not card.get('ready'):
         return None if not row or row[0] not in BACKLOG_OWNERS else False
+    # Practice 116 (monitoring 16 Nov 21:52): a READY card for "Daily grounding" had the check "HB's self-check passes, the sundial
+    # shows the current day name" - APEX found nothing to run, said it was blocked, and Fred took the CPU. APEX only gets a step whose
+    # check it can run (a test or a command, the workflow's own runnable_check); otherwise the spec stays on the step for Claude Code.
+    from core.hb_plan_workflow import runnable_check
+    if not runnable_check(card.get('check')):
+        return False
     from core.hb_chat import owner_chat
     from core.hb_plain import message
     plan = '\n'.join(f'{n}. {p}' for n, p in enumerate(card.get('plan') or [], 1))
