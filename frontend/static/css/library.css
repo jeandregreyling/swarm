@@ -60,12 +60,6 @@
   gap: 10px;
 }
 
-#library-header-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 /* ── Category nav bar ──────────────────────────────────────────────────── */
 #library-category-nav {
   display: flex;
