@@ -73,8 +73,11 @@ def test_chat_surfaces_are_sse_driven_and_expose_lane_state():
     tile = (views / 'chat.js').read_text()
     template = (Path(__file__).resolve().parents[1] / 'frontend/templates/terminal_base.html').read_text()
 
-    # No 2s polling loops remain on either chat surface.
-    assert 'setInterval' not in home
+    # No 2s polling loops remain on either chat surface. The one timer left is the 30-second chat-list check (12 Nov), which also
+    # picks up HB's background lines in the open chat (Practice 96).
+    import re
+    timers = re.findall(r'setInterval\(.*?,\s*(\d+)\)', home)
+    assert home.count('setInterval') == len(timers) and all(int(ms) >= 30000 for ms in timers)
     assert 'setTimeout(poll' not in home and 'maxPolls' not in home
     for retired in ('window.__fridaysThreadRuntimePollTimer = setInterval',
                     'window.__fridaysChatLiveSyncTimer = setInterval',

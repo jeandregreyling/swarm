@@ -62,11 +62,21 @@
   window.homeFitLiveRoom = _hcFitLiveRoom;
 
   // ── Other chats active (12 Nov): conversations with activity in the last 15 minutes, one click away ──
+  let _hcLastSeenAt = '';
   function _hcElsewhere() {
     const bar = document.querySelector('#home-chat-bar .home-chat-bar-center');
     if (!bar) return;
     fetch('/api/conversations', { credentials: 'same-origin' }).then(r => (r.ok ? r.json() : null)).then(list => {
       if (!Array.isArray(list)) return;
+      // Practice 96 (owner 16 Nov 2026): "why can't I see the downloads progress in main chat?" - HB's background lines (SAP notes
+      // progress, email intake, inbox folder) are written straight to the database with no live event, so the open chat only
+      // showed them after a reload or a tab switch. This 30-second check already lists every chat: when the open one has a newer
+      // message than last time, fetch it.
+      const mine = list.find(c => c && Number(c.id) === Number(_hcConvId));
+      const seen = mine && mine.last_message_at ? `${_hcConvId}|${mine.last_message_at}` : '';
+      if (seen && _hcLastSeenAt && seen !== _hcLastSeenAt && seen.split('|')[0] === _hcLastSeenAt.split('|')[0] && !_hcSending)
+        _hcSilentRefresh(_hcConvId);
+      if (seen) _hcLastSeenAt = seen;
       const cutoff = Date.now() - 15 * 60 * 1000;
       const active = list.filter(c => c && c.id && Number(c.id) !== Number(_hcConvId) && c.last_message_at &&
         Date.parse(String(c.last_message_at).replace(' ', 'T') + 'Z') >= cutoff);
