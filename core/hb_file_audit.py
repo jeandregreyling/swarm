@@ -109,7 +109,7 @@ def call_model(messages):
 # "opacity: 0.18" and a line that already uses var(--accent). Sent on, APEX would have "fixed" lines that are fine. What HB can check
 # itself is now checked: a colour finding needs a colour literal on the line (not a theme variable's own definition), an icon finding
 # needs an emoji on the line. At most PER_KIND findings of one kind per file; the rest become one "and N more like it" line.
-_COLOUR = re.compile(r'#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\(', re.I)
+_COLOUR = re.compile(r'#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\(\s*\d', re.I)   # Practice 118: rgba(var(--accent-rgb), .06) is themed
 _EMOJI = re.compile('[\U0001F300-\U0001FAFF☀-➿⬀-⯿]')
 PER_KIND = 5
 
@@ -162,8 +162,12 @@ def audit_block(conn, root=None, model=call_model, add_step=None):
     """Audit one block now. Returns (path, findings added) or None when there is nothing left."""
     block = next_block(conn, root)
     if not block:
-        return None
+        return missed(conn, add_step)
     rel, lines, start = block
+    # Practice 118 (monitoring 16 Nov 23:02): this connection used to keep its write open while the model thought for minutes, so
+    # Studio's add_step (its own connection) hit "database is locked", caught it and returned None - three files were reported in chat
+    # as "Studio step None" and never reached homework or APEX; the peer inbox hit the same lock. Small writes are committed at once.
+    conn.commit()
     try:
         found = clean(model(prompt(rel, lines, start)), lines, start)
     except Exception:
@@ -172,9 +176,23 @@ def audit_block(conn, root=None, model=call_model, add_step=None):
     findings = json.loads(row[0] or '[]') + found
     nxt = start + CHUNK
     conn.execute('UPDATE hb_file_audit SET next_line=?, findings=?, at=? WHERE path=?', (nxt, json.dumps(findings), time.time(), rel))
+    conn.commit()                                        # Practice 118: free the database before Studio writes
     if nxt > len(lines) and keep(findings):                       # Practice 117: only confirmed findings go to Studio
         _report(conn, rel, keep(findings), add_step)
     return rel, len(found)
+
+
+def missed(conn, add_step=None):
+    """Practice 118: finished files with confirmed findings whose Studio step was never created get it now (one per call)."""
+    for rel, findings, next_line in conn.execute('SELECT path, findings, next_line FROM hb_file_audit WHERE step_id IS NULL').fetchall():
+        kept = keep(json.loads(findings or '[]'))
+        try:
+            total = len((ROOT / rel).read_text(errors='replace').splitlines())
+        except OSError:
+            continue
+        if kept and next_line > total:
+            return rel, len(kept) if _report(conn, rel, kept, add_step) else 0
+    return None
 
 
 def _report(conn, rel, findings, add_step=None):
@@ -189,6 +207,9 @@ def _report(conn, rel, findings, add_step=None):
             f'reviewer can be wrong.\nFile: {rel}\n{listing}\n')
     step_id = add_step(wf.DEFAULT_PROJECT, f'Audit fix: {rel} ({len(findings)} finding{"s" if len(findings) != 1 else ""})',
                        description=desc, owner='claude-code')
+    if not step_id:
+        return None                                      # Practice 118: no step, no 'Studio step None' line - missed() retries
+    conn.commit()
     conn.execute('UPDATE hb_file_audit SET step_id=? WHERE path=?', (step_id, rel))
     conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
                  (owner_chat(conn), message(f'🔎 File audit: {rel} - {len(findings)} thing(s) to fix. Homework writes the spec, then APEX takes it.',
