@@ -20,6 +20,7 @@ def lookup(query, allow_online=False):
     for kind, method in [('dataset',api.list_datasets),('model',api.list_models)]:
         for row in method(search=query,limit=3):
             items.append({'kind':kind,'repo':row.id,'revision':getattr(row,'sha',None)})
+    items += github_repositories(query)      # 16 Nov: GitHub projects too, so HB reuses existing tools
     return {'local':local,'online_queried':True,'repositories':items,
             'notice':'Discovery metadata only. Select a full revision and text path for reference_import; remote code is not executed.'}
 
@@ -98,3 +99,23 @@ def ingest(kind, repo, revision, path):
     with closing(get_connection()) as conn,conn:
         hb_tasks.event(conn,task,actor['principal'],'reference_indexed',result,request_id=actor.get('peer_request_id'))
     return result
+
+
+def github_repositories(query, limit=5, fetch=None):
+    """Owner 16 Nov 2026: "get github working again ... a good place to get some more tools instead of creating things from scratch".
+    Public GitHub repositories for a query (metadata only: name, stars, licence, last push, link), so HB can find an existing tool
+    before building one. No token is sent and no remote code is run; any failure is an empty list. Archived projects are left out."""
+    import json
+    from urllib.parse import urlencode
+    from urllib.request import Request, urlopen
+    url = 'https://api.github.com/search/repositories?' + urlencode({'q': query, 'sort': 'stars', 'per_page': limit})
+    if fetch is None:
+        fetch = lambda u: urlopen(Request(u, headers={'Accept': 'application/vnd.github+json', 'User-Agent': 'hb-reference-lookup'}),
+                                  timeout=20).read().decode()
+    try:
+        data = json.loads(fetch(url))
+    except Exception:
+        return []
+    return [{'kind': 'github', 'repo': r['full_name'], 'description': r.get('description') or '', 'stars': r.get('stargazers_count', 0),
+             'license': (r.get('license') or {}).get('spdx_id') or '', 'pushed_at': str(r.get('pushed_at') or '')[:10],
+             'url': r.get('html_url')} for r in data.get('items', []) if not r.get('archived')][:limit]
