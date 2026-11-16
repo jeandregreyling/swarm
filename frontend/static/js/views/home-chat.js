@@ -812,6 +812,18 @@
     return { head, rest, tags };
   }
 
+  // S-D6D8B49B4F (owner 16 Nov 2026): APEX's own commands read like JD's terminal commands in main chat. A raw receipt
+  // "[tool:terminal_run] succeeded (receipt ...)\n{"command": "df -h"}\n<output>" becomes "💻 APEX ran $ df -h", the output, how it ended.
+  function _hcTerminalReceipt(content) {
+    const m = /^\[tool:terminal_run\] (\w+) \(receipt [^)]*\)\n(\{[^\n]*\})\n?([\s\S]*)$/.exec(String(content || ''));
+    if (!m) return null;
+    let command = '';
+    try { command = JSON.parse(m[2]).command || ''; } catch (e) { return null; }
+    const out = (m[3] || '').replace(/```/g, '` ` `').trimEnd();
+    const ending = m[1] === 'succeeded' ? 'completed' : 'refused or failed';
+    return `💻 APEX ran $ ${command}\n` + (out ? '```text\n' + out + '\n```\n' : '(no output)\n') + `— ${ending}`;
+  }
+
   function _hcAppendBubble(msg) {
     const container = document.getElementById('home-chat-messages');
     if (!container) return;
@@ -855,6 +867,8 @@
     let content = !isUser && typeof renderHummingbirdChatBody === 'function'
       ? renderHummingbirdChatBody(msg.content || '', msg.message_type, _hcRenderContent)
       : _hcRenderContent(msg.content || '');
+    const termReceipt = sender === 'apex' ? _hcTerminalReceipt(msg.content) : null;   // S-D6D8B49B4F
+    if (termReceipt) content = _hcRenderContent(termReceipt);
     if (sender === 'hummingbird' && !/^\s*[\[{]/.test(String(msg.content || ''))) {
       // Owner 13 Nov: HB's messages read plainly; ids, checks and commands sit folded under Details.
       const raw = String(msg.content || '');

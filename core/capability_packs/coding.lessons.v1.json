@@ -1,6 +1,6 @@
 {
   "id": "coding.lessons",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "source": "Claude Code coaching of APEX, teaching rounds 1-4 (13 Nov), project P-2AB8250A87, scorecard step 'Learning scorecard'",
   "lessons": [
     "Copy old_text exactly from a fresh raw read, including every leading space; lines inside a function or rule start with spaces.",
@@ -19,6 +19,9 @@
     "For bulk or risky work use HB's guarded tools, not hand copies: does_rename for the DOES rename, layout to map and move files. They check the result, keep a before-copy and record the change.",
     "To split one line into two, new_text must contain a real line break (in the JSON string that is \\n, never \\\\n). If HB says a patch does not parse twice in a row, stop and say exactly which line you cannot write, instead of trying again (practice 14: eight refused attempts).",
     "Only change what your step is about (14 Nov: during DOES rename 4, a patch to agents/seven/seven_agent.py turned startswith('seven-direct:') into startswith('do') and broke Seven). A file the tool refuses ('patch these lines by hand first') belongs to another step: skip it. Never edit a line just because it contains the letters of the word you are renaming.",
-    "If read_file or grep_repo answers 'Workspace source file not found', the file is gone (an earlier step may have deleted or moved it). Run list_files once, find where the code actually lives now, and never ask for the missing path again this turn. Repeating the same failing call is a stall: HB parks the task after three identical failures (14 Nov: rename step T-17F1BDFC4465 looped on the old agents/seven teacher path, which the DOES rename had already moved to agents/seven/does.py)."
+    "If read_file or grep_repo answers 'Workspace source file not found', the file is gone (an earlier step may have deleted or moved it). Run list_files once, find where the code actually lives now, and never ask for the missing path again this turn. Repeating the same failing call is a stall: HB parks the task after three identical failures (14 Nov: rename step T-17F1BDFC4465 looped on the old agents/seven teacher path, which the DOES rename had already moved to agents/seven/does.py).",
+    "Write code in new_text exactly as it must appear in the file. A regex escape is ONE backslash in the file (/\\[tool/), which the JSON of your tool call writes as two (\\\\[) - never more. If a receipt or a read_file shows \\\\[ in the file, your escaping doubled: fix that line, do not add another copy (16 Nov: S-D6D8B49B4F, the terminal-bubble regex never matched).",
+    "Add a function once. Before inserting a new function, grep_repo for its name; if an earlier patch of yours already added it, patch that copy instead of inserting a second one (16 Nov: S-D6D8B49B4F ended with _hcTerminalReceipt defined twice).",
+    "A code fence (```) inside a JavaScript string stays on one line, inside quotes: '```text\\n' + out + '\\n```\\n'. Never split the three backticks across lines or escape them with \\` (16 Nov: S-D6D8B49B4F broke its fence across two lines)."
   ]
 }
