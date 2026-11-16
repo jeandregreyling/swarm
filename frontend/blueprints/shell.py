@@ -166,6 +166,17 @@ def api_chat_terminal_run():
     return jsonify(out), (200 if out.get('ok') or out.get('state') == 'refused' else 500)
 
 
+@shell_bp.route('/api/chat-terminal/allow', methods=['POST'])
+def api_chat_terminal_allow():
+    """Practice 107: JD adds one exact command to main chat's terminal list (never sudo, never chained)."""
+    user = _chat_terminal_owner()
+    if not user:
+        return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+    from core import hb_chat_terminal
+    out = hb_chat_terminal.allow((request.get_json() or {}).get('command'), user['username'])
+    return jsonify(out), (200 if out.get('ok') else 400)
+
+
 @shell_bp.route('/api/chat-terminal/stop', methods=['POST'])
 def api_chat_terminal_stop():
     if not _chat_terminal_owner():

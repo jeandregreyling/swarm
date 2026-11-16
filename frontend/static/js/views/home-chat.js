@@ -1473,6 +1473,8 @@
   }
 
   function _hcTerminalRun(command) {
+    const allowLine = /^allow\s+([\s\S]+)$/.exec(command);     // Practice 107: "/sh allow <command>"
+    if (allowLine) { _hcTerminalAllow(allowLine[1].trim()); return; }
     const convId = _hcConvId;
     if (!convId) {
       if (typeof showToast === 'function') showToast('Open a conversation first, then run the command.', 'error');
@@ -1483,8 +1485,33 @@
       .then(r => r.json())
       .then(data => _hcSilentRefresh(convId).then(() => {
         if (data && data.ok) _hcTerminalFollow(convId, data.command_id, data.message_id);
+        else if (data && data.can_allow) _hcTerminalOffer(data.message_id, command);
       }))
       .catch(() => { if (typeof showToast === 'function') showToast('The command could not be sent to HB.', 'error'); });
+  }
+
+  // Practice 107 (owner 16 Nov 2026): a command that is not on the list gets "Allow and run" - JD adds that exact command, then it runs.
+  function _hcTerminalAllow(command) {
+    return fetch('/api/chat-terminal/allow', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+                                              body: JSON.stringify({command})})
+      .then(r => r.json())
+      .then(res => {
+        if (res && res.ok) _hcTerminalRun(command);
+        else if (typeof showToast === 'function') showToast((res && res.error) || 'HB could not add that command.', 'error');
+      });
+  }
+
+  function _hcTerminalOffer(messageId, command) {
+    const bubble = document.querySelector(`#home-chat-messages [data-message-id="${CSS.escape(String(messageId))}"]`);
+    const body = bubble && bubble.querySelector('.hc-bubble-body');
+    if (!body || body.querySelector('.hc-terminal-allow')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'hc-terminal-allow';
+    btn.textContent = 'Allow and run';
+    btn.title = `Add exactly "${command}" to main chat's terminal list, then run it`;
+    btn.addEventListener('click', () => { btn.disabled = true; _hcTerminalAllow(command); });
+    body.appendChild(btn);
   }
 
   function _hcTerminalFollow(convId, commandId, messageId) {

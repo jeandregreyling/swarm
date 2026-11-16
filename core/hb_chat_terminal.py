@@ -12,6 +12,7 @@ A refused command is saved too, with the reason, and nothing runs.
 import os
 import re
 import shlex
+import shutil
 import signal
 import subprocess
 import threading
@@ -47,7 +48,58 @@ def allowed():
     return sorted({desc for _pattern, level, desc in shell_agent.WHITELIST if level <= MAX_LEVEL})
 
 
-def check(command):
+# Practice 107 (owner 16 Nov 2026): "it should ask to add commands to whitelist if they aren't in it". JD can add one EXACT command
+# (never a pattern). It still runs without a shell, with Stop and the timeout. Never: privilege (sudo, su, doas, pkexec) or commands that
+# destroy or switch off the system - those belong in a real terminal.
+NEVER = {'sudo', 'su', 'doas', 'pkexec', 'rm', 'dd', 'shred', 'shutdown', 'reboot', 'poweroff', 'halt', 'init', 'telinit'}
+
+
+def _allow_schema(conn):
+    conn.execute('CREATE TABLE IF NOT EXISTS hb_chat_terminal_allowed(command TEXT PRIMARY KEY, added_by TEXT, added_at REAL)')
+
+
+def allowed_extra(connect=None):
+    try:
+        with closing((connect or _connect)()) as conn:
+            _allow_schema(conn)
+            return {r[0] for r in conn.execute('SELECT command FROM hb_chat_terminal_allowed')}
+    except Exception:
+        return set()
+
+
+def can_allow(command):
+    """(True, None) when JD may add this exact command to main chat's list, else (False, why)."""
+    cmd = str(command or '').strip()
+    if not cmd or len(cmd) > 500:
+        return False, 'it is empty or too long'
+    if _META.search(cmd):
+        return False, 'it chains or redirects (; | & $ ` < > or backslashes)'
+    try:
+        argv = shlex.split(cmd)
+    except ValueError:
+        return False, 'it has unbalanced quotes'
+    program = os.path.basename(argv[0])
+    if program in NEVER or program.startswith('mkfs'):
+        return False, f'{program} needs root or changes the system; run it in a real terminal'
+    if shutil.which(argv[0]) is None:
+        return False, f'there is no program called {argv[0]} on this machine'
+    return True, None
+
+
+def allow(command, actor='owner', connect=None):
+    """JD adds one exact command to main chat's terminal list."""
+    ok, why = can_allow(command)
+    if not ok:
+        return {'ok': False, 'error': f'Not added: {why}.'}
+    cmd = str(command).strip()
+    with closing((connect or _connect)()) as conn:
+        _allow_schema(conn)
+        conn.execute('INSERT OR IGNORE INTO hb_chat_terminal_allowed(command, added_by, added_at) VALUES (?,?,?)', (cmd, actor, time.time()))
+        conn.commit()
+    return {'ok': True, 'command': cmd}
+
+
+def check(command, connect=None):
     """(argv, None) for a command main chat may run, else (None, why)."""
     from fridays import shell_agent
     cmd = str(command or '').strip()
@@ -58,6 +110,8 @@ def check(command):
     if _META.search(cmd):
         return None, 'One plain command only: no ; | & $ ` < > or backslashes. Nothing runs through a shell, so nothing can be chained on.'
     match = shell_agent._match_whitelist(cmd)
+    if match is None and cmd in allowed_extra(connect):     # JD added this exact command (Practice 107)
+        match = (0, 'added by JD')
     if match is None:
         return None, "That command is not on HB's terminal list, so nothing ran. Main chat can run: " + ', '.join(allowed()) + '.'
     if match[0] > MAX_LEVEL:
@@ -108,20 +162,24 @@ def _write(connect, command_id, **values):
 def start(conversation_id, command, actor='owner', connect=None, root=None):
     """Run one command for main chat. Returns {'ok', 'command_id', 'message_id', 'state', 'error'}."""
     connect = connect or _connect
-    argv, why = check(command)
+    argv, why = check(command, connect)
     cmd = str(command or '').strip()
     command_id = uuid.uuid4().hex
     now = time.time()
     with closing(connect()) as conn:
         ensure_schema(conn)
         _say(conn, conversation_id, 'user', f'$ {cmd}')
+        offer = bool(why) and why.startswith("That command is not on HB's terminal list") and can_allow(cmd)[0]
+        if offer:
+            why = (f'"{cmd}" is not on the HB terminal list, so nothing ran. Add it? Press "Allow and run" under this message, or type '
+                   f'/sh allow {cmd} - only this exact command is added, and it still runs without a shell.')
         state = 'refused' if why else 'running'
         mid = _say(conn, conversation_id, 'hummingbird', render(cmd, '', state, why=why))
         conn.execute('INSERT INTO hb_chat_terminal(command_id,conversation_id,message_id,command,state,boot,output,started_at,ended_at,actor) '
                      'VALUES (?,?,?,?,?,?,?,?,?,?)', (command_id, conversation_id, mid, cmd, state, BOOT, '', now, now if why else None, actor))
         conn.commit()
     if why:
-        return {'ok': False, 'command_id': command_id, 'message_id': mid, 'state': 'refused', 'error': why}
+        return {'ok': False, 'command_id': command_id, 'message_id': mid, 'state': 'refused', 'error': why, 'can_allow': offer}
     try:
         proc = subprocess.Popen(argv, cwd=root or ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                                 text=True, bufsize=1, start_new_session=True)
