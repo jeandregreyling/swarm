@@ -160,9 +160,14 @@ def clean(found, lines, start):
 
 def audit_block(conn, root=None, model=call_model, add_step=None):
     """Audit one block now. Returns (path, findings added) or None when there is nothing left."""
+    # Practice 119 (monitoring 16 Nov 23:32): missed() ran only once every file was audited (a day away), so components.css,
+    # core.css and diamond.css still had no Studio step. Missed steps come first now.
+    caught = missed(conn, add_step)
+    if caught and caught[1]:
+        return caught
     block = next_block(conn, root)
     if not block:
-        return missed(conn, add_step)
+        return caught
     rel, lines, start = block
     # Practice 118 (monitoring 16 Nov 23:02): this connection used to keep its write open while the model thought for minutes, so
     # Studio's add_step (its own connection) hit "database is locked", caught it and returned None - three files were reported in chat
@@ -184,6 +189,7 @@ def audit_block(conn, root=None, model=call_model, add_step=None):
 
 def missed(conn, add_step=None):
     """Practice 118: finished files with confirmed findings whose Studio step was never created get it now (one per call)."""
+    ensure_schema(conn)                                  # Practice 119: it now runs first, on a fresh database too
     for rel, findings, next_line in conn.execute('SELECT path, findings, next_line FROM hb_file_audit WHERE step_id IS NULL').fetchall():
         kept = keep(json.loads(findings or '[]'))
         try:
