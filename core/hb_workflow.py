@@ -37,7 +37,9 @@ def record_run(conversation_id,model,category,status,started,before,tokens,recei
     actor=CURRENT.get()
     run_id=uuid.uuid4().hex
     after=memory_snapshot()
-    summary=[{'tool':r.get('tool'),'status':r.get('status'),'receipt_id':r.get('id')}
+    # Practice 103 (owner 16 Nov 2026): a refused or failed call keeps its reason, so a turn record shows WHY (it kept only "denied").
+    summary=[{'tool':r.get('tool'),'status':r.get('status'),'receipt_id':r.get('id'),
+              **({'why':str(r.get('output') or '')[:300]} if r.get('status') in ('denied','failed') else {})}
              for r in receipts]
     with closing(get_connection()) as conn,conn:
         _schema(conn)

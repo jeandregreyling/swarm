@@ -1526,11 +1526,18 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         f"{call['name']} is unavailable: the authenticated owner Studio handler "
                         "is not attached to this turn. Sign in through Hummingbird's normal login "
                         "and start a fresh turn. This is not a repository read-permission grant.")
-                if (no_tools or (call["name"] not in TOOL_SCHEMAS and not is_proposal
-                                 and not is_studio and not is_web and not is_test)
-                        or (call["name"] in studio_names and studio_handler is None)
-                        or (not is_web and not authorize())):
-                    raise PermissionError("Read-only repository inspection is not authorized")
+                # Practice 103 (owner 16 Nov 2026): one catch-all "Read-only repository inspection is not authorized" covered four
+                # different causes. At 17:35 every change_set and run_tests call of a turn was refused, APEX reported it, and it looked
+                # like APEX inventing a permission problem - nobody could tell which check said no. Each cause now names itself.
+                if no_tools:
+                    raise PermissionError(f"{call['name']} refused: this is an answer-only turn, no tools are attached")
+                if call["name"] not in TOOL_SCHEMAS and not is_proposal and not is_studio and not is_web and not is_test:
+                    raise PermissionError(f"{call['name']} refused: it is not one of the tools attached to this turn")
+                if call["name"] in studio_names and studio_handler is None:
+                    raise PermissionError(f"{call['name']} refused: the Studio handler is not attached to this turn")
+                if not is_web and not authorize():
+                    raise PermissionError(f"{call['name']} refused: HB's turn authorization said no (the task may have been stopped, "
+                                          "paused, cancelled or handed over, or the owner session ended)")
                 earlier = repeated_rejection(call, receipts)
                 if earlier is not None:
                     raise ValueError(
