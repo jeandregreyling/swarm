@@ -26,10 +26,10 @@ def _db():
 def test_practice_113_a_ready_card_hands_the_step_to_apex():
     c = _db()
     card = {'ready': True, 'model': 'homework-cpu:7b', 'goal': 'Network manager picks a link', 'plan': ['measure links', 'pick'],
-            'files': ['core/hb_downloads.py'], 'check': 'python -m pytest tests/test_hb_network.py passes'}
+            'files': ['core/hb_downloads.py'], 'check': 'python -m pytest tests/test_hb_grounding.py passes'}
     assert h.handoff(c, {'step_id': 'S-A'}, card) is True
     owner, desc = c.execute("SELECT owner, description FROM project_steps WHERE step_id='S-A'").fetchone()
-    assert owner == 'apex' and 'SPEC (homework card by homework-cpu:7b' in desc and 'Done when: python -m pytest tests/test_hb_network.py passes' in desc
+    assert owner == 'apex' and 'SPEC (homework card by homework-cpu:7b' in desc and 'Done when: python -m pytest tests/test_hb_grounding.py passes' in desc
     assert 'APEX takes it' in c.execute("SELECT content FROM messages WHERE from_agent='hummingbird'").fetchone()[0]
     assert h.handoff(c, {'step_id': 'S-D'}, dict(card, ready=False)) is False
     assert c.execute("SELECT owner FROM project_steps WHERE step_id='S-D'").fetchone()[0] == 'claude-code'

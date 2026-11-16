@@ -237,6 +237,13 @@ def handoff(conn, task, card):
     from core.hb_plan_workflow import runnable_check
     if not runnable_check(card.get('check')):
         return False
+    # Practice 122 (monitoring 17 Nov 03:35): an audit-fix card for aig_focus.js had the check "npm run lint ..." - a command, so
+    # runnable_check passed, but there is no package.json. APEX applied the spec and broke _surfaceFromNode (an early return skipped
+    # the window fallback); a syntax check would not have caught it either. APEX now only gets a step whose check names an existing
+    # test file, so the behaviour is verified; everything else stays with Claude Code.
+    named = re.findall(r'tests/[\w/.-]+\.py', str(card.get('check') or ''))
+    if not named or not all((ROOT / p).is_file() for p in named):
+        return False
     from core.hb_chat import owner_chat
     from core.hb_plain import message
     plan = '\n'.join(f'{n}. {p}' for n, p in enumerate(card.get('plan') or [], 1))
