@@ -12,6 +12,7 @@ only after it changes. /audit on|off|status controls it.
 import glob
 import hashlib
 import json
+import re
 import threading
 import time
 from contextlib import closing
@@ -104,6 +105,41 @@ def call_model(messages):
     return json.loads(text)
 
 
+# Practice 117 (monitoring 16 Nov 22:27): on components.css the reviewer called 23 lines "hard-coded colour" - among them "filter: blur(0.2px)",
+# "opacity: 0.18" and a line that already uses var(--accent). Sent on, APEX would have "fixed" lines that are fine. What HB can check
+# itself is now checked: a colour finding needs a colour literal on the line (not a theme variable's own definition), an icon finding
+# needs an emoji on the line. At most PER_KIND findings of one kind per file; the rest become one "and N more like it" line.
+_COLOUR = re.compile(r'#[0-9a-fA-F]{3,8}\b|\b(?:rgb|hsl)a?\(', re.I)
+_EMOJI = re.compile('[\U0001F300-\U0001FAFF☀-➿⬀-⯿]')
+PER_KIND = 5
+
+
+def verified(f):
+    code = str(f.get('code') or '')
+    if f.get('kind') == 'hard-coded-colour':
+        return bool(_COLOUR.search(code)) and not code.lstrip().startswith('--')
+    if f.get('kind') == 'old-icon':
+        return bool(_EMOJI.search(code))
+    return True
+
+
+def keep(findings):
+    """Confirmed findings, at most PER_KIND of each kind, plus one summary line per kind that had more."""
+    out, count, extra = [], {}, {}
+    for f in findings or []:
+        if not verified(f) or not f.get('line'):
+            continue
+        k = f.get('kind')
+        count[k] = count.get(k, 0) + 1
+        if count[k] <= PER_KIND:
+            out.append(f)
+        else:
+            extra[k] = extra.get(k, 0) + 1
+    for k, n in extra.items():
+        out.append({'line': 0, 'kind': k, 'problem': f'and {n} more like it in this file', 'fix': 'the same fix', 'code': ''})
+    return out
+
+
 def clean(found, lines, start):
     """Only findings that point at a non-empty line inside the block, once each."""
     end = min(len(lines), start + CHUNK - 1)
@@ -119,7 +155,7 @@ def clean(found, lines, start):
         seen.add((n, problem))
         out.append({'line': n, 'kind': f.get('kind') if f.get('kind') in KINDS else 'other', 'problem': problem[:240],
                     'fix': ' '.join(str(f.get('fix') or '').split())[:240], 'code': lines[n - 1].strip()[:160]})
-    return out[:MAX_FINDINGS]
+    return [f for f in out if verified(f)][:MAX_FINDINGS]       # Practice 117
 
 
 def audit_block(conn, root=None, model=call_model, add_step=None):
@@ -136,8 +172,8 @@ def audit_block(conn, root=None, model=call_model, add_step=None):
     findings = json.loads(row[0] or '[]') + found
     nxt = start + CHUNK
     conn.execute('UPDATE hb_file_audit SET next_line=?, findings=?, at=? WHERE path=?', (nxt, json.dumps(findings), time.time(), rel))
-    if nxt > len(lines) and findings:
-        _report(conn, rel, findings, add_step)
+    if nxt > len(lines) and keep(findings):                       # Practice 117: only confirmed findings go to Studio
+        _report(conn, rel, keep(findings), add_step)
     return rel, len(found)
 
 
