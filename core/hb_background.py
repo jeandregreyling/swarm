@@ -47,7 +47,8 @@ def _post(conn, task, text):
         import sqlite3
         from contextlib import closing
         from core.hb_plain import message
-        cid = task.get('conversation_id') or 2834
+        from core.hb_chat import owner_chat   # Practice 105
+        cid = task.get('conversation_id') or owner_chat(conn)
         sql = "INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)"
         path = conn.execute('PRAGMA database_list').fetchone()[2] if conn is not None else ''
         if not path:                                   # an in-memory database (tests): nobody else waits on it

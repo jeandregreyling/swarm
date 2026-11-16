@@ -19,6 +19,7 @@ from core import hb_change_sets as cs
 
 PLAN = 'P-2AB8250A87'
 MAIN_CHAT = 2834
+from core.hb_chat import owner_chat   # Practice 105
 NEVER = re.compile(r'(^|/)(config\.py|\.env[^/]*|.*credential.*|.*secret.*|.*\.key|.*\.pem)$|^(\.git|runtime)/', re.I)
 _RUNNING = threading.Lock()
 
@@ -26,7 +27,7 @@ _RUNNING = threading.Lock()
 def _post(conn, text, details=()):
     from core.hb_plain import message
     return conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
-                        (MAIN_CHAT, message(text, details=[d for d in details if d]))).lastrowid
+                        (owner_chat(conn), message(text, details=[d for d in details if d]))).lastrowid
 
 
 def _clean(args):
@@ -79,7 +80,7 @@ def check(conn, sid, root=None, run=None):
     p = json.loads((d / 'proposal.json').read_text())
     result = {'at': time.time()}
     from core import hb_background as bg
-    bg.start('proposal', {'title': p['title'], 'conversation_id': MAIN_CHAT}, 'tests', f"checking {p['agent']}'s proposal by running its test")
+    bg.start('proposal', {'title': p['title'], 'conversation_id': owner_chat(conn)}, 'tests', f"checking {p['agent']}'s proposal by running its test")
     if not (p['edits'] or p['new_files']):
         result.update(verified=False, why='no code in the proposal: kept for discussion')
     elif not p['test']:
@@ -102,7 +103,7 @@ def check(conn, sid, root=None, run=None):
         from core import hb_tasks
         title = conn.execute('SELECT title, description FROM project_steps WHERE step_id=?', (sid,)).fetchone()
         mid = _post(conn, f"✅ HB checked {p['agent']}'s proposal {name(p['title'])}: its test passes. APEX will apply it through HB.", [f'Studio step {sid}', result['why']])
-        hb_tasks.bind(conn, MAIN_CHAT, mid, title=f'{sid} {title[0]}'[:140], objective=f'Studio step {sid} ({PLAN}): {title[0]}\n{title[1]}',
+        hb_tasks.bind(conn, owner_chat(conn), mid, title=f'{sid} {title[0]}'[:140], objective=f'Studio step {sid} ({PLAN}): {title[0]}\n{title[1]}',
                       project_id=PLAN, step_id=sid)
     else:
         conn.execute("UPDATE project_steps SET residual_risk=?, updated_at=? WHERE step_id=?", ('HB check: ' + result['why'], time.time(), sid))

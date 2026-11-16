@@ -64,8 +64,9 @@ def writes(conn, agent_id):
 
 def _post(conn, text):
     from core.hb_plain import message
-    conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (2834,'hummingbird','user',?,'response',0)",
-                 (message(text),))
+    from core.hb_chat import owner_chat   # Practice 105
+    conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                 (owner_chat(conn), message(text)))
 
 
 def onboard(conn, agent_id, *, kind, profile, about, model='', model_path='', tags=(), actor='owner', say=None, provision=None, tests=None,
@@ -280,10 +281,12 @@ def resolve(conn, handle):
     return None
 
 
-def examine(conn, agent_id, conversation_id=2834, actor='owner', say=None):
+def examine(conn, agent_id, conversation_id=None, actor='owner', say=None):
     """HB examines an online agent itself: each benchmark question goes to the agent's inbox with a tag; exam_tick scores the replies with
     HB's own scorers. Until it passes, the agent is provisional (it can read and remember, not work)."""
     from core import hb_model_bench as mb
+    from core.hb_chat import owner_chat   # Practice 105
+    conversation_id = conversation_id or owner_chat(conn)
     say = say or (lambda text: _post(conn, text))
     a = get(conn, agent_id)
     if not a:
@@ -434,8 +437,9 @@ def welcome(conn, agent_id, send=True):
     except Exception:
         pass
     if send and a['kind'] == 'online' and conn.execute("SELECT 1 FROM sqlite_master WHERE name='peer_messages'").fetchone():
-        conn.execute('INSERT INTO peer_messages(conversation_id,message_id,sender,recipient,body,created_at) VALUES (2834,NULL,?,?,?,?)',
-                     ('hummingbird', agent_id, text, time.time()))
+        from core.hb_chat import owner_chat   # Practice 105
+        conn.execute('INSERT INTO peer_messages(conversation_id,message_id,sender,recipient,body,created_at) VALUES (?,NULL,?,?,?,?)',
+                     (owner_chat(conn), 'hummingbird', agent_id, text, time.time()))
     conn.execute('CREATE TABLE IF NOT EXISTS hb_agent_welcome(agent_id TEXT PRIMARY KEY, sent_at REAL, acked_at REAL, ack TEXT)')
     conn.execute('INSERT INTO hb_agent_welcome(agent_id, sent_at) VALUES (?,?) ON CONFLICT(agent_id) DO UPDATE SET sent_at=excluded.sent_at, '
                  'acked_at=NULL, ack=NULL', (agent_id, time.time()))

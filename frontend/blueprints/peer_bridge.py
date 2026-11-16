@@ -603,7 +603,7 @@ def hb_queue_status(current_user=None):
             from core import hb_commands
             after=[]
             with closing(get_connection()) as conn,conn:
-                said=hb_commands.run(conn,2834,args[0],[args[1]],current_user['username']+' via the task board',after)
+                said=hb_commands.run(conn,__import__('core.hb_chat',fromlist=['owner_chat']).owner_chat(conn),args[0],[args[1]],current_user['username']+' via the task board',after)
             for job in after:
                 try:job()
                 except Exception:pass

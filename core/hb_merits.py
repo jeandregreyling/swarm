@@ -20,6 +20,7 @@ import re
 import time
 
 MAIN_CHAT = 2834
+from core.hb_chat import owner_chat   # Practice 105
 POINTS = {'success': 3, 'correction': 2, 'try_better': 0, 'lesson': 0, 'asked_needed': 1, 'asked_unneeded': 0}
 CATEGORIES = ('coder', 'scientist', 'actor', 'generalist')
 BADGES = ((40, 'IV'), (15, 'III'), (5, 'II'), (1, 'I'))
@@ -42,7 +43,7 @@ def _role(agent, model):
 def _post(conn, text):
     from core.hb_plain import message
     return conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
-                        "VALUES (?,'hummingbird','user',?,'response',0)", (MAIN_CHAT, message(text))).lastrowid
+                        "VALUES (?,'hummingbird','user',?,'response',0)", (owner_chat(conn), message(text))).lastrowid
 
 
 def _add(conn, kind, role, model, *, category=None, task_id=None, step_id=None, ref=None, note=''):

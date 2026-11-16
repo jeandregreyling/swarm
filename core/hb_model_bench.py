@@ -261,8 +261,9 @@ def save(conn, record):
 
 def _post(conn, text):
     from core.hb_plain import message
-    conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (2834,'hummingbird','user',?,'response',0)",
-                 (message(text),))
+    from core.hb_chat import owner_chat   # Practice 105
+    conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                 (owner_chat(conn), message(text)))
 
 
 def run_all(only=None):
@@ -272,7 +273,11 @@ def run_all(only=None):
     for m in models():
         if only and m['label'] not in only and not set(only) & set(m['aliases']):
             continue
-        task = {'task_id': None, 'title': f"Benchmark {m['label']}", 'conversation_id': 2834}
+        from contextlib import closing
+        from core.hb_chat import owner_chat   # Practice 105
+        with closing(get_connection()) as c0:
+            chat = owner_chat(c0)
+        task = {'task_id': None, 'title': f"Benchmark {m['label']}", 'conversation_id': chat}
         fits, need = gpu_fit(m['size_gb'])
         with closing(get_connection()) as c, c:
             _post(c, f"🧪 Benchmarking {m['label']} ({m['size_gb']} GB; GPU fit: {'yes' if fits else 'no'}, needs {need} GB) - "

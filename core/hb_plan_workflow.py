@@ -158,6 +158,22 @@ def vague_step(description):
     return len(text) < 400 and 'Done when' not in text and 'PREPARED' not in text
 
 
+_RUNNABLE = re.compile(r'\b(pytest|python3?|run_tests|curl|bash|node|npm|make|sqlite3)\b|tests/\S+\.py|\btests? pass', re.I)
+
+
+def runnable_check(text):
+    """Owner 14 Nov: every step needs a check APEX can run (a test file or a command), or it cannot be finished."""
+    return bool(_RUNNABLE.search(str(text or '')))
+
+
+_RUNNABLE = re.compile(r'\b(pytest|python3?|run_tests|curl|bash|node|npm|make|sqlite3)\b|tests/\S+\.py|\btests? pass', re.I)
+
+
+def runnable_check(text):
+    """Owner 14 Nov: every step needs a check APEX can run (a test file or a command), or it cannot be finished."""
+    return bool(_RUNNABLE.search(str(text or '')))
+
+
 def _needs_spec(conn, task_id):
     """Owner 14 Nov: a vague step only starts once it has a spec. When the CPU homework judged its card NOT ready and the step has no
     done criteria of its own, return why (else None). Steps without a card yet go ahead as before."""
@@ -168,7 +184,10 @@ def _needs_spec(conn, task_id):
         row = conn.execute('SELECT description FROM project_steps WHERE step_id=?', (task['step_id'],)).fetchone() if task and task.get('step_id') else None
         if row and SPEC_MARK in str(row[0] or ''):
             return 'not scoped in Studio yet; HB counsel scopes it from the work that already exists'
-        if not task or done_when(conn, task)[1]:
+        crit = done_when(conn, task)[1] if task else None
+        if crit and not runnable_check(crit):    # owner 14 Nov: 'scope it' is not a check - 5 steps went round 8 rounds each
+            return 'no runnable check in its Done when: it needs a spec with a test command before APEX can finish it'
+        if not task or crit:
             return None
         card = latest(conn, task)
         return '; '.join(card.get('not_ready') or ['homework not ready'])[:120] if card and not card.get('ready') else None
@@ -417,7 +436,7 @@ def restart_tick(conn, now=None, run=None):
     conn.execute('CREATE TABLE IF NOT EXISTS hb_restart_log(reason TEXT, at REAL)')
     if conn.execute('SELECT 1 FROM hb_restart_log WHERE reason=? AND at>?', (reason, now - RESTART_REPEAT_S)).fetchone():
         conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
-                     (MAIN_CHAT, f'🔴 Loop stopped: HB was about to restart again for the same reason ("{reason[:120]}"). It did not; the change is already loaded.'))
+                     (__import__('core.hb_chat', fromlist=['owner_chat']).owner_chat(conn), f'🔴 Loop stopped: HB was about to restart again for the same reason ("{reason[:120]}"). It did not; the change is already loaded.'))
         conn.commit()
         return None
     conn.execute('INSERT INTO hb_restart_log VALUES(?,?)', (reason, now))

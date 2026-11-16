@@ -62,12 +62,13 @@ def tick(conn, now=None, restart=_restart, answers=_answers, say=None):
     if say:
         say(text)
     else:
-        conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (2834,'hummingbird','user',?,'response',0)", (text,))
+        from core.hb_chat import owner_chat   # Practice 105
+        conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)", (owner_chat(conn), text))
     if ok:
         from core import hb_commands
         for tid in tasks:
             try:
-                hb_commands.handle(conn, 2834, f'/continue {tid}', 'HB GPU guard')
+                hb_commands.handle(conn, __import__('core.hb_chat', fromlist=['owner_chat']).owner_chat(conn), f'/continue {tid}', 'HB GPU guard')
             except Exception:
                 pass
     return text
