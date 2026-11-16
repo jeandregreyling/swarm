@@ -36,8 +36,6 @@ def test_practice_105_benchmark_and_onboarding_lines_reach_jd():
 def test_practice_105_nobody_posts_to_2834_directly():
     found = []
     for path in list((ROOT / 'core').glob('*.py')) + list((ROOT / 'frontend' / 'blueprints').glob('*.py')):
-        if path.name in ('hb_daily_summary.py', 'hb_grounding.py'):   # untracked work in progress (16 Nov); not part of this change
-            continue
         src = path.read_text(encoding='utf-8', errors='replace')
         if re.search(r"VALUES \(2834,", src) or re.search(r"\(MAIN_CHAT,\s*(?:message\(|f'|f\"|text\b)", src) or re.search(r"run\(conn,\s*2834,", src):
             found.append(path.name)
