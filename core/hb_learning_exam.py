@@ -116,7 +116,7 @@ def run_item(item, model_call=None):
         if tool == 'knowledge_search':
             return search(args.get('query'))
         if tool == 'knowledge_read':
-            return read(args.get('document_id'), args.get('offset', 0))
+            return read(args.get('document_id'), args.get('offset', 0), args.get('focus'))
         raise PermissionError(f'{tool} is not attached to the exam')
 
     receipts = []

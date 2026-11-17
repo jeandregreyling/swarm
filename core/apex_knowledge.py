@@ -183,7 +183,77 @@ def search(query):
                 'and list every matching note.'} if more_matches else {})})
 
 
-def read(document_id, offset=0):
+# Practice 141 (owner 17 Nov 2026, "GO"): after Practice 140 APEX read the four MCB notes but still never said what the cap means or how
+# it is paid. knowledge_read returns 1,500 characters from offset 0, and SAP Note 3713786 (11,361 characters) defines the MCB around
+# character 3,000 ("annual amount of 270,830 AUD ... you can stop paying the minimum SG"); 3808818's Background is past 1,500 too.
+# With `focus` (HB fills it in from a research question), a long document's first read is its header plus the paragraphs that mention
+# the focus words, in document order; next_offset still continues the full text.
+import re  # noqa: E402 (Practice 141)
+FOCUS_CHARS = 3000
+_FOCUS_STOP = {'what', 'does', 'do', 'did', 'the', 'say', 'says', 'about', 'mean', 'means', 'how', 'and', 'our', 'note', 'notes', 'sap',
+               'are', 'is', 'it', 'this', 'that', 'with', 'from', 'for', 'they', 'them', 'you', 'your', 'cite', 'numbers', 'number', 'could',
+               'find', 'not', 'can', 'which', 'where', 'when', 'why', 'there', 'their', 'have', 'has', 'was', 'were', 'any', 'all', 'please'}
+
+
+def focus_words(focus):
+    return list(dict.fromkeys(w for w in re.findall(r'[A-Za-z0-9/_]{2,}', str(focus or ''))
+                              if w.lower() not in _FOCUS_STOP and (len(w) >= 3 or w.isupper())))
+
+
+def focus_passages(text, focus, limit=FOCUS_CHARS):
+    """The document's header plus its paragraphs that mention the focus words (most words first, shown in document order), or ''."""
+    words = focus_words(focus)
+    text = str(text or '')
+    if not words or not text:
+        return ''
+    pats = [re.compile(r'\b' + re.escape(w), 0 if w.isupper() else re.I) for w in words]
+    paras = [p.strip() for p in re.split(r'\n\s*\n', text) if p.strip()]
+    head = text[:400].rstrip()
+    scored = []
+    for i, p in enumerate(paras):
+        hits = sum(1 for pat in pats if pat.search(p))
+        if hits and p not in head:
+            scored.append((-hits, i))
+    if not scored:
+        return ''
+    keep, used = set(), len(head)
+    for _h, i in sorted(scored):
+        for j in (i, i + 1):
+            if j < len(paras) and j not in keep and used + min(len(paras[j]), 900) <= limit:
+                keep.add(j)
+                used += min(len(paras[j]), 900) + 5
+    if not keep:
+        return ''
+    return head + '\n...\n' + '\n...\n'.join(paras[j][:900] for j in sorted(keep))
+
+
+def _full_text(document_id):
+    with closing(get_connection()) as conn:
+        if document_id >= LIBRARY_ID:
+            row = conn.execute("SELECT COALESCE(raw_text,'') FROM knowledge_sources WHERE source_id=? AND status='active'",
+                               (document_id - LIBRARY_ID,)).fetchone()
+        else:
+            row = conn.execute("SELECT COALESCE(content,'') FROM project_docs WHERE id=?", (document_id,)).fetchone()
+    return row[0] if row else ''
+
+
+def _focused(result, document_id, focus):
+    if not isinstance(result, dict) or result.get('status') != 'found' or not result.get('next_offset'):
+        return result
+    try:
+        picked = focus_passages(_full_text(document_id), focus)
+    except Exception:
+        picked = ''
+    if picked:
+        result = dict(result, content=picked, focus=str(focus)[:200],
+                      focus_note=('HB picked the passages that mention: ' + ', '.join(focus_words(focus)) + '. knowledge_read with offset '
+                                  + str(result['next_offset']) + ' continues the full text in order.'))
+    return result
+
+
+def read(document_id, offset=0, focus=None):
+    if focus and offset == 0:
+        return _focused(read(document_id, 0), document_id, focus)
     if type(document_id) is not int or document_id <= 0 or type(offset) is not int or offset < 0:
         raise ValueError('document_id must be positive and offset nonnegative integers')
     from core.hf_text_index import DOCUMENT_ID as DATASET_ID,read as dataset_read

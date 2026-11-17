@@ -3453,9 +3453,9 @@ def api_chat():
                         return search(args['query'])
                     if tool == 'knowledge_read':
                         from core.apex_knowledge import read
-                        if set(args) - {'document_id', 'offset'} or 'document_id' not in args:
-                            raise ValueError('knowledge_read requires document_id and optional offset')
-                        return read(args['document_id'], args.get('offset', 0))
+                        if set(args) - {'document_id', 'offset', 'focus'} or 'document_id' not in args:   # focus: Practice 141
+                            raise ValueError('knowledge_read requires document_id and optional offset and focus')
+                        return read(args['document_id'], args.get('offset', 0), args.get('focus'))
                     if tool == 'ask_instructor':
                         from contextlib import closing
                         from core import peer_bridge as peers

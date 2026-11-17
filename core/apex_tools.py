@@ -73,7 +73,8 @@ TOOL_SCHEMAS = {
     "archive_mirror_resume": {},
     "archive_mirror_curate": {"repo": "optional explicitly selected public Hub repository ID"},
     "knowledge_search": {"query": "literal Knowledge Centre search, 2-200 characters"},
-    "knowledge_read": {"document_id": "Knowledge Centre document ID", "offset": "character offset >= 0"},
+    "knowledge_read": {"document_id": "Knowledge Centre document ID", "offset": "character offset >= 0",
+                       "focus": "optional words to find in a long document (HB fills it in for research questions)"},
     "ask_instructor": {"peer": "codex, gemini or instructor", "question": "one concrete question, at most 1500 characters", "context": "relevant evidence and attempts, at most 1800 characters"},
     "workflow_status": {},
     "workflow_control": {"action": "pause or resume", "target": "huggingface-acquisition"},
@@ -133,6 +134,7 @@ _ARGUMENT_PROPERTIES = {
     "end": {"type": "integer", "minimum": 1},
     "raw": {"type": "boolean"},
     "offset": {"type": "integer", "minimum": 0},
+    "focus": {"type": "string", "maxLength": 200},   # Practice 141: knowledge_read
     "command": {"type": "string", "minLength": 1, "maxLength": 1000},
     "repo": {"type": "string", "minLength": 3, "maxLength": 200},
     "subject": {"type": "string", "minLength": 1, "maxLength": 200},
@@ -979,6 +981,12 @@ def titles_only(answer, receipts) -> bool:
     return bare >= 0.6 * len(lines)
 
 
+def read_focus(question) -> str:
+    """Practice 141: the words of a research question that a long note's passages should mention."""
+    from core.apex_knowledge import focus_words
+    return ' '.join((_topic_terms(question) + [w for w in focus_words(question) if w not in _topic_terms(question)])[:8])[:200]
+
+
 def research_digest(receipts) -> str:
     """Practice 138 (owner 17 Nov 2026: "the links are there but the message about what is inside each one or how it relates to the question
     is missing"). APEX searched once, read five notes one per round, ran out of rounds and never wrote its answer; HB saved the turn to
@@ -1778,6 +1786,16 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             if (not isinstance(call, dict) or set(call) != {"name", "arguments"}
                     or not isinstance(call["name"], str) or not isinstance(call["arguments"], dict)):
                 raise RuntimeError("Invalid APEX tool-call schema")
+            # Practice 141: in a research turn a note read shows the passages that bear on the question; offset 0 is spelled out, so
+            # {document_id} and {document_id, offset: 0} are the same read (17 Nov: 3793457 and 3808818 were read twice that way).
+            if call["name"] == "knowledge_read":
+                kr_args = dict(call["arguments"])
+                kr_args.setdefault("offset", 0)
+                if not kr_args.get("focus") and research_question(latest_user):
+                    kr_focus = read_focus(latest_user)
+                    if kr_focus:
+                        kr_args["focus"] = kr_focus
+                call = {"name": call["name"], "arguments": kr_args}
             cached = repeated_read(call, receipts)
             if cached is not None:
                 results.append(cached)

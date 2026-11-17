@@ -251,9 +251,9 @@ def call_control(tool,args):
     if tool=='knowledge_search' and set(args)=={'query'}:
         from core.apex_knowledge import search
         return search(args['query'])
-    if tool=='knowledge_read' and not set(args)-{'document_id','offset'} and 'document_id' in args:
+    if tool=='knowledge_read' and not set(args)-{'document_id','offset','focus'} and 'document_id' in args:   # focus: Practice 141
         from core.apex_knowledge import read
-        return read(args['document_id'],args.get('offset',0))
+        return read(args['document_id'],args.get('offset',0),args.get('focus'))
     if tool=='archive_status' and not set(args)-{'view','offset'}:
         from core.hf_library import archive_status
         return archive_status(**args)
