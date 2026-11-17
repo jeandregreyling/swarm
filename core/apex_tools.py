@@ -1109,6 +1109,11 @@ def notes_to_read(answer, receipts, limit=3) -> list:
     return out
 
 
+def cited_unread(answer, receipts) -> list:
+    """Practice 143: SAP notes the answer cites that this turn's searches found but no knowledge_read opened."""
+    return [n for n, _d in notes_to_read(answer, receipts, limit=50) if n in set(_NOTE_NUM.findall(str(answer or '')))]
+
+
 def permission_excuse(answer: str) -> bool:
     text=answer.replace("\u2019", "'")
     for sentence in re.split(r'(?<=[.!?])\s+|[;\n]',text):
@@ -1538,8 +1543,11 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             return None
         # Practice 140: a research answer that read no note, or sends JD to fetch one, goes back once to read the best 2-3 in one round.
         reads = sum(1 for r in receipts if r.get('tool') == 'knowledge_read' and r.get('status') == 'succeeded')
+        # Practice 143: the 4th MCB answer described 3713786 and 3749754 without reading them (3713786 holds the definition it then
+        # invented); notes the answer cites but did not read this turn are read too.
+        unread_cited = cited_unread(answer, receipts) if research_question(latest_user) else []
         if (not no_tools and can_retry and not read_retry_used and research_question(latest_user)
-                and (reads == 0 or sends_owner_to_fetch(answer))):
+                and (reads == 0 or sends_owner_to_fetch(answer) or unread_cited)):
             todo = notes_to_read(answer, receipts)
             if todo:
                 read_retry_used = True
@@ -1549,6 +1557,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         + ("You read no note: the search summaries say what a note fixes, not what its solution explains, so what you wrote "
                            "beyond them is not from the sources. " if reads == 0 else "")
                         + ("It sends the owner to fetch or request a note, but HB holds it - reading it is your job. " if sends_owner_to_fetch(answer) else "")
+                        + ("It describes notes you did not read this turn (" + ', '.join(unread_cited[:6]) + ") - from their titles or "
+                           "from memory. " if unread_cited and reads else "")
                         + "Read these now, ALL in one round (several knowledge_read calls in one tool_calls list): " + calls + ". Then answer "
                         "only from what the notes and the search summaries say, cite the note for each point, and where they do not cover part "
                         "of the question, say so plainly.")

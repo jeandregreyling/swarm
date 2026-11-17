@@ -38,7 +38,7 @@ STATE_OFFLINE = "offline"
 
 # APEX is the stable local actor. Healthy main chat selects its backend per turn
 # through core.apex_routing. This model is the storage-recovery bootstrap default.
-APEX_AGENT = {"name": "apex", "model": "qwen2.5:14b-instruct", "tier": "local", "label": "APEX"}
+APEX_AGENT = {"name": "apex", "model": "gpt-oss:20b", "tier": "local", "label": "APEX"}
 
 _OFFLINE_MARKERS = (
     "unavailable", "timeout", "timed out", "connection", "refused",
@@ -178,13 +178,41 @@ def attached_tools_line(*, proposals: bool, web: bool) -> str:
             + ". Never claim to lack one. No arbitrary shell; requested source writes and fixed worker maintenance use the validated HB tools and actual current grants.")
 
 
+def _question_words(text) -> set:
+    import re
+    return {w for w in re.findall(r"[a-z0-9]+", str(text or "").lower()) if len(w) > 2}
+
+
+def same_question(a, b) -> bool:
+    """Practice 143: the owner asked the same thing again (typos and small rewordings allowed)."""
+    wa, wb = _question_words(a), _question_words(b)
+    return len(wa) >= 4 and len(wb) >= 4 and len(wa & wb) / len(wa | wb) >= 0.8
+
+
 def apex_request_history(history: list[dict], message: str) -> list[dict]:
-    """Keep the request's own instruction last, even if the shared thread changed."""
+    """Keep the request's own instruction last, even if the shared thread changed.
+
+    Practice 143 (owner 17 Nov 2026): JD asked about the MCB cap four times; the fourth answer copied the first one's invented "what it
+    means" and "how it is paid" ("in a payroll period", "a single payment per payroll run") word for word from the chat history. Asking
+    again means those answers were not accepted, so APEX's replies to an earlier copy of the same question are left out; the owner's own
+    messages stay."""
     result = [dict(item) for item in history]
     if result and result[-1].get("role") == "user" and result[-1].get("content") == message:
         result.pop()
-    result.append({"role": "user", "content": message})
-    return result
+    kept, dropping, dropped = [], False, 0
+    for item in result:
+        if item.get("role") == "user":
+            dropping = same_question(item.get("content"), message)
+        elif dropping:
+            dropped += 1
+            continue
+        kept.append(item)
+    if dropped:
+        kept.append({"role": "user", "content": (
+            f"HB note: {dropped} earlier reply(ies) to this same question were left out - the owner asked again, so they were not "
+            "accepted. Do not reuse them; answer from what you read this turn.")})
+    kept.append({"role": "user", "content": message})
+    return kept
 
 
 def storage_fault(connect) -> str | None:
