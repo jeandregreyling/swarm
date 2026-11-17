@@ -133,7 +133,11 @@ def command(conn, args, actor='owner'):
     now = current()
     playing = next((r['name'] for r in rows if r['path'] == now), now)
     if not args:
-        return f'APEX is played by {playing}. /apex models lists the others; /apex model <name> swaps; /apex back returns.'
+        p = prefs(conn)
+        return (f'APEX is played by {playing}. Preferred by kind: ' + (', '.join(f'{k} -> {m}' for k, m in p.items() if m) or 'none')
+                + '. /apex models lists the others; /apex model <name> swaps; /apex back returns; /apex prefer <kind> <model|none>.')
+    if args[0].lower() == 'prefer' and len(args) == 3:
+        return prefer(conn, args[1].lower(), args[2], actor)
     if args[0].lower() == 'models':
         return 'Models that can play APEX (16 GB card):\n' + '\n'.join(
             f"- {r['name']}: {r['size_gb']} GB - " + ('fits' if r['fits'] else 'too big for the card') + (' (playing now)' if r['path'] == now else '')
@@ -158,3 +162,77 @@ def command(conn, args, actor='owner'):
         say(('Done: ' if ok else 'Not done: ') + msg)
     threading.Thread(target=work, name='hb-apex-swap', daemon=True).start()
     return f"Swapping APEX {'back' if target is None else 'to ' + target} - HB reports in main chat when it answers."
+
+# Practice 153 (owner 18 Nov 2026: "HB should be the one orchestrating this by knowing what the question is about and which model to use").
+# Benchmark the same morning (MCB and STP2 questions, two runs each): swift-qwen3.8-27b answered all four perfectly - every MCB fact from the
+# notes, all 14 PY-AU-STP notes in its own text, no false "not found" - where gpt-oss:20b was right about half the time; but it took
+# 230-330 s and always hit the 360 s turn limit. So: research questions go to the preferred research model (swapped in while APEX is idle,
+# announced in main chat); HB never swaps back by itself, so models do not ping-pong; and each model has its own turn time.
+DEFAULT_PREFS = {'research': 'swift-qwen3.8-27b'}
+TURN_BY_MODEL = {'swift-qwen3.8-27b': 600, 'qwen2.5-32b-instruct': 900}
+_playing_cache = {'key': None, 'name': None}
+
+
+def playing():
+    """Name of the model that plays APEX now (cached on the drop-in's mtime)."""
+    try:
+        p = guard.dropin()
+        key = p.stat().st_mtime
+    except Exception:
+        return None
+    if _playing_cache['key'] != key:
+        path = current()
+        _playing_cache.update(key=key, name=next((r['name'] for r in candidates() if r['path'] == path), path))
+    return _playing_cache['name']
+
+
+def turn_seconds(default=360):
+    return TURN_BY_MODEL.get(playing() or '', default)
+
+
+def ensure_prefs(conn):
+    conn.execute('CREATE TABLE IF NOT EXISTS hb_apex_prefs(kind TEXT PRIMARY KEY, model TEXT NOT NULL, set_by TEXT, updated_at REAL)')
+
+
+def prefs(conn):
+    ensure_prefs(conn)
+    out = dict(DEFAULT_PREFS)
+    out.update({k: m for k, m in conn.execute('SELECT kind, model FROM hb_apex_prefs')})
+    return out
+
+
+def prefer(conn, kind, model, actor='owner'):
+    import time as _t
+    if model.lower() in ('none', 'off', '-'):
+        ensure_prefs(conn)
+        conn.execute('INSERT OR REPLACE INTO hb_apex_prefs VALUES (?,?,?,?)', (kind, '', actor, _t.time()))
+        return f'{kind} questions run on whatever model plays APEX.'
+    if not find(model):
+        return f'{model} is not a model HB can run as APEX. /apex models lists them.'
+    ensure_prefs(conn)
+    conn.execute('INSERT OR REPLACE INTO hb_apex_prefs VALUES (?,?,?,?)', (kind, find(model)['name'], actor, _t.time()))
+    return f"{kind} questions go to {find(model)['name']}."
+
+
+def kind_of(text):
+    try:
+        from core.apex_tools import research_question
+        return 'research' if research_question(text) else 'default'
+    except Exception:
+        return 'default'
+
+
+def route_for(conn, text, say=print, idle=None, swapper=None):
+    """Before an APEX turn: if this kind of question has a preferred model that is not playing, swap it in (APEX idle only).
+    Returns what HB did, or ''."""
+    kind = kind_of(text)
+    want = prefs(conn).get(kind) or ''
+    have = playing()
+    if not want or not have or want.lower() == str(have).lower():
+        return ''
+    if not (idle or guard._idle)():
+        return ''
+    say(f'HB: this is a {kind} question - {want} handles those better than {have}, so HB swaps APEX first (a minute or two).')
+    ok, msg = (swapper or swap)(want, say)
+    return msg if ok else f'{msg} HB answers with {have}.'
+

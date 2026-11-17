@@ -1404,7 +1404,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     format_retry_used = False
     from core.apex_routing import current_route
     local_route=current_route()
-    deadline = time.monotonic() + (1800 if local_route and local_route.model=='fred-cpu:24b' else TURN_SECONDS)
+    from core.hb_apex_swap import turn_seconds   # Practice 153: each model that plays APEX has its own turn time
+    deadline = time.monotonic() + (1800 if local_route and local_route.model=='fred-cpu:24b' else turn_seconds(TURN_SECONDS))
 
     def handoff(reason):
         if final_reason == _REPEATED_READ_REASON and receipts:

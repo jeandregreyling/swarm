@@ -2984,6 +2984,8 @@ def api_chat():
         from core import llm
 
         from core.apex_tools import TURN_SECONDS
+        from core.hb_apex_swap import turn_seconds as _turn_seconds   # Practice 153
+        TURN_SECONDS = _turn_seconds(TURN_SECONDS)
         apex_deadline = time.monotonic() + TURN_SECONDS
 
         def apex_model(model, messages):
@@ -3281,6 +3283,21 @@ def api_chat():
             from utils.thread_memory import apex_carry_over_block, checkpoint_apex
 
             from core.apex_routing import choose_local_model, use_model
+            try:   # Practice 153: HB puts the model that handles this kind of question on APEX first
+                from core import hb_apex_swap
+                from core.hb_model_bench import _post as _hb_post
+                def _hb_say(text):
+                    with closing(get_connection()) as _sc:
+                        _hb_post(_sc, text)
+                        _sc.commit()
+                with closing(get_connection()) as _rc:
+                    _routed = hb_apex_swap.route_for(_rc, message, say=_hb_say)
+                if _routed:
+                    _hb_say(_routed)
+                    TURN_SECONDS = hb_apex_swap.turn_seconds(TURN_SECONDS)
+                    apex_deadline = time.monotonic() + TURN_SECONDS
+            except Exception:
+                _LOG.exception('APEX model routing failed; answering with the loaded model')
             try:
                 model_route = choose_local_model(message)
             except RuntimeError as exc:
