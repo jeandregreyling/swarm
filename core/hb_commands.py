@@ -666,9 +666,13 @@ def accept_step(conn, step_id, actor, comment=''):
     now = time.time()
     comment = ' '.join(str(comment or '').split())[:1000]
     auto = str(actor).startswith('HB auto-approve')
-    conn.execute("UPDATE project_steps SET status='done', residual_risk=?, updated_at=? WHERE step_id=?",
+    # Practice 129 (owner 17 Nov 2026): Practice 128 was approved twice - HB's auto-approve and JD's Approve both read 'not done' before
+    # either was saved, so main chat got two "Done" messages. Only the approval that actually changes the step goes on.
+    cur = conn.execute("UPDATE project_steps SET status='done', residual_risk=?, updated_at=? WHERE step_id=? AND status!='done'",
                  ((f'Approved automatically by HB (owner policy, workflow auto-approve)' if auto else f'Accepted by owner ({actor}) via /accept')
                   + (f': {comment}' if comment and not auto else ''), now, step_id))
+    if cur.rowcount == 0:
+        return f'{step_id} is already accepted.'
     from core import hb_tasks
     tasks = []
     for (tid,) in conn.execute("SELECT task_id FROM hb_tasks WHERE step_id=? AND state NOT IN ('completed','cancelled')", (step_id,)).fetchall():
