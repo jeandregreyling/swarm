@@ -979,6 +979,28 @@ def titles_only(answer, receipts) -> bool:
     return bare >= 0.6 * len(lines)
 
 
+def research_digest(receipts) -> str:
+    """Practice 138 (owner 17 Nov 2026: "the links are there but the message about what is inside each one or how it relates to the question
+    is missing"). APEX searched once, read five notes one per round, ran out of rounds and never wrote its answer; HB saved the turn to
+    Studio and JD saw only that line. Now a research turn that runs out still answers: what its searches and reads found, each note with
+    its summary (the first sentence of its Symptom), and a plain word that APEX has not related them to the question yet."""
+    lines, seen = [], set()
+    for r in receipts:
+        if r.get('status') != 'succeeded' or r.get('tool') not in ('knowledge_search', 'knowledge_read'):
+            continue
+        for n, title in re.findall(r'"SAP Note (\d{6,8}): ([^"]*)"', str(r.get('output') or '')):
+            if n in seen:
+                continue
+            seen.add(n)
+            name, _, summary = re.sub(r'^\d+\s*-\s*', '', title).partition(' | ')
+            lines.append(f'- SAP Note {n}: {name.strip()}' + (f' - {summary.strip()}' if summary.strip() else ''))
+    if not lines:
+        return ''
+    return ("APEX used all its tool rounds before it wrote its answer, so HB lists what its searches found: each note's title and the first "
+            "sentence of its Symptom. APEX has not yet said how each one bears on your question - say \"go on\" for that.\n\n"
+            + '\n'.join(lines[:25]) + (f'\n- ... and {len(lines) - 25} more' if len(lines) > 25 else ''))
+
+
 # Practice 128 (owner 17 Nov 2026): APEX's second STP2 answer searched ONCE although the research method asks for two wordings, and it
 # called SAP Note 3708034 "truncated" (suggesting /notes add) and said nothing covered 3713787 - both are in the Knowledge Centre.
 # Telling the local model again does not make it obey; HB checks the answer like it checks coding promises.
@@ -1245,6 +1267,10 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "The task remains unfinished. These saved tool results establish only what "
                     "was inspected, not that all requirements pass:\n\n" + "\n\n".join(results),
                     tokens, receipts)
+        if not no_tools and research_question(latest_user):      # Practice 138: a research turn still answers
+            digest = research_digest(receipts)
+            if digest:
+                return digest, tokens, receipts
         if studio_handler is None or no_tools or not authorize():
             raise RuntimeError(reason)
         try:

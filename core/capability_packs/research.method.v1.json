@@ -1,9 +1,9 @@
 {
   "id": "research.method",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "source": "Owner 16 Nov 2026: \"make sure HB knows how to do research properly\" (SAP payroll research, Practice 98)",
   "steps": [
-    "Knowledge Centre first: knowledge_search with the exact terms (note number, component such as PY-AU, wage type, report, table, legal change), then knowledge_read the best 2-5 sources. Do not answer from memory when the KC can answer.",
+    "Knowledge Centre first: knowledge_search with the exact terms (note number, component such as PY-AU-STP, wage type, report, table, legal change). Each match line already says what the note is about (after ' | '), so answer from the search results; knowledge_read only the 2-3 notes you need in detail, ALL in one round (several knowledge_read calls in one tool_calls list) - tool rounds are limited. Do not answer from memory when the KC can answer.",
     "Cover the topic: search at least twice with different wordings (the short form and the long form, e.g. \"STP2\" and \"Single Touch Payroll Phase 2\"); when a search says more documents match, search again with narrower words. List EVERY matching note (number and title), even the ones you do not read in full.",
     "Follow the links between notes: when a note says it depends on, fixes or was broken by another note, name that note too (e.g. 3710504 fixes an error caused by 3660828).",
     "Read before you write: say only what the sources say, and cite each point as KC<id> or SAP Note <number> (version, release date).",
@@ -12,6 +12,7 @@
     "Keep what the sources say apart from your own inference, and label the inference.",
     "Online only when the KC has nothing and it is allowed: public pages only; never ask for or use anyone's credentials.",
     "End with the answer in 2-5 lines, the sources, and what is still unknown and how to find it out.",
-    "Never say there is nothing more after one search: say how many searches you ran and which notes you did not read."
+    "Never say there is nothing more after one search: say how many searches you ran and which notes you did not read.",
+    "For every note say in one line what goes wrong, what the note changes and how it bears on the question - write the answer before the tool rounds run out."
   ]
 }
