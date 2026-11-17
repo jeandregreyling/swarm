@@ -64,6 +64,26 @@ def _query_words(query, limit=8):
     return seen[:limit]
 
 
+FIT_CHARS = 7000   # Practice 130: APEX's tool output stops at 8,000 characters (core/apex_tools.MAX_OUTPUT)
+
+
+def _fit(result):
+    """Practice 130 (owner 17 Nov 2026): a 12-result search was ~12,100 characters, and APEX's tool output stops at 8,000 - so STP2 notes
+    3643537, 3672928, 3691403 and 3749998 never reached it, and it answered "all relevant notes are present". Every result's title now
+    comes first in 'matches', and the excerpts shrink until the whole result fits."""
+    import json as _json
+    items = result.get('items') or []
+    if items:
+        result = {**{k: result[k] for k in ('status', 'source', 'query') if k in result},
+                  'matches': [str(i.get('title') or '')[:140] for i in items],
+                  **{k: v for k, v in result.items() if k not in ('status', 'source', 'query')}}
+    size = 400
+    while len(_json.dumps(result)) > FIT_CHARS and size >= 50:
+        result['items'] = [{**i, 'excerpt': str(i.get('excerpt') or '')[:size]} for i in items]
+        size //= 2
+    return result
+
+
 def search(query):
     if not isinstance(query, str) or not 2 <= len(query.strip()) <= 200:
         raise ValueError('Knowledge query must contain 2-200 characters')
@@ -145,10 +165,10 @@ def search(query):
             items=catalogue_search(query)
     if any(confidential(i.get('tags')) for i in items) and online_reader():
         items=[i for i in items if not confidential(i.get('tags'))]      # owner 15 Nov: confidential sources never reach an online agent
-    return {'status':'found' if items else 'not_found','source':'knowledge_library_and_project_docs',
+    return _fit({'status':'found' if items else 'not_found','source':'knowledge_library_and_project_docs',
             'query':query,'items':items[:12],'notice':NOTICE,
             **({'more_matches':True,'more_hint':'More documents match than are listed: search again with other or narrower words '
-                'and list every matching note.'} if more_matches else {})}
+                'and list every matching note.'} if more_matches else {})})
 
 
 def read(document_id, offset=0):

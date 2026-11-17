@@ -900,6 +900,62 @@ REPEAT_ERROR = ("BACKEND REPEAT CHECK: your answer was not delivered. It is word
                 "itself. If you cannot do what it asks, say in one or two plain sentences what stops you and what you will do next.")
 
 
+# Practice 130 (owner 17 Nov 2026): "it needs to learn how to do research properly". After Practice 128 APEX searched three times, but
+# two were the same words ("STP Phase 2 Australian payroll [SAP Note]") and the third looked up one note; it listed 6 of 13 STP2 notes
+# and said "all relevant notes are present". HB now counts only clearly different wordings, and checks the answer covers every note
+# on the topic that the searches returned (topic = the question's acronyms, e.g. STP, matching STP2 / STP-2 in note titles).
+_ACRONYM_SKIP = {'SAP', 'HB', 'KC', 'APEX', 'AI', 'OK', 'ID', 'JD'}
+_QUERY_FILLER = {'sap', 'note', 'notes', 'the', 'and', 'of', 'in', 'for', 'a', 'an', 'on', 'about'}
+
+
+def _topic_terms(question):
+    return sorted({a for a in re.findall(r'\b([A-Z]{2,6})(?:[- ]?\d)?\b', str(question or '')) if a not in _ACRONYM_SKIP})
+
+
+def _search_results(receipts):
+    """(query, [(note, title)]) for each successful knowledge_search this turn - read from the output text, so a cut-off one counts too."""
+    out = []
+    for r in receipts:
+        if r.get('tool') != 'knowledge_search' or r.get('status') != 'succeeded':
+            continue
+        q = str((r.get('arguments') or {}).get('query') or '')
+        out.append((q, re.findall(r'"SAP Note (\d{6,8}): ([^"]*)"', str(r.get('output') or ''))))
+    return out
+
+
+def _query_words(q):
+    return {w for w in re.findall(r'[a-z0-9]+', str(q).lower()) if w not in _QUERY_FILLER}
+
+
+def distinct_topic_searches(receipts) -> int:
+    """Searches with clearly different wordings; a lookup of one note number does not count."""
+    kept = []
+    for q, _titles in _search_results(receipts):
+        w = _query_words(q)
+        if not w or re.fullmatch(r'\s*(sap\s+)?note\s+\d{6,8}\s*', q, re.I):
+            continue
+        if all(len(w & k) / len(w | k) < 0.6 for k in kept):
+            kept.append(w)
+    return len(kept)
+
+
+def notes_left_out(question, answer, receipts) -> list:
+    """SAP notes on the question's topic that this turn's searches returned but the answer does not mention."""
+    terms = _topic_terms(question)
+    if not terms:
+        return []
+    said = set(re.findall(r'\d{6,8}', str(answer or '')))
+    seen, out = set(), []
+    for _q, titles in _search_results(receipts):
+        for n, title in titles:
+            if n in seen or n in said:
+                continue
+            seen.add(n)
+            if any(re.search(r'\b' + t + r'(?:\b|[- ]?\d)', title) for t in terms):
+                out.append(f'{n} ({title.split(" - ", 1)[-1][:70]})')
+    return out
+
+
 # Practice 128 (owner 17 Nov 2026): APEX's second STP2 answer searched ONCE although the research method asks for two wordings, and it
 # called SAP Note 3708034 "truncated" (suggesting /notes add) and said nothing covered 3713787 - both are in the Knowledge Centre.
 # Telling the local model again does not make it obey; HB checks the answer like it checks coding promises.
@@ -1230,6 +1286,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     repeat_retry_used = False
     research_retry_used = False         # Practice 128
     kc_retry_used = False
+    coverage_retry_used = False         # Practice 130
     duplicate_read_retries = set()
     # Owner 16 Nov 2026: APEX told JD "I'm unable to call archive_status because it isn't an available tool" while it worked on a
     # SAP notes step. SAP notes are not model-archive files, and HB's own continuation (a JSON instruction that says "Continue")
@@ -1251,7 +1308,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         nonlocal search_retry_used
         nonlocal permission_retry_used
         nonlocal inventory_retry_used
-        nonlocal research_retry_used, kc_retry_used
+        nonlocal research_retry_used, kc_retry_used, coverage_retry_used
         original = answer
 
         def correct(content):
@@ -1313,11 +1370,15 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             return None
         # Practice 128: a research answer after ONE search goes back for a second wording; a note called missing that the KC holds gets read.
         searches = sum(1 for r in receipts if r.get('tool') == 'knowledge_search' and r.get('status') == 'succeeded')
-        if not no_tools and can_retry and not research_retry_used and searches == 1 and research_question(latest_user):
+        # Practice 130: the second search must be a clearly different wording - the same words again do not count.
+        if (not no_tools and can_retry and not research_retry_used and searches >= 1 and distinct_topic_searches(receipts) < 2
+                and research_question(latest_user)):
             research_retry_used = True
-            correct("BACKEND RESEARCH CHECK: your answer was not delivered. You searched the Knowledge Centre once. Search again with a "
-                    "different wording (the long form, a synonym or the component - e.g. 'Single Touch Payroll Phase 2' after 'STP2'), read "
-                    "the notes you have not read, then answer listing every matching note with its number and title.")
+            used = '; '.join(sorted({q for q, _t in _search_results(receipts) if q}))[:200]
+            correct("BACKEND RESEARCH CHECK: your answer was not delivered. You searched the Knowledge Centre with one wording only ("
+                    + used + "). Search again with clearly different words: the short form the notes use in their titles (e.g. 'STP2'), "
+                    "the long form (e.g. 'Single Touch Payroll Phase 2'), a synonym or the component. Read the notes you have not read, "
+                    "then answer listing every matching note with its number and title.")
             return None
         held = kc_notes_claimed_missing(answer) if research_question(latest_user) else []
         if held and not no_tools and can_retry and not kc_retry_used:
@@ -1325,6 +1386,14 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             correct("BACKEND KC CHECK: your answer was not delivered. It calls SAP Note(s) " + ', '.join(held) + " missing, truncated or "
                     "still to be fetched, but the Knowledge Centre holds them. knowledge_search 'SAP Note <number>' and knowledge_read each one, "
                     "then answer again from what they say.")
+            return None
+        # Practice 130: every note on the topic that the searches returned is in the answer.
+        left = notes_left_out(latest_user, answer, receipts) if research_question(latest_user) else []
+        if left and not no_tools and can_retry and not coverage_retry_used:
+            coverage_retry_used = True
+            correct("BACKEND COVERAGE CHECK: your answer was not delivered. Your searches returned these notes on the topic that your answer "
+                    "leaves out: " + '; '.join(left[:15]) + ". Include every one (number, title and what it fixes - knowledge_read it if "
+                    "the excerpt is not enough), and never say nothing is missing unless you listed them all.")
             return None
         # 13 Nov (B59): "I will now update the test file" slipped past the old verb list; and when the reads used up
         # every round, the promise went out as the answer. Now: wider verbs, and an unkept promise is marked.
