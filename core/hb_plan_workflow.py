@@ -68,7 +68,11 @@ def auto_accept_for(conn, task):
         return False
     ensure_schema(conn)
     row = conn.execute('SELECT 1 FROM hb_plan_workflow WHERE enabled=1 AND auto_accept=1 AND task_id=?', (task['task_id'],)).fetchone()
-    return bool(row)
+    if row:
+        return True
+    lane = _lane_project(conn, task['task_id']) if _has(conn, 'hb_task_events') else None     # Practice 134: the CPU lane too
+    return bool(lane and conn.execute('SELECT 1 FROM hb_plan_workflow WHERE enabled=1 AND auto_accept=1 AND project_id=?',
+                                      (lane,)).fetchone())
 
 
 def set_auto_accept(conn, on, actor, project_id=DEFAULT_PROJECT):
@@ -471,6 +475,48 @@ def sync_step_dependencies(conn):
     return added
 
 
+# Practice 134 (owner 17 Nov 2026: "Apex and Fred can work at the same time on different things"). The plan ran one step at a time, so while
+# Fred (CPU) worked a stuck step for 20+ minutes, APEX (GPU) sat idle and the next steps waited. A step Fred has taken over now moves to
+# the plan's CPU lane: the task manager keeps driving it (steps() skips it as "already in progress with HB"), the plan starts the next
+# ready step on APEX, auto-approve still covers the lane step, and its restart is queued when it is done.
+def _with_fred(conn, task):
+    if not _has(conn, 'hb_peer_work'):
+        return False
+    return bool(conn.execute("SELECT 1 FROM hb_task_events e JOIN hb_peer_work w ON w.request_id=e.request_id WHERE e.task_id=? "
+                             "AND e.kind='fred_turn' AND w.state IN ('queued','running')", (task['task_id'],)).fetchone())
+
+
+def _lane_project(conn, task_id):
+    row = conn.execute("SELECT json_extract(payload,'$.project_id') FROM hb_task_events WHERE task_id=? AND kind='workflow_lane' "
+                       "ORDER BY event_id DESC LIMIT 1", (task_id,)).fetchone()
+    return row[0] if row else None
+
+
+def _to_cpu_lane(conn, w, task, now):
+    from core.hb_plain import message, step_name
+    hb_tasks.event(conn, task, 'hummingbird', 'workflow_lane', {'project_id': w['project_id'], 'lane': 'cpu'})
+    hb_tasks.event(conn, task, 'hummingbird', 'workflow_left', {'project_id': w['project_id'], 'why': 'Fred works it on the CPU'})
+    _post(conn, task, message(f"🧵 Fred keeps working on {step_name(conn, task['step_id'], task.get('title'))} on the CPU; "
+                              "APEX starts the next step on the GPU at the same time.", details=[f"step {task['step_id']}"]))
+    _update(conn, w['project_id'], task_id=None, step_id=None, stage='idle', request_id=None, note=f"{task['step_id']} with Fred (CPU lane)")
+
+
+def _close_lanes(conn):
+    """A CPU-lane step that is done gets its restart queued, like the plan's own step."""
+    if not _has(conn, 'hb_task_events'):
+        return
+    for (tid,) in conn.execute("SELECT DISTINCT e.task_id FROM hb_task_events e WHERE e.kind='workflow_lane' AND NOT EXISTS "
+                               "(SELECT 1 FROM hb_task_events c WHERE c.task_id=e.task_id AND c.kind='workflow_lane_closed' "
+                               "AND c.event_id>e.event_id)").fetchall():
+        task = hb_tasks.get(conn, tid)
+        step = conn.execute('SELECT status FROM project_steps WHERE step_id=?', (task['step_id'],)).fetchone() if task else None
+        if not task or not step or not (step[0] in ('done', 'skipped') or task['state'] in ('completed', 'cancelled')):
+            continue
+        if step[0] == 'done':
+            restart_after(conn, task)
+        hb_tasks.event(conn, task, 'hummingbird', 'workflow_lane_closed', {'status': step[0]})
+
+
 def tick(conn, now=None):
     """Coordinator tick: keep exactly one step of each enabled plan moving. Returns the texts HB posted."""
     if not _has(conn, 'hb_plan_workflow') or not _has(conn, 'hb_tasks'):
@@ -483,6 +529,10 @@ def tick(conn, now=None):
         pass
     try:
         restart_tick(conn, now)
+    except Exception:
+        pass
+    try:
+        _close_lanes(conn)                     # Practice 134
     except Exception:
         pass
     cur = conn.execute('SELECT * FROM hb_plan_workflow WHERE enabled=1')
@@ -510,7 +560,11 @@ def tick(conn, now=None):
                                  "phase=CASE WHEN phase='review' THEN 'execute' ELSE phase END, detail=?, updated_at=? WHERE task_id=?",
                                  (now, 'Workflow is running it', now, task['task_id']))
                     hb_tasks.event(conn, task, 'hummingbird', 'workflow_resumed', {'why': 'its task manager row was parked'})
-                continue                                  # one step at a time: the owner or the task manager has it
+                if not (w['stage'] == 'running' and _with_fred(conn, task)):
+                    continue                              # one step at a time on APEX: the owner or the task manager has it
+                _to_cpu_lane(conn, w, task, now)          # Practice 134: Fred has it on the CPU; APEX takes the next step
+                w.update(task_id=None, stage='idle')
+                task = None
         if task:
             why = 'is finished' if finished else 'is held by you (Continue off), so the workflow moves on'
             if finished and step and step[0] == 'done':
