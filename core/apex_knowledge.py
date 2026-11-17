@@ -67,6 +67,19 @@ def _query_words(query, limit=8):
 FIT_CHARS = 7000   # Practice 130: APEX's tool output stops at 8,000 characters (core/apex_tools.MAX_OUTPUT)
 
 
+def _match_line(item):
+    """Practice 145 (owner 17 Nov 2026, "keep going ... till it's right"): the document ids sat in a separate 'items' list and APEX guessed
+    instead (12345, then 1099511634790/791/792 for SAP Note 3749754 - real id 1099511634413), read SAP HANA notes, ran out of rounds and
+    said 3749754 was not in the KC. Each match line now carries the id to read it with."""
+    import re as _re
+    title = str(item.get('title') or '')[:140]
+    doc = item.get('document_id')
+    if doc:
+        m = _re.match(r'(SAP Note \d{6,8}: )(.*)', title, _re.S)
+        title = (m.group(1) + f'[document_id {doc}] ' + m.group(2)) if m else f'[document_id {doc}] ' + title
+    return title + (' | ' + str(item['summary']) if item.get('summary') else '')
+
+
 def _fit(result):
     """Practice 130 (owner 17 Nov 2026): a 12-result search was ~12,100 characters, and APEX's tool output stops at 8,000 - so STP2 notes
     3643537, 3672928, 3691403 and 3749998 never reached it, and it answered "all relevant notes are present". Every result's title now
@@ -75,7 +88,7 @@ def _fit(result):
     items = result.get('items') or []
     if items:
         result = {**{k: result[k] for k in ('status', 'source', 'query') if k in result},
-                  'matches': [str(i.get('title') or '')[:140] + (' | ' + str(i['summary']) if i.get('summary') else '') for i in items],
+                  'matches': [_match_line(i) for i in items],
                   **{k: v for k, v in result.items() if k not in ('status', 'source', 'query')}}
         # Practice 136: a summarised note says what it is about in 'matches'; its item keeps only what knowledge_read needs
         items = [{k: i[k] for k in ('document_id', 'source_ref') if k in i} if i.get('summary') else i for i in items]

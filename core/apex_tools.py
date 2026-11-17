@@ -921,7 +921,8 @@ def _search_results(receipts):
         if r.get('tool') != 'knowledge_search' or r.get('status') != 'succeeded':
             continue
         q = str((r.get('arguments') or {}).get('query') or '')
-        out.append((q, re.findall(r'"SAP Note (\d{6,8}): ([^"]*)"', str(r.get('output') or ''))))
+        out.append((q, [(n, _DOC_PREFIX.sub('', title)) for n, title in
+                        re.findall(r'"SAP Note (\d{6,8}): ([^"]*)"', str(r.get('output') or ''))]))   # Practice 145: id prefix off
     return out
 
 
@@ -954,8 +955,25 @@ def notes_left_out(question, answer, receipts) -> list:
                 continue
             seen.add(n)
             if any(re.search(r'\b' + t + r'(?:\b|[- ]?\d)', title) for t in terms):
-                out.append(f'{n} ({title.split(" - ", 1)[-1][:70]})')
+                doc = note_ids(receipts).get(n)   # Practice 145: say which id to read it with
+                out.append(f'{n}' + (f' [document_id {doc}]' if doc else '') + f' ({title.split(" - ", 1)[-1][:70]})')
     return out
+
+
+_DOC_PREFIX = re.compile(r'^\[document_id \d+\]\s*')
+
+
+def note_ids(receipts) -> dict:
+    """Practice 145: SAP note number -> document_id, from this turn's search results."""
+    ids = {}
+    for r in receipts:
+        if r.get('tool') == 'knowledge_search' and r.get('status') == 'succeeded':
+            out = str(r.get('output') or '')
+            for n, d in re.findall(r'"SAP Note (\d{6,8}): \[document_id (\d+)\]', out):
+                ids.setdefault(n, int(d))
+            for d, n in re.findall(r'"document_id": (\d+), "source_ref": "sap://note/(\d+)"', out):
+                ids.setdefault(n, int(d))
+    return ids
 
 
 def titles_only(answer, receipts) -> bool:
@@ -999,6 +1017,7 @@ def research_digest(receipts) -> str:
         if r.get('status') != 'succeeded' or r.get('tool') not in ('knowledge_search', 'knowledge_read'):
             continue
         for n, title in re.findall(r'"SAP Note (\d{6,8}): ([^"]*)"', str(r.get('output') or '')):
+            title = _DOC_PREFIX.sub('', title)
             if n in seen:
                 continue
             seen.add(n)
@@ -1850,6 +1869,12 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         f"REPEATED CALL: receipt {earlier['id']} already rejected this exact call this turn "
                         f"({str(earlier.get('output', ''))[:300]}). Repeating it cannot succeed: change the "
                         "arguments as that error says, or answer from your receipts.")
+                # Practice 145: a research turn's first round read document 12345 before any search; later it guessed 1099511634790-792.
+                if (call["name"] == "knowledge_read" and research_question(latest_user)
+                        and str(call["arguments"].get("document_id")) not in seen_before_batch):
+                    raise ValueError(
+                        f"GUESS: document_id {call['arguments'].get('document_id')} appears in no search result or message this turn. "
+                        "knowledge_search first, then read with the [document_id N] shown on that note's match line.")
                 if is_test:
                     from core.apex_test_runner import NOT_RUN
                     guessed = guessed_test_keyword(call["arguments"], seen_before_batch)
