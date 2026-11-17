@@ -370,6 +370,21 @@ def packet(conn, task, limit=10000):
         if plan:result['execution_plan']={'evidence_id':plan[0],'tool':'task_evidence','offset':0}
     while len(json.dumps(result)) > limit and events:
         events.pop()
+    # Practice 139 (owner 17 Nov 2026): "Chat with JD" pinned every owner message word for word, including a 548 KB pasted email,
+    # so every later chat turn failed here before APEX ran ("it's not doing anything after I just asked about MCB Cap").
+    # The current instruction stays exact; older owner messages, largest first, become references APEX can still read.
+    for item in sorted(instructions[:-1], key=lambda i: -len(str(i.get('content') or ''))):
+        if len(json.dumps(result)) <= limit:
+            break
+        if 'content' not in item:
+            continue
+        original = item.pop('content')
+        evidence = conn.execute("SELECT event_id FROM hb_task_events WHERE task_id=? AND message_id=? AND kind='instruction' ORDER BY event_id LIMIT 1",
+                                (task['task_id'], item['message_id'])).fetchone()
+        item['reference'] = {'bytes': len(original.encode()), 'sha256': hashlib.sha256(original.encode()).hexdigest(),
+                             'preview': original[:160],
+                             'read': {'tool': 'task_evidence', 'arguments': {'evidence_id': evidence[0], 'offset': 0}} if evidence
+                             else {'message_id': item['message_id']}}
     if len(json.dumps(result)) > limit:
         raise ValueError('Pinned task instructions exceed the context budget; narrow the task explicitly')
     return result
