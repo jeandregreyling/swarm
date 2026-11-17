@@ -956,7 +956,8 @@ def notes_left_out(question, answer, receipts) -> list:
             seen.add(n)
             # Practice 148: the title only - with Practice 147's passages ('says: Daily MCB ... EUR') the Spanish SI note 3800283
             # matched 'MCB' and HB made APEX include it; 3713786, which defines the Australian MCB, then dropped out.
-            if any(re.search(r'\b' + t + r'(?:\b|[- ]?\d)', title.split(' | ')[0]) for t in terms):
+            if (any(re.search(r'\b' + t + r'(?:\b|[- ]?\d)', title.split(' | ')[0]) for t in terms)
+                    or n in topic_family(receipts, terms)):   # Practice 150: PY-AU-STP's 3700339 etc. have no 'STP' in the title
                 doc = note_ids(receipts).get(n)   # Practice 145: say which id to read it with
                 out.append(f'{n}' + (f' [document_id {doc}]' if doc else '') + f' ({title.split(" - ", 1)[-1][:70]})')
     return out
@@ -1134,6 +1135,48 @@ def notes_to_read(answer, receipts, limit=4) -> list:   # Practice 148: 4
 def cited_unread(answer, receipts) -> list:
     """Practice 143: SAP notes the answer cites that this turn's searches found but no knowledge_read opened."""
     return [n for n, _d in notes_to_read(answer, receipts, limit=50) if n in set(_NOTE_NUM.findall(str(answer or '')))]
+
+
+def topic_family(receipts, terms) -> set:
+    """Practice 150: note numbers of a component family whose name carries a topic term (PY-AU-STP for 'STP')."""
+    out = set()
+    for r in receipts:
+        if r.get('tool') != 'knowledge_search' or r.get('status') != 'succeeded':
+            continue
+        try:
+            fams = json.loads(str(r.get('output') or '{}')).get('families') or []
+        except (ValueError, AttributeError):
+            continue
+        for f in fams:
+            comp = str(f.get('component') or '')
+            if any(re.search(r'\b' + re.escape(t) + r'\b', comp, re.I) for t in terms):
+                out.update(re.findall(r'SAP Note (\d{6,8})', ' '.join(map(str, f.get('notes') or []))))
+    return out
+
+
+_NOTHING_MORE = re.compile(r"no (?:additional|other|further|more) (?:sap )?notes?|all (?:the )?(?:three |four )?(?:relevant|requested|matching)"
+                           r"(?: sap)? notes|(?:no|nothing) (?:further )?(?:parts?|pending|tasks?|action)\b[^.]*\b(?:remain|required|needed)|"
+                           r"nothing (?:else )?(?:is )?(?:missing|unfinished)|are the relevant .{0,40}identified", re.I)
+
+
+def drop_nothing_more(answer) -> str:
+    """Practice 150: sentences claiming there is nothing more, removed when HB adds the notes the answer left out."""
+    out = []
+    for line in str(answer or '').split('\n'):
+        parts = re.split(r'(?<=[^\d\s][.!?])\s+', line)   # not after '1.'
+        kept = [p for p in parts if not _NOTHING_MORE.search(p)]
+        if kept or not line.strip():
+            out.append(' '.join(kept))
+    return '\n'.join(out).rstrip()
+
+
+def not_checked_line(question, answer) -> str:
+    asks = re.search(r"could ?n[o']t find|did ?n[o']t find|(?:could|can) not find|not able to find|what (?:is|was) missing", str(question or ''), re.I)
+    says = re.search(r"could ?n[o']t|not find|not found|not covered|does not cover|do not cover|not in the (?:kc|knowledge)", str(answer or ''), re.I)
+    if not asks or says:
+        return ''
+    return ('\n\n**Not checked** (HB): the notes under *Also on this topic* were not read this turn - their lines are the search '
+            'summaries, so anything beyond that is unconfirmed.')
 
 
 def coverage_appendix(question, answer, receipts) -> str:
@@ -1572,7 +1615,11 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         # Practice 149 (owner 17 Nov 2026): after the one coverage retry the STP2 answer still left out 3713787, 3749998 and 3735245.
         # The local model does not reliably list everything, so HB adds what its searches found on the topic.
         if left and coverage_retry_used:
-            answer += coverage_appendix(latest_user, answer, receipts)
+            # Practice 150: the answer's own "no additional notes" contradicts the list HB adds, so it goes; and when the owner asked
+            # what could not be found and the answer does not say, HB says which notes were only summarised.
+            extra = coverage_appendix(latest_user, answer, receipts)
+            if extra:
+                answer = drop_nothing_more(answer) + extra + not_checked_line(latest_user, answer)
         # Practice 136: the question asks what the notes say - an answer of titles only goes back once (no tool needed).
         if (research_question(latest_user) and not no_tools and (can_retry or can_fix) and not content_retry_used
                 and titles_only(answer, receipts)):
