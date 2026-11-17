@@ -177,6 +177,43 @@ def api_chat_terminal_allow():
     return jsonify(out), (200 if out.get('ok') else 400)
 
 
+@shell_bp.route('/api/network', methods=['GET'])
+def api_network_status():
+    """Practice 132: main chat's network bar (core/hb_network.status). Owner only."""
+    if not _chat_terminal_owner():
+        return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+    from core import hb_network
+    conn = get_connection()
+    try:
+        out = hb_network.status(conn, wifi=request.args.get('wifi') == '1')
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify(out)
+
+
+@shell_bp.route('/api/network/action', methods=['POST'])
+def api_network_action():
+    """Practice 132: JD's click - use / bench / mobile / connect / disconnect, the same as /net in the chat."""
+    user = _chat_terminal_owner()
+    if not user:
+        return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+    body = request.get_json() or {}
+    name = str(body.get('name') or '')[:80]
+    args = {'use': ['use', name], 'bench': ['bench', name], 'connect': ['connect', name], 'disconnect': ['disconnect', name],
+            'mobile': ['mobile', name, 'on' if body.get('on') else 'off']}.get(body.get('action'))
+    if not args or not name:
+        return jsonify({'ok': False, 'error': 'Unknown network action'}), 400
+    from core import hb_network
+    conn = get_connection()
+    try:
+        said = hb_network.command(conn, args, user['username'])
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({'ok': True, 'text': said})
+
+
 @shell_bp.route('/api/chat-terminal/stop', methods=['POST'])
 def api_chat_terminal_stop():
     if not _chat_terminal_owner():

@@ -12,8 +12,7 @@ from pathlib import Path
 MAIN_CHAT = 2834
 STALL_S = 600
 STEPS = (25, 50, 75, 100)
-CONNECTION_WORDS = {'enp5s0': 'home line (Orbi)', 'wlo1': 'Samsung hotspot S9FE (mobile data)',
-                    'enx92eaa5a7a96e': 'tablet USB tethering (mobile data)'}
+CONNECTION_WORDS = {'enp5s0': 'home line (Orbi)', 'enx92eaa5a7a96e': 'tablet USB tethering (mobile data)'}
 
 
 def connection(interface):
@@ -23,6 +22,14 @@ def connection(interface):
         return CONNECTION_WORDS[interface]
     if str(interface or '').startswith('enx'):
         return 'tablet USB tethering (mobile data)'
+    if str(interface or '').startswith('wl'):   # Practice 132: the Wi-Fi card is on whatever network it joined (ORBI16 now, not S9FE)
+        try:
+            from core.hb_network import networks, MOBILE_NETWORKS
+            net = networks().get(interface)
+        except Exception:
+            net = None
+        if net:
+            return f'{net} Wi-Fi' + (' (Samsung hotspot, mobile data)' if net in MOBILE_NETWORKS else '')
     return interface or 'default connection'
 
 
