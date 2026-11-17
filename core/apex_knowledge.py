@@ -90,6 +90,7 @@ def search(query):
     query=query.strip()
     items=[]
     more_matches=False
+    families=[]
     with closing(get_connection()) as conn:
         tables=_tables(conn)
         if 'knowledge_sources' in tables:
@@ -150,6 +151,11 @@ def search(query):
                 if row[5] in ('hb-chat','hb-task'):
                     item['kind']='hb chat transcript' if row[5]=='hb-chat' else 'hb task record'
                 items.append(item)
+            # Practice 131 (owner 17 Nov 2026): the SAP notes are indexed (core/hb_note_index): ranked matches come first, and a
+            # component the top notes share is listed whole (all 14 PY-AU-STP notes, three of them without "STP2" in the title).
+            if 'hb_note_fts' in tables and not hb_reference:
+                from core import hb_note_index
+                items,families=hb_note_index.rank(conn,query,items,LIBRARY_ID)
         if 'project_docs' in tables:
             rows=conn.execute('''SELECT id,doc_name,substr(content,1,650),tags FROM project_docs
                 WHERE instr(lower(doc_name),lower(?))>0 OR instr(lower(content),lower(?))>0
@@ -166,7 +172,7 @@ def search(query):
     if any(confidential(i.get('tags')) for i in items) and online_reader():
         items=[i for i in items if not confidential(i.get('tags'))]      # owner 15 Nov: confidential sources never reach an online agent
     return _fit({'status':'found' if items else 'not_found','source':'knowledge_library_and_project_docs',
-            'query':query,'items':items[:12],'notice':NOTICE,
+            'query':query,**({'families':families} if families else {}),'items':items[:12],'notice':NOTICE,
             **({'more_matches':True,'more_hint':'More documents match than are listed: search again with other or narrower words '
                 'and list every matching note.'} if more_matches else {})})
 

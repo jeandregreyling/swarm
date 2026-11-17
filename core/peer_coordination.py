@@ -187,6 +187,13 @@ def start():
                         except Exception:
                             LOG.exception('DOES KC indexing failed')
                         conn.commit()
+                        try:  # Practice 131: SAP notes indexed (component, Other Terms, Symptom; FTS5) - new or changed notes
+                            from core.hb_note_index import refresh as notes_refresh
+                            with conn:
+                                notes_refresh(conn)
+                        except Exception:
+                            LOG.exception('SAP note indexing failed')
+                        conn.commit()
                         try:  # B38: HB manages its own model servers (duplicates, idle, GPU pressure) once a minute
                             from core.hb_hardware import housekeeping_tick
                             housekeeping_tick()
