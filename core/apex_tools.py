@@ -956,6 +956,29 @@ def notes_left_out(question, answer, receipts) -> list:
     return out
 
 
+def titles_only(answer, receipts) -> bool:
+    """Practice 136: a research answer whose note lines are just number + title (+ receipt / "not yet read") says nothing about what the
+    notes say - the 17 Nov STP2 answer listed 15 notes that way."""
+    norm = lambda s: re.sub(r'[‐‑‒–—]', '-', str(s)).lower()
+    titles = {}
+    for _q, found in _search_results(receipts):
+        for n, title in found:
+            titles.setdefault(n, norm(re.sub(r'^\d+\s*-\s*', '', title.split(' | ')[0])))
+    lines = [l for l in str(answer or '').splitlines() if re.search(r'\b\d{6,8}\b', l)]
+    if len(lines) < 3:
+        return False
+    bare = 0
+    for line in lines:
+        s = norm(re.sub(r'\([^)]*\)', ' ', line))
+        for n in re.findall(r'\b\d{6,8}\b', line):
+            if titles.get(n):
+                s = s.replace(titles[n], ' ').replace(titles[n][:60], ' ')
+        s = re.sub(r'\b(sap|note|notes)\b|\b\d{6,8}\b', ' ', s)
+        if len(re.findall(r'[a-z]{2,}', s)) < 6:
+            bare += 1
+    return bare >= 0.6 * len(lines)
+
+
 # Practice 128 (owner 17 Nov 2026): APEX's second STP2 answer searched ONCE although the research method asks for two wordings, and it
 # called SAP Note 3708034 "truncated" (suggesting /notes add) and said nothing covered 3713787 - both are in the Knowledge Centre.
 # Telling the local model again does not make it obey; HB checks the answer like it checks coding promises.
@@ -1287,6 +1310,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     research_retry_used = False         # Practice 128
     kc_retry_used = False
     coverage_retry_used = False         # Practice 130
+    content_retry_used = False          # Practice 136
     duplicate_read_retries = set()
     # Owner 16 Nov 2026: APEX told JD "I'm unable to call archive_status because it isn't an available tool" while it worked on a
     # SAP notes step. SAP notes are not model-archive files, and HB's own continuation (a JSON instruction that says "Continue")
@@ -1308,7 +1332,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         nonlocal search_retry_used
         nonlocal permission_retry_used
         nonlocal inventory_retry_used
-        nonlocal research_retry_used, kc_retry_used, coverage_retry_used
+        nonlocal research_retry_used, kc_retry_used, coverage_retry_used, content_retry_used
         original = answer
 
         def correct(content):
@@ -1397,6 +1421,15 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "leaves out: " + '; '.join(left[:15]) + ". Include every one (number, title and what it fixes - knowledge_read it if "
                     "the excerpt is not enough), and never say nothing is missing unless you listed them all."
                     + ("" if can_retry else " Answer now without tools: the titles above are enough."))
+            return None
+        # Practice 136: the question asks what the notes say - an answer of titles only goes back once (no tool needed).
+        if (research_question(latest_user) and not no_tools and (can_retry or can_fix) and not content_retry_used
+                and titles_only(answer, receipts)):
+            content_retry_used = True
+            correct("BACKEND CONTENT CHECK: your answer was not delivered. The question asks what the notes say, but your answer lists "
+                    "titles only. For every note give one line: what goes wrong and what the note changes. Each search result's 'matches' "
+                    "line already carries that after ' | '; knowledge_read a note only when you need more."
+                    + ("" if can_retry else " Answer now without tools."))
             return None
         # 13 Nov (B59): "I will now update the test file" slipped past the old verb list; and when the reads used up
         # every round, the promise went out as the answer. Now: wider verbs, and an unkept promise is marked.

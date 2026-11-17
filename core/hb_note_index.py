@@ -116,6 +116,16 @@ def families(conn, components):
     return out
 
 
+def brief(symptom, limit=160):
+    """Practice 136 (owner 17 Nov 2026): one line on what goes wrong - the first sentence of the note's Symptom. APEX's STP2 answer listed
+    15 notes by title only and read 5 of them one per round before its rounds ran out; with this line in every search result it can say
+    what each note is about from one search, and read a note only for detail."""
+    s = ' '.join(str(symptom or '').split())
+    m = re.match(r'(.{20,}?[.!?])(\s|$)', s)
+    out = m.group(1) if m else s
+    return out[:limit - 3] + '...' if len(out) > limit else out
+
+
 def rank(conn, query, items, library_id, limit=12):
     """Put the index's ranked notes first in a knowledge_search result, and the families they share. Returns (items, families)."""
     hits = search(conn, query, limit)
@@ -126,5 +136,8 @@ def rank(conn, query, items, library_id, limit=12):
     ranked = [have.get(h['source_id']) or {'document_id': library_id + h['source_id'], 'source_id': h['source_id'], 'title': h['title'],
                                            'excerpt': (h['symptom'] or '')[:650], 'tags': h['tags'],
                                            'source_ref': f"sap://note/{h['note']}", 'store': 'knowledge_sources'} for h in hits]
+    for item, h in zip(ranked, hits):         # Practice 136: what each note is about, in the result itself
+        if brief(h['symptom']):
+            item['summary'] = brief(h['symptom'], 130)
     rest = [i for i in items if not (i.get('store') == 'knowledge_sources' and i.get('source_id') in ids)]
     return ranked + rest, families(conn, [h['component'] for h in hits[:8]])

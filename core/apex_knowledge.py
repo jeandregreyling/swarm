@@ -75,12 +75,18 @@ def _fit(result):
     items = result.get('items') or []
     if items:
         result = {**{k: result[k] for k in ('status', 'source', 'query') if k in result},
-                  'matches': [str(i.get('title') or '')[:140] for i in items],
+                  'matches': [str(i.get('title') or '')[:140] + (' | ' + str(i['summary']) if i.get('summary') else '') for i in items],
                   **{k: v for k, v in result.items() if k not in ('status', 'source', 'query')}}
+        # Practice 136: a summarised note says what it is about in 'matches'; its item keeps only what knowledge_read needs
+        items = [{k: i[k] for k in ('document_id', 'source_ref') if k in i} if i.get('summary') else i for i in items]
+        result['items'] = items
     size = 400
     while len(_json.dumps(result)) > FIT_CHARS and size >= 50:
-        result['items'] = [{**i, 'excerpt': str(i.get('excerpt') or '')[:size]} for i in items]
+        result['items'] = [{**i, **({'excerpt': str(i['excerpt'])[:size]} if 'excerpt' in i else {})} for i in items]
         size //= 2
+    while len(_json.dumps(result)) > FIT_CHARS and any(f.get('notes') for f in result.get('families') or []):
+        biggest = max(result['families'], key=lambda f: len(f.get('notes') or []))
+        biggest['notes'] = biggest['notes'][:-1]           # Practice 136: still too long - list fewer family notes
     return result
 
 
