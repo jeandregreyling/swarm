@@ -72,6 +72,24 @@ def _process_vram_gb(pid, proc='/proc'):
     return round(sum(by_client.values()) / 2**20, 2)
 
 
+def _process_gtt_gb(pid, proc='/proc'):
+    """Practice 133: GPU buffers of this process that live in system RAM (amdgpu GTT) - a model that no longer fits the card."""
+    by_client = {}
+    fdinfo = os.path.join(proc, str(pid), 'fdinfo')
+    try:
+        fds = os.listdir(fdinfo)
+    except OSError:
+        return 0.0
+    for fd in fds:
+        text = _read(os.path.join(fdinfo, fd), '')
+        cid = re.search(r'drm-client-id:\s*(\d+)', text)
+        kib = re.search(r'drm-memory-gtt:\s*(\d+)', text)
+        if kib:
+            key = cid.group(1) if cid else fd
+            by_client[key] = max(by_client.get(key, 0), int(kib.group(1)))
+    return round(sum(by_client.values()) / 2**20, 2)
+
+
 def model_processes(proc='/proc'):
     """Every running llama-server of any kind, with its real placement."""
     out = []
@@ -93,10 +111,11 @@ def model_processes(proc='/proc'):
         status = _read(os.path.join(proc, entry, 'status'), '')
         rss = re.search(r'VmRSS:\s*(\d+)', status)
         vram = _process_vram_gb(entry, proc)
+        spilled = _process_gtt_gb(entry, proc) if vram >= 0.1 else 0.0     # Practice 133
         out.append({'pid': int(entry), 'model': alias or (unit or f'llama-server:{port}'), 'port': int(port) if port and port.isdigit() else None,
                     'vram_gb': vram, 'ram_gb': round(int(rss.group(1)) / 2**20, 2) if rss else None,
                     'placement': 'gpu' if vram >= 0.1 else 'ram', 'kind': 'service' if unit else 'managed', 'unit': unit,
-                    'model_file': os.path.basename(opt('-m') or opt('--model') or '')[:24]})
+                    'model_file': os.path.basename(opt('-m') or opt('--model') or '')[:24], 'spilled_gb': spilled})
     return sorted(out, key=lambda item: (-item['vram_gb'], item['model']))
 
 

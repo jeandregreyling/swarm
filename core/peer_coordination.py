@@ -221,6 +221,9 @@ def start():
                             from core.hb_gpu_guard import tick as gpu_guard_tick
                             with conn:
                                 gpu_guard_tick(conn)
+                            from core.hb_gpu_guard import spill_tick   # Practice 133: model spilled out of the GPU
+                            with conn:
+                                spill_tick(conn)
                         except Exception:
                             LOG.exception('GPU guard failed')
                         try:  # Owner 14 Nov: model benchmark requests (/bench) run inside HB so main chat shows them

@@ -6,6 +6,7 @@ once per RESTART_GAP_S), proves it answers with a real test answer, says so in m
 Service and address come from the environment (HB_GPU_SERVICE, HB_GPU_URL), not from code."""
 import json
 import os
+import re
 import subprocess
 import time
 import urllib.request
@@ -72,3 +73,91 @@ def tick(conn, now=None, restart=_restart, answers=_answers, say=None):
             except Exception:
                 pass
     return text
+
+
+# Practice 133 (owner 17 Nov 2026: "keep letting apex do it, it needs to know how to use the system anyway"). APEX ran at 14 tokens/s and
+# its turns timed out: at boot llama.cpp --fit sized the window (115k tokens) to ALL free VRAM; VS Code and the desktop grew later and
+# 2.6 GB of APEX's buffers moved to system RAM (amdgpu GTT), which the card reads slowly. spill_tick(): when the model server has spilled,
+# HB raises the --fit margin (-fitt, MiB kept free) in its own drop-in (a copy of the old one is kept), restarts it while it is idle,
+# proves it answers, and says so in main chat. The window stays automatic, just smaller. One step per SPILL_GAP_S, margin capped.
+SPILL_GB = 0.5
+SPILL_GAP_S = 1800
+MARGIN_START_MIB, MARGIN_STEP_MIB, MARGIN_MAX_MIB = 1536, 512, 4096
+PORT = URL.rsplit(':', 1)[-1].strip('/')
+
+
+def dropin():
+    from pathlib import Path
+    return Path(os.environ.get('HB_GPU_DROPIN') or Path.home() / '.config/systemd/user' / f'{SERVICE}.service.d' / 'gpu-offload.conf')
+
+
+def margin(text):
+    m = re.search(r'(?:-fitt|--fit-target)\s+(\d+)', text)
+    return int(m.group(1)) if m else None
+
+
+def with_margin(text, mib):
+    """The drop-in with the --fit margin set to mib; None when it does not use --fit."""
+    if re.search(r'(?:-fitt|--fit-target)\s+\d+', text):
+        return re.sub(r'((?:-fitt|--fit-target)\s+)\d+', lambda m: m.group(1) + str(mib), text, count=1)
+    if '--fit on' not in text:
+        return None
+    return text.replace('--fit on', f'--fit on -fitt {mib}', 1)
+
+
+def _idle():
+    try:
+        with urllib.request.urlopen(URL + '/slots', timeout=3) as r:
+            return not any(s.get('is_processing') for s in json.loads(r.read()))
+    except Exception:
+        return True
+
+
+def _reload():
+    uid = os.getuid()
+    env = {**os.environ, 'XDG_RUNTIME_DIR': f'/run/user/{uid}', 'DBUS_SESSION_BUS_ADDRESS': f'unix:path=/run/user/{uid}/bus'}
+    return subprocess.run(['systemctl', '--user', 'daemon-reload'], env=env, capture_output=True, timeout=60).returncode == 0
+
+
+def spill_tick(conn, now=None, procs=None, path=None, idle=_idle, reload=_reload, restart=_restart, answers=_answers, say=None):
+    now = now or time.time()
+    conn.execute('CREATE TABLE IF NOT EXISTS hb_gpu_spill(at REAL, spilled_gb REAL, margin_from INTEGER, margin_to INTEGER, ok INTEGER)')
+    last = conn.execute('SELECT MAX(at) FROM hb_gpu_spill').fetchone()[0]
+    if last and now - last < SPILL_GAP_S:
+        return None
+    if procs is None:
+        from core.hb_hardware import model_processes
+        procs = model_processes()
+    server = next((p for p in procs if str(p.get('port')) == PORT and p.get('placement') == 'gpu'), None)
+    if not server or server.get('spilled_gb', 0) < SPILL_GB or not idle():
+        return None
+    path = path or dropin()
+    try:
+        text = path.read_text()
+    except OSError:
+        return None
+    old = margin(text)
+    new = MARGIN_START_MIB if old is None or old < MARGIN_START_MIB else min(old + MARGIN_STEP_MIB, MARGIN_MAX_MIB)
+    changed = with_margin(text, new)
+    if changed is None or new == old:
+        conn.execute('INSERT INTO hb_gpu_spill VALUES (?,?,?,?,0)', (now, server['spilled_gb'], old, old))
+        line = (f"⚠ APEX's model server has {server['spilled_gb']} GB outside the GPU (in system RAM), so it runs slowly, and HB cannot "
+                f"leave more room by itself ({'its margin is already ' + str(old) + ' MiB' if old else 'its settings do not use --fit'}). "
+                "Closing other GPU programs or a smaller model would help.")
+    else:
+        path.with_name(path.name + '.before-hb').write_text(text)
+        path.write_text(changed)
+        ok = bool(reload() and restart() and answers())
+        conn.execute('INSERT INTO hb_gpu_spill VALUES (?,?,?,?,?)', (now, server['spilled_gb'], old, new, int(ok)))
+        line = (f"↺ HB restarted APEX's model server: {server['spilled_gb']} GB of it had moved out of the GPU into system RAM (the desktop "
+                f"and VS Code took GPU memory after it started), which made APEX slow and its turns time out. It now keeps {new} MiB of GPU "
+                f"memory free{' (was ' + str(old) + ')' if old else ''}; its window stays automatic, just smaller. "
+                + ('A test answer works.' if ok else 'It does not answer yet; the ErrorDeviceLost guard keeps watching.')
+                + f' Old settings kept in {path.name}.before-hb.')
+    if say:
+        say(line)
+    else:
+        from core.hb_chat import owner_chat
+        conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                     (owner_chat(conn), line))
+    return line
