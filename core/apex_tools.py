@@ -1045,8 +1045,11 @@ def research_digest(receipts, question=None) -> str:
 # called SAP Note 3708034 "truncated" (suggesting /notes add) and said nothing covered 3713787 - both are in the Knowledge Centre.
 # Telling the local model again does not make it obey; HB checks the answer like it checks coding promises.
 _NOTE_NUM = re.compile(r'\b(\d{6,8})\b')
-_MISSING_WORDS = re.compile(r"not (?:found|in the (?:knowledge|kc)|available|retrieved|covered)|truncated|missing|"
-                            r"could ?n[o']t find|no (?:sap )?notes?|/notes add", re.I)
+# Practice 155 (owner 18 Nov 2026): the question asks "say what you could not find", so an honest answer says "missing" or "not covered"
+# next to note numbers; the old word list sent the 27B's good STP2 answer back for that, and the turn ran out. Only claims that HB does
+# not hold a note, or that it must be fetched, count now.
+_MISSING_WORDS = re.compile(r"not (?:found |held |stored )?in (?:the |our |hb'?s )?(?:knowledge|kc)|not (?:available|retrieved|fetched)|truncated|"
+                            r"/notes add|(?:needs?|has) to be fetched|fetch (?:it|the note)|could ?n[o']t be (?:retrieved|fetched|loaded)", re.I)
 
 
 def research_question(text) -> bool:
@@ -1185,6 +1188,22 @@ def not_checked_line(question, answer) -> str:
         return ''
     return ('\n\n**Not checked** (HB): the notes under *Also on this topic* were not read this turn - their lines are the search '
             'summaries, so anything beyond that is unconfirmed.')
+
+
+def last_rejected_answer(working):
+    """Practice 155: (text, check) of APEX's last substantive answer that a backend check sent back; None when there is none.
+    An answer sent back as titles only is not kept (HB's list with summaries says more)."""
+    for i in range(len(working) - 1, -1, -1):
+        m = working[i]
+        if m.get('role') != 'assistant' or not m.get('rejected_answer'):
+            continue
+        text = str(m.get('content') or '')
+        nxt = str(working[i + 1].get('content') or '') if i + 1 < len(working) else ''
+        check = (re.match(r'BACKEND ([A-Z ]+? CHECK)', nxt) or [None, ''])[1]
+        if check == 'CONTENT CHECK' or len(text) < 300 or len(set(re.findall(r'\b\d{7}\b', text))) < 2:
+            continue
+        return text, check.lower() if check else ''
+    return None
 
 
 def coverage_appendix(question, answer, receipts) -> str:
@@ -1438,6 +1457,18 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "was inspected, not that all requirements pass:\n\n" + "\n\n".join(results),
                     tokens, receipts)
         if not no_tools and research_question(latest_user):      # Practice 138: a research turn still answers
+            # Practice 155: APEX's last real answer that a check sent back beats HB's list - with HB's fixes and a word on the check.
+            kept = last_rejected_answer(working)
+            if kept:
+                text, check = kept
+                held = kc_notes_claimed_missing(text)
+                text = drop_nothing_more(text) + coverage_appendix(latest_user, text, receipts)
+                if held:
+                    text += ('\n\n**Correction** (HB): SAP Note(s) ' + ', '.join(held) + ' are in the Knowledge Centre - not read this turn, '
+                             'not missing.')
+                text += (f'\n\n_HB: this is APEX\'s last answer; its tool rounds ran out after HB\'s {check} asked for more, so that '
+                         'part was not done._' if check else '')
+                return text, tokens, receipts
             digest = research_digest(receipts, latest_user)
             if digest:
                 return digest, tokens, receipts
