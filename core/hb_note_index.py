@@ -164,9 +164,39 @@ def _raw_texts(conn, ids):
         return {}
 
 
+def _hits_for(conn, ids):
+    """Practice 147: index rows for these source ids, in this order (the shape search() returns)."""
+    if not ids:
+        return []
+    rows = conn.execute(f'''SELECT i.source_id, i.note, i.title, i.component, i.symptom, s.domain_tags FROM hb_note_index i
+        JOIN knowledge_sources s ON s.source_id = i.source_id WHERE i.source_id IN ({','.join('?' * len(ids))})''', list(ids)).fetchall()
+    by = {r[0]: dict(zip(('source_id', 'note', 'title', 'component', 'symptom', 'tags'), r)) for r in rows}
+    return [by[i] for i in ids if i in by]
+
+
+def _passage(text, limit=300):
+    """Practice 147: a note's passage closest to the question, cut at a sentence end."""
+    t = ' '.join(str(text or '').split())
+    if len(t) <= limit:
+        return t
+    cut = t[:limit]
+    end = max(cut.rfind('. '), cut.rfind('; '))
+    return (cut[:end + 1] if end > limit // 2 else cut[:limit - 3] + '...')
+
+
 def rank(conn, query, items, library_id, limit=12):
     """Put the index's ranked notes first in a knowledge_search result, and the families they share. Returns (items, families)."""
     hits = search(conn, query, limit)
+    passages = {}
+    try:   # Practice 147: keyword and meaning rankings fused; each note keeps its passage closest to the question
+        from core import hb_note_vectors as nv
+        near = nv.search(conn, query, 30)
+        if near:
+            passages = {sid: text for sid, _s, text in near}
+            order = nv.fuse([h['source_id'] for h in search(conn, query, 30)], [sid for sid, _s, _t in near])[:limit]
+            hits = _hits_for(conn, order) or hits
+    except Exception:
+        pass
     if not hits:
         return items, []
     ids = {h['source_id'] for h in hits}
@@ -180,7 +210,8 @@ def rank(conn, query, items, library_id, limit=12):
     # does not carry the query words now shows its own sentences that do.
     texts = _raw_texts(conn, [h['source_id'] for h in hits])
     for item, h in zip(ranked, hits):         # Practice 136: what each note is about, in the result itself
-        line = '' if _title_has(h['title'], query) else matched_line(texts.get(h['source_id'], ''), query)
+        line = '' if _title_has(h['title'], query) else (_passage(passages.get(h['source_id']))
+                                                         or matched_line(texts.get(h['source_id'], ''), query))
         if line:
             item['summary'] = 'says: ' + line
         elif brief(h['symptom']):

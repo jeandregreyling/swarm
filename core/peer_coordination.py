@@ -194,6 +194,13 @@ def start():
                         except Exception:
                             LOG.exception('SAP note indexing failed')
                         conn.commit()
+                        try:  # Practice 147: the notes' meaning index is built in a background thread on the CPU embed model
+                            from core.hb_note_vectors import pending as vec_pending, start_background as vec_start
+                            if vec_pending(conn, 1):
+                                vec_start()
+                            conn.commit()
+                        except Exception:
+                            LOG.exception('SAP note embedding failed to start')
                         try:  # B38: HB manages its own model servers (duplicates, idle, GPU pressure) once a minute
                             from core.hb_hardware import housekeeping_tick
                             housekeeping_tick()

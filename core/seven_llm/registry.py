@@ -104,7 +104,7 @@ def _optional_defaults() -> list[ModelEntry]:
             quant="Q4_K_M",
             ram_gb=1.0,
             ttl_seconds=0,
-            options={"binary": "llama-cli", "embedding": True},
+            options={"binary": "llama-cli", "embedding": True, "ngl": 0},   # Practice 147: embeddings stay on the CPU, off APEX's card
         ))
     return entries
 
