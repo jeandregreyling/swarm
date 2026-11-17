@@ -900,6 +900,43 @@ REPEAT_ERROR = ("BACKEND REPEAT CHECK: your answer was not delivered. It is word
                 "itself. If you cannot do what it asks, say in one or two plain sentences what stops you and what you will do next.")
 
 
+# Practice 128 (owner 17 Nov 2026): APEX's second STP2 answer searched ONCE although the research method asks for two wordings, and it
+# called SAP Note 3708034 "truncated" (suggesting /notes add) and said nothing covered 3713787 - both are in the Knowledge Centre.
+# Telling the local model again does not make it obey; HB checks the answer like it checks coding promises.
+_NOTE_NUM = re.compile(r'\b(\d{6,8})\b')
+_MISSING_WORDS = re.compile(r"not (?:found|in the (?:knowledge|kc)|available|retrieved|covered)|truncated|missing|"
+                            r"could ?n[o']t find|no (?:sap )?notes?|/notes add", re.I)
+
+
+def research_question(text) -> bool:
+    """The operator asked a research question (not a change, not HB's own JSON continuation)."""
+    from core.hb_learning import skills_for_text
+    t = str(text or '')
+    if t.lstrip().startswith('{'):
+        return False
+    if re.search(r"\b(build|fix|repair|implement|patch|edit|write|update|add|create|rename|remove|delete|refactor|apply)\b", t, re.I):
+        return False
+    return 'research' in skills_for_text(t)
+
+
+def kc_notes_claimed_missing(answer) -> list:
+    """SAP note numbers the answer calls missing, truncated or to be fetched although the Knowledge Centre holds them."""
+    claimed = set()
+    for sentence in re.split(r'(?<=[.!?])\s+|\n', str(answer or '')):
+        if _MISSING_WORDS.search(sentence):
+            claimed.update(_NOTE_NUM.findall(sentence))
+    if not claimed:
+        return []
+    try:
+        from contextlib import closing
+        from utils.db._connection import get_connection
+        with closing(get_connection()) as conn:
+            return [n for n in sorted(claimed)
+                    if conn.execute('SELECT 1 FROM knowledge_sources WHERE source_ref=?', (f'sap://note/{n}',)).fetchone()]
+    except Exception:
+        return []
+
+
 def permission_excuse(answer: str) -> bool:
     text=answer.replace("\u2019", "'")
     for sentence in re.split(r'(?<=[.!?])\s+|[;\n]',text):
@@ -1191,6 +1228,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     permission_retry_used = False
     inventory_retry_used = False
     repeat_retry_used = False
+    research_retry_used = False         # Practice 128
+    kc_retry_used = False
     duplicate_read_retries = set()
     # Owner 16 Nov 2026: APEX told JD "I'm unable to call archive_status because it isn't an available tool" while it worked on a
     # SAP notes step. SAP notes are not model-archive files, and HB's own continuation (a JSON instruction that says "Continue")
@@ -1212,6 +1251,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         nonlocal search_retry_used
         nonlocal permission_retry_used
         nonlocal inventory_retry_used
+        nonlocal research_retry_used, kc_retry_used
         original = answer
 
         def correct(content):
@@ -1270,6 +1310,21 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "inspect the existing task, relevant source or Knowledge Centre with attached tools. "
                     "Take the next attached local action and verify its receipt. Correct invalid arguments locally. "
                     "Do not execute unapproved mutations or invent missing permissions.")
+            return None
+        # Practice 128: a research answer after ONE search goes back for a second wording; a note called missing that the KC holds gets read.
+        searches = sum(1 for r in receipts if r.get('tool') == 'knowledge_search' and r.get('status') == 'succeeded')
+        if not no_tools and can_retry and not research_retry_used and searches == 1 and research_question(latest_user):
+            research_retry_used = True
+            correct("BACKEND RESEARCH CHECK: your answer was not delivered. You searched the Knowledge Centre once. Search again with a "
+                    "different wording (the long form, a synonym or the component - e.g. 'Single Touch Payroll Phase 2' after 'STP2'), read "
+                    "the notes you have not read, then answer listing every matching note with its number and title.")
+            return None
+        held = kc_notes_claimed_missing(answer) if research_question(latest_user) else []
+        if held and not no_tools and can_retry and not kc_retry_used:
+            kc_retry_used = True
+            correct("BACKEND KC CHECK: your answer was not delivered. It calls SAP Note(s) " + ', '.join(held) + " missing, truncated or "
+                    "still to be fetched, but the Knowledge Centre holds them. knowledge_search 'SAP Note <number>' and knowledge_read each one, "
+                    "then answer again from what they say.")
             return None
         # 13 Nov (B59): "I will now update the test file" slipped past the old verb list; and when the reads used up
         # every round, the promise went out as the answer. Now: wider verbs, and an unkept promise is marked.

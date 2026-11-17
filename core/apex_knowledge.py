@@ -85,7 +85,10 @@ def search(query):
             # HB chat transcripts and task records (DOES) are searched as their own group so they
             # never crowd reference material out of the results; they come first only for HB ids.
             has_sub='subcategory' in {r[1] for r in conn.execute('PRAGMA table_info(knowledge_sources)')}
-            hb_kind="COALESCE(s.subcategory,'') IN ('hb-chat','hb-task')" if has_sub else "0"
+            # Practice 128: a Studio step's KC record (studio://step/..., e.g. JD's own question) is an HB record, not reference material:
+            # it was the top hit for "STP Phase 2 Australian payroll SAP note", above the notes themselves.
+            hb_kind=("(COALESCE(s.subcategory,'') IN ('hb-chat','hb-task') OR COALESCE(s.source_ref,'') LIKE 'studio://%')" if has_sub
+                     else "(COALESCE(s.source_ref,'') LIKE 'studio://%')")
             sub_col='s.subcategory' if has_sub else 'NULL'
             # Research fix 12 Nov: the exact phrase alone missed "payroll schema AU01" vs "Payroll Schema
             # Fundamentals — AU01". Candidates are phrase matches plus documents containing all (then most)
