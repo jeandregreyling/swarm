@@ -1601,6 +1601,10 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "still to be fetched, but the Knowledge Centre holds them. knowledge_search 'SAP Note <number>' and knowledge_read each one, "
                     "then answer again from what they say.")
             return None
+        # Practice 151: in the final round no read can run, so a held note called missing gets HB's correction instead.
+        if held and (not can_retry or kc_retry_used):
+            answer += ('\n\n**Correction** (HB): SAP Note(s) ' + ', '.join(held) + ' are in the Knowledge Centre - they were not '
+                       'read this turn, not missing.')
         # Practice 130: every note on the topic that the searches returned is in the answer.
         left = notes_left_out(latest_user, answer, receipts) if research_question(latest_user) else []
         # Practice 135 (17 Nov 2026): three searches filled the window, HB asked for a tool-free final answer, and with can_retry off

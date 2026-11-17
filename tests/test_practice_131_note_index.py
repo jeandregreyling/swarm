@@ -47,7 +47,9 @@ def test_practice_131_ranked_search_and_whole_families(tmp_path):
         assert ni.fts_query('STP2') == '"stp2"* OR "stp"*'
         fam = ni.families(c, ['PY-AU-STP', 'PY-AU-STP', 'PY-IT'])
         assert len(fam) == 1 and fam[0]['component'] == 'PY-AU-STP' and fam[0]['count'] == 3
-        assert 'SAP Note 3700339: RPUSTOQ0 - New option to exclude override entries' in fam[0]['notes']
+        # Practice 151: family entries carry the document id
+        assert any(n.startswith('SAP Note 3700339: [document_id ') and n.endswith('] RPUSTOQ0 - New option to exclude override entries')
+                   for n in fam[0]['notes'])
 
 
 def test_practice_131_knowledge_search_uses_the_index(tmp_path, monkeypatch):

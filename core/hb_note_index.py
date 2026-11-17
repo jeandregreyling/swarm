@@ -97,10 +97,12 @@ def search(conn, query, limit=12):
     return [dict(zip(('source_id', 'note', 'title', 'component', 'symptom', 'tags'), r)) for r in rows]
 
 
-def _short(note, title):
+def _short(note, title, doc=None):
     t = str(title or '')
     t = re.sub(r'^SAP Note \d+:\s*(\d+\s*-\s*)?', '', t)
-    return f'SAP Note {note}: {t[:60]}'
+    # Practice 151 (owner 18 Nov 2026): family entries had no id, so APEX guessed ids for 3700339, 3677472, 3770618 and 3691403,
+    # HB refused the guesses, and the answer said those notes 'could not be retrieved'.
+    return f'SAP Note {note}: ' + (f'[document_id {doc}] ' if doc else '') + t[:60]
 
 
 def families(conn, components):
@@ -109,8 +111,8 @@ def families(conn, components):
     for comp, hits in Counter(c for c in components if c).most_common(2):
         if hits < 2 or room <= 0:
             continue
-        rows = conn.execute('SELECT note, title FROM hb_note_index WHERE component = ? ORDER BY note', (comp,)).fetchall()
-        out.append({'component': comp, 'count': len(rows), 'notes': [_short(n, t) for n, t in rows[:room]],
+        rows = conn.execute('SELECT note, title, source_id FROM hb_note_index WHERE component = ? ORDER BY note', (comp,)).fetchall()
+        out.append({'component': comp, 'count': len(rows), 'notes': [_short(n, t, (1 << 40) + s if s else None) for n, t, s in rows[:room]],
                     'hint': 'SAP files all of these under one component: check each one against the question.'})
         room -= len(rows)
     return out
