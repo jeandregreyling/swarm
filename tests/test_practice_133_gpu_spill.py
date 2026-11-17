@@ -48,5 +48,5 @@ def test_practice_133_spill_is_fixed_once_and_announced(tmp_path):
     assert (tmp_path / 'gpu-offload.conf.before-hb').read_text() == DROPIN
     assert said and 'keeps 1536 MiB of GPU memory free' in said[0] and 'A test answer works' in said[0]
     assert _run(tmp_path, 2.5, now=1500.0, conn=conn)[0] is None                              # not again within SPILL_GAP_S
-    _run(tmp_path, 1.0, now=1000.0 + g.SPILL_GAP_S + 1, conn=conn)
+    _run(tmp_path, 2.2, now=1000.0 + g.SPILL_GAP_S + 1, conn=conn)
     assert g.margin(path.read_text()) == 2048                                                 # still spilling: one step more

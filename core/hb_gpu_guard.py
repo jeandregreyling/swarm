@@ -80,7 +80,9 @@ def tick(conn, now=None, restart=_restart, answers=_answers, say=None):
 # 2.6 GB of APEX's buffers moved to system RAM (amdgpu GTT), which the card reads slowly. spill_tick(): when the model server has spilled,
 # HB raises the --fit margin (-fitt, MiB kept free) in its own drop-in (a copy of the old one is kept), restarts it while it is idle,
 # proves it answers, and says so in main chat. The window stays automatic, just smaller. One step per SPILL_GAP_S, margin capped.
-SPILL_GB = 0.5
+# Practice 135 (17 Nov 2026): healthy APEX keeps ~1.4-1.5 GB of host buffers in GTT all the time; the broken state had 2.5-2.6 GB.
+# 0.5 GB raised the margin again at 13:37 on a healthy 1.43 GB, the window fell to 16,384 tokens and a research turn ran out of room.
+SPILL_GB = 2.0
 SPILL_GAP_S = 1800
 MARGIN_START_MIB, MARGIN_STEP_MIB, MARGIN_MAX_MIB = 1536, 512, 4096
 PORT = URL.rsplit(':', 1)[-1].strip('/')
@@ -125,6 +127,25 @@ def spill_tick(conn, now=None, procs=None, path=None, idle=_idle, reload=_reload
     last = conn.execute('SELECT MAX(at) FROM hb_gpu_spill').fetchone()[0]
     if last and now - last < SPILL_GAP_S:
         return None
+    # Practice 135: a raise made on less than SPILL_GB was a false alarm (APEX's normal ~1.45 GB) - put the previous settings back once.
+    path = path or dropin()
+    prev = conn.execute('SELECT spilled_gb, margin_from, margin_to FROM hb_gpu_spill ORDER BY at DESC LIMIT 1').fetchone()
+    before = path.with_name(path.name + '.before-hb')
+    if (prev and prev[1] is not None and prev[2] is not None and prev[2] > prev[1] and prev[0] < SPILL_GB and before.exists()
+            and margin(before.read_text()) == prev[1] and idle()):
+        path.write_text(before.read_text())
+        ok = bool(reload() and restart() and answers())
+        conn.execute('INSERT INTO hb_gpu_spill VALUES (?,?,?,?,?)', (now, 0.0, prev[2], prev[1], int(ok)))
+        line = (f"↺ HB undid its last GPU change: the {prev[0]} GB it saw outside the GPU is APEX's normal level, not a spill, and the "
+                f"bigger margin had shrunk APEX's window so far that research answers ran out of room. Margin back to {prev[1]} MiB."
+                + (' A test answer works.' if ok else ' It does not answer yet; the ErrorDeviceLost guard keeps watching.'))
+        if say:
+            say(line)
+        else:
+            from core.hb_chat import owner_chat
+            conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                         (owner_chat(conn), line))
+        return line
     if procs is None:
         from core.hb_hardware import model_processes
         procs = model_processes()

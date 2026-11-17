@@ -1389,11 +1389,14 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             return None
         # Practice 130: every note on the topic that the searches returned is in the answer.
         left = notes_left_out(latest_user, answer, receipts) if research_question(latest_user) else []
-        if left and not no_tools and can_retry and not coverage_retry_used:
+        # Practice 135 (17 Nov 2026): three searches filled the window, HB asked for a tool-free final answer, and with can_retry off
+        # this check never ran (3643537 was left out). Including notes needs no tool, so it also runs in that final round.
+        if left and not no_tools and (can_retry or can_fix) and not coverage_retry_used:
             coverage_retry_used = True
             correct("BACKEND COVERAGE CHECK: your answer was not delivered. Your searches returned these notes on the topic that your answer "
                     "leaves out: " + '; '.join(left[:15]) + ". Include every one (number, title and what it fixes - knowledge_read it if "
-                    "the excerpt is not enough), and never say nothing is missing unless you listed them all.")
+                    "the excerpt is not enough), and never say nothing is missing unless you listed them all."
+                    + ("" if can_retry else " Answer now without tools: the titles above are enough."))
             return None
         # 13 Nov (B59): "I will now update the test file" slipped past the old verb list; and when the reads used up
         # every round, the promise went out as the answer. Now: wider verbs, and an unkept promise is marked.
