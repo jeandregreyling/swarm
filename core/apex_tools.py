@@ -1871,7 +1871,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         "arguments as that error says, or answer from your receipts.")
                 # Practice 145: a research turn's first round read document 12345 before any search; later it guessed 1099511634790-792.
                 if (call["name"] == "knowledge_read" and research_question(latest_user)
-                        and str(call["arguments"].get("document_id")) not in seen_before_batch):
+                        # Practice 146: whole numbers only - "12345" sits inside the prompt's example step id "S-0123456789".
+                        and not re.search(r"(?<!\d)" + re.escape(str(call["arguments"].get("document_id"))) + r"(?!\d)", seen_before_batch)):
                     raise ValueError(
                         f"GUESS: document_id {call['arguments'].get('document_id')} appears in no search result or message this turn. "
                         "knowledge_search first, then read with the [document_id N] shown on that note's match line.")
