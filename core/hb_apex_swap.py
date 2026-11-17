@@ -170,6 +170,7 @@ def command(conn, args, actor='owner'):
 # announced in main chat); HB never swaps back by itself, so models do not ping-pong; and each model has its own turn time.
 DEFAULT_PREFS = {'research': 'swift-qwen3.8-27b'}
 TURN_BY_MODEL = {'swift-qwen3.8-27b': 600, 'qwen2.5-32b-instruct': 900}
+ROUNDS_BY_MODEL = {'swift-qwen3.8-27b': 9}   # Practice 154
 _playing_cache = {'key': None, 'name': None}
 
 
@@ -184,6 +185,10 @@ def playing():
         path = current()
         _playing_cache.update(key=key, name=next((r['name'] for r in candidates() if r['path'] == path), path))
     return _playing_cache['name']
+
+
+def turn_rounds(default=6):
+    return ROUNDS_BY_MODEL.get(playing() or '', default)
 
 
 def turn_seconds(default=360):

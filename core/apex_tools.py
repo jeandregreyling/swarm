@@ -1010,7 +1010,7 @@ def read_focus(question) -> str:
     return ' '.join((_topic_terms(question) + [w for w in focus_words(question) if w not in _topic_terms(question)])[:8])[:200]
 
 
-def research_digest(receipts) -> str:
+def research_digest(receipts, question=None) -> str:
     """Practice 138 (owner 17 Nov 2026: "the links are there but the message about what is inside each one or how it relates to the question
     is missing"). APEX searched once, read five notes one per round, ran out of rounds and never wrote its answer; HB saved the turn to
     Studio and JD saw only that line. Now a research turn that runs out still answers: what its searches and reads found, each note with
@@ -1026,6 +1026,14 @@ def research_digest(receipts) -> str:
             seen.add(n)
             name, _, summary = re.sub(r'^\d+\s*-\s*', '', title).partition(' | ')
             lines.append(f'- SAP Note {n}: {name.strip()}' + (f' - {summary.strip()}' if summary.strip() else ''))
+    # Practice 154: the STP2 digest listed UK, Irish and tax-scale notes and "63 more" from single-note searches; only on-topic notes now
+    # (title carries a topic term, or the note is in the topic's component family) - all of them when nothing matches.
+    terms = _topic_terms(question) if question else []
+    if terms:
+        family = topic_family(receipts, terms)
+        on = [l for l in lines if any(re.search(r'\b' + t + r'(?:\b|[- ]?\d)', l.split(' - ')[0] if ' - ' in l else l) for t in terms)
+              or re.match(r'- SAP Note (\d+)', l).group(1) in family]
+        lines = on or lines
     if not lines:
         return ''
     return ("APEX used all its tool rounds before it wrote its answer, so HB lists what its searches found: each note's title and the first "
@@ -1393,6 +1401,11 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                    prepare_messages=None, prepare_receipts=None, studio_handler=None,
                    web_handler=None, test_handler=None) -> tuple[str, int, list[dict]]:
     """Validate final-channel envelopes, with bounded leading-preamble tolerance."""
+    try:   # Practice 154: each model that plays APEX has its own tool rounds (the 27B ran out of 6 on the STP2 question)
+        from core.hb_apex_swap import turn_rounds
+        MAX_ROUNDS = turn_rounds(globals()['MAX_ROUNDS'])
+    except Exception:
+        MAX_ROUNDS = globals()['MAX_ROUNDS']
     repository = repository or ReadOnlyRepository()
     working = [dict(message) for message in messages]
     from utils.local_runtime_policy import is_explicitly_no_tools_request
@@ -1425,7 +1438,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "was inspected, not that all requirements pass:\n\n" + "\n\n".join(results),
                     tokens, receipts)
         if not no_tools and research_question(latest_user):      # Practice 138: a research turn still answers
-            digest = research_digest(receipts)
+            digest = research_digest(receipts, latest_user)
             if digest:
                 return digest, tokens, receipts
         if studio_handler is None or no_tools or not authorize():
