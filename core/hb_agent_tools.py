@@ -32,7 +32,11 @@ def ground_answer(answer,receipts):
             if result['status'] in {'not_queued','local_review_queued'}:return result['notice']
             return ('The previous request '+str(result['request_ids'][0])+' remains '+str(result.get('recorded_state','waiting'))+
                     ': '+str(result.get('recorded_stage','provider unavailable'))+'. No new online request was queued. '+result['notice'])
-    return answer
+    try:   # Practice 137 (owner 17 Nov 2026): references point to the KC copy used and its online origin
+        from core.hb_note_links import link_notes, sources_footer
+        return link_notes(answer) + sources_footer(receipts)
+    except Exception:
+        return answer
 
 
 def call(tool, args):

@@ -127,6 +127,32 @@ def api_library_delete(source_id, current_user=None):
         return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
+def _kc_page(where, value):
+    from contextlib import closing
+    from flask import Response
+    from core.hb_note_links import source_html
+    from utils.db._connection import get_connection
+    with closing(get_connection()) as conn:
+        row = conn.execute(f'SELECT source_id, title, source_ref, raw_text FROM knowledge_sources WHERE {where}=?', (value,)).fetchone()
+    if not row:
+        return Response(source_html(0, 'Not in the Knowledge Centre', '', 'HB has no copy of this source.'), status=404, mimetype='text/html')
+    return Response(source_html(*row), mimetype='text/html')
+
+
+@library_bp.route('/kc/source/<int:source_id>', methods=['GET'])
+@require_auth
+def kc_source_page(source_id, current_user=None):
+    """Practice 137 (owner 17 Nov 2026): JD opens the Knowledge Centre copy an answer used (read-only, with its online origin)."""
+    return _kc_page('source_id', source_id)
+
+
+@library_bp.route('/kc/note/<int:number>', methods=['GET'])
+@require_auth
+def kc_note_page(number, current_user=None):
+    """Practice 137: the same page for an SAP note by its number."""
+    return _kc_page('source_ref', f'sap://note/{number}')
+
+
 @library_bp.route('/api/library/sources/<int:source_id>', methods=['GET'])
 def api_library_source_get(source_id):
     """Return full source record (raw_text + metadata) for the Open modal."""
