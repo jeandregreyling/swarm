@@ -966,7 +966,9 @@ def titles_only(answer, receipts) -> bool:
     for _q, found in _search_results(receipts):
         for n, title in found:
             titles.setdefault(n, norm(re.sub(r'^\d+\s*-\s*', '', title.split(' | ')[0])))
-    lines = [l for l in str(answer or '').splitlines() if re.search(r'\b\d{6,8}\b', l)]
+    # Practice 142: the MCB answer put its numbered title list on a few long lines, so a line count missed it.
+    parts = re.split(r'\n|\s(?=\d{1,2}\.\s)|\s(?=[•▪]\s)', str(answer or ''))
+    lines = [l for l in parts if re.search(r'\b\d{6,8}\b', l)]
     if len(lines) < 3:
         return False
     bare = 0
@@ -1491,14 +1493,21 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         # Practice 128: a research answer after ONE search goes back for a second wording; a note called missing that the KC holds gets read.
         searches = sum(1 for r in receipts if r.get('tool') == 'knowledge_search' and r.get('status') == 'succeeded')
         # Practice 130: the second search must be a clearly different wording - the same words again do not count.
+        # Practice 142 (owner 17 Nov 2026, "go"): on the MCB question APEX searched once, read the four MCB notes (focused) and answered;
+        # this check sent that answer back with STP2 examples and "answer listing every matching note with its number and title", and APEX
+        # returned a title list padded with unrelated notes ("no additional notes were found with ... STP2"). Two or more notes read IS the
+        # depth this check asks for; when it does run, its examples are the question's own words and it asks for the answer, not titles.
+        read_notes = sum(1 for r in receipts if r.get('tool') == 'knowledge_read' and r.get('status') == 'succeeded')
         if (not no_tools and can_retry and not research_retry_used and searches >= 1 and distinct_topic_searches(receipts) < 2
-                and research_question(latest_user)):
+                and read_notes < 2 and research_question(latest_user)):
             research_retry_used = True
             used = '; '.join(sorted({q for q, _t in _search_results(receipts) if q}))[:200]
+            terms = _topic_terms(latest_user)
+            example = (f" (e.g. '{terms[0]}' and what it stands for)" if terms else "")
             correct("BACKEND RESEARCH CHECK: your answer was not delivered. You searched the Knowledge Centre with one wording only ("
-                    + used + "). Search again with clearly different words: the short form the notes use in their titles (e.g. 'STP2'), "
-                    "the long form (e.g. 'Single Touch Payroll Phase 2'), a synonym or the component. Read the notes you have not read, "
-                    "then answer listing every matching note with its number and title.")
+                    + used + "). Search once more with clearly different words: the short form and the long form" + example
+                    + ", a synonym or the component. Read the 2-3 most relevant notes, then answer the owner's question itself from what "
+                    "they say - every part of it - naming each note you rely on.")
             return None
         held = kc_notes_claimed_missing(answer) if research_question(latest_user) else []
         if held and not no_tools and can_retry and not kc_retry_used:
