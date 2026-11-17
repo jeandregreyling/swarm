@@ -1038,6 +1038,67 @@ def kc_notes_claimed_missing(answer) -> list:
         return []
 
 
+# Practice 140 (owner 17 Nov 2026, "go"): asked what the SAP notes say about the MCB cap, what it means and how it is paid, APEX ran four
+# searches, read no note, and wrote "what it means" and "how it is paid" from general knowledge - wrongly ("per payroll period", "a single
+# payment per payroll run"; the notes say an annual 270,830 AUD cap on qualifying earnings, excess in /XQE, Apply MCB per fund) - then told
+# JD to "request the document via the Knowledge Centre". The search summaries say what a note fixes, not what its solution explains.
+_SENDS_OWNER_TO_FETCH = re.compile(r"request (?:the|this|that|a|each|any)? ?(?:full )?(?:document|note|text)|if you need the full text|"
+                                   r"fetch (?:the|it|them|this) (?:full )?(?:note|document|text)", re.I)
+
+
+def sends_owner_to_fetch(answer) -> bool:
+    return bool(_SENDS_OWNER_TO_FETCH.search(str(answer or '')))
+
+
+def notes_to_read(answer, receipts, limit=3) -> list:
+    """[(note, document_id or None)]: the notes this turn's searches found that nobody read yet - the ones the answer cites first, in
+    the answer's order, then the searches' order - up to `limit`."""
+    from core.apex_knowledge import LIBRARY_ID
+    found, ids, read = [], {}, set()
+    for r in receipts:
+        if r.get('status') != 'succeeded':
+            continue
+        out = str(r.get('output') or '')
+        if r.get('tool') == 'knowledge_read':
+            try:
+                read.add(int((r.get('arguments') or {}).get('document_id')))
+            except (TypeError, ValueError):
+                pass
+            read.update(int(n) for n in re.findall(r'"title": "SAP Note (\d{6,8})', out))
+            continue
+        if r.get('tool') != 'knowledge_search':
+            continue
+        for n in re.findall(r'"SAP Note (\d{6,8}): ', out):
+            if n not in found:
+                found.append(n)
+        for a, b in re.findall(r'"document_id": (\d+), "source_ref": "sap://note/(\d+)"', out):
+            ids.setdefault(b, int(a))
+        for b, a in re.findall(r'"source_ref": "sap://note/(\d+)"[^{}]*?"document_id": (\d+)', out):
+            ids.setdefault(b, int(a))
+    cited = [n for n in dict.fromkeys(_NOTE_NUM.findall(str(answer or ''))) if n in found]
+    order = cited + [n for n in found if n not in cited]
+    missing = [n for n in order if n not in ids]
+    if missing:
+        try:
+            from contextlib import closing
+            from utils.db._connection import get_connection
+            with closing(get_connection()) as conn:
+                for n in missing:
+                    row = conn.execute('SELECT source_id FROM knowledge_sources WHERE source_ref=?', (f'sap://note/{n}',)).fetchone()
+                    if row:
+                        ids[n] = LIBRARY_ID + int(row[0])
+        except Exception:
+            pass
+    out = []
+    for n in order:
+        if int(n) in read or ids.get(n) in read:
+            continue
+        out.append((n, ids.get(n)))
+        if len(out) >= limit:
+            break
+    return out
+
+
 def permission_excuse(answer: str) -> bool:
     text=answer.replace("\u2019", "'")
     for sentence in re.split(r'(?<=[.!?])\s+|[;\n]',text):
@@ -1337,6 +1398,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     kc_retry_used = False
     coverage_retry_used = False         # Practice 130
     content_retry_used = False          # Practice 136
+    read_retry_used = False             # Practice 140
     duplicate_read_retries = set()
     # Owner 16 Nov 2026: APEX told JD "I'm unable to call archive_status because it isn't an available tool" while it worked on a
     # SAP notes step. SAP notes are not model-archive files, and HB's own continuation (a JSON instruction that says "Continue")
@@ -1358,7 +1420,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         nonlocal search_retry_used
         nonlocal permission_retry_used
         nonlocal inventory_retry_used
-        nonlocal research_retry_used, kc_retry_used, coverage_retry_used, content_retry_used
+        nonlocal research_retry_used, kc_retry_used, coverage_retry_used, content_retry_used, read_retry_used
         original = answer
 
         def correct(content):
@@ -1457,6 +1519,23 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "line already carries that after ' | '; knowledge_read a note only when you need more."
                     + ("" if can_retry else " Answer now without tools."))
             return None
+        # Practice 140: a research answer that read no note, or sends JD to fetch one, goes back once to read the best 2-3 in one round.
+        reads = sum(1 for r in receipts if r.get('tool') == 'knowledge_read' and r.get('status') == 'succeeded')
+        if (not no_tools and can_retry and not read_retry_used and research_question(latest_user)
+                and (reads == 0 or sends_owner_to_fetch(answer))):
+            todo = notes_to_read(answer, receipts)
+            if todo:
+                read_retry_used = True
+                calls = ', '.join((f"knowledge_read {{\"document_id\": {d}}} (SAP Note {n})" if d else f"SAP Note {n} (knowledge_search 'SAP Note {n}')")
+                                  for n, d in todo)
+                correct("BACKEND READ CHECK: your answer was not delivered. "
+                        + ("You read no note: the search summaries say what a note fixes, not what its solution explains, so what you wrote "
+                           "beyond them is not from the sources. " if reads == 0 else "")
+                        + ("It sends the owner to fetch or request a note, but HB holds it - reading it is your job. " if sends_owner_to_fetch(answer) else "")
+                        + "Read these now, ALL in one round (several knowledge_read calls in one tool_calls list): " + calls + ". Then answer "
+                        "only from what the notes and the search summaries say, cite the note for each point, and where they do not cover part "
+                        "of the question, say so plainly.")
+                return None
         # 13 Nov (B59): "I will now update the test file" slipped past the old verb list; and when the reads used up
         # every round, the promise went out as the answer. Now: wider verbs, and an unkept promise is marked.
         promises_edit=re.search(r"\b(?:next (?:step|action) (?:is|will be)|i (?:will|am going to|shall)|let me|(?:should|needs? to|must) be)\b.{0,160}"

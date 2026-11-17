@@ -58,7 +58,8 @@ def test_practice_136_a_titles_only_answer_goes_back(tmp_path, monkeypatch):
     seen = []
     turns = [json.dumps({'tool_calls': [{'name': 'knowledge_search', 'arguments': {'query': 'STP2'}}], 'answer': ''}),
              json.dumps({'tool_calls': [{'name': 'knowledge_search', 'arguments': {'query': 'Single Touch Payroll Phase 2'}}], 'answer': ''}),
-             json.dumps({'tool_calls': [], 'answer': BARE}), json.dumps({'tool_calls': [], 'answer': FULL})]
+             json.dumps({'tool_calls': [], 'answer': BARE}), json.dumps({'tool_calls': [], 'answer': FULL}),
+             json.dumps({'tool_calls': [], 'answer': FULL})]   # Practice 140: an answer that read no note goes back once more
 
     def model(_name, msgs):
         seen.append(str(msgs[-1]['content']))
