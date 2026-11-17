@@ -954,7 +954,9 @@ def notes_left_out(question, answer, receipts) -> list:
             if n in seen or n in said:
                 continue
             seen.add(n)
-            if any(re.search(r'\b' + t + r'(?:\b|[- ]?\d)', title) for t in terms):
+            # Practice 148: the title only - with Practice 147's passages ('says: Daily MCB ... EUR') the Spanish SI note 3800283
+            # matched 'MCB' and HB made APEX include it; 3713786, which defines the Australian MCB, then dropped out.
+            if any(re.search(r'\b' + t + r'(?:\b|[- ]?\d)', title.split(' | ')[0]) for t in terms):
                 doc = note_ids(receipts).get(n)   # Practice 145: say which id to read it with
                 out.append(f'{n}' + (f' [document_id {doc}]' if doc else '') + f' ({title.split(" - ", 1)[-1][:70]})')
     return out
@@ -1079,7 +1081,7 @@ def sends_owner_to_fetch(answer) -> bool:
     return bool(_SENDS_OWNER_TO_FETCH.search(str(answer or '')))
 
 
-def notes_to_read(answer, receipts, limit=3) -> list:
+def notes_to_read(answer, receipts, limit=4) -> list:   # Practice 148: 4
     """[(note, document_id or None)]: the notes this turn's searches found that nobody read yet - the ones the answer cites first, in
     the answer's order, then the searches' order - up to `limit`."""
     from core.apex_knowledge import LIBRARY_ID
@@ -1105,7 +1107,8 @@ def notes_to_read(answer, receipts, limit=3) -> list:
         for b, a in re.findall(r'"source_ref": "sap://note/(\d+)"[^{}]*?"document_id": (\d+)', out):
             ids.setdefault(b, int(a))
     cited = [n for n in dict.fromkeys(_NOTE_NUM.findall(str(answer or ''))) if n in found]
-    order = cited + [n for n in found if n not in cited]
+    # Practice 148: the search's two best notes come first even when the answer does not cite them (3713786 was left out).
+    order = list(dict.fromkeys(found[:2] + cited + found))
     missing = [n for n in order if n not in ids]
     if missing:
         try:

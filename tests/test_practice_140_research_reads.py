@@ -28,7 +28,9 @@ def test_practice_140_owner_sent_to_fetch():
 
 def test_practice_140_which_notes_to_read():
     r = [rec('knowledge_search', {'query': 'MCB cap'}, SEARCH)]
-    assert t.notes_to_read('See 3713786 and 3808818.', r) == [('3713786', L + 7004), ('3808818', L + 6659), ('3793457', L + 6655)]
+    # Practice 148: the search's two best first, then the cited ones, up to 4
+    assert t.notes_to_read('See 3713786 and 3808818.', r) == [('3793457', L + 6655), ('3713786', L + 7004), ('3808818', L + 6659),
+                                                               ('3749754', L + 6637)]
     r.append(rec('knowledge_read', {'document_id': L + 7004}, {'status': 'found', 'title': 'SAP Note 3713786: x'}))
     assert ('3713786', L + 7004) not in t.notes_to_read('See 3713786.', r)
 
