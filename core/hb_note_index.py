@@ -126,6 +126,44 @@ def brief(symptom, limit=160):
     return out[:limit - 3] + '...' if len(out) > limit else out
 
 
+def _query_terms(query):
+    from core.apex_knowledge import focus_words
+    return [w for w in focus_words(query) if w.lower() not in {'note', 'notes', 'sap', 'payroll', 'australian', 'australia'}]
+
+
+def _title_has(title, query):
+    t = str(title or '').lower()
+    return any(re.search(r'\b' + re.escape(w.lower()), t) for w in _query_terms(query))
+
+
+def matched_line(text, query, limit=300):
+    """Practice 144: the note's two sentences that carry the most query words (document order), or ''."""
+    words = _query_terms(query)
+    if not words or not text:
+        return ''
+    pats = [re.compile(r'\b' + re.escape(w), 0 if w.isupper() else re.I) for w in words]
+    sents = [' '.join(s.split()) for s in re.split(r'(?<=[.!?])\s+|\n+', str(text))]
+    scored = []
+    for i, s in enumerate(sents):
+        if not 25 <= len(s) <= 400:
+            continue
+        distinct = sum(1 for p in pats if p.search(s))
+        if distinct:
+            scored.append((-(distinct * 10 + sum(len(p.findall(s)) for p in pats)), i))
+    if not scored:
+        return ''
+    out = ' '.join(sents[i] for i in sorted(i for _s, i in sorted(scored)[:2]))
+    return out[:limit - 3] + '...' if len(out) > limit else out
+
+
+def _raw_texts(conn, ids):
+    try:
+        return {r[0]: r[1] or '' for r in conn.execute(
+            f"SELECT source_id, raw_text FROM knowledge_sources WHERE source_id IN ({','.join('?' * len(ids))})", list(ids)).fetchall()}
+    except Exception:
+        return {}
+
+
 def rank(conn, query, items, library_id, limit=12):
     """Put the index's ranked notes first in a knowledge_search result, and the families they share. Returns (items, families)."""
     hits = search(conn, query, limit)
@@ -136,8 +174,16 @@ def rank(conn, query, items, library_id, limit=12):
     ranked = [have.get(h['source_id']) or {'document_id': library_id + h['source_id'], 'source_id': h['source_id'], 'title': h['title'],
                                            'excerpt': (h['symptom'] or '')[:650], 'tags': h['tags'],
                                            'source_ref': f"sap://note/{h['note']}", 'store': 'knowledge_sources'} for h in hits]
+    # Practice 144 (owner 17 Nov 2026: "keep going asking and checking the answer till it's right"): SAP Note 3713786 defines the MCB
+    # ("an Annual amount of 270,830 AUD ... upper limit of your employee's earnings") but its title is "Phase 1 Payroll Changes for Payday
+    # Super" and its Symptom's first sentence is about payday super, so APEX never read it and invented the definition. A note whose title
+    # does not carry the query words now shows its own sentences that do.
+    texts = _raw_texts(conn, [h['source_id'] for h in hits])
     for item, h in zip(ranked, hits):         # Practice 136: what each note is about, in the result itself
-        if brief(h['symptom']):
+        line = '' if _title_has(h['title'], query) else matched_line(texts.get(h['source_id'], ''), query)
+        if line:
+            item['summary'] = 'says: ' + line
+        elif brief(h['symptom']):
             item['summary'] = brief(h['symptom'], 130)
     rest = [i for i in items if not (i.get('store') == 'knowledge_sources' and i.get('source_id') in ids)]
     return ranked + rest, families(conn, [h['component'] for h in hits[:8]])
