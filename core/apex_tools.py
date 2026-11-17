@@ -1136,6 +1136,21 @@ def cited_unread(answer, receipts) -> list:
     return [n for n, _d in notes_to_read(answer, receipts, limit=50) if n in set(_NOTE_NUM.findall(str(answer or '')))]
 
 
+def coverage_appendix(question, answer, receipts) -> str:
+    """Practice 149: the on-topic notes this turn's searches found that the answer does not mention, one line each."""
+    left = {s.split(' ', 1)[0] for s in notes_left_out(question, answer, receipts)}
+    if not left:
+        return ''
+    lines, seen = [], set()
+    for _q, found in _search_results(receipts):
+        for n, title in found:
+            if n in left and n not in seen:
+                seen.add(n)
+                name, _, summary = re.sub(r'^\d+\s*-\s*', '', title).partition(' | ')
+                lines.append(f'- SAP Note {n}: {name.strip()}' + (f' - {summary.strip()[:160]}' if summary.strip() else ''))
+    return ('\n\n**Also on this topic** (HB: found by the searches, not covered above, not read this turn):\n' + '\n'.join(lines)) if lines else ''
+
+
 def permission_excuse(answer: str) -> bool:
     text=answer.replace("\u2019", "'")
     for sentence in re.split(r'(?<=[.!?])\s+|[;\n]',text):
@@ -1554,6 +1569,10 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "the excerpt is not enough), and never say nothing is missing unless you listed them all."
                     + ("" if can_retry else " Answer now without tools: the titles above are enough."))
             return None
+        # Practice 149 (owner 17 Nov 2026): after the one coverage retry the STP2 answer still left out 3713787, 3749998 and 3735245.
+        # The local model does not reliably list everything, so HB adds what its searches found on the topic.
+        if left and coverage_retry_used:
+            answer += coverage_appendix(latest_user, answer, receipts)
         # Practice 136: the question asks what the notes say - an answer of titles only goes back once (no tool needed).
         if (research_question(latest_user) and not no_tools and (can_retry or can_fix) and not content_retry_used
                 and titles_only(answer, receipts)):
@@ -1832,6 +1851,11 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             if call["name"] == "knowledge_read":
                 kr_args = dict(call["arguments"])
                 kr_args.setdefault("offset", 0)
+                # Practice 149: APEX passed focus "excerpt" on every STP2 read - a focus sharing no word with the question is replaced.
+                if kr_args.get("focus") and research_question(latest_user):
+                    from core.apex_knowledge import focus_words as _fw
+                    if not {w.lower() for w in _fw(kr_args["focus"])} & {w.lower() for w in _fw(latest_user)}:
+                        kr_args.pop("focus")
                 if not kr_args.get("focus") and research_question(latest_user):
                     kr_focus = read_focus(latest_user)
                     if kr_focus:
