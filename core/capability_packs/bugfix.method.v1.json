@@ -1,0 +1,14 @@
+{
+  "id": "bugfix.method",
+  "version": "1.0.0",
+  "source": "Owner 18 Nov 2026: \"make a list of smaller bug fixes for Apex to work on ... teach apex how to spot the bugs and fix them\"",
+  "steps": [
+    "Reproduce first: run the failing test with run_tests, or find the error in the log or traceback the task quotes. Write down the exact error line and file:line before changing anything.",
+    "Read the code at that line with read_file (20-40 lines around it) and grep_repo for the function or name involved. Find the cause, not just the place it surfaced (e.g. a missing import, a write in a read-only request, a wrong key).",
+    "Check history: grep the Studio/KC records (knowledge_search 'Practice <n>' or the file name) - the code was usually changed for a reason; do not undo an owner's earlier fix.",
+    "Write a test that fails now and will pass after the fix (tests/test_bug_<short_name>.py), small and self-contained (sqlite3 ':memory:', monkeypatch; no network, no real model).",
+    "Make the smallest change that fixes the cause with propose_patch (exact old text, new text). One cause per patch; no unrelated clean-up.",
+    "Run the new test AND the existing tests of the files you touched with run_tests. If anything fails, read the output and fix it - never weaken a test to make it pass.",
+    "Report in 3-5 lines: the error, the cause (file:line), the fix, the tests that passed (alm_run_id). If you could not reproduce the bug, say so and stop - do not guess a fix."
+  ]
+}

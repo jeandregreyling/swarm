@@ -138,6 +138,12 @@ def card(conn, task):
             lines.append(research_method())
     except Exception:
         pass
+    try:   # Practice 166: a 'Bug:' task gets HB's bug-fix method
+        from core.hb_learning import bugfix_method
+        if str(task.get('title') or '').lower().startswith('bug:') or 'bug:' in str(task.get('objective') or '')[:300].lower():
+            lines.append(bugfix_method())
+    except Exception:
+        pass
     try:  # Learning step 0: verified worked examples of the same kind of work
         from core.hb_learning import examples_block
         block = examples_block(conn, task)
