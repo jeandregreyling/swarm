@@ -1058,7 +1058,10 @@ def research_question(text) -> bool:
     t = str(text or '')
     if t.lstrip().startswith('{'):
         return False
-    if re.search(r"\b(build|fix|repair|implement|patch|edit|write|update|add|create|rename|remove|delete|refactor|apply)\b", t, re.I):
+    # Practice 162 (owner 18 Nov 2026, question suite): "What is wage type /XQE and when does payroll create it?" was taken for a change
+    # request because of "create". Only an instruction - the verb starting a sentence, or "can/could/would you ..." - is a change request.
+    if re.search(r"(?:^|[.!?\n]\s*)(?:please\s+|(?:can|could|would) you\s+(?:please\s+)?)?"
+                 r"(build|fix|repair|implement|patch|edit|write|update|add|create|rename|remove|delete|refactor|apply)\b", t, re.I):
         return False
     return 'research' in skills_for_text(t)
 

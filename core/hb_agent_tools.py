@@ -16,6 +16,18 @@ def public_error(value):
     return text
 
 
+# Practice 162 (owner 18 Nov 2026, question suite): answers opened with "Correcting my previous answer:" or "You're right, I left one out" -
+# the model replying to HB's own checks as if JD had spoken. That opening is dropped; the rest of the answer stays.
+_CHECK_REPLY = re.compile(r"^\s*(?:you(?:'re| are) right[^.\n]*|correcting my (?:previous|earlier|last) answer|(?:i )?(?:apologi[sz]e|sorry)[^.\n]*|"
+                          r"(?:here is|here's) (?:the|my) (?:corrected|revised|updated) answer)[.:!]?\s*", re.I)
+
+
+def drop_check_reply(answer):
+    text = str(answer or '')
+    out = _CHECK_REPLY.sub('', text, count=1)
+    return out if out.strip() else text
+
+
 def ground_answer(answer,receipts):
     for receipt in reversed(receipts):
         if receipt.get('tool')!='archive_acquire' or receipt.get('status')!='succeeded':continue
@@ -32,6 +44,7 @@ def ground_answer(answer,receipts):
             if result['status'] in {'not_queued','local_review_queued'}:return result['notice']
             return ('The previous request '+str(result['request_ids'][0])+' remains '+str(result.get('recorded_state','waiting'))+
                     ': '+str(result.get('recorded_stage','provider unavailable'))+'. No new online request was queued. '+result['notice'])
+    answer = drop_check_reply(answer)   # Practice 162
     try:   # Practice 137 (owner 17 Nov 2026): references point to the KC copy used and its online origin
         from core.hb_note_links import link_notes, sources_footer
         return link_notes(answer) + sources_footer(receipts)

@@ -80,11 +80,37 @@ def extract(urls, timeout=40):
     key = TAVILY_API_KEY or TAVILY_API_KEY_GENERIC
     if not key:
         return {}
-    req = urllib.request.Request('https://api.tavily.com/extract', json.dumps({'urls': list(urls)}).encode(),
-                                 {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = json.loads(r.read())
-    return {x.get('url'): str(x.get('raw_content') or '') for x in data.get('results') or [] if x.get('url')}
+    # Practice 162 (owner 18 Nov 2026, question suite): help.sap.com pages came back "Failed to fetch url" from the basic extractor, so HB
+    # kept only ~370-character snippets; the advanced extractor reads them, with the whole navigation tree (1.25 MB for one page) -
+    # link-only lines are dropped, which leaves the page itself (~3.8 KB: definition, structure, notes).
+    out = {}
+    pending = list(urls)
+    for depth in ('basic', 'advanced'):
+        if not pending:
+            break
+        req = urllib.request.Request('https://api.tavily.com/extract', json.dumps({'urls': pending, 'extract_depth': depth}).encode(),
+                                     {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout if depth == 'basic' else timeout + 40) as r:
+                data = json.loads(r.read())
+        except Exception as exc:
+            LOG.info('web research: %s extract failed (%s)', depth, exc)
+            continue
+        for x in data.get('results') or []:
+            text = clean_extract(x.get('raw_content'))
+            if x.get('url') and len(text) >= 200:
+                out[x['url']] = text
+        pending = [u for u in pending if u not in out]
+    return out
+
+
+_LINK_ONLY = re.compile(r'\s*(?:[*+-]|\d+\.)?\s*\[[^\]]*\]\([^)]*\)\s*')
+
+
+def clean_extract(raw, limit=60000):
+    """Extracted page text without navigation: link-only lines and blank lines dropped, capped."""
+    lines = [l for l in str(raw or '').splitlines() if l.strip() and not _LINK_ONLY.fullmatch(l)]
+    return '\n'.join(lines)[:limit]
 
 
 def snippets(result):
