@@ -182,3 +182,52 @@ def spill_tick(conn, now=None, procs=None, path=None, idle=_idle, reload=_reload
         conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
                      (owner_chat(conn), line))
     return line
+
+
+# Practice 158 (owner 18 Nov 2026): at 13:36:56 the card reset during a research turn (kernel: "ring comp_1.0.1 reset ... device wedged,
+# but recovered through reset"). APEX's server kept saying /health ok but answered nothing until JD restarted it by hand: tick() only
+# reacts to failed background-worker requests, and this failure came through another path. reset_tick() reads the kernel log itself;
+# after a reset it waits until APEX is idle, asks for a test answer, and restarts the server only when that fails.
+RESET_SIGN = re.compile(r'ring reset|ring \S+ reset|device wedged|ErrorDeviceLost|GPU reset', re.I)
+RESET_CHECK_S = 60
+
+
+def _kernel_resets(since):
+    try:
+        out = subprocess.run(['journalctl', '-k', '--since', '@%d' % int(since), '--no-pager', '-o', 'cat'],
+                             capture_output=True, text=True, timeout=20).stdout
+    except Exception:
+        return []
+    return [line for line in out.splitlines() if RESET_SIGN.search(line)]
+
+
+def reset_tick(conn, now=None, resets=_kernel_resets, idle=None, answers=None, restart=None, say=None):
+    """Returns what HB did after a card reset, or None."""
+    now = now or time.time()
+    idle, answers, restart = idle or _idle, answers or _answers, restart or _restart
+    conn.execute('CREATE TABLE IF NOT EXISTS hb_gpu_reset_watch(at REAL, resets INTEGER, answered INTEGER, restarted INTEGER, ok INTEGER)')
+    last = conn.execute('SELECT MAX(at) FROM hb_gpu_reset_watch').fetchone()[0] or now - 900
+    if now - last < RESET_CHECK_S:
+        return None
+    lines = resets(last)
+    if not lines:
+        conn.execute('INSERT INTO hb_gpu_reset_watch VALUES (?,?,?,?,?)', (now, 0, None, 0, None))
+        conn.execute('DELETE FROM hb_gpu_reset_watch WHERE resets=0 AND at < ?', (now - 3600,))
+        return None
+    if not idle():
+        return None                              # checked again next tick, from the same point in the log
+    if answers():
+        conn.execute('INSERT INTO hb_gpu_reset_watch VALUES (?,?,?,?,?)', (now, len(lines), 1, 0, 1))
+        return None
+    ok = bool(restart() and answers())
+    conn.execute('INSERT INTO hb_gpu_reset_watch VALUES (?,?,?,?,?)', (now, len(lines), 0, 1, int(ok)))
+    text = (f"↺ HB restarted the GPU model server ({SERVICE}): the card reset ({len(lines)} kernel message(s)) and APEX stopped answering. "
+            + ('A test answer works again.' if ok else 'It does not answer yet; HB checks again in a minute.'))
+    if say:
+        say(text)
+    else:
+        from core.hb_chat import owner_chat
+        conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                     (owner_chat(conn), text))
+    return text
+

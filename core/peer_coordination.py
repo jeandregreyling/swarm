@@ -240,6 +240,12 @@ def start():
                                 spill_tick(conn)
                         except Exception:
                             LOG.exception('GPU guard failed')
+                        try:  # Practice 158: a card reset seen in the kernel log - prove APEX answers, restart it when it does not
+                            from core.hb_gpu_guard import reset_tick
+                            reset_tick(conn)
+                            conn.commit()
+                        except Exception:
+                            LOG.exception('GPU reset watch failed')
                         try:  # Owner 14 Nov: model benchmark requests (/bench) run inside HB so main chat shows them
                             from core.hb_model_bench import tick as bench_tick
                             bench_tick(conn)
