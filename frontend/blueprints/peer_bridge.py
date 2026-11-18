@@ -575,8 +575,14 @@ def hb_activity(current_user=None):
     """Owner 14 Nov: what APEX and Fred are actually doing right now."""
     from contextlib import closing
     from core import hb_activity as act
+    # Practice 164 (owner 18 Nov 2026: "I can't see what agents are working on or thinking anymore"): this URL was registered twice;
+    # Flask served only this first view, so hb-live-activity.js (the plain-text line under the thinking bubble, which reads 'lines')
+    # never got its text. One view now serves both: the task chains and the live lines.
+    from core import hb_live_activity
     with closing(get_connection()) as conn:
-        return jsonify(ok=True,running=act.running(conn),chains=act.chains(conn),requests=act.requests(conn))
+        live = hb_live_activity.snapshot(conn)
+        return jsonify(ok=True,running=act.running(conn),chains=act.chains(conn),requests=act.requests(conn),
+                       live=bool(live.get('running')),lines=live.get('lines') or [])
 
 
 @peer_bridge_bp.route('/api/peer/v1/hb/queue',methods=['GET','POST'])
@@ -633,16 +639,6 @@ def hb_queue_status(current_user=None):
         data['summary']=hb_queue.summary(conn)
     if changed:data['changed']=changed
     return jsonify(ok=True,**data)
-
-
-@peer_bridge_bp.route('/api/peer/v1/hb/activity',methods=['GET'])
-@require_owner
-def hb_live_activity(current_user=None):
-    """Owner 14 Nov: plain text of what the models are doing right now (core/hb_live_activity.py), shown under the thinking bubble."""
-    from contextlib import closing
-    from core import hb_live_activity
-    with closing(get_connection()) as conn:
-        return jsonify(ok=True,**hb_live_activity.snapshot(conn))
 
 
 @peer_bridge_bp.route('/api/peer/v1/hb/models',methods=['GET','POST'])

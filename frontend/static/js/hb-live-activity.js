@@ -41,7 +41,8 @@
     fetch('/api/peer/v1/hb/activity', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
       var node = ensure();
       now(data);                                          // Practice 126
-      if (!data || !data.running) { node.style.display = 'none'; return; }
+      // Practice 164: the shared /hb/activity answer carries the live text in 'lines' (and 'live'); 'running' is the work list
+      if (!data || !data.live || !data.lines || !data.lines.length) { node.style.display = 'none'; return; }
       node.textContent = data.lines.join('\n');
       place(node);
       node.style.display = 'block';
