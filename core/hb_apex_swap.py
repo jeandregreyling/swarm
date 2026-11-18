@@ -69,7 +69,25 @@ def render(text, cand):
     else:
         new = re.sub(r'\s*--chat-template-file\s+\S+', '', new, count=1)
     new = re.sub(r'(Description=APEX )[^\n]*?( Vulkan llama-server)', lambda m: m.group(1) + cand['name'] + m.group(2), new, count=1)
+    for flag, value in server_args(cand['name']).items():     # Practice 159
+        if re.search(r'(?<=\s)' + re.escape(flag) + r'\s+\S+', new):
+            new = re.sub(r'((?<=\s)' + re.escape(flag) + r'\s+)\S+', lambda m: m.group(1) + value, new, count=1)
+        else:
+            new = new.replace('--no-webui', f'{flag} {value} --no-webui', 1)
     return new
+
+
+# Practice 159 (owner 18 Nov 2026, "go"): the card reset twice in 30 minutes, both times while swift-qwen3.8-27b processed a long prompt
+# ("comp_1.x ring reset ... device wedged"). It is a dense 27B model; with -b 2048 -ub 1024 one GPU job runs long enough for the kernel's
+# compute-ring timeout. gpt-oss:20b is a mixture-of-experts model (~3.6B active per token) and never came close. Each model now gets its
+# own batch sizes at a swap; the defaults come back when another model plays APEX.
+DEFAULT_ARGS = {'-b': '2048', '-ub': '1024'}
+ARGS_BY_MODEL = {'swift-qwen3.8-27b': {'-b': '512', '-ub': '256'}, 'qwen2.5:14b-instruct': {'-b': '1024', '-ub': '512'},
+                 'fred-cpu:24b': {'-b': '512', '-ub': '256'}}
+
+
+def server_args(name):
+    return {**DEFAULT_ARGS, **ARGS_BY_MODEL.get(str(name or ''), {})}
 
 
 def swap(name, say=print, path=None, reload=None, restart=None, answers=None, rows=None):
