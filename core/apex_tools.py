@@ -1263,6 +1263,86 @@ _NOT_COVERED = re.compile(r"(?:notes?|kc|knowledge centre)\b[^.\n]{0,80}\b(?:do(
                           r"explain|mention|describe)|general (?:sap )?knowledge|not (?:from|in) (?:our|the) notes", re.I)
 
 
+# Practice 163 (owner 18 Nov 2026, question suite).
+_SAP_TOPIC = re.compile(r"\bsap\b|payroll|wage ?types?|infotype|schema|\bpcr\b|personnel calculation|(?<![\w.])/[0-9a-z]{3}\b|\bstp\d?\b|"
+                        r"superannuation|\bsuper\b|\btax\b|\bnotes?\b|\bkba\b|\b\d{7}\b|retro|\bato\b|payday|\bmcb\b|\bpy-", re.I)
+_SAP_DOMAIN = re.compile(r"payroll|wage ?types?|infotype|schema|\bpcr\b|personnel calculation|(?<![\w.])/[0-9a-z]{3}\b|\bstp\d?\b|"
+                         r"superannuation|\btax\b|retro|payday|\bmcb\b", re.I)
+_HB_TOPIC = re.compile(r"\bhb\b|hummingbird|\bapex\b|\brepo\b|\bcode\b|python|\bfunction\b|core/|\.py\b|\bgpu\b|graphics card|\bmodels?\b|"
+                       r"frontend|backend|\bfred\b|\bkc\b|knowledge centre", re.I)
+
+
+def sap_question(text) -> bool:
+    """An SAP / payroll question (the SAP-note checks apply), not one about HB or code that merely mentions 'SAP note'."""
+    t = str(text or '')
+    return bool(_SAP_TOPIC.search(t)) and (not _HB_TOPIC.search(t) or bool(_SAP_DOMAIN.search(t)))
+
+
+_EXACT_STOP = {'what', 'which', 'when', 'where', 'does', 'have', 'from', 'with', 'about', 'according', 'notes', 'note', 'payroll', 'australian',
+               'australia', 'there', 'their', 'they', 'this', 'that', 'tell', 'give', 'explain', 'work', 'works', 'into'}
+
+
+def exact_note_unread(question, receipts):
+    """(note, document_id, title) of a found note whose title carries at least three of the question's words (the most, if several)
+    and that no knowledge_read opened; else None. 17 Nov suite: 'Thresholds & limits for tax year 2025-2026' was found, not read."""
+    words = {w.lower() for w in re.findall(r'\d{4}-\d{2,4}|[A-Za-z]{4,}', str(question or ''))} - _EXACT_STOP
+    if len(words) < 3:
+        return None
+    ids = note_ids(receipts)
+    read = set()
+    for r in receipts:
+        if r.get('tool') == 'knowledge_read' and r.get('status') == 'succeeded':
+            try:
+                read.add(int((r.get('arguments') or {}).get('document_id')))
+            except (TypeError, ValueError):
+                pass
+    best = None
+    for _q, found in _search_results(receipts):
+        for n, title in found:
+            name = title.split(' | ')[0]
+            hits = sum(1 for w in words if w in name.lower())
+            if hits >= 3 and ids.get(n) and ids[n] not in read and (best is None or hits > best[0]):
+                best = (hits, n, ids[n], re.sub(r'^\d+\s*-\s*', '', name)[:90])
+    return best[1:] if best else None
+
+
+_WAGE_TYPE = re.compile(r'(?<![\w/.:])/[0-9A-Z]{3}\b')
+_SAP_OBJECT = re.compile(r'\b(?:T5[0-9A-Z]{2,4}|V_[0-9A-Z_]{3,}|RP[A-Z0-9_]{4,}|PC00_[A-Z0-9_]+|H99[A-Z0-9_]+)\b')
+
+
+def misattributed(answer, texts=None) -> list:
+    """[(note, token)] where a sentence credits SAP notes the KC holds with a wage type or SAP object none of them contains.
+    17 Nov suite: 'SAP Note 3800022 calls /002 the SG employer contribution wage type' - the note never mentions /002."""
+    out = []
+    for sentence in re.split(r'(?<=[.!?])\s+|\n', str(answer or '')):
+        notes = list(dict.fromkeys(re.findall(r'(?<!\d)(\d{7})(?!\d)', sentence)))
+        tokens = list(dict.fromkeys(_WAGE_TYPE.findall(sentence) + _SAP_OBJECT.findall(sentence)))
+        if not notes or not tokens:
+            continue
+        bodies = {}
+        for n in notes:
+            body = (texts or {}).get(n) if texts is not None else _note_text(n)
+            if body is not None:
+                bodies[n] = body
+        if not bodies:
+            continue
+        for tok in tokens:
+            if not any(tok in b for b in bodies.values()):
+                out.append((', '.join(bodies), tok))
+    return list(dict.fromkeys(out))
+
+
+def _note_text(number):
+    try:
+        from contextlib import closing
+        from utils.db._connection import get_connection
+        with closing(get_connection()) as conn:
+            row = conn.execute('SELECT raw_text FROM knowledge_sources WHERE source_ref=?', (f'sap://note/{number}',)).fetchone()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
 def permission_excuse(answer: str) -> bool:
     text=answer.replace("\u2019", "'")
     for sentence in re.split(r'(?<=[.!?])\s+|[;\n]',text):
@@ -1583,6 +1663,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     read_retry_used = False             # Practice 140
     topic_retry_used = False            # Practice 156
     online_retry_used = False           # Practice 157
+    exact_retry_used = cited_retry_used = False   # Practice 163
     duplicate_read_retries = set()
     # Owner 16 Nov 2026: APEX told JD "I'm unable to call archive_status because it isn't an available tool" while it worked on a
     # SAP notes step. SAP notes are not model-archive files, and HB's own continuation (a JSON instruction that says "Continue")
@@ -1605,8 +1686,11 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         nonlocal permission_retry_used
         nonlocal inventory_retry_used
         nonlocal research_retry_used, kc_retry_used, coverage_retry_used, content_retry_used, read_retry_used
-        nonlocal topic_retry_used, online_retry_used
+        nonlocal topic_retry_used, online_retry_used, exact_retry_used, cited_retry_used
         original = answer
+        # Practice 163 (owner 18 Nov 2026, question suite): the SAP-note checks ran on questions about HB and code too - "what does the HB
+        # GPU guard do" was sent to read four unrelated SAP notes and its answer was lost. They now run for SAP / payroll questions only.
+        sap_turn = research_question(latest_user) and sap_question(latest_user)
 
         def correct(content):
             # Keep the rejected answer so the receipts it read count as consumed and compact.
@@ -1674,7 +1758,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         # depth this check asks for; when it does run, its examples are the question's own words and it asks for the answer, not titles.
         read_notes = sum(1 for r in receipts if r.get('tool') == 'knowledge_read' and r.get('status') == 'succeeded')
         if (not no_tools and can_retry and not research_retry_used and searches >= 1 and distinct_topic_searches(receipts) < 2
-                and read_notes < 2 and research_question(latest_user)):
+                and read_notes < 2 and sap_turn):
             research_retry_used = True
             used = '; '.join(sorted({q for q, _t in _search_results(receipts) if q}))[:200]
             terms = _topic_terms(latest_user)
@@ -1684,7 +1768,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     + ", a synonym or the component. Read the 2-3 most relevant notes, then answer the owner's question itself from what "
                     "they say - every part of it - naming each note you rely on.")
             return None
-        held = kc_notes_claimed_missing(answer) if research_question(latest_user) else []
+        held = kc_notes_claimed_missing(answer) if sap_turn else []
         if held and not no_tools and can_retry and not kc_retry_used:
             kc_retry_used = True
             correct("BACKEND KC CHECK: your answer was not delivered. It calls SAP Note(s) " + ', '.join(held) + " missing, truncated or "
@@ -1696,7 +1780,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             answer += ('\n\n**Correction** (HB): SAP Note(s) ' + ', '.join(held) + ' are in the Knowledge Centre - they were not '
                        'read this turn, not missing.')
         # Practice 130: every note on the topic that the searches returned is in the answer.
-        left = notes_left_out(latest_user, answer, receipts) if research_question(latest_user) else []
+        left = notes_left_out(latest_user, answer, receipts) if sap_turn else []
         # Practice 135 (17 Nov 2026): three searches filled the window, HB asked for a tool-free final answer, and with can_retry off
         # this check never ran (3643537 was left out). Including notes needs no tool, so it also runs in that final round.
         if left and not no_tools and (can_retry or can_fix) and not coverage_retry_used:
@@ -1715,7 +1799,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             if extra:
                 answer = drop_nothing_more(answer) + extra + not_checked_line(latest_user, answer)
         # Practice 156: a topic the question never named goes back once.
-        if research_question(latest_user) and not no_tools and not topic_retry_used:
+        if sap_turn and not no_tools and not topic_retry_used:
             foreign = imported_topic(latest_user, receipts)
             if foreign and can_retry:
                 topic_retry_used = True
@@ -1724,7 +1808,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         "own words (and their long forms), then answer that question.")
                 return None
         # Practice 157 (owner 18 Nov 2026: "yes search online"): when the notes do not cover the question, search public SAP pages first.
-        if (research_question(latest_user) and not no_tools and can_retry and not online_retry_used and web_handler is not None
+        if (sap_turn and not no_tools and can_retry and not online_retry_used and web_handler is not None
                 and _NOT_COVERED.search(answer)
                 and not any(r.get('tool') == 'web_search' and r.get('status') == 'succeeded' for r in receipts)):
             online_retry_used = True
@@ -1734,7 +1818,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     "unconfirmed. HB keeps the pages and fetches the SAP notes they cite.")
             return None
         # Practice 136: the question asks what the notes say - an answer of titles only goes back once (no tool needed).
-        if (research_question(latest_user) and not no_tools and (can_retry or can_fix) and not content_retry_used
+        if (sap_turn and not no_tools and (can_retry or can_fix) and not content_retry_used
                 and titles_only(answer, receipts)):
             content_retry_used = True
             correct("BACKEND CONTENT CHECK: your answer was not delivered. The question asks what the notes say, but your answer lists "
@@ -1746,8 +1830,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         reads = sum(1 for r in receipts if r.get('tool') == 'knowledge_read' and r.get('status') == 'succeeded')
         # Practice 143: the 4th MCB answer described 3713786 and 3749754 without reading them (3713786 holds the definition it then
         # invented); notes the answer cites but did not read this turn are read too.
-        unread_cited = cited_unread(answer, receipts) if research_question(latest_user) else []
-        if (not no_tools and can_retry and not read_retry_used and research_question(latest_user)
+        unread_cited = cited_unread(answer, receipts) if sap_turn else []
+        if (not no_tools and can_retry and not read_retry_used and sap_turn
                 and (reads == 0 or sends_owner_to_fetch(answer) or unread_cited)):
             todo = notes_to_read(answer, receipts)
             if todo:
@@ -1764,6 +1848,24 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         "only from what the notes and the search summaries say, cite the note for each point, and where they do not cover part "
                         "of the question, say so plainly.")
                 return None
+        # Practice 163: the note whose title IS the question's subject is read; a note is not credited with what it does not say.
+        exact = exact_note_unread(latest_user, receipts) if sap_turn else None
+        if exact and not no_tools and can_retry and not exact_retry_used:
+            exact_retry_used = True
+            n, d, name = exact
+            correct(f"BACKEND READ CHECK: your answer was not delivered. SAP Note {n} ('{name}') matches the question's subject and you did "
+                    f"not read it. knowledge_read {{\"document_id\": {d}}} now and answer from what it says.")
+            return None
+        wrong = misattributed(answer) if sap_turn else []
+        if wrong and not no_tools and (can_retry or can_fix) and not cited_retry_used:
+            cited_retry_used = True
+            correct("BACKEND CITATION CHECK: your answer was not delivered. " + '; '.join(f'SAP Note {n} does not contain {tok}' for n, tok in wrong[:6])
+                    + ". Remove those claims, or name the source that does say it (a page you read, with its URL), or mark them unconfirmed."
+                    + ("" if can_retry else " Answer now without tools."))
+            return None
+        if wrong and cited_retry_used:
+            answer += ('\n\n**Not in the cited note** (HB): ' + '; '.join(f'SAP Note {n} does not contain {tok}' for n, tok in wrong[:6])
+                       + ' - treat those statements as unconfirmed.')
         # 13 Nov (B59): "I will now update the test file" slipped past the old verb list; and when the reads used up
         # every round, the promise went out as the answer. Now: wider verbs, and an unkept promise is marked.
         promises_edit=re.search(r"\b(?:next (?:step|action) (?:is|will be)|i (?:will|am going to|shall)|let me|(?:should|needs? to|must) be)\b.{0,160}"

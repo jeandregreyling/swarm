@@ -189,6 +189,20 @@ def same_question(a, b) -> bool:
     return len(wa) >= 4 and len(wb) >= 4 and len(wa & wb) / len(wa | wb) >= 0.8
 
 
+_FOLLOW_UP = __import__('re').compile(r"^\s*(?:go on|continue|more\b|and\b|also\b|what about|how about|why\b|tell me more|explain (?:that|this|it|them)|"
+                                      r"same\b|ok\b|yes\b|no\b|that\b|those\b|these\b|it\b|they\b|then\b|so\b)", __import__('re').I)
+
+
+def fresh_research(message) -> bool:
+    """Practice 163: a research question that is not a follow-up of the conversation before it."""
+    try:
+        from core.apex_tools import research_question
+    except Exception:
+        return False
+    text = str(message or '')
+    return bool(research_question(text)) and not _FOLLOW_UP.search(text) and len(text.split()) >= 5
+
+
 def apex_request_history(history: list[dict], message: str) -> list[dict]:
     """Keep the request's own instruction last, even if the shared thread changed.
 
@@ -199,6 +213,12 @@ def apex_request_history(history: list[dict], message: str) -> list[dict]:
     result = [dict(item) for item in history]
     if result and result[-1].get("role") == "user" and result[-1].get("content") == message:
         result.pop()
+    if fresh_research(message):
+        # Practice 163 (owner 18 Nov 2026, question suite): "how do /001 and /002 work" was answered - twice - as a superannuation
+        # question, because the chat before it was about the MCB and STP2; the 27B even searched the web for "/001 /002 superannuation".
+        # A new research question starts without the earlier chat; a follow-up ("go on", "what about ...") keeps it.
+        return [{"role": "user", "content": "HB note: a new research question - the earlier chat is left out so its topics do not steer "
+                 "this one. Search with this question's own words."}, {"role": "user", "content": message}]
     kept, dropping, dropped = [], False, 0
     for item in result:
         if item.get("role") == "user":

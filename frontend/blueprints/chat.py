@@ -3344,6 +3344,9 @@ def api_chat():
                     from core import hb_tasks
                     with __import__('contextlib').closing(get_connection()) as task_conn:
                         coaching=[{'role':'user','content':'HB task reference, not new permissions: '+json.dumps(hb_tasks.packet(task_conn,bound_task)),'instructor_reference':True}]
+                from core.chat_continuity import fresh_research
+                if fresh_research(message):   # Practice 163: a new research question carries no old chat, memory or pinned instructions
+                    return apex_request_history(turn_history, message)
                 return (([{'role': 'user', 'content': carry_over}] if carry_over else [])
                         + personal_memory + coaching + apex_request_history(turn_history, message))
 

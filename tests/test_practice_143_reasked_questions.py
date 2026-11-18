@@ -31,9 +31,9 @@ def test_practice_143_earlier_answers_to_the_same_question_are_left_out():
          {'role': 'user', 'content': Q}]
     r = apex_request_history(h, Q)
     text = json.dumps(r)
-    assert 'single payment per payroll run' not in text and 'about the button' in text
+    # Practice 163: a new research question now starts without any earlier chat, not only without the old answers
+    assert 'single payment per payroll run' not in text and 'about the button' not in text
     assert r[-1] == {'role': 'user', 'content': Q} and 'left out' in r[-2]['content']
-    assert sum(1 for m in r if m['content'] == Q) == 2   # the owner's own earlier message stays
 
 
 def test_practice_143_cited_but_unread_notes_go_back(tmp_path, monkeypatch):
