@@ -103,7 +103,7 @@ def swap(name, say=print, path=None, reload=None, restart=None, answers=None, ro
         return False, 'An APEX swap is already running.'
     try:
         before = path.read_text()
-        if current(before) == cand['path']:
+        if render(before, cand) == before:         # Practice 160: same model AND same settings; new settings reload it
             return True, f"APEX is already {cand['name']}."
         path.with_name(path.name + '.before-swap').write_text(before)
         path.write_text(render(before, cand))
@@ -245,17 +245,76 @@ def kind_of(text):
         return 'default'
 
 
-def route_for(conn, text, say=print, idle=None, swapper=None):
-    """Before an APEX turn: if this kind of question has a preferred model that is not playing, swap it in (APEX idle only).
-    Returns what HB did, or ''."""
+# Practice 160 (owner 18 Nov 2026: "shouldn't HB check and review questions before automatically assigning an agent unless I manually pick
+# one"): route_for() swapped on a word list, silently, and ignored JD's own picks - an @model in his message and the On/Off/Auto switches in
+# Live status. Now JD's pick wins, and otherwise HB reviews the question first (kind, the topic words, how well the Knowledge Centre covers
+# it) and says in one line what it decided and why before APEX starts.
+def manual_pick(text, modes=None, rows=None):
+    """(model, how) when JD chose: an @model in the message, or a model switched On in Live status; else (None, '')."""
+    rows = candidates() if rows is None else rows
+    names = {r['name'].lower(): r['name'] for r in rows}
+    for m in re.findall(r'@([\w.:-]+)', str(text or '')):
+        if m.lower() in names:
+            return names[m.lower()], f'you named {names[m.lower()]} with @'
+    if modes is None:
+        try:
+            from core.hb_model_switches import current_modes
+            modes = current_modes()
+        except Exception:
+            modes = {}
+    on = [names[m.lower()] for m, mode in (modes or {}).items() if mode == 'on' and m.lower() in names]
+    return (on[0], f'{on[0]} is switched On in Live status') if on else (None, '')
+
+
+def review(text, search=None):
+    """HB's look at a question before it assigns a model: {kind, terms, strong, total, plan}."""
     kind = kind_of(text)
-    want = prefs(conn).get(kind) or ''
+    out = {'kind': kind, 'terms': [], 'strong': 0, 'total': 0, 'plan': ''}
+    if kind != 'research':
+        return out
+    try:
+        from core.apex_knowledge import focus_words
+        out['terms'] = focus_words(text)[:6]
+        result = (search or __import__('core.apex_knowledge', fromlist=['search']).search)(' '.join(out['terms']) or str(text)[:200])
+        matches = [str(m) for m in result.get('matches') or []]
+        out['total'] = len(matches)
+        words = [w.lower() for w in out['terms']]
+        out['strong'] = sum(1 for m in matches if sum(1 for w in words if w in m.split(' | ')[0].lower()) >= max(1, min(2, len(words))))
+    except Exception:
+        pass
+    out['plan'] = ('our notes look relevant - APEX reads them first' if out['strong'] >= 2 else
+                   'our notes have no strong match - APEX also searches public SAP pages and HB keeps what it finds')
+    return out
+
+
+def route_for(conn, text, say=print, idle=None, swapper=None, modes=None, search=None):
+    """Before an APEX turn: honour JD's pick, else review the question, say what HB decided, and swap in the model for that kind of
+    question when it is not playing (APEX idle only). Returns what HB did, or ''."""
     have = playing()
+    picked, how = manual_pick(text, modes)
+    if picked:
+        if not have or picked.lower() == str(have).lower() or not (idle or guard._idle)():
+            return ''
+        say(f'HB: {how}, so APEX switches to {picked} (a minute or two).')
+        ok, msg = (swapper or swap)(picked, say)
+        return msg if ok else f'{msg} HB answers with {have}.'
+    r = review(text, search)
+    want = prefs(conn).get(r['kind']) or ''
+    try:
+        from core.hb_model_switches import current_modes
+        if want and (modes if modes is not None else current_modes()).get(want) == 'off':
+            want = ''                                       # switched Off by JD: never swapped in
+    except Exception:
+        pass
+    if r['kind'] == 'research':
+        about = ', '.join(r['terms']) or 'your question'
+        model_part = (f'{want} handles research better than {have}, so HB swaps APEX first (a minute or two)'
+                      if want and have and want.lower() != str(have).lower() else f'{have} answers')
+        say(f"HB review: research question ({about}) - {r['plan']} - {model_part}. Name a model with @ to choose yourself.")
     if not want or not have or want.lower() == str(have).lower():
         return ''
     if not (idle or guard._idle)():
         return ''
-    say(f'HB: this is a {kind} question - {want} handles those better than {have}, so HB swaps APEX first (a minute or two).')
     ok, msg = (swapper or swap)(want, say)
     return msg if ok else f'{msg} HB answers with {have}.'
 
