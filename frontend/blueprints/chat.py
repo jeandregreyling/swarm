@@ -3284,6 +3284,9 @@ def api_chat():
 
             from core.apex_routing import choose_local_model, use_model
             try:   # Practice 153: HB puts the model that handles this kind of question on APEX first
+                # Practice 165 (owner 18 Nov 2026, log check): 'closing' was never imported here, so every main-chat turn logged
+                # "APEX model routing failed" (NameError) and HB's review and model choice (Practices 153 and 160) never ran.
+                from contextlib import closing
                 from core import hb_apex_swap
                 from core.hb_model_bench import _post as _hb_post
                 def _hb_say(text):
