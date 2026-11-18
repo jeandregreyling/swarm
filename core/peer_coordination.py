@@ -240,6 +240,12 @@ def start():
                                 spill_tick(conn)
                         except Exception:
                             LOG.exception('GPU guard failed')
+                        try:  # Practice 161: APEX runs with the settings HB prescribes for its model (reloaded by HB while idle)
+                            from core.hb_apex_swap import settings_tick
+                            settings_tick(conn)
+                            conn.commit()
+                        except Exception:
+                            LOG.exception('APEX settings reload failed')
                         try:  # Practice 158: a card reset seen in the kernel log - prove APEX answers, restart it when it does not
                             from core.hb_gpu_guard import reset_tick
                             reset_tick(conn)

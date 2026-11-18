@@ -318,3 +318,40 @@ def route_for(conn, text, say=print, idle=None, swapper=None, modes=None, search
     ok, msg = (swapper or swap)(want, say)
     return msg if ok else f'{msg} HB answers with {have}.'
 
+
+# Practice 161 (owner 18 Nov 2026: "I don't want to manually swap models, this should be done via HB automatically"): Practice 159 gave
+# the 27B smaller GPU batches, but they only took effect at a swap, so the card kept resetting until JD would type /apex. settings_tick():
+# when the model playing APEX runs with settings other than HB prescribes for it, HB reloads it itself while APEX is idle (backup, check,
+# roll back - the same swap), at most once per SETTINGS_GAP_S, and says so in main chat.
+SETTINGS_GAP_S = 1800
+
+
+def settings_tick(conn, now=None, idle=None, swapper=None, say=None, rows=None, text=None):
+    import time as _t
+    now = now or _t.time()
+    conn.execute('CREATE TABLE IF NOT EXISTS hb_apex_settings_reload(at REAL, model TEXT, ok INTEGER)')
+    last = conn.execute('SELECT MAX(at) FROM hb_apex_settings_reload').fetchone()[0]
+    if last and now - last < SETTINGS_GAP_S:
+        return None
+    try:
+        text = guard.dropin().read_text() if text is None else text
+    except Exception:
+        return None
+    rows = candidates() if rows is None else rows
+    path = current(text)
+    cand = next((r for r in rows if r['path'] == path), None)
+    if not cand or render(text, cand) == text or not (idle or guard._idle)():
+        return None
+    if say is None:
+        from core.hb_model_bench import _post
+        def say(msg):                                    # committed at once: no write lock held during the reload
+            _post(conn, msg)
+            conn.commit()
+    say(f"HB: {cand['name']} plays APEX with older settings than HB now uses for it - reloading it with "
+        + ', '.join(f'{k} {v}' for k, v in server_args(cand['name']).items()) + ' while APEX is idle (a minute or two).')
+    ok, msg = (swapper or swap)(cand['name'], say)
+    conn.execute('INSERT INTO hb_apex_settings_reload VALUES (?,?,?)', (now, cand['name'], int(ok)))
+    say(('Done: ' if ok else 'Not done: ') + msg)
+    return msg
+
+
