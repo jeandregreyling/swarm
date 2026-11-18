@@ -1221,6 +1221,40 @@ def coverage_appendix(question, answer, receipts) -> str:
     return ('\n\n**Also on this topic** (HB: found by the searches, not covered above, not read this turn):\n' + '\n'.join(lines)) if lines else ''
 
 
+# Practice 156 (owner 18 Nov 2026): asked how wage types /001 and /002 work, the 27B searched "wage type /001 /002 superannuation" (super
+# came from the earlier MCB talk, not the question), read nothing, said "the KC notes don't define /001 and /002" and then explained them
+# as super wage types filled by routines RPCSUPQF_PVT / RPCSUPQ2_OPBS from table T558W - names in nothing it read. /001 and /002 are the
+# valuation bases. HB now catches a search topic the question never named.
+_GENERIC_QUERY = {'sap', 'note', 'notes', 'wage', 'type', 'types', 'payroll', 'australia', 'australian', 'issue', 'issues', 'error',
+                  'report', 'what', 'how', 'does', 'work', 'works', 'the', 'and', 'for', 'with'}
+
+
+def imported_topic(question, receipts) -> list:
+    """Words in at least half of this turn's knowledge searches (two or more) that the question does not contain and that do not spell
+    out one of its abbreviations ('Maximum Contribution Base' for MCB is fine; 'superannuation' for /001 is not)."""
+    queries = [str((r.get('arguments') or {}).get('query') or '') for r in receipts
+               if r.get('tool') == 'knowledge_search' and r.get('status') == 'succeeded']
+    if len(queries) < 2:
+        return []
+    q = str(question or '').lower()
+    acronyms = {a for a in re.findall(r'\b([A-Z]{2,6})\d?\b', str(question or ''))}
+    spelled = set()
+    for query in queries:
+        words = re.findall(r'[A-Za-z]+', query)
+        for i in range(len(words)):
+            for a in acronyms:
+                part = words[i:i + len(a)]
+                if len(part) == len(a) and ''.join(w[0].upper() for w in part) == a:
+                    spelled.update(w.lower() for w in part)
+    counts = {}
+    for query in queries:
+        for w in set(re.findall(r'[a-z]{5,}', query.lower())):
+            if w in _GENERIC_QUERY or w in spelled or w[:5] in q:
+                continue
+            counts[w] = counts.get(w, 0) + 1
+    return sorted(w for w, n in counts.items() if n >= 2 and n * 2 > len(queries))
+
+
 def permission_excuse(answer: str) -> bool:
     text=answer.replace("\u2019", "'")
     for sentence in re.split(r'(?<=[.!?])\s+|[;\n]',text):
@@ -1539,6 +1573,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     coverage_retry_used = False         # Practice 130
     content_retry_used = False          # Practice 136
     read_retry_used = False             # Practice 140
+    topic_retry_used = False            # Practice 156
     duplicate_read_retries = set()
     # Owner 16 Nov 2026: APEX told JD "I'm unable to call archive_status because it isn't an available tool" while it worked on a
     # SAP notes step. SAP notes are not model-archive files, and HB's own continuation (a JSON instruction that says "Continue")
@@ -1561,6 +1596,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         nonlocal permission_retry_used
         nonlocal inventory_retry_used
         nonlocal research_retry_used, kc_retry_used, coverage_retry_used, content_retry_used, read_retry_used
+        nonlocal topic_retry_used
         original = answer
 
         def correct(content):
@@ -1669,6 +1705,15 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             extra = coverage_appendix(latest_user, answer, receipts)
             if extra:
                 answer = drop_nothing_more(answer) + extra + not_checked_line(latest_user, answer)
+        # Practice 156: a topic the question never named goes back once.
+        if research_question(latest_user) and not no_tools and not topic_retry_used:
+            foreign = imported_topic(latest_user, receipts)
+            if foreign and can_retry:
+                topic_retry_used = True
+                correct("BACKEND TOPIC CHECK: your answer was not delivered. Your searches added '" + "', '".join(foreign) + "', which the "
+                        "owner's question does not mention - an earlier conversation is not this question. Search again with the question's "
+                        "own words (and their long forms), then answer that question.")
+                return None
         # Practice 136: the question asks what the notes say - an answer of titles only goes back once (no tool needed).
         if (research_question(latest_user) and not no_tools and (can_retry or can_fix) and not content_retry_used
                 and titles_only(answer, receipts)):

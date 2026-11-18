@@ -17,7 +17,11 @@ SKILL_TOOLS = {
                 'studio_note', 'studio_status', 'studio_task', 'task_plan', 'runtime_status', 'local_review'},
 }
 SKILL_WORDS = {
-    'research': r'research|find out|look up|learn|search|documentation|docs|what is|explain|sap|payroll|consultant|hugging ?face|dataset',
+    # Practice 156 (owner 18 Nov 2026): "tell be how the wage types /001 and /002 work?" matched none of these, so it ran as a
+    # 'wrapper' turn - no research method, no research checks, no research model.
+    'research': r'research|find out|look up|learn|search|documentation|docs|what is|explain|sap|payroll|consultant|hugging ?face|dataset|'
+                r'wage ?types?|infotype|schema|\bpcr\b|personnel calculation|(?<![\w.])/[0-9a-z]{3}\b|how (?:does|do|is|are|to)\b|'
+                r'what (?:are|does|do)\b|tell (?:me|be)\b|\bnotes?\b|superannuation|\bstp\d?\b|\btax\b',
     'memory': r'remember|earlier|previous|before|last time|what did|history|decided|recall|again|which task',
     'wrapper': r'\bfile|code|fix|repair|patch|implement|build|test|studio|tool|wrapper|service|function|\.py\b|install|ui\b|interface',
 }

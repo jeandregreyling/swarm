@@ -1,6 +1,6 @@
 {
   "id": "research.method",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "source": "Owner 16 Nov 2026: \"make sure HB knows how to do research properly\" (SAP payroll research, Practice 98)",
   "steps": [
     "Knowledge Centre first: knowledge_search with the exact terms (note number, component such as PY-AU-STP, wage type, report, table, legal change). Each match line already says what the note is about (after ' | '), but not what its solution explains: always knowledge_read the 2-3 most relevant notes, ALL in one round (several knowledge_read calls in one tool_calls list) - tool rounds are limited. Do not answer from memory when the KC can answer, and never ask the owner to fetch or request a note HB holds - read it.",
@@ -14,6 +14,7 @@
     "End with the answer in 2-5 lines, the sources, and what is still unknown and how to find it out.",
     "Never say there is nothing more after one search: say how many searches you ran and which notes you did not read.",
     "For every note say in one line what goes wrong, what the note changes and how it bears on the question - write the answer before the tool rounds run out.",
-    "Answer EVERY part of the question (e.g. what it is, what it means, how it is paid) from what the notes say; a part the notes you read do not cover gets one line saying so and which note might. Never write that nothing is unfinished while a part is unanswered. A long note read shows the passages that mention the question's words; read on with next_offset when you need more."
+    "Answer EVERY part of the question (e.g. what it is, what it means, how it is paid) from what the notes say; a part the notes you read do not cover gets one line saying so and which note might. Never write that nothing is unfinished while a part is unanswered. A long note read shows the passages that mention the question's words; read on with next_offset when you need more.",
+    "If the notes do not cover the question, say so in your FIRST line; anything after that is general SAP knowledge and must be labelled 'general knowledge, not from our notes' - never name programs, tables or rules that no source you read shows. Search with the question's own words: an earlier conversation's topic is not this question's."
   ]
 }
