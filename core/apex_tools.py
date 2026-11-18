@@ -89,7 +89,7 @@ STUDIO_HANDOFF_SCHEMA = {"title": "project title, at most 200 characters",
                         "tasks": "1-10 unique concrete task titles, each at most 200 characters"}
 WEB_TOOL_SCHEMAS = {
     "web_search": {"query": "public search terms only, 1-200 characters",
-                   "provider": "duckduckgo, serper or tavily; no automatic fallback"},
+                   "provider": "serper (use first), tavily, or duckduckgo; no automatic fallback"},
 }
 TEST_TOOL_SCHEMAS = {
     "run_tests": {"tests": "1-5 tracked or non-ignored tests/test_*.py source files",
@@ -1255,6 +1255,11 @@ def imported_topic(question, receipts) -> list:
     return sorted(w for w, n in counts.items() if n >= 2 and n * 2 > len(queries))
 
 
+# Practice 157: an answer that says the notes do not cover the question, or that it answers from general knowledge.
+_NOT_COVERED = re.compile(r"(?:notes?|kc|knowledge centre)\b[^.\n]{0,80}\b(?:do(?:es)? not|don'?t|doesn'?t|never) (?:define|cover|document|"
+                          r"explain|mention|describe)|general (?:sap )?knowledge|not (?:from|in) (?:our|the) notes", re.I)
+
+
 def permission_excuse(answer: str) -> bool:
     text=answer.replace("\u2019", "'")
     for sentence in re.split(r'(?<=[.!?])\s+|[;\n]',text):
@@ -1574,6 +1579,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     content_retry_used = False          # Practice 136
     read_retry_used = False             # Practice 140
     topic_retry_used = False            # Practice 156
+    online_retry_used = False           # Practice 157
     duplicate_read_retries = set()
     # Owner 16 Nov 2026: APEX told JD "I'm unable to call archive_status because it isn't an available tool" while it worked on a
     # SAP notes step. SAP notes are not model-archive files, and HB's own continuation (a JSON instruction that says "Continue")
@@ -1596,7 +1602,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         nonlocal permission_retry_used
         nonlocal inventory_retry_used
         nonlocal research_retry_used, kc_retry_used, coverage_retry_used, content_retry_used, read_retry_used
-        nonlocal topic_retry_used
+        nonlocal topic_retry_used, online_retry_used
         original = answer
 
         def correct(content):
@@ -1714,6 +1720,16 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                         "owner's question does not mention - an earlier conversation is not this question. Search again with the question's "
                         "own words (and their long forms), then answer that question.")
                 return None
+        # Practice 157 (owner 18 Nov 2026: "yes search online"): when the notes do not cover the question, search public SAP pages first.
+        if (research_question(latest_user) and not no_tools and can_retry and not online_retry_used and web_handler is not None
+                and _NOT_COVERED.search(answer)
+                and not any(r.get('tool') == 'web_search' and r.get('status') == 'succeeded' for r in receipts)):
+            online_retry_used = True
+            correct("BACKEND ONLINE CHECK: your answer was not delivered. It says our notes do not cover this, or answers from general "
+                    "knowledge - search public SAP documentation first: web_search with provider 'serper' (or 'tavily' if that fails), e.g. "
+                    "'SAP <the question's terms> help.sap.com'. Answer from those pages, cite each URL, and say which parts are still "
+                    "unconfirmed. HB keeps the pages and fetches the SAP notes they cite.")
+            return None
         # Practice 136: the question asks what the notes say - an answer of titles only goes back once (no tool needed).
         if (research_question(latest_user) and not no_tools and (can_retry or can_fix) and not content_retry_used
                 and titles_only(answer, receipts)):
@@ -2057,8 +2073,14 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                 if is_web:
                     if set(call["arguments"]) != {"query", "provider"}:
                         raise ValueError("web_search requires only query and provider")
-                    output = json.dumps(web_handler(call["arguments"]))
+                    web_result = web_handler(call["arguments"])
+                    output = json.dumps(web_result)
                     receipt["status"] = "succeeded"
+                    try:   # Practice 157: HB keeps the SAP pages found and queues the notes they cite (background)
+                        from core.hb_web_research import capture_later
+                        capture_later(web_result)
+                    except Exception:
+                        LOG.exception("web research capture could not start")
                 elif is_test:
                     output = json.dumps(test_handler(call["arguments"]))
                     receipt["status"] = "succeeded"

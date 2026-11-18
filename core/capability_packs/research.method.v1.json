@@ -1,6 +1,6 @@
 {
   "id": "research.method",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "source": "Owner 16 Nov 2026: \"make sure HB knows how to do research properly\" (SAP payroll research, Practice 98)",
   "steps": [
     "Knowledge Centre first: knowledge_search with the exact terms (note number, component such as PY-AU-STP, wage type, report, table, legal change). Each match line already says what the note is about (after ' | '), but not what its solution explains: always knowledge_read the 2-3 most relevant notes, ALL in one round (several knowledge_read calls in one tool_calls list) - tool rounds are limited. Do not answer from memory when the KC can answer, and never ask the owner to fetch or request a note HB holds - read it.",
@@ -10,7 +10,7 @@
     "Newest wins: when sources disagree, the later version or release wins; say which one you used.",
     "Follow references: when a source cites a note HB does not have, name it and say HB can fetch it (/notes add <number>, or /notes follow PY-AU for a whole area). Never guess what an unread note says.",
     "Keep what the sources say apart from your own inference, and label the inference.",
-    "Online only when the KC has nothing and it is allowed: public pages only; never ask for or use anyone's credentials.",
+    "When the notes do not cover the question: web_search for public SAP documentation (provider 'serper'; 'tavily' if that fails; help.sap.com and SAP Community) and answer from those pages with their URLs - never from memory. HB keeps the pages and fetches the SAP notes they cite. Public pages only; never ask for or use anyone's credentials.",
     "End with the answer in 2-5 lines, the sources, and what is still unknown and how to find it out.",
     "Never say there is nothing more after one search: say how many searches you ran and which notes you did not read.",
     "For every note say in one line what goes wrong, what the note changes and how it bears on the question - write the answer before the tool rounds run out.",
