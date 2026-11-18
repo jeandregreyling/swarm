@@ -450,7 +450,7 @@ def test_transport_schema_restricts_arguments_to_each_tool():
         "workflow_status": ([], []), "workflow_control": (["action", "target"], ["action", "target"]),
         "apex_dispatch": (["objective", "constraints", "acceptance_checks"], ["objective", "acceptance_checks"]),
         "knowledge_search": (["query"], ["query"]),
-        "knowledge_read": (["document_id", "offset"], ["document_id"]),
+        "knowledge_read": (["document_id", "offset", "focus"], ["document_id"]),   # focus: Practice 141
         "ask_instructor": (["peer", "question", "context"], ["peer", "question", "context"]),
         "git_status": ([], []), "list_files": (["path"], []),
         "grep_repo": (["query", "path"], ["query"]),
@@ -587,7 +587,7 @@ def test_knowledge_tools_use_kc_handler_and_never_repository_grep(repository, mo
         return {'status':'found','source':'project_docs','document_id':158}
     outputs=iter([envelope((tool,args)),json.dumps({'tool_calls':[],'answer':'The stored source was found.'})])
     _,_,receipts=run_apex_tools(lambda *_:(next(outputs),1),[{'role':'user','content':'Read Knowledge Centre evidence'}],lambda:True,lambda _:None,repository=repository,studio_handler=handler)
-    assert called==[(tool,args)]
+    assert called==[(tool,{**args,'offset':0} if tool=='knowledge_read' else args)]   # Practice 141: offset 0 spelled out
     assert json.loads(receipts[0]['output'])['source']=='project_docs'
     with pytest.raises(PermissionError):
         ReadOnlyRepository(repository.root).call(tool,args)
