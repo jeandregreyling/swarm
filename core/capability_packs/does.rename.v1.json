@@ -36,8 +36,10 @@
     "core/capability_packs/hb.master.protocol.v1.json",
     "core/capability_packs/does.rename.v1.json",
     "core/hb_rename.py",
+    "core/apex_paths.py",
     "tests/test_hb_master_prompt.py",
-    "tests/test_does_rename.py"
+    "tests/test_does_rename.py",
+    "tests/test_apex_paths.py"
   ],
   "moves": [
     [
