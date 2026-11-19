@@ -54,7 +54,7 @@ COMMANDS = [
     ('unload', '/unload model-name', 'Unload an HB-managed local model to free memory', False),
     ('stop', '/stop', 'Stop all current work now', False),
     ('admin', '/admin [rocm | approve A-xxxx | decline A-xxxx | check rocm]', "Admin steps: HB proposes, you approve, Linux asks for your password in a terminal window", False),
-    ('apex', '/apex [models | model <name> | back]', 'Which model plays APEX; swap it (HB backs up, restarts, checks, rolls back)', False),
+    ('apex', '/apex [models | model <name> | back | backend | bench rocm|vulkan]', 'Which model plays APEX and on which GPU backend; swap or test them (HB backs up, restarts, checks, rolls back)', False),
     ('roles', '/roles [set <role> <model>]', 'Which model plays each role (APEX, Fred, counsel, reviewer, homework); set changes one', False),
     ('net', '/net [bench [name] | budget <GB left> <floor GB> | mobile <name> on|off | pick <GB>]', 'Connections, their measured speed, the mobile data budget, and which one a job should use', False),
     ('swap', '/swap [plan <model GB>]', 'NVMe swap for very large models: is one on, and what a model of that size would need', False),

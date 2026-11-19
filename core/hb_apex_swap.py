@@ -68,7 +68,7 @@ def render(text, cand):
             new = new.replace('--jinja', '--jinja --chat-template-file ' + cand['template'], 1)
     else:
         new = re.sub(r'\s*--chat-template-file\s+\S+', '', new, count=1)
-    new = re.sub(r'(Description=APEX )[^\n]*?( Vulkan llama-server)', lambda m: m.group(1) + cand['name'] + m.group(2), new, count=1)
+    new = re.sub(r'(Description=APEX )[^\n]*?( (?:Vulkan|ROCm) llama-server)', lambda m: m.group(1) + cand['name'] + m.group(2), new, count=1)
     for flag, value in server_args(cand['name']).items():     # Practice 159
         if re.search(r'(?<=\s)' + re.escape(flag) + r'\s+\S+', new):
             new = re.sub(r'((?<=\s)' + re.escape(flag) + r'\s+)\S+', lambda m: m.group(1) + value, new, count=1)
@@ -145,6 +145,136 @@ def _record(name):
         pass
 
 
+# Practice 173 (owner 19 Nov 2026: "putting it through HB would be the cherry on top"): ROCm 10.2 is installed (admin steps A-CC1A70 and
+# A-08E6C6) and llama.cpp is built for it in build-rocm next to build-vulkan. The Vulkan baseline for the 27B from the server log the
+# same evening: 35 tok/s reading, 13 tok/s writing (244 APEX turns). /apex bench <backend> waits until APEX is idle, measures the live
+# server on one fixed long prompt, switches it to the other backend (backup, check, roll back - like a model swap), measures again and
+# keeps the new backend only when it read AND wrote faster and answered every run; otherwise the old backend goes back. Either way HB
+# posts the comparison in main chat. /apex backend <backend> switches without a test.
+LLAMA = '/home/jd/llama.cpp'
+BACKENDS = {'vulkan': {'server': LLAMA + '/build-vulkan/bin/llama-server', 'device': 'Vulkan0', 'label': 'Vulkan'},
+            'rocm': {'server': LLAMA + '/build-rocm/bin/llama-server', 'device': 'ROCm0', 'label': 'ROCm'}}
+BENCH_RUNS = 2
+BENCH_WAIT_S = 1800
+BENCH_PROMPT = (' '.join(f'Note {i}: payroll schema step {i} reads wage type {1000 + i} and posts it to period {i % 12 + 1} of year '
+                         f'{2020 + i % 6}.' for i in range(120))
+                + '\n\nSummarise the notes above in three sentences.')
+
+
+def _servers(text):
+    return re.findall(r'^ExecStart=(\S+)', text, re.M)
+
+
+def backend(text=None):
+    """'vulkan', 'rocm' or None - which llama-server build APEX runs on."""
+    text = guard.dropin().read_text() if text is None else text
+    servers = _servers(text)
+    return next((k for k, b in BACKENDS.items() if servers and servers[-1] == b['server']), None)
+
+
+def render_backend(text, name):
+    """The drop-in with this backend's llama-server and device; model, batches and everything else as they were."""
+    b = BACKENDS[name]
+    servers = _servers(text)
+    if not servers:
+        return text
+    new = re.sub(r'^ExecStart=' + re.escape(servers[-1]), lambda m: 'ExecStart=' + b['server'], text, count=1, flags=re.M)
+    new = re.sub(r'(--device\s+)\S+', lambda m: m.group(1) + b['device'], new, count=1)
+    return re.sub(r'(Description=APEX \S+ )\S+( llama-server)', lambda m: m.group(1) + b['label'] + m.group(2), new, count=1)
+
+
+def switch_backend(name, say=print, path=None, reload=None, restart=None, answers=None):
+    """Run APEX on another llama-server build. Returns (ok, message)."""
+    reload, restart, answers = reload or guard._reload, restart or guard._restart, answers or guard._answers
+    path = Path(path) if path else guard.dropin()
+    b = BACKENDS.get(str(name).lower())
+    if not b:
+        return False, f"{name} is not a backend HB knows - use {' or '.join(BACKENDS)}."
+    if not Path(b['server']).exists():
+        return False, f"There is no {b['label']} build of llama-server ({b['server']})."
+    if not _busy.acquire(blocking=False):
+        return False, 'An APEX swap is already running.'
+    try:
+        before = path.read_text()
+        new = render_backend(before, str(name).lower())
+        if new == before:
+            return True, f"APEX already runs on {b['label']}."
+        path.with_name(path.name + '.before-backend').write_text(before)
+        path.write_text(new)
+        say(f"Switching APEX to {b['label']} - APEX is offline for a minute or two; the previous settings are saved as "
+            f"{path.name}.before-backend.")
+        if reload() and restart() and answers():
+            return True, f"APEX now runs on {b['label']} and answers."
+        path.write_text(before)
+        reload()
+        restart()
+        ok = answers()
+        return False, (f"APEX did not start or answer on {b['label']}, so HB put the previous backend back"
+                       + (' - APEX answers again.' if ok else ' - and APEX does not answer yet: check /status.'))
+    finally:
+        _busy.release()
+
+
+def _completion(url, body):
+    import json as _j
+    import urllib.request as _u
+    req = _u.Request(url, _j.dumps(body).encode(), {'Content-Type': 'application/json'})
+    with _u.urlopen(req, timeout=900) as r:
+        return _j.loads(r.read())
+
+
+def measure(url=None, runs=BENCH_RUNS, post=None):
+    """Reading and writing speed (tokens/s) of the live server on BENCH_PROMPT, prompt cache off."""
+    url, post = url or guard.URL, post or _completion
+    got = []
+    for _ in range(runs):
+        try:
+            t = post(url + '/completion', {'prompt': BENCH_PROMPT, 'n_predict': 128, 'temperature': 0, 'cache_prompt': False}).get('timings') or {}
+            got.append((float(t.get('prompt_per_second') or 0), float(t.get('predicted_per_second') or 0)))
+        except Exception:
+            got.append((0.0, 0.0))
+    return {'read': round(sum(p for p, _ in got) / len(got), 1), 'write': round(sum(g for _, g in got) / len(got), 1),
+            'ok': all(p and g for p, g in got)}
+
+
+def bench(target, say=print, idle=None, sleep=None, switcher=None, measurer=None, start=None):
+    """Compare the backend APEX runs on with target; keep target only when it is faster at both. Returns (ok, report)."""
+    import time as _t
+    idle, sleep = idle or guard._idle, sleep or _t.sleep
+    switcher, measurer = switcher or switch_backend, measurer or measure
+    target = str(target).lower()
+    if target not in BACKENDS:
+        return False, f"{target} is not a backend HB knows - use {' or '.join(BACKENDS)}."
+    start = backend() if start is None else start
+    if start not in BACKENDS:
+        return False, 'HB cannot tell which llama-server build APEX runs on, so it does not test.'
+    if start == target:
+        return False, f"APEX already runs on {BACKENDS[target]['label']}; /apex bench " + next(k for k in BACKENDS if k != target) + ' tests the other one.'
+    waited = 0
+    while not idle():
+        if waited >= BENCH_WAIT_S:
+            return False, 'APEX stayed busy for 30 minutes, so HB did not test - try /apex bench again later.'
+        if not waited:
+            say('HB: the backend test waits until APEX finishes what it is doing.')
+        sleep(30)
+        waited += 30
+    old, new = BACKENDS[start]['label'], BACKENDS[target]['label']
+    say(f'HB: backend test {old} vs {new} - same model, same long prompt, {BENCH_RUNS} runs each. APEX is offline for a few minutes.')
+    a = measurer()
+    ok, msg = switcher(target, say)
+    if not ok:
+        return False, f'{msg} No comparison was made.'
+    b = measurer()
+    table = (f'| backend | reading tok/s | writing tok/s | answered |\n|---|---|---|---|\n'
+             f"| {old} | {a['read']} | {a['write']} | {'yes' if a['ok'] else 'no'} |\n"
+             f"| {new} | {b['read']} | {b['write']} | {'yes' if b['ok'] else 'no'} |")
+    if b['ok'] and b['read'] > a['read'] and b['write'] > a['write']:
+        return True, f'{table}\n{new} is faster at both, so APEX stays on {new}. /apex backend {start} goes back.'
+    back_ok, back_msg = switcher(start, say)
+    return True, (f'{table}\n{new} was not faster at both (or did not answer every run), so APEX goes back to {old}: '
+                  + ('done.' if back_ok else back_msg))
+
+
 def command(conn, args, actor='owner'):
     """/apex | /apex models | /apex model <name> | /apex back"""
     rows = candidates()
@@ -156,6 +286,29 @@ def command(conn, args, actor='owner'):
                 + '. /apex models lists the others; /apex model <name> swaps; /apex back returns; /apex prefer <kind> <model|none>.')
     if args[0].lower() == 'prefer' and len(args) == 3:
         return prefer(conn, args[1].lower(), args[2], actor)
+    if args[0].lower() == 'backend' and len(args) == 1:      # Practice 173
+        b = BACKENDS.get(backend() or '')
+        return (f"APEX runs on {b['label'] if b else 'an unknown llama-server build'}. /apex bench rocm|vulkan compares them on the "
+                "live server; /apex backend rocm|vulkan switches.")
+    if args[0].lower() in ('backend', 'bench') and len(args) == 2:
+        kind, target = args[0].lower(), args[1].lower()
+        if target not in BACKENDS:
+            return f"Use /apex {kind} " + ' or '.join(BACKENDS) + '.'
+        from core.hb_model_bench import _post as _post_b
+
+        def work_b():
+            from contextlib import closing as _cl
+            from utils.db._connection import get_connection as _gc
+
+            def say(text):
+                with _cl(_gc()) as c:
+                    _post_b(c, text)
+                    c.commit()
+            ok, msg = bench(target, say) if kind == 'bench' else switch_backend(target, say)
+            say(('Backend test: ' if kind == 'bench' else ('Done: ' if ok else 'Not done: ')) + msg)
+        threading.Thread(target=work_b, name='hb-apex-backend', daemon=True).start()
+        return (f"Testing APEX on {BACKENDS[target]['label']} - HB waits until APEX is idle and posts the comparison in main chat."
+                if kind == 'bench' else f"Switching APEX to {BACKENDS[target]['label']} - HB reports in main chat when it answers.")
     if args[0].lower() == 'models':
         return 'Models that can play APEX (16 GB card):\n' + '\n'.join(
             f"- {r['name']}: {r['size_gb']} GB - " + ('fits' if r['fits'] else 'too big for the card') + (' (playing now)' if r['path'] == now else '')
@@ -165,7 +318,7 @@ def command(conn, args, actor='owner'):
     elif args[0].lower() == 'back':
         target = None
     else:
-        return 'Use /apex, /apex models, /apex model <name> or /apex back.'
+        return 'Use /apex, /apex models, /apex model <name>, /apex back, /apex backend or /apex bench rocm|vulkan.'
     from core.hb_model_bench import _post
 
     def work():
