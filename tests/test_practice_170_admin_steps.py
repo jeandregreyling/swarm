@@ -38,7 +38,7 @@ def test_practice_170_only_jd_approves_and_it_runs_in_a_terminal(conn, tmp_path,
     assert 'Only JD' in a.approve(c, rid, 'Claude Code', owner=True, launcher=lambda *x: launched.append(x), watch=False)
     assert 'Only JD' in a.approve(c, rid, 'jd', owner=False, launcher=lambda *x: launched.append(x), watch=False)
     out = a.approve(c, rid, 'jd', owner=True, launcher=lambda *x: launched.append(x), watch=False)
-    assert 'terminal window' in out and launched and launched[0][1] == ['apt-get', 'update']
+    assert 'terminal window' in out and launched and launched[0][1][0] == 'apt-get' and launched[0][1][-1] == 'update'   # + Practice 171 options
     assert c.execute('SELECT state FROM hb_admin_requests WHERE id=?', (rid,)).fetchone()[0] == 'running'
 
 

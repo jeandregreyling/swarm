@@ -85,7 +85,9 @@ def _row(conn, rid):
 
 
 def _launch(rid, argv, log, status):
-    script = ('echo "HB admin step $HB_ADMIN_ID: sudo $*"; echo; sudo -- "$@" 2>&1 | tee "$HB_ADMIN_LOG"; s=${PIPESTATUS[0]}; '
+    # Practice 171 (owner 19 Nov 2026): the first ROCm step stopped at dpkg's "amdgpu.list / rocm.list (Y/I/N/O/D/Z)?" questions, and when
+    # the window was closed the install hung on a terminal nobody could reach. Admin steps now never ask (noninteractive, new config files).
+    script = ('echo "HB admin step $HB_ADMIN_ID: sudo $*"; echo; sudo -- env DEBIAN_FRONTEND=noninteractive "$@" 2>&1 | tee "$HB_ADMIN_LOG"; s=${PIPESTATUS[0]}; '
               'echo "$s" > "$HB_ADMIN_STATUS"; echo; echo "Finished with exit code $s - you can close this window."; '
               'read -r -p "Press Enter to close" _')
     env = dict(os.environ, DISPLAY=os.environ.get('DISPLAY') or ':0', XAUTHORITY=os.environ.get('XAUTHORITY') or str(Path.home() / '.Xauthority'),
@@ -115,26 +117,51 @@ def approve(conn, rid, actor, owner=False, launcher=None, watch=True):
     for p in (log, status):
         if p.exists():
             p.unlink()
-    (launcher or _launch)(rid, argv, log, status)
+    (launcher or _launch)(rid, unattended(argv), log, status)
     conn.execute("UPDATE hb_admin_requests SET state='running', updated_at=? WHERE id=?", (time.time(), rid))
     if watch:
         threading.Thread(target=_watch, args=(rid, log, status), name='hb-admin-' + rid, daemon=True).start()
     return f'🔐 {rid}: a terminal window titled "HB admin {rid}" is open on your desktop - type your password there. HB reports here when it ends.'
 
 
-def _watch(rid, log, status, limit=4 * 3600, sleep=time.sleep):
+def unattended(argv):
+    """Practice 171: apt-get takes the package's new config files instead of asking (the 19 Nov amdgpu.list / rocm.list prompts)."""
+    a = list(argv)
+    if a[:1] == ['apt-get']:
+        return ['apt-get', '-o', 'Dpkg::Options::=--force-confnew', '-o', 'Dpkg::Options::=--force-confdef'] + a[1:]
+    return a
+
+
+def _running(rid):
+    """Is the admin step's sudo still running (its window may have been closed)?"""
+    try:
+        out = subprocess.run(['pgrep', '-f', 'sudo -- env DEBIAN_FRONTEND=noninteractive'], capture_output=True, text=True, timeout=10)
+        return bool(out.stdout.strip())
+    except Exception:
+        return True
+
+
+def _watch(rid, log, status, limit=4 * 3600, sleep=time.sleep, running=None):
     from contextlib import closing
     from utils.db._connection import get_connection
+    running = running or _running
     start = time.time()
+    gone = 0
     while not status.exists() and time.time() - start < limit:
         sleep(5)
+        # Practice 171: the window was closed before the step finished - say so instead of waiting for hours
+        gone = gone + 1 if time.time() - start > 60 and not running(rid) else 0
+        if gone >= 3:
+            break
+    if not status.exists() and gone >= 3:
+        return finish(rid, -1, log.read_text(errors='replace') if log.exists() else '', get_connection)
     code = int(status.read_text().strip() or 1) if status.exists() else None
     finish(rid, code, log.read_text(errors='replace') if log.exists() else '', get_connection)
 
 
 def finish(rid, code, log_text, connect):
     from contextlib import closing
-    state = 'done' if code == 0 else ('timed out' if code is None else 'failed')
+    state = 'done' if code == 0 else ('timed out' if code is None else 'window closed before it finished' if code == -1 else 'failed')
     tail = '\n'.join(log_text.strip().splitlines()[-25:])
     with closing(connect()) as conn:
         conn.execute('UPDATE hb_admin_requests SET state=?, exit_code=?, log=?, updated_at=? WHERE id=?', (state, code, log_text[-20000:], time.time(), rid))
