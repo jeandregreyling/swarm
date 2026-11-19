@@ -172,7 +172,30 @@ def search(query):
                 items.append(item)
             # Practice 131 (owner 17 Nov 2026): the SAP notes are indexed (core/hb_note_index): ranked matches come first, and a
             # component the top notes share is listed whole (all 14 PY-AU-STP notes, three of them without "STP2" in the title).
-            if 'hb_note_fts' in tables and not hb_reference:
+            # Practice 169 (owner 19 Nov 2026, question suite Q7): "How does HB decide which model plays APEX?" returned 12 SAP notes
+            # ("Time-stat money selection model") and never HB's own page. A question about HB or code (not SAP) skips the SAP-note
+            # ranking, and HB's documentation (subcategory hb-doc, e.g. hb-doc://how-hb-works) comes first when it carries the words.
+            hb_question=False
+            try:
+                from core.apex_tools import sap_question,_HB_TOPIC
+                hb_question=bool(_HB_TOPIC.search(query)) and not sap_question(query)
+            except Exception:
+                pass
+            try:
+                words={w.lower() for w in _re.findall(r'[A-Za-z]{4,}',query)}
+                docs=[]
+                for sid,title,text,ref,tags in conn.execute("SELECT source_id,title,raw_text,source_ref,domain_tags FROM knowledge_sources "
+                                                            "WHERE COALESCE(subcategory,'')='hb-doc' AND status='active'"):
+                    hits=sum(1 for w in words if w in (str(title)+' '+str(text)).lower())
+                    if hits>=2:
+                        docs.append((hits,{'document_id':LIBRARY_ID+sid,'source_id':sid,'title':title,'excerpt':str(text or '')[:650],
+                                           'tags':tags,'source_ref':ref,'store':'knowledge_sources','kind':'hb documentation'}))
+                if docs:
+                    ids={d['source_id'] for _h,d in docs}
+                    items=[d for _h,d in sorted(docs,key=lambda x:-x[0])]+[i for i in items if i.get('source_id') not in ids]
+            except Exception:
+                pass
+            if 'hb_note_fts' in tables and not hb_reference and not hb_question:
                 from core import hb_note_index
                 items,families=hb_note_index.rank(conn,query,items,LIBRARY_ID)
         if 'project_docs' in tables:
