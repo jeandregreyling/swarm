@@ -59,4 +59,9 @@ def snapshot(conn, now=None, background=None, limit=6):
         steps = job.get('steps') or []
         lines.append(f"{str(job.get('role', 'background')).upper()} ({job.get('model', '?')}, CPU / RAM) - {str(job.get('task', ''))[:90]}"
                      + (f" - {steps[-1].get('what', '')}"[:140] if steps else ''))
+    try:   # Practice 172: admin steps (sudo in JD's terminal) show here while they run
+        from core.hb_admin import live_lines
+        lines += live_lines(conn, now)
+    except Exception:
+        pass
     return {'running': bool(lines), 'lines': lines}

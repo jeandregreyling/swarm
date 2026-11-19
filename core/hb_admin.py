@@ -119,6 +119,10 @@ def approve(conn, rid, actor, owner=False, launcher=None, watch=True):
             p.unlink()
     (launcher or _launch)(rid, unattended(argv), log, status)
     conn.execute("UPDATE hb_admin_requests SET state='running', updated_at=? WHERE id=?", (time.time(), rid))
+    try:                                  # Practice 172: one main-chat message that updates itself while the step runs
+        _progress_message(conn, rid)
+    except Exception:
+        pass                              # progress is a convenience; it never stops the admin step
     if watch:
         threading.Thread(target=_watch, args=(rid, log, status), name='hb-admin-' + rid, daemon=True).start()
     return f'🔐 {rid}: a terminal window titled "HB admin {rid}" is open on your desktop - type your password there. HB reports here when it ends.'
@@ -141,6 +145,55 @@ def _running(rid):
         return True
 
 
+# Practice 172 (owner 19 Nov 2026: "is it really that difficult to show me in HB when these things are running and downloading?"): the ROCm
+# step ran for 20+ minutes with nothing in main chat between "window is open" and the end. A running step now keeps one message current
+# (elapsed time, packages fetched, last output lines) and shows on the live activity line under the chat.
+def _progress_message(conn, rid):
+    from core.hb_chat import owner_chat
+    try:
+        conn.execute('ALTER TABLE hb_admin_requests ADD COLUMN progress_mid INTEGER')
+    except Exception:
+        pass
+    mid = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                       (owner_chat(conn), f'🔐 Admin step {rid} is starting - type your password in the "HB admin {rid}" window.')).lastrowid
+    conn.execute('UPDATE hb_admin_requests SET progress_mid=? WHERE id=?', (mid, rid))
+    return mid
+
+
+def progress_text(rid, log_text, seconds, why=''):
+    lines = [l.rstrip() for l in str(log_text or '').splitlines() if l.strip()]
+    fetched = len(re.findall(r'^Get:\d+ ', str(log_text or ''), re.M))
+    setting = len(re.findall(r'^Setting up ', str(log_text or ''), re.M))
+    phase = (f'{setting} packages set up' if setting else f'{fetched} packages downloaded' if fetched else 'waiting for your password' if not lines else 'working')
+    tail = '\n'.join(l[:160] for l in lines[-5:])
+    return (f'🔐 Admin step {rid} running {int(seconds // 60)} min {int(seconds % 60)} s - {phase}' + (f' ({why})' if why else '') + '.'
+            + (f"\n```text\n{tail.replace('```', '` ` `')}\n```" if tail else ''))
+
+
+def refresh(conn, rid, log, seconds):
+    row = conn.execute('SELECT progress_mid, why FROM hb_admin_requests WHERE id=?', (rid,)).fetchone()
+    if row and row[0]:
+        text = log.read_text(errors='replace') if log.exists() else ''
+        conn.execute('UPDATE messages SET content=? WHERE id=?', (progress_text(rid, text, seconds, row[1]), row[0]))
+
+
+def live_lines(conn, now=None):
+    """Lines for the live activity view: every admin step that is running."""
+    now = now or time.time()
+    try:
+        rows = conn.execute("SELECT id, why, updated_at FROM hb_admin_requests WHERE state='running'").fetchall()
+    except Exception:
+        return []
+    out = []
+    for rid, why, started in rows:
+        log = LOG_DIR / f'{rid}.log'
+        text = log.read_text(errors='replace') if log.exists() else ''
+        last = next((l for l in reversed(text.splitlines()) if l.strip()), 'waiting for your password in the HB admin window')
+        out.append(f"ADMIN (sudo, your terminal) - {str(why)[:80]} - running {int((now - (started or now)) // 60)} min")
+        out.append('  ' + last.strip()[:140])
+    return out
+
+
 def _watch(rid, log, status, limit=4 * 3600, sleep=time.sleep, running=None):
     from contextlib import closing
     from utils.db._connection import get_connection
@@ -149,6 +202,13 @@ def _watch(rid, log, status, limit=4 * 3600, sleep=time.sleep, running=None):
     gone = 0
     while not status.exists() and time.time() - start < limit:
         sleep(5)
+        if int(time.time() - start) % 10 < 5:   # Practice 172: refresh the live message about every 10 s
+            try:
+                with closing(get_connection()) as pc:
+                    refresh(pc, rid, log, time.time() - start)
+                    pc.commit()
+            except Exception:
+                pass
         # Practice 171: the window was closed before the step finished - say so instead of waiting for hours
         gone = gone + 1 if time.time() - start > 60 and not running(rid) else 0
         if gone >= 3:
