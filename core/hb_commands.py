@@ -53,6 +53,7 @@ COMMANDS = [
     ('nanny', '/nanny on [minutes]|off|status|report', 'The nanny bot (small CPU model) that watches the system', False),
     ('unload', '/unload model-name', 'Unload an HB-managed local model to free memory', False),
     ('stop', '/stop', 'Stop all current work now', False),
+    ('admin', '/admin [rocm | approve A-xxxx | decline A-xxxx | check rocm]', "Admin steps: HB proposes, you approve, Linux asks for your password in a terminal window", False),
     ('apex', '/apex [models | model <name> | back]', 'Which model plays APEX; swap it (HB backs up, restarts, checks, rolls back)', False),
     ('roles', '/roles [set <role> <model>]', 'Which model plays each role (APEX, Fred, counsel, reviewer, homework); set changes one', False),
     ('net', '/net [bench [name] | budget <GB left> <floor GB> | mobile <name> on|off | pick <GB>]', 'Connections, their measured speed, the mobile data budget, and which one a job should use', False),
@@ -148,6 +149,8 @@ def parse(body):
         return ('net', words[1:])
     if cmd == 'roles':   # owner 14 Nov: roles, not names (core/hb_roles.py)
         return ('roles', words[1:])
+    if cmd == 'admin':   # Practice 170 (owner 19 Nov): admin steps through Linux's own sudo prompt (core/hb_admin.py)
+        return ('admin', words[1:])
     if cmd == 'apex':   # Practice 152 (owner 18 Nov): the model that plays APEX is swappable (core/hb_apex_swap.py)
         return ('apex', words[1:])
     if cmd == 'consult':   # owner 12 Nov: consultant protocol (core/hb_consultant.py)
@@ -836,6 +839,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
         if len(args) == 3 and args[0].lower() == 'set':
             return hb_roles.assign(conn, args[1].lower(), args[2], actor)
         return hb_roles.table(conn)
+    if command == 'admin':   # only a command typed in JD's own main chat (the owner route passes `after`) can approve
+        from core import hb_admin
+        return hb_admin.command(conn, args, actor, owner=after is not None)
     if command == 'apex':
         from core import hb_apex_swap
         return hb_apex_swap.command(conn, args, actor)
