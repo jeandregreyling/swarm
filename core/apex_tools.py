@@ -2072,9 +2072,18 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             return answer, tokens, receipts
         if final_answer:
             return handoff(f"APEX asked for more tools after {final_reason}")
-        if (set(payload) not in ({"tool_calls"}, {"tool_calls", "answer"})
-                or payload.get("answer") or not isinstance(calls, list) or not calls
-                or len(calls) + len(receipts) > MAX_CALLS):
+        well_formed = (set(payload) in ({"tool_calls"}, {"tool_calls", "answer"}) and not payload.get("answer")
+                       and isinstance(calls, list) and bool(calls))
+        if well_formed and len(calls) + len(receipts) > MAX_CALLS:
+            # Practice 174 (overnight suite 20 Nov 2026, on ROCm): STP2, tax thresholds and retro each had a good answer that a coverage
+            # or read check sent back for more notes; APEX then asked for more reads than the turn's MAX_CALLS and the turn ended with
+            # "Invalid or excessive APEX tool calls" - no answer at all. Well-formed calls past the budget are trimmed to what is left;
+            # with nothing left the turn ends like a turn out of rounds (handoff: APEX's last real answer, else HB's research digest).
+            room = MAX_CALLS - len(receipts)
+            if room <= 0:
+                return handoff(f"APEX used all {MAX_CALLS} tool calls this turn")
+            calls = payload["tool_calls"] = calls[:room]
+        if not well_formed or len(calls) + len(receipts) > MAX_CALLS:
             raise RuntimeError("Invalid or excessive APEX tool calls")
         if isinstance(calls, list) and calls and all(isinstance(call, dict) and set(call) == {"name", "arguments"}
                and isinstance(call["arguments"], dict) and repeated_read(call, receipts)
