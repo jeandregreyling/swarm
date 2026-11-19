@@ -153,7 +153,9 @@ def call(tool, args):
             from core.knowledge import projects
             cases=projects.list_test_cases(task['project_id'],step_id=task['step_id'])
             if not cases:
-                case=projects.add_test_case(task['project_id'],'Guarded task regression checks',step_id=task['step_id'],owner='apex')
+                # Practice 168: the auto case names the command it runs, so it is a runnable criterion
+                title='Guarded task regression checks: python -m pytest '+' '.join(str(t) for t in (args.get('tests') or [])[:4])
+                case=projects.add_test_case(task['project_id'],title.strip()[:200],step_id=task['step_id'],owner='apex')
                 if not case:raise RuntimeError('Could not register the task test case')
             else:
                 case=cases[0]['case_id']

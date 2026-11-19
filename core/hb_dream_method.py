@@ -41,8 +41,11 @@ def done_when(conn, task):
         if criteria:
             return 'owner', criteria
     if task.get('step_id') and 'project_test_cases' in _tables(conn):
+        # Practice 168 (owner 19 Nov 2026): run_tests auto-creates a case titled 'Guarded task regression checks' for a step with none;
+        # taken as the step's done criterion it has no command, so 9 bug steps were skipped as 'needs a spec'. That placeholder is not
+        # a criterion - the step's own 'Done when:' line is.
         cases = [r[0] for r in conn.execute('SELECT title FROM project_test_cases WHERE step_id=? ORDER BY created_at',
-                                            (task['step_id'],)) if r[0]]
+                                            (task['step_id'],)) if r[0] and r[0] != 'Guarded task regression checks']
         if cases:
             return 'studio', cases[:8]
     found = [m.group(1).strip() for m in CRITERIA_RE.finditer(str(task.get('objective') or ''))]
