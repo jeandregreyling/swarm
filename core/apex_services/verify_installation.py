@@ -173,7 +173,7 @@ def test_database():
                 cursor.execute(f"SELECT COUNT(*) FROM {table}")
                 count = cursor.fetchone()[0]
                 print(f"   ✅ Table '{table}': {count} rows")
-            except:
+            except Exception:
                 print(f"   ℹ️  Table '{table}': Not created yet (created on first use)")
         
         # Try to create missing tables by using the modules
@@ -181,14 +181,14 @@ def test_database():
             from core.apex_services.jailbreak_coordinator import get_coordinator
             get_coordinator()
             print("   ✅ Jailbreak coordinator tables created")
-        except:
+        except Exception:
             pass
         
         try:
             from core.apex_services.live_monitor import get_monitor
             get_monitor()
             print("   ✅ Live monitor tables created")
-        except:
+        except Exception:
             pass
         
         conn.close()

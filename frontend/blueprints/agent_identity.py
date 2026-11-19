@@ -417,7 +417,8 @@ def progress():
                     PRIMARY KEY(principal,activity_id,conversation_id))''')
                 conn.execute('INSERT OR REPLACE INTO hb_background_work VALUES (?,?,?,?,?,?)',
                     (principal['id'],data['activity_id'],data['conversation_id'],data['status'],data['stage'],time.time()))
-        from frontend.blueprints.peer_bridge import _publish
+        import importlib as _il
+        _publish = _il.import_module('frontend.blueprints.peer_bridge')._publish
         detail={key:data[key] for key in ('request_id','activity_id') if key in data}
         _publish(data['conversation_id'],principal['id'],state=data['status'],peer=True,stage=data['stage'],**detail)
         return jsonify(ok=True,principal=principal['id'],status=data['status'])

@@ -249,7 +249,7 @@ def test_register_waits_for_running_installer_and_asks_for_hint(env, monkeypatch
     monkeypatch.setattr(gi, 'unit_state', lambda _unit: 'inactive')
     monkeypatch.setattr(gi, 'list_programs', lambda _bottle: [])
     ok, out = gi.skill_game_register('WP-1 Warcraft', 'gemma')
-    assert not ok and 'exe=<hint>' in out
+    assert not ok and 'name the one to use' in out
 
 
 # ── Skill registry ────────────────────────────────────────────────────────────

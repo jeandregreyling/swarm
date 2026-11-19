@@ -117,6 +117,7 @@ def test_cold_start_reports_low_vram_then_health_confirmed_ready(monkeypatch, tm
     monkeypatch.setattr(llama_server, '_placement_from_process', lambda pid: {
         'placement': 'gpu+ram', 'placement_source': 'kernel', 'vram_gb': 1, 'gpu_host_ram_gb': 8,
     })
+    monkeypatch.setattr('core.hb_gatekeeper.decide', lambda *a, **k: {'placement': 'gpu', 'why': 'test'})
     proc = SimpleNamespace(pid=42, poll=lambda: None)
     monkeypatch.setattr(llama_server.subprocess, 'Popen', lambda *a, **k: proc)
     events = []
@@ -132,7 +133,8 @@ def test_cold_start_reports_low_vram_then_health_confirmed_ready(monkeypatch, tm
         assert [e['stage'] for e in events] == ['queued', 'checking_memory', 'loading', 'ready']
         assert events[2]['placement_estimate'] == 'gpu+ram'
         assert events[2]['host_ram_gb'] == 9.0
-        assert events[-1]['placement_source'] == 'kernel'
+        assert events[3]['placement'] == 'gpu+ram'
+        assert events[3]['placement_source'] == 'kernel'
     finally:
         Path('/tmp/seven-llama-server-pytest-loading.log').unlink(missing_ok=True)
 

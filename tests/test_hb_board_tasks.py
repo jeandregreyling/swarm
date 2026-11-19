@@ -20,6 +20,6 @@ def test_practice_75_route_runs_the_owner_commands_and_their_follow_up():
     i = src.index("isinstance(body.get('task'),list)")
     block = src[i:i + 1300]
     assert "args[0] in ('pause','continue','cancel')" in block and "args[0]=='accept'" in block
-    assert "hb_commands.run(conn,2834,args[0],[args[1]],current_user['username']+' via the task board',after)" in block
+    assert "hb_commands.run(conn,__import__('core.hb_chat',fromlist=['owner_chat']).owner_chat(conn),args[0],[args[1]],current_user['username']+' via the task board',after)" in block
     assert 'for job in after:' in block                                   # pause and cancel really stop the running turn
     assert "@require_owner\ndef hb_queue_status" in src and src.index('Sec-Fetch-Site') < i

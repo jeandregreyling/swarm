@@ -248,9 +248,13 @@ def test_relevant_context_labels_memory_authority_and_retrieves_project_sources(
         return out
 
     monkeypatch.setattr("utils.db._connection.get_connection", get_connection)
-    monkeypatch.setattr("utils.sandpits.get_all_sandpit_files", lambda: [
+    import sys
+    from types import ModuleType
+    _sandpit_mock = ModuleType("utils.sandpits")
+    _sandpit_mock.get_all_sandpit_files = lambda: [
         {"agent": "seven", "filename": "routing.md", "content": "routing historical note"},
-    ])
+    ]
+    monkeypatch.setitem(sys.modules, "utils.sandpits", _sandpit_mock)
 
     out = model_operator._relevant_context("routing", project_id="P-1")
     sources = [row["source"] for row in out["items"]]

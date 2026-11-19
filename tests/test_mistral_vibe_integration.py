@@ -157,7 +157,7 @@ class TestMistralVibePeerBridge:
         
         assert "mistral-vibe" in SCOPES
         assert "peer.read" in SCOPES["mistral-vibe"]
-        assert "peer.relay:apex" in SCOPES["mistral-vibe"]
+        assert "peer.dispatch" in SCOPES["mistral-vibe"]
 
     def test_mention_regex_includes_mistral(self):
         """Test that mention regex includes Mistral patterns."""

@@ -137,7 +137,7 @@ def get_unified_messages():
                     else:
                         return datetime.fromisoformat(ts).timestamp()
                 return float(ts)
-            except:
+            except Exception:
                 return 0
         
         unique_messages.sort(key=lambda x: parse_ts(x.get('timestamp', 0)), reverse=True)

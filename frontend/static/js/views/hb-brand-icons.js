@@ -42,6 +42,8 @@
     flag: S(P('M4 14V2.5M4 3h7.5l-1.5 2.5 1.5 2.5H4')),
     more: S(P('M6 4l4 4-4 4')),
     less: S(P('M4 6l4 4 4-4')),
+    up: S(P('M4 10l4-4 4 4')),
+    down: S(P('M4 6l4 4 4-4')),
     dot: S(C(8, 8, 1.6)),
   };
   const MARKERS = {

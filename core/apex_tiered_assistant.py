@@ -63,8 +63,8 @@ APEX_EXHAUSTION_PATTERNS = [
     r"out.*of.*tokens",
     r"context.*window",
     r"num_ctx",
-    r"APEX.*budget.*exceeded",
-    r"APEX.*context.*cannot.*fit",
+    r"apex.*budget.*exceeded",
+    r"apex.*context.*cannot.*fit",
     r"prompt.*too.*long",
     r"input.*too.*long",
 ]
@@ -284,8 +284,7 @@ def call_apex_with_tiered_fallback(call_model, model: str, messages: list[dict],
                 None  # Will be set by caller
             )
             
-            # TODO: Actually post to peer bridge and wait for response
-            # For now, return a placeholder indicating tiered assistance needed
+            # Peer bridge dispatch not yet wired; return a placeholder indicating tiered assistance needed
             raise RuntimeError(
                 f"[TIERED ASSISTANCE NEEDED] APEX context exhausted. "
                 f"Dispatching to online model. Please use [DISPATCH: @tiered-assistant] "

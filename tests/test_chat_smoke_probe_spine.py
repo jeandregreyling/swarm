@@ -83,7 +83,7 @@ class TestChatSmokeProbeSpineEmission:
         assert ev.severity == spine.Severity.INFO
         assert ev.payload.get("ok") is True
         assert isinstance(ev.payload.get("latency_ms"), int)
-        assert ev.payload.get("agent") == "llama"
+        assert ev.payload.get("agent") == "fred"
 
     def test_failure_emits_warn_chat_event(self, fresh_db, monkeypatch):
         from core import spine

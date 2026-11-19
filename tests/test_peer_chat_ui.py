@@ -19,7 +19,9 @@ def run_helpers(body):
     helpers = source[source.index("function getChatPeerTargets("):
                      source.index("function renderChatParticipants(")]
     subprocess.run(
-        [node, "-e", "const assert = require('node:assert/strict');\n" + helpers + body],
+        [node, "-e", "const assert = require('node:assert/strict');\n"
+                     "const document = { addEventListener: () => {}, querySelectorAll: () => [] };\n"
+                     + helpers + body],
         check=True, timeout=10,
     )
 
@@ -104,7 +106,7 @@ def test_shared_room_preserves_transcript_space_and_opens_in_view():
 def test_home_live_board_cannot_push_composer_out_of_view():
     css = (ROOT / "frontend/static/css/views/chat.css").read_text()
     rule = css.split(".chat-shared-room .chat-team {", 1)[1].split("}", 1)[0]
-    assert "max-height: min(40vh, 320px);" in rule
+    assert "max-height: 75vh;" in rule
     assert "overflow-y: auto;" in rule
     assert "min-height: 0;" in rule
     home_css = (ROOT / "frontend/static/css/home-chat.css").read_text()
@@ -223,7 +225,7 @@ const container={
   querySelector(){return nodes.find(n=>n.dataset.pendingJobId)||null;},
   insertBefore(el,before){nodes.splice(nodes.indexOf(el),1);nodes.splice(nodes.indexOf(before),0,el);}
 };
-const document={getElementById:id=>id==='home-chat-messages'?container:null};
+const document={getElementById:id=>id==='home-chat-messages'?container:null, querySelectorAll:()=>[]};
 const fetch=async()=>({ok:true,json:async()=>({messages:rows})});
 function _hcAppendBubble(m){return bubble(m.id,m.sender,m.content);}
 function _hcClearMessages(){nodes.splice(0);}

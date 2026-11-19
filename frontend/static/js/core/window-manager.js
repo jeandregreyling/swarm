@@ -34,6 +34,8 @@ const FRIDAYS_WINDOW_ICON_SVGS = {
   'wishlist-business': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 6h11v7h-11zM5 6V4h6v2M5 9h6M5 11h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   'potato-farm': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="5" r="2.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="11" r="2.5" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 6.5l1.5 2M9.5 6.5l-1.5 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
   'money-hub': '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 12.5h11M4 11V7M7 11V4M10 11V8M13 11V5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  downloads: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8M5 7l3 3 3-3M3 12.5h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  mondcraft: '<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 8h10M8 3v10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
 };
 
 function fridaysCleanWindowTitle(title) {

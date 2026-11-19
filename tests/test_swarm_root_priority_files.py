@@ -121,6 +121,17 @@ def test_shell_whitelist_behavior(tmp_path, monkeypatch):
     os.makedirs(current_root, exist_ok=True)
     monkeypatch.setenv("SWARM_ROOT", current_root)
 
+    # Remove retired root from sys.path so we can verify the module doesn't re-add it.
+    if retired_root in sys.path:
+        sys.path.remove(retired_root)
+
+    # Remove module from cache so re-import picks up the new env.
+    for key in list(sys.modules):
+        if key in ("fridays.shell_agent", "fridays"):
+            del sys.modules[key]
+
+    import fridays.shell_agent as sa
+
     # Simulate the whitelist check
     assert current_root in sys.path
     assert retired_root not in sys.path

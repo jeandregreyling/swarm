@@ -55,7 +55,7 @@ function context(user, {authStatus = 200, failAuth = false, invalidJson = false}
                    setItem() {}, removeItem() {}},
     addEventListener: (event, handler) => { listeners[event] = handler; },
     setTimeout() {}, setInterval() {},
-    showToast: (...args) => toasts.push(args), URLSearchParams,
+    showToast: (...args) => toasts.push(args), URLSearchParams, AbortSignal,
     fetch: async (url, options) => {
       requests.push({url, options});
       if (url === '/api/auth/me') {

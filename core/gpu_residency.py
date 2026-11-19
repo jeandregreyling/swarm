@@ -131,6 +131,14 @@ class ResidencyController:
             raise ValueError("Only the verified CPU-only Fred assignment may remain resident")
         with self._guard():
             self._check_idle()
+            if cpu_backup:
+                available = self.available_memory()
+                fred_resident = any(
+                    (r.backend, r.model) == ("ollama", "fred-cpu:24b")
+                    for r in self._observe()
+                )
+                if not fred_resident and available < self.cpu_budget_bytes + self.reserve_bytes:
+                    raise ResidencyError("Available host memory is below the required reserve")
             logger.info("Residency lease acquired: %s/%s", backend, model)
             try:
                 yield

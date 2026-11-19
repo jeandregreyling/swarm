@@ -238,7 +238,7 @@ def main():
     
     try:
         choice = int(input("\nEnter choice: "))
-    except:
+    except (ValueError, EOFError):
         choice = 0
     
     if choice == 1:

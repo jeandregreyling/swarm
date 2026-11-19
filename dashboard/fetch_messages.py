@@ -197,7 +197,7 @@ def sort_messages(messages):
                 else:
                     return datetime.fromisoformat(ts).timestamp()
             return float(ts)
-        except:
+        except Exception:
             return 0
     
     return sorted(messages, key=lambda x: parse_timestamp(x.get('timestamp', 0)), reverse=True)

@@ -580,7 +580,7 @@ function renderChatRuntime(runtime) {
   return `<section class="chat-live-stacks" aria-label="Live runtime stacks">
     <div class="chat-live-heading"><strong>LIVE / runtime stacks</strong>
       <small>${ram == null ? 'Host RAM unavailable' : `${Number(ram).toFixed(1)} GiB host RAM available`}</small></div>
-    ${stack}<div class="chat-live-stack hb-models" data-hb-models>${window.hbModelsHtml || '<small>Loading local models…</small>'}</div>${archiveCard}${peers}
+    ${stack}<div class="chat-live-stack hb-models" data-hb-models>${(typeof window !== 'undefined' && window.hbModelsHtml) || '<small>Loading local models…</small>'}</div>${archiveCard}${peers}
   </section>`;
 }
 

@@ -115,8 +115,8 @@
     if (i.state === 'now') return `<span class="hb-clip-edit">${taskHtml(i)}</span>`;
     const step = esc(i.step_id), now = Math.min(5, i.importance || 3);
     return `<span class="hb-clip-edit">${taskHtml(i)}<button type="button" data-clip="top" data-step="${step}" title="Move to the top: HB does it next">⤒</button>` +
-      `<button type="button" data-clip="up" data-step="${step}" title="Move up">▲</button>` +
-      `<button type="button" data-clip="down" data-step="${step}" title="Move down">▼</button>` +
+      `<button type="button" data-clip="up" data-step="${step}" title="Move up">${ico('up')}</button>` +
+      `<button type="button" data-clip="down" data-step="${step}" title="Move down">${ico('down')}</button>` +
       `<select data-importance="${step}" title="Importance (5 is highest)">${[5, 4, 3, 2, 1].map(n => `<option value="${n}"${n === now ? ' selected' : ''}>${n}</option>`).join('')}</select></span>`;
   }
 

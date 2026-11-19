@@ -24,4 +24,4 @@ def test_clearance_is_at_least_the_taskbar_footprint():
 
 def test_stylesheet_version_was_bumped_so_browsers_reload_it():
     html = _read('frontend/templates/terminal_base.html')
-    assert re.search(r'home-chat\.css\?v=(3[2-9]|[4-9]\d)', html)
+    assert re.search(r'home-chat\.css\?v=\{\{ ASSET_VERSION \}\}', html)

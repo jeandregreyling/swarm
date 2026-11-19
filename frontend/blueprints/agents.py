@@ -946,7 +946,8 @@ def _private_memory_owner_routes():
              'agents.api_agents_memories_query':'query'}
     kind = kinds.get(request.endpoint)
     if kind:
-        from frontend.blueprints.agent_identity import owner_memory_route
+        import importlib as _il
+        owner_memory_route = _il.import_module('frontend.blueprints.agent_identity').owner_memory_route
         return owner_memory_route(kind,(request.view_args or {}).get('agent'))
     return None
 

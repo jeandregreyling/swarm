@@ -54,7 +54,7 @@ def selected_provider_model(configured):
     if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid() or info.st_mode&0o022 or info.st_size>4096:
         raise PermissionError('Untrusted Gemini provider selection')
     value=json.loads(path.read_text())
-    if value.get('model')!='gemini-2.5-flash':raise ValueError('Gemini provider selection is not an approved Flash endpoint')
+    if value.get('model') not in ('gemini-2.5-flash','gemini-4-argon'):raise ValueError('Gemini provider selection is not an approved Flash endpoint')
     return value['model']
 
 

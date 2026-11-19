@@ -40,6 +40,9 @@ def gemini_reload(args):
     if args.get('provider_model'):
         target=agent_identity.directory('gemini-advisor')/'hb-provider-model.json'
         if target.is_symlink():raise PermissionError('Gemini provider selection cannot be a symlink')
+        if target.is_file():
+            existing=json.loads(target.read_text())
+            if existing.get('model')==args['provider_model']:raise ValueError('Gemini provider model already selected; no duplicate selection')
         actor=agent_identity.CURRENT.get() or {}
         record={'model':args['provider_model'],'selected_by':actor.get('principal'),'task_id':task['task_id'],'selected_at':time.time(),'reason':'Explicit owner-authorized repair after configured3.8Flash generation504 and successful2.5Flash diagnostic'}
         fd,tmp=tempfile.mkstemp(prefix='.hb-provider-',dir=target.parent)
