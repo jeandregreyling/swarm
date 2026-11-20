@@ -7,9 +7,18 @@ A guest is an identity with role 'user' in hb_channel_identities (/channels trus
     (the owner mirror goes to owners only; his questions carry no main-chat history - core/hb_channels.work_one);
   * has guest commands: /help, /about, /mine (his last questions and answers), /start (Telegram's first message).
 Everything else he types is a question for APEX."""
+import contextvars
 import time
 
 GUEST_COMMANDS = {'help', 'about', 'mine', 'start'}
+
+
+GUEST_TURN = contextvars.ContextVar('hb_guest_turn', default=False)   # Practice 213: set while APEX answers a guest
+ANSWER_RULE = ("This question comes from a guest - a consultant JD enrolled - not from JD. Use the SAP notes in the Knowledge Centre and "
+               "public sources to inform your answer, but answer in your own words, as your professional opinion: what applies, why, and "
+               "what to check. Do not quote SAP note text, do not paste passages, tables or code from a note, and do not offer to send or "
+               "open notes. You may name a note number as a reference so they can look it up in SAP themselves. When you cite, prefer "
+               "public sources (SAP Help Portal, SAP Community).")
 
 
 def welcome(name=''):

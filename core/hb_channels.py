@@ -309,6 +309,12 @@ def _answer_only(question, history=()):
                'A transport receipt does not prove the human has read a message.')
     if trusted:
         system += '\n' + '\n'.join(trusted)
+    try:   # Practice 213 (JD 21 Nov: "make it APEX opinion based on the notes without giving direct access to the notes")
+        from core import hb_guest
+        if hb_guest.GUEST_TURN.get():
+            system += '\n' + hb_guest.ANSWER_RULE
+    except Exception:
+        pass
     note = 'HB note: a channel user asks from their phone. Answer plainly.'
     if research_question(question):
         note += ' ' + research_method()
@@ -399,10 +405,14 @@ def work_one(job, connect=_connect, answer=answer_only, mail=None):
             history.append({'role':'system', 'content':state})
     finally:
         conn.close()
+    from core import hb_guest
+    guest = hb_guest.GUEST_TURN.set(who != 'owner')   # Practice 213: a guest gets APEX's opinion, not the notes
     try:
         text = answer(job['question'], history)
     except Exception as exc:
         text = f'APEX could not answer this one ({type(exc).__name__}: {str(exc)[:160]}). It is in main chat; ask again or at the screen.'
+    finally:
+        hb_guest.GUEST_TURN.reset(guest)
     conn = connect()
     try:
         if role(conn, job['key']) != who:
