@@ -36,7 +36,14 @@ class AgentAPI:
             data=None if body is None else json.dumps(body).encode(),
             headers={'Authorization':'Bearer '+self._token,'Content-Type':'application/json'})
         try:
-            with self._opener.open(request,timeout=20) as response:
+            # Guarded pytest owns a150-second hard deadline. Allow that one
+            # fixed tool call to return its result, without retrying it. Other
+            # peer operations retain their short transport deadline.
+            timeout=20
+            if path=='/api/agent/v1/tools' and isinstance(body,dict) and body.get('tool')=='run_tests':
+                from core.apex_test_runner import TEST_TIMEOUT_S
+                timeout=TEST_TIMEOUT_S+30
+            with self._opener.open(request,timeout=timeout) as response:
                 payload = response.read(256*1024+1)
         except HTTPError as exc:
             try:
