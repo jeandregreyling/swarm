@@ -617,6 +617,24 @@ def hb_translator_view(current_user=None):
         return jsonify(ok=True,running=hb_translator.running(),mode=current,languages=hb_translator.languages(conn))
 
 
+_HB_LIVE_CACHE = {'at': 0.0, 'data': None}
+
+
+@peer_bridge_bp.route('/api/peer/v1/hb/live',methods=['GET'])
+@require_owner
+def hb_live_view(current_user=None):
+    """HB Live L2 (owner 20 Nov 2026, docs/spec-hb-live-dashboard.md): the one snapshot main chat's live strip and windows render from.
+    Cached for 1.5 s so several open pages share one read."""
+    import time as _time
+    from contextlib import closing
+    from core import hb_live
+    if _HB_LIVE_CACHE['data'] is None or _time.time()-_HB_LIVE_CACHE['at']>1.5:
+        with closing(get_connection()) as conn:
+            _HB_LIVE_CACHE['data']=hb_live.snapshot(conn)
+        _HB_LIVE_CACHE['at']=_time.time()
+    return jsonify(ok=True,**_HB_LIVE_CACHE['data'])
+
+
 @peer_bridge_bp.route('/api/peer/v1/hb/queue',methods=['GET','POST'])
 @require_owner
 def hb_queue_status(current_user=None):
