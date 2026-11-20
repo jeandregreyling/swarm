@@ -103,7 +103,7 @@ zh ::= [^\n]+`;
   }
 
   function isEnabled() {
-    try { return localStorage.getItem(KEY_ON) !== '0'; } catch (e) { return true; }
+    try { return localStorage.getItem(KEY_ON) === '1'; } catch (e) { return false; }   // Practice 182: off unless switched on
   }
 
   // Turns the (possibly unfinished) model text into up to 4 cards.
@@ -527,7 +527,7 @@ zh ::= [^\n]+`;
   }
 
   function repliesEnabled() {
-    try { return localStorage.getItem(KEY_IN) !== '0'; } catch (e) { return true; }
+    try { return localStorage.getItem(KEY_IN) === '1'; } catch (e) { return false; }   // Practice 182: off unless switched on
   }
 
   function setRepliesEnabled(on) {
@@ -536,9 +536,30 @@ zh ::= [^\n]+`;
     resetReplies();
   }
 
+  // Practice 182 (owner 20 Nov 2026): the button also starts and stops the translator itself, and HB switches it on for a model that
+  // answers in Chinese, Japanese or Korean - the page then translates its replies.
+  let serverOn = null;
+  function syncServer(any) {
+    if (serverOn === any) return;
+    serverOn = any;
+    fetch('/api/peer/v1/hb/translator', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ on: any }) }).catch(() => {});
+  }
+  function watchServer() {
+    if (document.hidden) return;
+    fetch('/api/peer/v1/hb/translator', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!d || !d.ok) return;
+      if (d.running && d.mode === 'auto' && !repliesEnabled()) { serverOn = true; setRepliesEnabled(true); }
+      if (!d.running && d.mode === 'off' && serverOn === null) serverOn = false;
+    }).catch(() => {});
+  }
+  setInterval(watchServer, 30000);
+  setTimeout(watchServer, 1500);
+
   function refreshToggle() {
     if (!toggleBtn) return;
     const any = isEnabled() || repliesEnabled();
+    if (serverOn !== null || any) syncServer(any);
     toggleBtn.classList.toggle('hb-tr-off', !any);
     toggleBtn.title = 'Translation settings (typing: ' + (isEnabled() ? 'on' : 'off') + ', replies: ' + (repliesEnabled() ? 'on' : 'off') + ')';
   }

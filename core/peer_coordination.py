@@ -246,6 +246,12 @@ def start():
                             conn.commit()
                         except Exception:
                             LOG.exception('APEX settings reload failed')
+                        try:  # Practice 182: a translator HB started for an Asian-language reply stops after 30 quiet minutes
+                            from core.hb_translator import idle_tick as translator_idle
+                            translator_idle(conn)
+                            conn.commit()
+                        except Exception:
+                            LOG.exception('translator idle check failed')
                         try:  # Practice 158: a card reset seen in the kernel log - prove APEX answers, restart it when it does not
                             from core.hb_gpu_guard import reset_tick
                             reset_tick(conn)

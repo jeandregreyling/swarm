@@ -597,6 +597,26 @@ def hb_turn_steps_view(current_user=None):
     return jsonify(ok=True,steps={str(k):v for k,v in steps.items()})
 
 
+@peer_bridge_bp.route('/api/peer/v1/hb/translator',methods=['GET','POST'])
+@require_owner
+def hb_translator_view(current_user=None):
+    """Practice 182: the translate button starts/stops the translator service; GET says whether it runs and who started it."""
+    from contextlib import closing
+    from urllib.parse import urlsplit
+    from core import hb_translator
+    with closing(get_connection()) as conn:
+        if request.method=='POST':
+            origin=request.headers.get('Origin')
+            if request.headers.get('Sec-Fetch-Site')=='cross-site' or origin and urlsplit(origin).netloc!=request.host:
+                return jsonify(ok=False,error='Use the authenticated main chat'),403
+            body=request.get_json(silent=True) or {}
+            if type(body.get('on')) is not bool:return jsonify(ok=False,error='JSON {on: true|false} required'),400
+            hb_translator.switch(conn,body['on'])
+            conn.commit()
+        current,_=hb_translator.mode(conn)
+        return jsonify(ok=True,running=hb_translator.running(),mode=current,languages=hb_translator.languages(conn))
+
+
 @peer_bridge_bp.route('/api/peer/v1/hb/queue',methods=['GET','POST'])
 @require_owner
 def hb_queue_status(current_user=None):

@@ -313,6 +313,30 @@ def log_message(conv_id, from_agent, content, to_agent='', message_type='chat', 
         _records_mirror('thread', conv_id, actor='log_message')
     except Exception:
         pass
+    _translator_watch(from_agent, content)
+
+
+def _translator_watch(from_agent, content):
+    """Practice 182: a model reply mostly in Chinese/Japanese/Korean switches the translator on (in the background)."""
+    try:
+        from core import hb_translator
+        if str(from_agent or '').lower() in hb_translator.SKIP or hb_translator.cjk_share(content) < 0.3:
+            return
+    except Exception:
+        return
+
+    def work():
+        try:
+            from core.hb_model_bench import _post
+            c = get_connection()
+            try:
+                hb_translator.on_reply(c, from_agent, content, say=lambda text: _post(c, text))
+                c.commit()
+            finally:
+                c.close()
+        except Exception:
+            pass
+    __import__('threading').Thread(target=work, name='hb-translator-auto', daemon=True).start()
 
 
 def get_ghost_history(limit=10):
