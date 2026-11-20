@@ -3574,9 +3574,9 @@ def api_chat():
                                        telemetry=context_telemetry.append, pointer=history_pointer)
 
             def model_progress(event):
-                stage = str(event.get('stage') or 'running').replace('_', ' ')
-                _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=selected_model,
-                          stage=stage + ': ' + selected_model)
+                # Practice 176: APEX's own step lines go to the thinking bubble as they are
+                stage = str(event.get('text') or '') or (str(event.get('stage') or 'running').replace('_', ' ') + ': ' + selected_model)
+                _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=selected_model, stage=stage)
 
             queued_turn = []
 

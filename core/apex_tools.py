@@ -1538,6 +1538,52 @@ def scoped_tool_guidance(names):
         'Tool arguments: '+json.dumps(selected))
 
 
+# Practice 176 (owner 20 Nov 2026: "I would like to see what the system is doing through the HB chat window, I'm not seeing what the
+# LLMs are doing"): the thinking bubble had a step checklist, but APEX only ever reported "running". Each round, each tool call and each
+# HB check that sends an answer back is now one plain line in it.
+def step_line(call) -> str:
+    """One plain line for a tool call."""
+    name = str(call.get('name') or '') if isinstance(call, dict) else ''
+    a = call.get('arguments') if isinstance(call, dict) and isinstance(call.get('arguments'), dict) else {}
+    if name == 'knowledge_search':
+        return 'searching our notes: "' + str(a.get('query', ''))[:70] + '"'
+    if name == 'knowledge_read':
+        return f"reading KC document {a.get('document_id')}" + (f" (looking for {str(a.get('focus'))[:40]})" if a.get('focus') else '')
+    if name == 'web_search':
+        return 'searching the web: "' + str(a.get('query', ''))[:70] + '"'
+    what = str(a.get('path') or a.get('query') or a.get('action') or a.get('step_id') or '')[:60]
+    return f'{name} {what}'.strip()
+
+
+def check_line(text) -> str:
+    """'HB read check sent the answer back: <first sentence>' for a BACKEND ... CHECK message, else ''."""
+    m = re.match(r'BACKEND ([A-Z][A-Z ]*?(?:CHECK|LIMIT|ERROR))[:.]?\s*(?:your answer was not delivered\.\s*)?(.*)', str(text or ''), re.S)
+    if not m:
+        return ''
+    why = re.split(r'(?<=[.!?])\s', m.group(2).strip(), maxsplit=1)[0][:150]
+    return f'HB {m.group(1).lower()} sent the answer back' + (f': {why}' if why else '')
+
+
+def say_step(text):
+    """Report one step to the chat (no-op outside a chat turn)."""
+    if not text:
+        return
+    try:
+        from core.apex_routing import report_model_progress
+        report_model_progress({'stage': 'step', 'text': str(text)[:200]})
+    except Exception:
+        pass
+
+
+def _playing_name():
+    try:
+        from core.hb_apex_swap import playing, backend
+        name, where = playing(), backend()
+        return f"{name}{' on ' + where.upper().replace('ROCM', 'ROCm').replace('VULKAN', 'Vulkan') if where else ''}" if name else ''
+    except Exception:
+        return ''
+
+
 def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                    repository: ReadOnlyRepository | None = None, proposal_handler=None,
                    prepare_messages=None, prepare_receipts=None, studio_handler=None,
@@ -1970,6 +2016,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         """The answer checks above first; an answer they would deliver is then checked for parroting (Practice 87)."""
         nonlocal repeat_retry_used
         delivered = _grounded(answer, can_retry, can_fix)
+        if delivered is None:                     # Practice 176: say which HB check sent it back, and why
+            say_step(check_line(next((m.get('content') for m in reversed(working) if m.get('role') == 'user'), '')))
         if delivered is not None and can_retry and not repeat_retry_used and repeats_earlier(answer, messages):
             repeat_retry_used = True
             working.append({"role": "assistant", "content": answer, "rejected_answer": True})
@@ -2017,6 +2065,9 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                 if prepare_messages is not None:
                     working = prepare_messages(working)
                 from core.apex_routing import active_model
+                if not round_index:                       # Practice 176
+                    say_step('APEX' + (f' ({_playing_name()})' if _playing_name() else '') + ' starts: reading the question')
+                say_step(f'APEX thinking - round {round_index + 1}' + (' (writing the answer)' if final_answer else ''))
                 text, used = call_apex(call_model, active_model(), working)
         except RuntimeError as exc:
             if capacity_error(exc):
@@ -2098,6 +2149,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             calls = payload["tool_calls"] = kept
         if not well_formed or len(calls) + len(receipts) > MAX_CALLS + MAX_WEB_CALLS:
             raise RuntimeError("Invalid or excessive APEX tool calls")
+        for call in calls if isinstance(calls, list) else []:
+            say_step(step_line(call))             # Practice 176
         if isinstance(calls, list) and calls and all(isinstance(call, dict) and set(call) == {"name", "arguments"}
                and isinstance(call["arguments"], dict) and repeated_read(call, receipts)
                for call in calls):

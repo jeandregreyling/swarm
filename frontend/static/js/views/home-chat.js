@@ -555,6 +555,16 @@
         });
         return;
       }
+      if (d.status === 'running' && d.stage && !d.owner_command && _hcSending && _hcConvId
+          && String(d.conversation_id || '') === String(_hcConvId)) {
+        // Practice 176 (owner 20 Nov 2026: "I'm not seeing what the LLMs are doing"): APEX's steps - each round, search, read, web
+        // search and HB check - go into the thinking bubble's checklist as they happen.
+        const pending = document.querySelector('#home-chat-messages .hc-bubble[data-pending-job-id^="hc-tmp-"]');
+        if (pending) {
+          _hcUpsertThinkingBubble({ job_id: pending.dataset.pendingJobId, agent: d.agent || 'apex', status: 'running', stage: d.stage });
+          return;
+        }
+      }
       if (!_hcConvId) return;
       if (d.conversation_id && String(d.conversation_id) !== String(_hcConvId)) return;
       if (d.state) _hcSetLaneState(d.state, d.error || '');
