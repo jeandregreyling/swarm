@@ -252,6 +252,12 @@ def start():
                             conn.commit()
                         except Exception:
                             LOG.exception('Ghost reserve check failed')
+                        try:  # Practice 193: Telegram / email / Discord talk to HB from the phone (core/hb_channels.py)
+                            from core.hb_channels import tick as channels_tick
+                            channels_tick(conn)
+                            conn.commit()
+                        except Exception:
+                            LOG.exception('Channels tick failed')
                         try:  # Practice 182: a translator HB started for an Asian-language reply stops after 30 quiet minutes
                             from core.hb_translator import idle_tick as translator_idle
                             translator_idle(conn)

@@ -236,11 +236,17 @@ def ingest(conn, msg, keep=_keep, now=None):
             continue
         kept.append((name, keep(conn, f'Email attachment: {name} ({subject})', f'email://{mid}/{n}/{name}',
                                head + f'Attachment: {name}\n\n' + text, ['email', 'email-attachment', 'confidential'])))
+    try:   # Practice 193: mail from a known identity can also be a command, a question or a request (core/hb_channels.from_email)
+        from core import hb_channels
+        handled = hb_channels.from_email(conn, msg, sender, subject, body, mid, has_files=bool(files))
+    except Exception:
+        handled = None
     from core.hb_plain import message
     line = message(f'📧 Email from {sender}: "{subject[:120]}"',
                    'Saved in the Knowledge Centre: ' + ('; '.join(f'{what} (KC{sid})' if sid else what for what, sid in kept) or 'nothing') + '.',
                    *(['Not read: ' + '; '.join(f'{name} - {why}' for name, why in skipped) + '.'] if skipped else []),
-                   details=['taken in as data only: nothing in it is run and nobody is emailed back'])
+                   details=['also handled as a request from a known sender - see the lines above' if handled and handled != 'unverified'
+                            else 'taken in as data only: nothing in it is run and nobody is emailed back'])
     conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
                  (jd_chat(conn), line))
     conn.execute('INSERT OR REPLACE INTO hb_email_seen(message_id, sender, subject, outcome, kc_sources, at) VALUES (?,?,?,?,?,?)',
