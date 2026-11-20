@@ -326,23 +326,22 @@ def mirror_once(conn, send):
         set_cursor(conn, 'mirror_last_id', top)
         set_cursor(conn, 'needs_seen', json.dumps(needs_lines(conn, [])[1]))
         return 0
+    # Practice 196 (emergency 20 Nov 21:25): the first version wrote the cursor and then sent each message to Telegram inside the same open
+    # write transaction; JD's emergency produced several posts at once, the lock was held for seconds and HB's login check and inbox
+    # failed with "database is locked" (the page broke). Now: collect, write the cursors, COMMIT, and only then talk to Telegram.
     echoes = {r[0] for r in conn.execute("SELECT message_id FROM hb_channel_log WHERE direction IN ('in','delivered') AND message_id IS NOT NULL")}
-    sent = 0
+    outgoing, newest = [], int(last)
     for mid, sender, content, kind in conn.execute('SELECT id, from_agent, content, message_type FROM messages WHERE conversation_id=? AND id>? '
                                                    'ORDER BY id LIMIT 30', (chat, int(last))).fetchall():
-        set_cursor(conn, 'mirror_last_id', mid)
+        newest = mid
         if mid in echoes or not worth_mirroring(sender, content, kind):
             continue
-        label = SENDER_LABEL.get(sender, sender)
-        for part in chunks(f'{label}: {plain(content)}'):
-            if send(part):
-                sent += 1
+        outgoing += chunks(f'{SENDER_LABEL.get(sender, sender)}: {plain(content)}')
     lines, keys = needs_lines(conn, json.loads(cursor(conn, 'needs_seen', '[]')))
+    set_cursor(conn, 'mirror_last_id', newest)
     set_cursor(conn, 'needs_seen', json.dumps(keys))
-    for line in lines:
-        if send(line):
-            sent += 1
-    return sent
+    conn.commit()
+    return sum(1 for text in outgoing + lines if send(text))
 
 
 # ------------------------------------------------------------------ Telegram
