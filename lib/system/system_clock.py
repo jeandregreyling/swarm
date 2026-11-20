@@ -30,7 +30,7 @@ except ImportError:
     import pytz
     ZoneInfo = None
 
-sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[2]))  # backlog sweep 20 Nov: the repo root, not the retired root
 
 
 class SystemClock:

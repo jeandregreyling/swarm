@@ -20,7 +20,7 @@ _SWARM_ROOT = _os.environ.get('SWARM_ROOT',
               str(_Path(__file__).resolve().parent.parent.parent))
 from system_clock import get_timestamp
 
-sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[2]))  # backlog sweep 20 Nov: the repo root, not the retired root
 
 def log_action(service, event, detail='', severity='info'):
     """

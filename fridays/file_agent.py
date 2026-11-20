@@ -29,7 +29,7 @@ from pathlib import Path
 from lib.system.system_clock import get_timestamp
 from lib.system.file_versioning import track_file_change
 
-sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1]))  # backlog sweep 20 Nov: the repo root, not the retired root
 
 logger = logging.getLogger('seven.file_agent')
 

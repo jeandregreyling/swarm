@@ -20,10 +20,11 @@ import asyncio
 import logging
 import io
 
-sys.path.insert(0, '/home/seven/swarm')
-sys.path.insert(0, '/home/seven/swarm/utils')
-sys.path.insert(0, '/home/seven/swarm/core/pipeline')
-sys.path.insert(0, '/home/seven/swarm/agents/ghost')
+_REPO = __import__('pathlib').Path(__file__).resolve().parents[1]  # backlog sweep 20 Nov: the repo root, not the retired root
+sys.path.insert(0, str(_REPO))
+sys.path.insert(0, str(_REPO / 'utils'))
+sys.path.insert(0, str(_REPO / 'core' / 'pipeline'))
+sys.path.insert(0, str(_REPO / 'agents' / 'ghost'))
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes

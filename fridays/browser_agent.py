@@ -18,7 +18,7 @@ import re
 import logging
 from datetime import datetime
 
-sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[1]))  # backlog sweep 20 Nov: the repo root, not the retired root
 
 logger = logging.getLogger('seven.browser_agent')
 

@@ -7,7 +7,7 @@ Librarian calls get_system_status() to answer health questions.
 """
 
 import sys
-sys.path.insert(0, '/home/seven/swarm')
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parents[2]))  # backlog sweep 20 Nov: the repo root, not the retired root
 from database import get_connection
 from config import GHOST_EMAIL
 from email_handler import send_reply
