@@ -184,6 +184,23 @@ def coding_lessons():
     return 'Coding lessons learned in earlier tasks (follow them): ' + ' '.join(f'({i}) {l}' for i, l in enumerate(pack['lessons'], 1))
 
 
+def glossary_for(text, limit=5):
+    """Practice 210 (JD 21 Nov: "haven't you and codex taught it what to do and where to look?"): the entries of HB's glossary
+    (core/capability_packs/hb.glossary.v1.json) whose everyday words appear in this text - JD's word -> what it is -> where in the code."""
+    import re
+    from pathlib import Path
+    low = ' ' + str(text or '').lower() + ' '
+    pack = json.loads((Path(__file__).resolve().parent / 'capability_packs' / 'hb.glossary.v1.json').read_text())
+    hits = []
+    for term in pack['terms']:
+        said = [w for w in term['words'] if re.search(r'(?<![a-z])' + re.escape(w) + r'(?![a-z])', low)]
+        if said:
+            hits.append(f"- \"{said[0]}\" = {term['means']}: {term['where']}")
+    if not hits:
+        return ''
+    return ("JD's words, mapped to HB (all in the repo you work in; grep these paths, not JD's word):\n" + '\n'.join(hits[:limit]))
+
+
 def apex_lessons():
     """Practice 201 (JD 20 Nov: "assume the role of trainer"): the standing lessons on every APEX card (core/capability_packs/apex.lessons.v1.json)."""
     from pathlib import Path

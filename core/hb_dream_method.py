@@ -135,6 +135,15 @@ def card(conn, task):
     past = related(conn, task)
     lines.append('Related past work: ' + ('; '.join(f"{p['task_id']} \"{p['title']}\" ({p['state']}, KC document {p['document_id']})"
                                                     for p in past) if past else 'none found'))
+    try:   # Practice 210: JD's everyday words -> HB's parts and files
+        from core.hb_learning import glossary_for
+        latest = conn.execute("SELECT m.content FROM hb_task_messages tm JOIN messages m ON m.id=tm.message_id WHERE tm.task_id=? "
+                              "ORDER BY m.id DESC LIMIT 1", (task['task_id'],)).fetchone()
+        words = glossary_for(' '.join([str(task.get('title') or ''), str(task.get('objective') or '')[:3000], str(latest[0] if latest else '')[:3000]]))
+        if words:
+            lines.append(words)
+    except Exception:
+        pass
     try:   # Practice 201: APEX's standing lessons (trainer: Claude Code, JD's order) on every card
         from core.hb_learning import apex_lessons
         lines.append(apex_lessons())

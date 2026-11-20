@@ -199,6 +199,13 @@ def card(conn, task, kind=None):
                   for i in items[:10]] or ['- no open tasks in the plan']
     except Exception:
         pass
+    try:   # Practice 210: JD's everyday words -> HB's parts and files
+        from core.hb_learning import glossary_for
+        words = glossary_for(said)
+        if words:
+            lines.append(words)
+    except Exception:
+        pass
     lines.append('Method: DREAM - Distinguish the real request; never Repeat a reply that already failed; Execute, do not '
                  'discuss; Accelerate with what you already know; keep Motivation on JD\'s goal: finished tasks.')
     return '\n'.join(lines)

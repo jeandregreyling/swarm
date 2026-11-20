@@ -1,0 +1,177 @@
+{
+  "id": "hb.glossary",
+  "version": "1.0.0",
+  "source": "JD 21 Nov 2026: \"why is apex not understanding natural language ... haven't you and codex taught it what to do and where to look?\" (trainer: Claude Code)",
+  "note": "JD speaks in everyday words; the code uses its own names. Everything below is in the repo APEX works in (/home/jd/swarm).",
+  "terms": [
+    {
+      "words": [
+        "ribbon",
+        "top bar",
+        "dashboard",
+        "hb live",
+        "board",
+        "pane",
+        "the bar at the top"
+      ],
+      "means": "the HB Live pane at the top of main chat (APEX meter, who is busy, the clipboard list, worker cards)",
+      "where": "frontend/static/js/hb-live.js (#hb-live-pane: renderBoard, renderStrip, renderList, renderMeter); data from core/hb_live.py snapshot via /api/peer/v1/hb/live"
+    },
+    {
+      "words": [
+        "clipboard",
+        "task list",
+        "the list",
+        "queue",
+        "open tasks"
+      ],
+      "means": "HB's one ordered list of open tasks with a doer for each",
+      "where": "core/hb_clipboard.py and core/hb_queue.py (status); shown by core/hb_live.py _master; /clip and /tasks in core/hb_commands.py"
+    },
+    {
+      "words": [
+        "main chat",
+        "home chat",
+        "the chat"
+      ],
+      "means": "JD's main conversation with HB and everyone (conversation 2845)",
+      "where": "frontend/blueprints/chat.py (api_chat, apex_turn_context); table messages"
+    },
+    {
+      "words": [
+        "needs you",
+        "gold window",
+        "gold pop-up",
+        "gold popup",
+        "pop-up",
+        "popup",
+        "approve button",
+        "approval"
+      ],
+      "means": "the Needs-you items and the gold approval pop-up (Approve / Continue / Cancel)",
+      "where": "frontend/static/js/views/hb-approval-popup.js; core/hb_live.py _needs_you; /accept S-... in core/hb_commands.py"
+    },
+    {
+      "words": [
+        "meter",
+        "token count",
+        "tokens",
+        "tok/s"
+      ],
+      "means": "the APEX meter: reading/writing tokens, tok/s, context use",
+      "where": "frontend/static/js/hb-live.js renderMeter; core/hb_live.py apex_live (reads :8080/slots)"
+    },
+    {
+      "words": [
+        "flower",
+        "flowers",
+        "merit",
+        "points"
+      ],
+      "means": "HB's credit lines when a step's check passes",
+      "where": "core/hb_merits.py"
+    },
+    {
+      "words": [
+        "phone",
+        "telegram",
+        "discord",
+        "email",
+        "mobile"
+      ],
+      "means": "JD talking to HB from the phone",
+      "where": "core/hb_channels.py (Telegram poll/mirror, answer_only), core/hb_email_intake.py"
+    },
+    {
+      "words": [
+        "restart",
+        "reload",
+        "reboot"
+      ],
+      "means": "restarting HB to load new code",
+      "where": "queue it in hb_restart_queue (scripts/hb_restart.py runs it, waits for running turns); never restart apex-server by hand"
+    },
+    {
+      "words": [
+        "model",
+        "swap",
+        "nemo",
+        "mistral",
+        "qwen",
+        "which model"
+      ],
+      "means": "which model plays APEX (now swift-qwen3.8-27b on ROCm); swapping it",
+      "where": "core/hb_apex_swap.py (/apex, /apex model <name>, /apex back)"
+    },
+    {
+      "words": [
+        "gpu",
+        "vram",
+        "ghost reserve",
+        "graphics card",
+        "lag"
+      ],
+      "means": "the RX 6800 card; JD's desktop keeps 2 GB free",
+      "where": "core/hb_gpu_guard.py (ghost_tick, vram_free_gb); /status"
+    },
+    {
+      "words": [
+        "posted in main chat",
+        "announce",
+        "announcement",
+        "started:",
+        "finished:"
+      ],
+      "means": "HB's start/finish lines for everyone's work",
+      "where": "core/hb_announce.py (coordinator tick)"
+    },
+    {
+      "words": [
+        "training",
+        "lessons",
+        "curriculum",
+        "scorecard",
+        "/train"
+      ],
+      "means": "APEX's training: graded exercises and standing lessons",
+      "where": "core/hb_training.py (/train), core/capability_packs/apex.lessons.v1.json, core/hb_learning.py"
+    },
+    {
+      "words": [
+        "chat with jd"
+      ],
+      "means": "the standing chat thread for JD's remarks (not a task)",
+      "where": "core/hb_owner_intent.py"
+    },
+    {
+      "words": [
+        "worker",
+        "supervisor",
+        "peer",
+        "inbox"
+      ],
+      "means": "the processes that carry requests to APEX, Codex, Gemini",
+      "where": "core/peer_coordination.py (Supervisor), scripts/hummingbird_peer_worker.py, core/peer_bridge.py"
+    },
+    {
+      "words": [
+        "step",
+        "steps",
+        "studio",
+        "plan",
+        "workflow"
+      ],
+      "means": "Studio plan steps and HB's workflow driver",
+      "where": "core/knowledge/projects.py (steps), core/hb_plan_workflow.py (/workflow), core/hb_tasks.py (tasks)"
+    },
+    {
+      "words": [
+        "translator",
+        "translate",
+        "bubble"
+      ],
+      "means": "the translation bubble for non-English text",
+      "where": "core/hb_translator.py"
+    }
+  ]
+}
