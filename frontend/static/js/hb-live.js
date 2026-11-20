@@ -208,9 +208,25 @@
     return html;
   }
 
+  // Practice 200: the APEX meter - always on top of main chat (owner: "let me see the actual token count and what APEX is doing")
+  function renderMeter(a, rate) {
+    if (!a || !a.up) return '<div class="hbl-meter hbl-meter-down">⬢ APEX\'s model server is not answering</div>';
+    const n = (x) => Number(x || 0).toLocaleString('en-AU');
+    const who = `⬢ <b>APEX</b> <span class="hbl-dim">${esc(a.model || '')}${a.device ? ' · ' + esc(a.device) : ''}</span>`;
+    let what;
+    if (!a.busy) what = `<span class="hbl-dim">idle · last prompt ${n(a.prompt_tokens)} tokens</span>`;
+    else if (a.prompt_tokens && a.prompt_done + a.prompt_cached < a.prompt_tokens && !a.generated) {
+      const pct = Math.min(100, Math.round(((a.prompt_done + a.prompt_cached) / a.prompt_tokens) * 100));
+      what = `<b>reading</b> ${n(a.prompt_done + a.prompt_cached)} / ${n(a.prompt_tokens)} tokens <span class="hbl-bar hbl-bar-in"><i style="width:${pct}%"></i></span>` +
+        (rate ? ` <span class="hbl-dim">${n(Math.round(rate))} tok/s</span>` : '');
+    } else what = `<b>writing</b> ${n(a.generated)} tokens` + (rate ? ` <span class="hbl-dim">· ${rate.toFixed(1)} tok/s</span>` : '');
+    const ctx = a.ctx ? ` <span class="hbl-dim">· context ${n(a.prompt_tokens + a.generated)} / ${n(a.ctx)}</span>` : '';
+    return `<div class="hbl-meter${a.busy ? ' hbl-meter-busy' : ''}">${who} · ${what}${ctx}</div>`;
+  }
+
   function renderBoard(snap, opts) {
     const o = opts || {};
-    return `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
+    return renderMeter(snap.apex_live, o.rate) + `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
       `<span class="hbl-dim">${esc(systemLine(snap))}</span></div>` +
       (o.collapsed ? renderActive(snap, o.now).replace(/<div class="hbl-cards">[\s\S]*$/, '') :
         renderActive(snap, o.now) + `<div class="hbl-board">${renderList(snap, o.controls, o.needsControls, o.open)}</div>`);
@@ -227,11 +243,11 @@
     return `<div class="hbl-pop-head">⚑ Needs you</div><div class="hbl-pop-title">${esc(n.label || '')}</div>` +
       (n.title && n.title !== n.label ? `<div class="hbl-dim">${esc(n.title)}</div>` : '') +
       (n.why ? `<div class="hbl-pop-why">${esc(String(n.why).slice(0, 400))}</div>` : '') +
-      (needsControls ? needsControls(n) : '') + '<div class="hbl-ctl"><button type="button" data-later="1">Later</button></div>';
+      (needsControls ? needsControls(n) : '') + '<div class="hbl-said hbl-dim" role="status"></div><div class="hbl-ctl"><button type="button" data-later="1">Later</button></div>';
   }
 
   const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
-    primaryFor, systemLine, took, esc, ICON, SHORT };
+    primaryFor, systemLine, renderMeter, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -250,6 +266,9 @@
     st.textContent = `
 #hb-live-pane{flex:0 0 auto;max-height:65vh;min-height:34px;overflow:auto;resize:vertical;padding:4px 10px 6px;border-bottom:2px solid var(--border,#333);
   background:var(--card,#161616);color:var(--text,#ddd);font-size:12.5px}
+.hbl-meter{position:sticky;top:-4px;z-index:2;margin:-4px -10px 4px;padding:5px 10px;background:var(--bg,#111);border-bottom:1px solid var(--border,#333);font-size:12.5px}
+.hbl-meter-busy{border-bottom:2px solid #2ecc71}.hbl-meter-down{color:#ff5252}
+.hbl-bar-in{display:inline-block;width:90px;height:7px;vertical-align:middle;border-radius:4px;background:var(--border,#333);overflow:hidden}.hbl-bar-in i{display:block;height:100%;background:#2ecc71}
 .hbl-pane-head{display:flex;gap:10px;align-items:center;margin-bottom:4px}.hbl-pane-head .hbl-dim{font-size:11.5px}
 .hbl-active{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}
 .hbl-chip{display:flex;align-items:center;gap:5px;max-width:320px;padding:3px 9px;border-radius:14px;cursor:pointer;border:1px solid var(--border,#333);
@@ -315,7 +334,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (!el) return;
     const top = el.scrollTop;
     const open = Array.from(el.querySelectorAll('[data-more-box]:not([hidden])')).map((b) => b.dataset.moreBox);
-    el.innerHTML = R.renderBoard(S.snap, { collapsed: ls('hbLive.collapsed') === '1', now: Date.now() / 1000, controls: S.controls,
+    el.innerHTML = R.renderBoard(S.snap, { rate: S.rate, collapsed: ls('hbLive.collapsed') === '1', now: Date.now() / 1000, controls: S.controls,
       needsControls: S.needsControls, open: S.open });
     open.forEach((id) => { const b = el.querySelector(`[data-more-box="${CSS.escape(id)}"]`); if (b) b.hidden = false; });
     el.scrollTop = top;
@@ -396,13 +415,18 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     }
     return html + '</div>';
   }
-  function send(body, win) {
+  function send(body, win, url) {
     const note = win && win.querySelector('.hbl-said');
-    return fetch('/api/peer/v1/hb/queue', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body) }).then((r) => r.json()).then((d) => {
-      if (note) note.textContent = (d && (d.said || d.error || d.changed)) || '';
+    const options = { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+    const response = url ? fetch(url, options) : fetch('/api/peer/v1/hb/queue', options);
+    return response.then(async (r) => {
+      const d = await r.json();
+      const said = d && (d.said || d.error || d.changed || d.response);
+      if (note) note.textContent = said || (!r.ok || !d || !d.ok ? 'HB could not do that - try again.' : '');
+      if (!r.ok || !d || d.ok !== true) return false;
       refresh();
-    }).catch(() => { if (note) note.textContent = 'HB did not answer - try again.'; });
+      return true;
+    }).catch(() => { if (note) note.textContent = 'HB did not answer - try again.'; return false; });
   }
   S.controls = controlsFor;
 
@@ -420,7 +444,18 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
   }
   S.needsControls = needsControlsFor;
 
-  function runCommand(text, fill) {
+  function runCommand(text, fill, win) {
+    if (win && !fill) {
+      const conversation = Number(ls('fridays-home-chat-active-thread'));
+      if (!Number.isSafeInteger(conversation) || conversation <= 0) {
+        const note = win.querySelector('.hbl-said');
+        if (note) note.textContent = 'Open the main chat first, then try again.';
+        return Promise.resolve(false);
+      }
+      // Owner commands are recorded and published by the same route as main chat.
+      // The next snapshot closes the popup only once this pending item is resolved.
+      return send({ message: text, conversation_id: conversation, local_only: true, new_thread: false, auto_relay: false }, win, '/api/chat');
+    }
     const input = document.getElementById('home-chat-input');
     if (!input) return;
     input.value = text;
@@ -436,8 +471,10 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const q = t.closest('button[data-q]');
     if (q) {
       if (q.dataset.confirm && !window.confirm(q.dataset.confirm)) return;
-      send({ [q.dataset.q]: [q.dataset.a, q.dataset.id] }, t.closest('#hb-live-pane') || pop);
-      if (pop) settle(S.popup);
+      if (q.disabled) return;
+      q.disabled = true;
+      // A 200 response can still be a refusal; the snapshot decides whether this item is resolved.
+      send({ [q.dataset.q]: [q.dataset.a, q.dataset.id] }, t.closest('#hb-live-pane') || pop).finally(() => { q.disabled = false; });
       return;
     }
     const sw = t.closest('[data-switch]');
@@ -446,8 +483,11 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (cmd) {
       const c = cmd.dataset.cmd;
       if (/^\/(cancel|reject|stop)\b/.test(c) && !window.confirm(`Run ${c}?`)) return;
-      runCommand(c);
-      if (pop) settle(S.popup);
+      if (cmd.disabled) return;
+      if (pop) {
+        cmd.disabled = true;
+        runCommand(c, false, pop).finally(() => { cmd.disabled = false; });
+      } else runCommand(c);
       return;
     }
     const fill = t.closest('[data-fill]');
@@ -479,6 +519,15 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     S.busy = true;
     fetch('/api/peer/v1/hb/live', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (!d || !d.ok) return;
+      // Practice 200: HB restarted (new code) - reload this page once, unless JD is typing
+      if (S.started && d.started && d.started !== S.started) {
+        const input = document.getElementById('home-chat-input');
+        if (!input || !input.value.trim()) { location.reload(); return; }
+      }
+      S.started = d.started || S.started;
+      const a = d.apex_live || {}, p = (S.snap || {}).apex_live || {}, dt = (d.at || 0) - ((S.snap || {}).at || 0);
+      S.rate = a.busy && p.busy && a.task === p.task && dt > 0 ? (a.generated > p.generated ? (a.generated - p.generated) / dt
+        : (a.prompt_done > p.prompt_done ? (a.prompt_done - p.prompt_done) / dt : S.rate)) : 0;
       S.snap = d;
       render();
     }).catch(() => {}).finally(() => { S.busy = false; });

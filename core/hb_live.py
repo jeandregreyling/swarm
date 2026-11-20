@@ -258,6 +258,34 @@ def _history(conn):
         return []
 
 
+STARTED = time.time()      # Practice 200: the page reloads itself when HB restarted (new code loaded)
+
+
+def apex_live(url='http://127.0.0.1:8080', fetch=None):
+    """Practice 200 (owner 20 Nov: "you are still not letting me see the actual token count and what APEX is doing"): APEX's model server
+    slot right now - reading (prompt tokens done / total), writing (tokens decoded), the context in use - plus who plays APEX."""
+    import urllib.request
+    try:
+        if fetch is None:
+            with urllib.request.urlopen(url + '/slots', timeout=0.6) as r:
+                slots = json.loads(r.read())
+        else:
+            slots = fetch()
+        s = slots[0]
+    except Exception:
+        return {'up': False}
+    nxt = (s.get('next_token') or [{}])[0]
+    try:
+        from core.hb_apex_swap import playing, backend
+        model, where = playing(), backend()
+    except Exception:
+        model, where = None, None
+    return {'up': True, 'busy': bool(s.get('is_processing')), 'prompt_tokens': int(s.get('n_prompt_tokens') or 0),
+            'prompt_done': int(s.get('n_prompt_tokens_processed') or 0), 'prompt_cached': int(s.get('n_prompt_tokens_cache') or 0),
+            'generated': int(nxt.get('n_decoded') or 0), 'ctx': int(s.get('n_ctx') or 0), 'task': s.get('id_task'),
+            'model': model, 'device': {'rocm': 'ROCm', 'vulkan': 'Vulkan'}.get(where or '', where)}
+
+
 def snapshot(conn, now=None, tele=None, items=None):
     now = now or time.time()
     found = items if items is not None else _merge(_log_items(conn, now) + _peer_items(conn) + _admin_items(conn))
@@ -278,4 +306,5 @@ def snapshot(conn, now=None, tele=None, items=None):
     out = {'lanes': lanes, 'needs_you': _needs_you(conn), 'master': _master(conn, by_task), 'history': _history(conn), 'unexplained': unexplained}
     out['version'] = hashlib.sha1(json.dumps(out, sort_keys=True, default=str).encode()).hexdigest()[:12]
     out['telemetry'], out['at'] = tele, now
+    out['apex_live'], out['started'] = apex_live(), STARTED      # Practice 200 (outside the version hash: it changes every read)
     return out
