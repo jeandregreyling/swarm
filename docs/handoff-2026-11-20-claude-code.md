@@ -26,6 +26,21 @@ python runtime/claude_helpers/hbrun.py start|step|finish
 - JD's email and credentials stay private.
 - Don't probe SAP internal endpoints.
 
+## JD's operating rules (20 Nov, evening; these override anything below)
+
+> "There should already be local memories and activated thought bubbles for the agents, this is a symphony and I need you all to work
+> together. If one runs out of tokens HB should know and redirect. There should never be an instant 'let's just ask the big boys for help'
+> situation unless I explicitly override. The system should run autonomously for the most part unless something is really stuck - send
+> me an email. I don't want you to work in silos. I am the money bags at this point."
+
+**Local first.** Codex, Gemini and Claude are set to **Off** for HB, so HB never calls them by itself. JD's own `@codex` / `@gemini` / `@claude` always goes through, because that is his override. Stuck work goes APEX → Fred (CPU) → JD by email. Claude Code does NOT ask the online models for opinions.
+
+**Email when stuck (Practice 191).** `hb_task_manager.ask_owner` also emails JD via `utils.config.nine_email`, at most once per task every 6 h. HB owns `ninepotato7@` and `sevenpotato9@`.
+
+**Not in silos.** Claude Code works through main chat: it posts as `claude-code`, logs its runs with `hbrun.py`, and reports what it changed.
+
+**Fix needed next.** HB's restart (`restart_tick`) waits for background jobs but not for a running peer turn. Restarting mid-turn created the "Worker restarted during a turn" review items, so it should wait while `hb_peer_work` has a running row.
+
 ## Done today
 
 **ROCm.** ROCm 10.2 is installed, llama.cpp `build-rocm` works, and APEX runs on ROCm:
