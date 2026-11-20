@@ -96,6 +96,22 @@ def grant(conn, task):
     return {'actor': row[0] or 'owner', 'since': row[1], 'project_id': row[2]} if row else None
 
 
+# Practice 180 (owner 20 Nov 2026: "the HB Driving section at the top of the screen isn't showing the task queue as expected"): 11 bug
+# tasks showed as "held by you (Continue off)", but JD never held them - HB parked each one after APEX went 9 checkpoints without a
+# passing check (continuation_control via 'stalled'). The board now says so.
+def _parked_why(conn, task_id):
+    row = conn.execute("SELECT payload FROM hb_task_events WHERE task_id=? AND kind='continuation_control' AND agent='user' "
+                       "ORDER BY event_id DESC LIMIT 1", (task_id,)).fetchone()
+    try:
+        saved = json.loads(row[0]) if row else {}
+    except (TypeError, ValueError):
+        return ''
+    if saved.get('mode') == 'off' and saved.get('via') == 'stalled':
+        return ('parked by HB: APEX got stuck (' + str(saved.get('why') or 'no passing check')[:80]
+                + ') - Continue gives it a fresh try, Cancel drops it')
+    return ''
+
+
 def _owner_mode(conn, task_id):
     """The owner's own Continue choice on a task ('on'/'off'/'auto'), or None when they never set one."""
     row = conn.execute("SELECT payload FROM hb_task_events WHERE task_id=? AND kind='continuation_control' AND agent='user' "
@@ -133,7 +149,7 @@ def steps(conn, project_id=DEFAULT_PROJECT):
         elif not task:
             why = 'no HB task in main chat'
         elif task[1] == 'paused' or _owner_mode(conn, task[0]) == 'off':
-            why = 'held by you (Continue off)'
+            why = _parked_why(conn, task[0]) or 'held by you (Continue off)'      # Practice 180
         elif _owner_mode(conn, task[0]) in ('on', 'auto'):
             why = 'already running on your own Continue On'
         elif managed and conn.execute("SELECT 1 FROM hb_task_manager WHERE task_id=? AND enabled=1 AND state IN "

@@ -52,7 +52,7 @@ def items(conn, project_id=PROJECT):
         else:
             state, why = 'waiting', skip
         out.append({'step_id': s['step_id'], 'task_id': s['task_id'], 'title': _plain(s['title']), 'state': state,
-                    'why': str(why)[:160]})
+                    'why': str(why)[:160], 'parked': str(skip).startswith('parked')})   # Practice 180
     return out
 
 

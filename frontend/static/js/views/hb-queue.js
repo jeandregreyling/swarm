@@ -23,6 +23,7 @@
     '.hb-clip-list li[data-state=now]{color:var(--accent,#6aa9ff);font-weight:600}.hb-clip-list li[data-state=needs_you]{color:#e0a030}' +
     '.hb-clip-list li[data-state=blocked]{opacity:.5}.hb-chip{font-size:10px;padding:0 6px;border-radius:8px;border:1px solid var(--border,#2c3a50);white-space:nowrap}' +
     '.hb-chip.ready{border-color:var(--accent,#6aa9ff);color:var(--accent,#6aa9ff)}' +
+    '.hb-chip.parked{border-color:#ffb300;color:#ffb300}' +   // Practice 180
     '.hb-switch{font:inherit;font-size:10px;padding:0 9px;border-radius:10px;border:1px solid var(--border,#2c3a50);background:transparent;color:var(--text-dim,#9aa7b8);cursor:pointer;margin-left:6px}' +
     '.hb-switch.on{color:#fff;border-color:var(--accent,#6aa9ff);background:color-mix(in srgb,var(--accent,#6aa9ff) 35%,transparent);box-shadow:0 0 6px var(--accent,#6aa9ff)}';
 
@@ -124,11 +125,12 @@
     const check = i.check_result && i.check_result !== 'not run yet' ? `<span class="hb-chip">check ${esc(i.check_result)}</span>` : '<span></span>';
     return `<li data-state="${esc(i.state)}" title="${esc(i.step_id + (i.why ? ' - ' + i.why : ''))}"><span>${ico(ICON[i.state] || 'dot')}</span>` +
       `<span>${esc(i.title)}</span><span class="hb-chip">${esc(DOER[i.doer] || i.doer || 'APEX')}${i.importance ? ' · importance ' + Math.min(5, i.importance) : ''}</span>` +
-      `<span class="hb-chip${i.ready ? ' ready' : ''}">${i.ready ? 'ready' : 'no card'}</span>${check}${editHtml(i)}</li>`;
+      (i.parked ? `<span class="hb-chip parked" title="${esc(i.why || '')}">parked by HB</span>`
+                : `<span class="hb-chip${i.ready ? ' ready' : ''}">${i.ready ? 'ready' : 'no card'}</span>`) + `${check}${editHtml(i)}</li>`;   // Practice 180
   }
 
   function show(d) {
-    const sig = JSON.stringify([d.on, d.auto, d.open, d.done_24h, S.open, d.background, d.items.map(i => [i.step_id, i.state, i.ready, i.check_result, i.importance, i.doer])]);
+    const sig = JSON.stringify([d.on, d.auto, d.open, d.done_24h, S.open, d.background, d.items.map(i => [i.step_id, i.state, i.ready, i.check_result, i.importance, i.doer, i.parked])]);
     if (sig === S.sig) return;
     S.sig = sig;
     style();
@@ -136,7 +138,11 @@
     if (el) {
       const now = d.items.find(i => i.state === 'now' || i.state === 'needs_you');
       const next = d.items.find(i => i.state === 'next');
-      const line = (now ? 'now: ' + now.title : '') + (next ? (now ? ' · ' : '') + 'next: ' + next.title : '');
+      // Practice 180: with nothing running or next, the header says why - instead of an empty line
+      const parked = d.items.filter(i => i.parked).length;
+      const line = (now ? 'now: ' + now.title : '') + (next ? (now ? ' · ' : '') + 'next: ' + next.title : '') ||
+        (parked ? `nothing running · ${parked} parked by HB (APEX got stuck) - open the list: Continue gives one a fresh try, Cancel drops it`
+                : (d.open ? 'nothing ready to start' : 'queue empty'));
       el.innerHTML = `<div class="hb-clip-head" title="${esc(d.summary)}"><b>HB</b><span>${d.on ? 'driving' : 'paused'} · ${d.open} open · ${d.done_24h} done today</span>` +
         `<span class="hb-clip-line">${esc(line)}</span><span aria-hidden="true">${ico(S.open ? 'less' : 'more')}</span></div>` +
         (d.background || []).map(b => `<div class="hb-clip-bg">${ico('sprout')} ${esc(b.role)} (${esc(b.model)}): ${esc(b.now)}</div>`).join('') +
