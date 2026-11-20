@@ -47,7 +47,7 @@
     pill.style.color = lines.length ? 'var(--accent,#0f9)' : 'var(--text-dim,#888)';
   }
   function tick() {
-    if (document.hidden) return;
+    if (document.hidden || (document.body && document.body.classList && document.body.classList.contains('hb-live-on'))) return;   // HB Live L5: the strip took over
     fetch('/api/peer/v1/hb/activity', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
       var node = ensure();
       now(data);                                          // Practice 126

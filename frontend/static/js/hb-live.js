@@ -86,7 +86,7 @@
   const STATE_ORDER = ['needs_you', 'now', 'next', 'waiting', 'blocked'];
   const STATE_WORD = { needs_you: 'Needs you', now: 'Now', next: 'Next', waiting: 'Waiting', blocked: 'Blocked' };
 
-  function renderMaster(snap, controls) {
+  function renderMaster(snap, controls, needsControls) {
     const m = snap.master || {}, items = m.items || [];
     const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status');
     let html = `<div class="hbl-note">HB is ${m.on === false ? '<b>paused</b> (Auto off)' : 'driving'}` +
@@ -95,7 +95,8 @@
       '</div><div class="hbl-said hbl-dim"></div>';
     if (needs.length) {
       html += '<div class="hbl-sub">Needs you</div><ul class="hbl-list">' + needs.map((n) =>
-        `<li class="hbl-needs"><span class="hbl-tag">${esc(n.kind || 'review')}</span> ${esc(n.label || n.text || '')}</li>`).join('') + '</ul>';
+        `<li class="hbl-needs" title="${esc(n.why || n.title || '')}"><span class="hbl-tag">${esc(n.kind || 'review')}</span> ${esc(n.label || n.text || '')}` +
+        (n.title && n.title !== n.label ? `<div class="hbl-dim">${esc(n.title)}</div>` : '') + (needsControls ? needsControls(n) : '') + '</li>').join('') + '</ul>';
     }
     STATE_ORDER.forEach((state) => {
       const rows = items.filter((i) => (i.state || 'waiting') === state);
@@ -181,11 +182,15 @@
 #hb-live-dock{position:fixed;right:10px;top:30%;z-index:9001;display:flex;flex-direction:column;gap:8px}
 .hbl-bubble{width:40px;height:40px;border-radius:50%;border:1px solid var(--border,#444);background:var(--card,#1b1b1b);color:var(--text,#ddd);
   cursor:pointer;font-size:16px;box-shadow:0 4px 12px rgba(0,0,0,.35)}.hbl-bubble.hbl-busy{border-color:#2ecc71;animation:hblPulse 1.4s infinite}
+body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-clipboard,body.hb-live-on #home-chat-main .hb-needs-you{display:none!important}
 @media (max-width:640px){.hbl-win{left:8px!important;right:8px;width:auto}.hbl-line{max-width:90px}}`;
     document.head.appendChild(st);
   }
 
+  function classic() { try { return localStorage.getItem('hbLive.classic') === '1'; } catch (e) { return false; } }
   function strip() {
+    if (classic()) { document.body.classList.remove('hb-live-on'); return null; }
+    document.body.classList.add('hb-live-on');   // HB Live L5: hides the HB-now pill, live box, HB Driving board and Needs-you bar in main chat
     let el = document.getElementById('hb-live-strip');
     if (el) return el;
     const main = document.getElementById('home-chat-main'), bar = document.getElementById('home-chat-bar');
@@ -269,7 +274,7 @@
 
   function body(id) {
     const s = S.snap || {};
-    if (id === 'master' || id === 'needs') return R.renderMaster(s, S.controls);
+    if (id === 'master' || id === 'needs') return R.renderMaster(s, S.controls, S.needsControls);
     if (id === 'system') return R.renderSystem(s);
     return R.renderLane(s, id, Date.now() / 1000);
   }
@@ -334,9 +339,35 @@
   });
   S.controls = controlsFor;
 
+  // HB Live L5: everything the old Needs-you bar could do, in the Tasks window
+  function needsControlsFor(n) {
+    let html = '<div class="hbl-ctl">';
+    if (n.kind === 'accept' && n.step_id) html += `<button type="button" data-q="task" data-a="accept" data-id="${R.esc(n.step_id)}">Approve</button>`;
+    if (n.open && n.open.type === 'message' && n.open.id) html += `<button type="button" data-show="${Number(n.open.id)}">Show in chat</button>`;
+    (n.actions || []).forEach((a) => { if (a && a.command) html += `<button type="button" data-cmd="${R.esc(a.command)}">${R.esc(a.label || a.command)}</button>`; });
+    if (n.task_id && n.kind !== 'accept') {
+      html += `<button type="button" data-q="task" data-a="continue" data-id="${R.esc(n.task_id)}">Continue</button>` +
+        `<button type="button" data-q="task" data-a="cancel" data-id="${R.esc(n.task_id)}" data-confirm="Cancel this task?">Cancel</button>`;
+    }
+    return html + '</div>';
+  }
+  S.needsControls = needsControlsFor;
+  document.addEventListener('click', (e) => {
+    const show = e.target.closest('.hbl-win [data-show]');
+    if (show) {
+      const m = document.querySelector(`#home-chat-messages [data-message-id="${Number(show.dataset.show)}"]`);
+      if (m) { m.scrollIntoView({ behavior: 'smooth', block: 'center' }); m.style.outline = '2px solid #ffb300'; setTimeout(() => { m.style.outline = ''; }, 2500); }
+    }
+    const cmd = e.target.closest('.hbl-win [data-cmd]');
+    if (cmd) {
+      const input = document.getElementById('home-chat-input');
+      if (input) { input.value = cmd.dataset.cmd; input.dispatchEvent(new Event('input', { bubbles: true })); document.getElementById('home-chat-send-btn')?.click(); }
+    }
+  });
+
   let pending = null;
   function refresh() {
-    if (document.hidden || S.busy) return;
+    if (document.hidden || S.busy || classic()) return;
     S.busy = true;
     fetch('/api/peer/v1/hb/live', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (!d || !d.ok) return;
@@ -346,7 +377,7 @@
   }
   function soon() { clearTimeout(pending); pending = setTimeout(refresh, 300); }
 
-  root.hbLive = { open, close, toggle, refresh, state: S, setControls: (fn) => { S.controls = fn; render(); } };
+  root.hbLive = { classic: (on) => { try { localStorage.setItem('hbLive.classic', on ? '1' : '0'); } catch (e) {} location.reload(); }, open, close, toggle, refresh, state: S, setControls: (fn) => { S.controls = fn; render(); } };
   document.addEventListener('sse:chat', soon);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   setInterval(refresh, 2000);
