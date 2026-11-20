@@ -90,7 +90,9 @@
     const m = snap.master || {}, items = m.items || [];
     const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status');
     let html = `<div class="hbl-note">HB is ${m.on === false ? '<b>paused</b> (Auto off)' : 'driving'}` +
-      `${m.auto ? ' · auto-approve on' : ''} · ${items.length} open</div>`;
+      `${m.auto ? ' · auto-approve on' : ''} · ${items.length} open` +
+      (controls ? ` <span class="hbl-ctl"><button type="button" data-switch="auto" data-on="${m.on === false ? 1 : 0}">${m.on === false ? 'Start (Auto on)' : 'Stop (Auto off)'}</button></span>` : '') +
+      '</div><div class="hbl-said hbl-dim"></div>';
     if (needs.length) {
       html += '<div class="hbl-sub">Needs you</div><ul class="hbl-list">' + needs.map((n) =>
         `<li class="hbl-needs"><span class="hbl-tag">${esc(n.kind || 'review')}</span> ${esc(n.label || n.text || '')}</li>`).join('') + '</ul>';
@@ -285,6 +287,52 @@
     });
     renderDock();
   }
+
+  // ── HB Live L4a: controls in the Tasks window, through HB's own routes (/hb/queue task, clip, switch) ──
+  const DOER_CHOICES = ['apex', 'fred', 'small', 'hb', 'codex', 'gemini', 'claude'];
+  function controlsFor(i) {
+    const step = R.esc(i.step_id || ''), task = R.esc(i.task_id || '');
+    let html = '<div class="hbl-ctl">';
+    if (i.state === 'needs_you' && i.step_id) html += `<button type="button" data-q="task" data-a="accept" data-id="${step}">Approve</button>`;
+    if (i.task_id) {
+      if (i.parked) html += `<button type="button" data-q="task" data-a="continue" data-id="${task}" title="Give it a fresh try">Try again</button>`;
+      else if (i.state === 'now') html += `<button type="button" data-q="task" data-a="pause" data-id="${task}">Pause</button>`;
+      else html += `<button type="button" data-q="task" data-a="continue" data-id="${task}">Continue</button>`;
+      html += `<button type="button" data-q="task" data-a="cancel" data-id="${task}" data-confirm="Cancel this task?">Cancel</button>`;
+    }
+    if (i.step_id) {
+      html += `<button type="button" data-q="clip" data-a="top" data-id="${step}" title="Move to the top">⇈</button>` +
+        `<button type="button" data-q="clip" data-a="up" data-id="${step}" title="Move up">↑</button>` +
+        `<button type="button" data-q="clip" data-a="down" data-id="${step}" title="Move down">↓</button>` +
+        `<select data-q="clip" data-a="importance" data-id="${step}" title="Importance (5 is highest)">` +
+        [5, 4, 3, 2, 1].map((n) => `<option value="${n}"${Number(i.importance) === n ? ' selected' : ''}>imp ${n}</option>`).join('') + '</select>' +
+        `<select data-q="clip" data-a="doer" data-id="${step}" title="Who does it - HB lines up this model">` +
+        DOER_CHOICES.map((d) => `<option value="${d}"${(i.doer || 'apex') === d ? ' selected' : ''}>${d}</option>`).join('') + '</select>';
+    }
+    return html + '</div>';
+  }
+  function send(body, win) {
+    const note = win && win.querySelector('.hbl-said');
+    return fetch('/api/peer/v1/hb/queue', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body) }).then((r) => r.json()).then((d) => {
+      if (note) note.textContent = (d && (d.said || d.error || d.changed)) || '';
+      refresh();
+    }).catch(() => { if (note) note.textContent = 'HB did not answer - try again.'; });
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('.hbl-win [data-q]');
+    if (b && b.tagName === 'BUTTON') {
+      if (b.dataset.confirm && !window.confirm(b.dataset.confirm)) return;
+      send({ [b.dataset.q]: [b.dataset.a, b.dataset.id] }, b.closest('.hbl-win'));
+    }
+    const sw = e.target.closest('.hbl-win [data-switch]');
+    if (sw) send({ switch: sw.dataset.switch, on: sw.dataset.on === '1' }, sw.closest('.hbl-win'));
+  });
+  document.addEventListener('change', (e) => {
+    const s = e.target.closest('.hbl-win select[data-q]');
+    if (s) send({ [s.dataset.q]: [s.dataset.a, s.dataset.id, s.value] }, s.closest('.hbl-win'));
+  });
+  S.controls = controlsFor;
 
   let pending = null;
   function refresh() {

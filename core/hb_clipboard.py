@@ -6,19 +6,22 @@ models per task."
 
   rows(conn)      the list as the holder shows it: order, title, state, doer and why, importance, Ready (homework card), check result
   order_key(...)  the order HB works in: pinned first, then importance (5 high), then plan order; used by the plan workflow
-  edit(...)       /clip up|down|top S-xxxx · /clip importance S-xxxx 1-5 · /clip doer S-xxxx hb|small|apex|fred · /clip clear S-xxxx
+  edit(...)       /clip up|down|top S-xxxx · /clip importance S-xxxx 1-5 · /clip doer S-xxxx hb|small|apex|fred|codex|gemini|claude · /clip clear S-xxxx
                   Every edit is recorded with who made it (JD, APEX, HB, Claude Code).
 
 Importance and doer come from the homework spec card (core/hb_homework.py) unless someone set them by hand; by hand always wins.
 Dependencies stay where they are recorded (Studio step deps, "HB depends on:" lines); a task never starts before them.
 Finished tasks leave the list: their record lives in Studio and the Knowledge Centre.
+
+Spec card for task T-F2287DD4D821: hows the spec card going guys? are we going to make this work?
 """
 import time
 
 from core import hb_tasks
 
-DOERS = ('hb', 'small', 'apex', 'fred')
-DOER_WORDS = {'hb': 'HB itself (no model)', 'small': 'small CPU model', 'apex': 'APEX (14B on the GPU)', 'fred': 'Fred (24B on the CPU)'}
+DOERS = ('hb', 'small', 'apex', 'fred', 'codex', 'gemini', 'claude')   # HB Live L4a (owner 20 Nov): online models are doers too
+DOER_WORDS = {'hb': 'HB itself (no model)', 'small': 'small CPU model', 'apex': 'APEX (on the GPU)', 'fred': 'Fred (24B on the CPU)',
+              'codex': 'Codex (online)', 'gemini': 'Gemini (online)', 'claude': 'Claude Code (online)'}
 
 
 def ensure_schema(conn):
@@ -89,11 +92,11 @@ def rows(conn):
 
 
 def edit(conn, args, actor):
-    """/clip up|down|top S-xxxx · /clip importance S-xxxx 1-5 · /clip doer S-xxxx hb|small|apex|fred · /clip clear S-xxxx"""
+    """/clip up|down|top S-xxxx · /clip importance S-xxxx 1-5 · /clip doer S-xxxx <doer> · /clip clear S-xxxx (doers: DOERS)"""
     import re
     ensure_schema(conn)
     if len(args) < 2 or not re.fullmatch(r'S-[0-9A-F]{10}', args[1].upper()):
-        return 'Use /clip up|down|top|clear S-xxxx, /clip importance S-xxxx 1-5, or /clip doer S-xxxx hb|small|apex|fred.'
+        return 'Use /clip up|down|top|clear S-xxxx, /clip importance S-xxxx 1-5, or /clip doer S-xxxx ' + '|'.join(DOERS) + '.'
     action, step_id = args[0].lower(), args[1].upper()
     if not conn.execute('SELECT 1 FROM project_steps WHERE step_id=?', (step_id,)).fetchone():
         return f'{step_id} is not a Studio step.'
@@ -119,7 +122,7 @@ def edit(conn, args, actor):
         conn.execute('DELETE FROM hb_clipboard WHERE step_id=?', (step_id,))
         said = 'back to HB\'s own order, importance and doer'
     else:
-        return 'Use /clip up|down|top|clear S-xxxx, /clip importance S-xxxx 1-5, or /clip doer S-xxxx hb|small|apex|fred.'
+        return 'Use /clip up|down|top|clear S-xxxx, /clip importance S-xxxx 1-5, or /clip doer S-xxxx ' + '|'.join(DOERS) + '.'
     task = conn.execute("SELECT task_id FROM hb_tasks WHERE step_id=? AND state NOT IN ('completed','cancelled') ORDER BY created_at DESC LIMIT 1",
                         (step_id,)).fetchone()
     if task:
