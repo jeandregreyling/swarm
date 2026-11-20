@@ -83,6 +83,24 @@ def test_startup_failure_is_bounded_and_request_gets_public_failure(db):
     assert len(messages)==1 and str(request) in messages[0][0]
 
 
+def test_supervisor_tries_again_after_cool_down(db):
+    # Practice 206 (21 Nov 06:55): three crashed starts during a slow HB restart made HB give up on every worker for good
+    launches=[]; clock=[0]
+    supervisor = coordination.Supervisor(launch=launches.append, alive=lambda _:False, clock=lambda:clock[0])
+    for when in [0, 31, 62, 93, 124]:
+        clock[0] = when
+        supervisor.tick(db)
+    assert len(launches) == 3 and coordination.status(db)[0]['state'] == 'unavailable'
+    clock[0] = 62 + coordination.Supervisor.COOL_DOWN
+    supervisor.tick(db)
+    assert len(launches) == 4 and coordination.status(db)[0]['state'] == 'starting'
+
+
+def test_worker_waits_out_a_slow_inbox():
+    src = (coordination.ROOT/'scripts/hummingbird_peer_worker.py').read_text()
+    assert 'except OSError as exc:' in src and 'asking again in 5 s' in src
+
+
 def test_disconnected_running_turn_requires_review_instead_of_reexecution(db):
     request = peers.request_help(db, 1, 'codex', 'Need help', 'Evidence')['request_ids'][0]
     db.execute("UPDATE hb_peer_work SET state='running' WHERE request_id=?", (request,))

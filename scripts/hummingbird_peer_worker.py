@@ -277,7 +277,14 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
             inbox=[]
             cursor=after_id
             while True:
-                page=api.call(f'/api/peer/v1/inbox?after={cursor}&limit=20&pending=1')['messages']
+                try:
+                    page=api.call(f'/api/peer/v1/inbox?after={cursor}&limit=20&pending=1')['messages']
+                except OSError as exc:
+                    # Practice 206: during an HB restart the inbox can take >20 s; that used to crash the worker (three crashes and
+                    # HB's supervisor gave up on APEX for good). Wait and ask again.
+                    print(f'HB inbox slow ({type(exc).__name__}); asking again in 5 s',flush=True)
+                    time.sleep(5)
+                    continue
                 if not page:break
                 if any(type(row.get('id')) is not int or row['id']<=cursor for row in page):
                     raise RuntimeError('Inbox cursor did not advance')

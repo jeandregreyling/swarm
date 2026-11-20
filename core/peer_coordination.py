@@ -69,6 +69,8 @@ def status(conn):
 
 
 class Supervisor:
+    COOL_DOWN = 300   # Practice 206: seconds before another round of start attempts
+
     def __init__(self, *, launch=None, alive=worker_alive, clock=time.monotonic):
         self.launch = launch or self._launch
         self.alive = alive
@@ -116,6 +118,8 @@ class Supervisor:
                     state, detail = 'starting', 'HB is waiting for worker startup'
                 else:
                     count = previous[1] if previous else 0
+                    if count >= 3 and self.clock() - previous[0] >= self.COOL_DOWN:
+                        count = 0      # Practice 206: after a cool-down, a new round of three tries - never give up for good
                     if count >= 3:
                         state, detail = 'unavailable', 'HB peer worker failed to start after three attempts; inspect hb-supervised-worker.log'
                         pending = conn.execute("SELECT w.request_id,m.conversation_id FROM hb_peer_work w JOIN peer_messages m ON m.id=w.request_id WHERE w.principal=? AND w.state='queued'", (agent,)).fetchall()
