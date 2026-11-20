@@ -6,12 +6,16 @@
     if (box && document.body.contains(box)) return box;
     box = document.createElement('pre');
     box.id = 'hb-live-activity';
-    box.style.cssText = 'margin:4px 12px 8px;padding:6px 10px;font:11.5px/1.45 ui-monospace,monospace;white-space:pre-wrap;' +
-      'color:var(--text-dim,#888);border-left:2px solid var(--accent,#0f9);max-height:160px;overflow:auto;display:none;';
+    // Practice 177 (owner 20 Nov 2026: "a very thin line at the bottom of the chat ... the top of the first sentence cut in half"): the chat
+    // list is a flex column, so this scrollable box was shrunk to a sliver. It no longer shrinks, grows with its text up to 40% of the
+    // screen, and is plain readable text.
+    box.style.cssText = 'flex:0 0 auto;min-height:min-content;margin:4px 12px 8px;padding:8px 12px;font:12.5px/1.5 ui-monospace,monospace;' +
+      'white-space:pre-wrap;word-break:break-word;color:var(--text,#ddd);background:var(--surface-2,rgba(127,127,127,.08));' +
+      'border-left:3px solid var(--accent,#0f9);border-radius:4px;max-height:40vh;overflow:auto;display:none;';
     return box;
   }
   function place(node) {
-    var bubbles = document.querySelectorAll('.chat-bubble[data-pending-job-id]');
+    var bubbles = document.querySelectorAll('.chat-bubble[data-pending-job-id], .hc-bubble[data-pending-job-id]');   // Practice 177: main chat too
     var last = bubbles.length ? bubbles[bubbles.length - 1] : null;
     if (last && last.parentNode) { if (last.nextSibling !== node) last.parentNode.insertBefore(node, last.nextSibling); return; }
     var host = document.getElementById('chat-messages') || document.getElementById('home-chat-messages');
@@ -43,9 +47,14 @@
       now(data);                                          // Practice 126
       // Practice 164: the shared /hb/activity answer carries the live text in 'lines' (and 'live'); 'running' is the work list
       if (!data || !data.live || !data.lines || !data.lines.length) { node.style.display = 'none'; return; }
-      node.textContent = data.lines.join('\n');
+      var host = node.parentNode;
+      var atBottom = !host || host.scrollHeight - host.scrollTop - host.clientHeight < 80;   // Practice 177: follow only if JD is at the bottom
+      var text = data.lines.join('\n');
+      if (node.textContent !== text) node.textContent = text;
       place(node);
       node.style.display = 'block';
+      host = node.parentNode;
+      if (host && atBottom) host.scrollTop = host.scrollHeight;
     }).catch(function () {});
   }
   setInterval(tick, 3000);
