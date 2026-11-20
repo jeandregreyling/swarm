@@ -53,6 +53,11 @@ _TEST_DB = tempfile.NamedTemporaryFile(
 _TEST_DB.close()
 
 os.environ["SWARM_DB_PATH"] = _TEST_DB.name
+# Media state is loaded during collection by an integration probe, before any
+# autouse fixture runs. Isolate JSON and every generated artifact at import time.
+_TEST_MEDIA_STORAGE = tempfile.TemporaryDirectory(prefix="swarm_test_media_")
+os.environ["HUMMINGBIRD_MEDIA_ROOT"] = _TEST_MEDIA_STORAGE.name
+
 _TEST_AGENT_IDENTITIES = tempfile.TemporaryDirectory(prefix="swarm_test_identities_")
 os.environ["HUMMINGBIRD_AGENT_STATE"] = _TEST_AGENT_IDENTITIES.name
 os.environ["SWARM_VORTEX_LEDGER_DISABLED"] = "1"

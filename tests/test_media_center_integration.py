@@ -1,6 +1,8 @@
-﻿from pathlib import Path
+from pathlib import Path
 import sys
 import pytest
+import os
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "frontend"))
@@ -12,12 +14,13 @@ from terminal import create_app
 
 
 @pytest.fixture(autouse=True)
-def _remove_media_projects_created_by_test():
+def _remove_media_projects_created_by_test(monkeypatch):
     """Always delete Studio projects a test created, even when it fails.
 
     The render tests write to the live Studio DB; the old cleanup only ran
     after every assertion passed, so each failed run left ~13 junk steps behind.
     """
+    monkeypatch.setenv("STAGE", "UAT")
     from utils.db._connection import get_connection
 
     def _ids():
@@ -42,7 +45,8 @@ STUDIO_JS = ROOT / "frontend" / "static" / "js" / "views" / "studio.js"
 def _probe_media_state() -> dict | None:
     """Return the media state payload, or None if degraded/unavailable."""
     try:
-        app = create_app()
+        with patch.dict(os.environ, {"STAGE": "UAT"}):
+            app = create_app()
         with app.test_client() as client:
             resp = client.get("/api/media-center/state")
             if resp.status_code != 200:

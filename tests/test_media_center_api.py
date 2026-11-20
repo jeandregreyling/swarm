@@ -8,6 +8,7 @@ import wave
 from pathlib import Path
 
 from flask import Flask
+from core.media_center.storage import MEDIA_STORAGE_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -76,7 +77,7 @@ def test_media_produce_audio_runner_writes_artifact():
     assert data.get('ok') is True
     out = data.get('output_path')
     assert out and out.endswith('.wav')
-    path = ROOT / out
+    path = MEDIA_STORAGE_ROOT / out
     assert path.exists()
     assert path.stat().st_size > 1000
 
@@ -95,7 +96,7 @@ def test_media_produce_image_runner_writes_png_artifact():
     assert data.get('ok') is True
     out = data.get('output_path') or ''
     assert out.endswith('.png')
-    path = ROOT / out
+    path = MEDIA_STORAGE_ROOT / out
     assert path.exists()
     assert path.stat().st_size > 1000
 
@@ -139,7 +140,7 @@ def test_media_produce_video_runner_writes_video_artifact_without_ffmpeg_require
     assert data.get('ok') is True
     out = data.get('output_path') or ''
     assert out.endswith(('.mp4', '.avi'))
-    path = ROOT / out
+    path = MEDIA_STORAGE_ROOT / out
     assert path.exists()
     assert path.stat().st_size > 1000
 
@@ -185,8 +186,8 @@ def test_media_mix_songs_creates_remix_preview_and_manifest():
     assert any(item.get('role') == 'vocal_generation' for item in data.get('provider_handoff') or [])
     assert artifact_resp.status_code == 200
 
-    wav_path = ROOT / data['output_path']
-    manifest_path = ROOT / data['manifest_path']
+    wav_path = MEDIA_STORAGE_ROOT / data['output_path']
+    manifest_path = MEDIA_STORAGE_ROOT / data['manifest_path']
     assert wav_path.exists()
     assert wav_path.stat().st_size > 1000
     with wave.open(str(wav_path), 'rb') as wav:
@@ -236,6 +237,6 @@ def test_media_screenshot_upload_persists_artifact():
     assert data.get('ok') is True
     out = data.get('output_path') or ''
     assert out.endswith('.png')
-    path = ROOT / out
+    path = MEDIA_STORAGE_ROOT / out
     assert path.exists()
     assert path.stat().st_size > 40

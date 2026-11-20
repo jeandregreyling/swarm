@@ -21,7 +21,9 @@ from utils.db._connection import get_connection
 
 media_bp = Blueprint('media_bp', __name__)
 
-_MEDIA_ROOT = Path(os.environ.get('SWARM_ROOT', Path(__file__).resolve().parents[2]))
+from core.media_center.storage import MEDIA_STORAGE_ROOT
+
+_MEDIA_ROOT = MEDIA_STORAGE_ROOT
 _MEDIA_ARTIFACT_DIR = _MEDIA_ROOT / 'artifacts' / 'media_center'
 _REMIX_MODES = {'mashup', 'new', 'new_song', 'original'}
 _MEDIA_PROMPT_FIELDS = {

@@ -19,7 +19,7 @@ from core.media_center.framework import (
     update_project,
     update_project_routing,
 )
-from utils.swarm_root import SWARM_ROOT
+from core.media_center.storage import MEDIA_STORAGE_ROOT
 
 media_center_bp = Blueprint("media_center", __name__)
 
@@ -181,8 +181,8 @@ def media_center_run_job(job_id: str):
 
 @media_center_bp.route("/api/media-center/artifacts/<path:artifact_path>", methods=["GET"])
 def media_center_artifact(artifact_path: str):
-    root = (Path(SWARM_ROOT) / "artifacts" / "media_center").resolve()
-    target = (Path(SWARM_ROOT) / artifact_path).resolve()
+    root = (MEDIA_STORAGE_ROOT / "artifacts" / "media_center").resolve()
+    target = (MEDIA_STORAGE_ROOT / artifact_path).resolve()
     if root not in target.parents and target != root:
         return jsonify({"ok": False, "error": "artifact outside media center root"}), 404
     if not target.exists() or not target.is_file():

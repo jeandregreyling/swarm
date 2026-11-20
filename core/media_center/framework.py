@@ -28,12 +28,12 @@ from core import spine as _spine
 from utils.db import knowledge as _knowledge
 from utils.db import nodes as _nodes
 from utils.db import registry as _registry
-from utils.swarm_root import SWARM_ROOT
+from core.media_center.storage import MEDIA_STORAGE_ROOT
 from utils.db import trace_log as _trace_log
 from utils.db._connection import get_connection
 
-_STATE_PATH = Path(SWARM_ROOT) / "sandpits" / "shared" / "media_center_state.json"
-_ARTIFACT_ROOT = Path(SWARM_ROOT) / "artifacts" / "media_center"
+_STATE_PATH = MEDIA_STORAGE_ROOT / "sandpits" / "shared" / "media_center_state.json"
+_ARTIFACT_ROOT = MEDIA_STORAGE_ROOT / "artifacts" / "media_center"
 _LOCAL_TIMEOUT = 1.5
 _MEDIA_STOP_WORDS = {
     "the", "and", "with", "into", "from", "that", "this", "build", "make",
@@ -587,7 +587,7 @@ def summarize_runtime() -> dict[str, Any]:
         },
         "storage": {
             "state_path": str(_STATE_PATH),
-            "exports_root": str(Path(SWARM_ROOT) / "exports"),
+            "exports_root": str(MEDIA_STORAGE_ROOT / "exports"),
         },
     }
 
@@ -1242,7 +1242,7 @@ def run_job_real(job_id: str) -> dict[str, Any] | None:
         "id": f"artifact-{uuid4().hex[:10]}",
         "job_id": job_id,
         "label": "Audio Preview",
-        "path": str(wav_path.relative_to(SWARM_ROOT)),
+        "path": str(wav_path.relative_to(MEDIA_STORAGE_ROOT)),
         "url": artifacts[0]["url"],
         "mime_type": "audio/wav",
         "status": "ready",
@@ -1317,7 +1317,7 @@ def _render_tone_preview(path: Path, project: dict[str, Any], job: dict[str, Any
 
 
 def _artifact_payload(label: str, path: Path, mime_type: str) -> dict[str, str]:
-    rel = path.relative_to(SWARM_ROOT)
+    rel = path.relative_to(MEDIA_STORAGE_ROOT)
     return {
         "label": label,
         "path": str(rel),

@@ -19,6 +19,7 @@ if ROOT not in sys.path:
 
 @pytest.fixture
 def client(monkeypatch):
+    monkeypatch.setenv("STAGE", "UAT")
     # Use a temp DB so we don't pollute swarm_memory.db.
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
     tmp.close()
