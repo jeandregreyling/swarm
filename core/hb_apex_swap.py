@@ -22,7 +22,11 @@ from core import hb_gpu_guard as guard
 CARD_GB = 16.0
 HEADROOM_GB = 1.5          # as core/hb_model_bench; --fit puts what does not fit in RAM
 EXTRA = {'swift-qwen3.8-27b': '/srv/archive/models/gguf/swift-qwen3.8-27b/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_S-mtp.gguf',
-         'qwen2.5-32b-instruct': '/srv/archive/models/gguf/qwen2.5-32b-instruct/Qwen2.5-32B-Instruct-Q4_K_M.gguf'}
+         'qwen2.5-32b-instruct': '/srv/archive/models/gguf/qwen2.5-32b-instruct/Qwen2.5-32B-Instruct-Q4_K_M.gguf',
+         # Practice 205 (JD 21 Nov: "there's at least 2 without filters"): Mistral's own models, from HB's HF archive
+         'mistral-nemo-12b': '/srv/archive/hf_archive/model/bartowski/Mistral-Nemo-Instruct-2407-GGUF/a2dd64a0a76ea1bdb2bb6ab6fa5496b003c7c908/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf',
+         'mistral-nemo-12b-q8': '/srv/archive/hf_archive/model/bartowski/Mistral-Nemo-Instruct-2407-GGUF/a2dd64a0a76ea1bdb2bb6ab6fa5496b003c7c908/Mistral-Nemo-Instruct-2407-Q8_0.gguf',
+         'mixtral-8x7b': '/srv/archive/models/gguf/mixtral-8x7b-instruct-v2/Mixtral-8x7B-Instruct-v0.1-Q4_K_M.gguf'}
 _busy = threading.Lock()
 
 
