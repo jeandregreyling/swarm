@@ -205,6 +205,7 @@ def _answer_only(question, history=()):
     from core.hb_agent_tools import ground_answer
     from core.hb_apex_swap import turn_seconds
     from core.hb_learning import research_method
+    from core.apex_tools import research_question
     from lib.search.internet import search_provider
     route = choose_local_model(question)
     deadline = _t.monotonic() + turn_seconds(TURN_SECONDS)
@@ -223,9 +224,21 @@ def _answer_only(question, history=()):
             return read(args['document_id'], args.get('offset', 0), args.get('focus'))
         raise PermissionError(f'{tool} is not attached to a question from a phone')
     row = {**APEX_AGENT, 'model': route.model}
-    msgs = [{'role': 'system', 'content': apex_system_prompt(row, recovery=False, proposals=False, web=True)},
-            {'role': 'user', 'content': 'HB note: JD asks this from his phone (away from the screen). Answer plainly; ' + research_method()}]
-    msgs += apex_request_history(list(history), question)
+    trusted = [h['content'] for h in history if h.get('role') == 'system' and str(h.get('content', '')).startswith(PHONE_STATE_PREFIX)]
+    system = apex_system_prompt(row, recovery=False, proposals=False, web=True)
+    system += ('\nThis phone turn answers with its attached tools. Its read-only scope does not describe the execution rights '
+               'of an authorised HB worker. Report recorded completion accurately; never call accepted work merely prepared. '
+               'A transport receipt does not prove the human has read a message.')
+    if trusted:
+        system += '\n' + '\n'.join(trusted)
+    note = 'HB note: a channel user asks from their phone. Answer plainly.'
+    if research_question(question):
+        note += ' ' + research_method()
+    msgs = [{'role': 'system', 'content': system}, {'role': 'user', 'content': note}]
+    # Fresh research drops old chat. Trusted current records belong in system above,
+    # so that deliberate history reset cannot discard the task's actual outcome.
+    chat_history = [h for h in history if h.get('role') in ('user', 'assistant')]
+    msgs += apex_request_history(chat_history, question)
     with use_model(route):
         answer, _tokens, receipts = run_apex_tools(model, msgs, lambda: True, lambda r: None, studio_handler=studio,
                                                    web_handler=lambda a: search_provider(a['query'], a['provider']),
@@ -240,11 +253,72 @@ def _history(conn, before_id, limit=8):
     return [{'role': 'user' if f in ('user', 'ghost') else 'assistant', 'content': str(c)[:1500]} for f, c in reversed(rows)]
 
 
+
+PHONE_STATE_PREFIX = 'HB authoritative task snapshot (current records, not new permission): '
+_TASK_REF = re.compile(r'\b[TS]-[0-9A-F]{10,12}\b', re.I)
+_TASK_TOPIC = re.compile(r'\b(?:tasks?|queue|backlog|approval|approve|permission|authori[sz]ed|write access|prepared|completed?|finished|repair|fix|proceed|continue|status|progress)\b', re.I)
+
+
+def _owner_task_state(conn, job):
+    """Snapshot linked/cited work and current operational results before releasing DB.
+
+    Only the verified owner receives this context; it never establishes authority.
+    An unrelated fresh research question receives no operational records.
+    """
+    from core import hb_tasks, hb_change_sets
+    question = str(job.get('question') or '')
+    refs = list(dict.fromkeys(r.upper() for r in _TASK_REF.findall(question)))[:6]
+    if not refs and not _TASK_TOPIC.search(question):
+        return ''
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='hb_tasks'").fetchone():
+        return ''
+    tids = []
+    for ref in refs:
+        if ref.startswith('T-'):
+            row = conn.execute('SELECT task_id FROM hb_tasks WHERE task_id=? AND conversation_id=?', (ref, _chat(conn))).fetchone()
+        else:
+            row = conn.execute('SELECT task_id FROM hb_tasks WHERE step_id=? AND conversation_id=? ORDER BY updated_at DESC LIMIT 1', (ref, _chat(conn))).fetchone()
+        if row:
+            tids.append(row[0])
+    if not refs:
+        linked = hb_tasks.for_message(conn, job['message_id'])
+        if linked:
+            tids.append(linked['task_id'])
+        tids += [r[0] for r in conn.execute("SELECT task_id FROM hb_tasks WHERE conversation_id=? AND step_id IS NOT NULL ORDER BY updated_at DESC LIMIT 5", (_chat(conn),))]
+    records = []
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    for tid in list(dict.fromkeys(tids))[:6]:
+        task = hb_tasks.get(conn, tid)
+        record = {k:task.get(k) for k in ('task_id', 'title', 'state', 'project_id', 'step_id')}
+        if task.get('step_id') and 'project_steps' in tables:
+            step = conn.execute('SELECT status FROM project_steps WHERE step_id=?', (task['step_id'],)).fetchone()
+            record['step_status'] = step[0] if step else 'missing'
+        if task.get('step_id'):
+            receipt = hb_change_sets.record(task['step_id'])
+            record['change_set'] = ({k:receipt.get(k) for k in ('files','commit','reverted')}
+                                    if receipt and receipt.get('commit') else receipt)
+        latest = conn.execute("SELECT event_id,payload FROM hb_task_events WHERE task_id=? AND kind='test_result' ORDER BY event_id DESC LIMIT 1", (tid,)).fetchone()
+        if latest:
+            result = json.loads(latest[1])
+            record['latest_test'] = {'event_id':latest[0], **{k:result.get(k) for k in ('alm_run_id','alm_run_status','summary','exit_code','tests')}}
+        accepted = conn.execute("SELECT event_id,agent,kind FROM hb_task_events WHERE task_id=? AND kind IN ('accepted','owner_accepted') ORDER BY event_id DESC LIMIT 1", (tid,)).fetchone()
+        if accepted:
+            record['acceptance'] = dict(zip(('event_id','agent','kind'), accepted))
+        records.append(record)
+    return PHONE_STATE_PREFIX + json.dumps({'at':time.time(),'tasks':records}, ensure_ascii=True) if records else ''
+
+
 def work_one(job, connect=_connect, answer=answer_only, mail=None):
     """Answer one queued question: post it in main chat as APEX (the mirror sends it on); email it back when it came by email."""
     conn = connect()
     try:
-        history = _history(conn, job['message_id'])
+        who = role(conn, job['key'])
+        if who not in ('owner', 'user'):
+            return ''  # enrollment was revoked while this answer waited in the queue
+        history = _history(conn, job['message_id']) if who == 'owner' else []
+        state = _owner_task_state(conn, job) if who == 'owner' else ''
+        if state:
+            history.append({'role':'system', 'content':state})
     finally:
         conn.close()
     try:
@@ -253,8 +327,10 @@ def work_one(job, connect=_connect, answer=answer_only, mail=None):
         text = f'APEX could not answer this one ({type(exc).__name__}: {str(exc)[:160]}). It is in main chat; ask again or at the screen.'
     conn = connect()
     try:
+        if role(conn, job['key']) != who:
+            return ''  # do not deliver owner-derived context after a trust change
         mid = _post(conn, 'apex', text)
-        direct = job['channel'] == 'telegram' and role(conn, job['key']) != 'owner'
+        direct = job['channel'] == 'telegram' and who != 'owner'
         _log(conn, job['channel'], 'out', 'apex', mid, text)
         conn.commit()
     finally:
