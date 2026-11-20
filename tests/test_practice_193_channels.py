@@ -57,10 +57,10 @@ def test_questions_queue_an_answer_requests_become_tasks(conn):
     assert 'APEX is on it' in ch.inbound(conn, 'telegram', 'telegram:999', 'jd', 'What is wage type /XQE?')
     job = ch.JOBS.get_nowait()
     assert job['question'] == 'What is wage type /XQE?' and job['channel'] == 'telegram'
-    sent = []
+    sent = []                                   # Practice 197: a phone message never becomes an APEX task
     said = ch.inbound(conn, 'telegram', 'telegram:999', 'jd', 'fix the scroll arrow in main chat',
                       enqueue=lambda c, conv, mid, body, to, sender: sent.append((to, sender)) or [42])
-    assert sent == [(['apex'], 'user')] and 'request 42' in said
+    assert sent == [] and 'APEX is on it' in said and ch.JOBS.get_nowait()['question'] == 'fix the scroll arrow in main chat'
     assert 'APEX is on it' in ch.inbound(conn, 'telegram', 'telegram:111', 'mate', 'build me a website')   # users only ask
 
 

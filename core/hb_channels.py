@@ -127,9 +127,10 @@ def kind_of(text, is_owner):
     text = str(text or '').strip()
     if text.startswith('/'):
         return 'command'
-    if not is_owner or QUESTION.search(text):
-        return 'question'
-    return 'request'
+    # Practice 197 (emergency 20 Nov): every owner message that was not a question ("Hey", "Fix it", "Love you") became its own APEX task
+    # through the peer queue - fifteen tasks in minutes, each refused with HTTP 403 because a phone message carries no owner session
+    # grant. Everything that is not a /command now gets APEX's answer-only turn in main chat; work tasks stay a main-chat action.
+    return 'question'
 
 
 def inbound(conn, channel, key, name, text, reply=None, commands=None, enqueue=None):
