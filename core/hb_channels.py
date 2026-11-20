@@ -133,6 +133,74 @@ def kind_of(text, is_owner):
     return 'question'
 
 
+_RESUME_EXISTING = re.compile(
+    r'^(?:please\s+)?(?:continue|resume|proceed|retry|keep going|keep working|go ahead|finish|fix|repair|work on)'
+    r'\b(?:\s+(?:please|now|with|on|the|this|that|current|existing|task|step|it|work|repair))*[.!?]*$', re.I)
+
+
+def _owner_operating_request(conn, text, mid, title):
+    """A verified owner can control existing scoped work; prose grants no new scope.
+
+    Keep arbitrary new requests in the answer lane rather than restoring the old
+    peer enqueue branch that manufactured unscoped tasks for every phone remark.
+    """
+    from core import hb_tasks, hb_task_manager, hb_owner_sessions, hb_commands
+    from core.hb_chat_controls import continuation, held_requests
+    from core.hb_dream_method import done_when
+    from core.hb_owner_intent import classify, status_text
+    from core.apex_tools import research_question
+    from core.apex_permissions import autonomous_writes_allowed
+    if classify(text) == 'status' and not research_question(text):
+        return status_text(conn, _chat(conn))
+    refs = list(dict.fromkeys(r.upper() for r in _TASK_REF.findall(text)))
+    body = re.sub(r'^\s*@(?:apex|hb|hummingbird)[,:]?\s*', '', text, flags=re.I)
+    body = _TASK_REF.sub('', body).strip()
+    if not _RESUME_EXISTING.fullmatch(body):
+        return None
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='hb_tasks'").fetchone():
+        return 'HB has no bounded task to resume. /tasks shows existing work; no new task was created.'
+    candidates = []
+    if refs:
+        for ref in refs:
+            rows = conn.execute('SELECT task_id FROM hb_tasks WHERE conversation_id=? AND '+
+                                ('task_id=?' if ref.startswith('T-') else 'step_id=?'), (_chat(conn), ref)).fetchall()
+            candidates += [hb_tasks.get(conn,r[0]) for r in rows]
+    else:
+        candidates = [hb_tasks.get(conn,r[0]) for r in conn.execute(
+            "SELECT task_id FROM hb_tasks WHERE conversation_id=? AND step_id IS NOT NULL AND state='active' ORDER BY updated_at DESC", (_chat(conn),))]
+    candidates = list({t['task_id']:t for t in candidates}.values())
+    if len(candidates) != 1:
+        choices = ' · '.join('/continue '+t['task_id'] for t in candidates[:6])
+        return ('Choose the existing task: '+choices if choices else 'No matching existing task. /tasks shows the exact task IDs.')
+    task = candidates[0]
+    if task['state'] == 'completed':
+        return f"{task['task_id']} is already completed: {task['title']}. No work was repeated."
+    controls = continuation(conn,task)
+    if task['state'] in ('paused','cancelled') or held_requests(conn,task) or controls['mode']=='off':
+        return f"{task['task_id']} is held ({task['state']}, Continue {controls['mode']}). The hold is preserved; /tasks shows its controls."
+    if not task.get('step_id') or not done_when(conn,task)[1] or not hb_task_manager.managed(conn,task):
+        return f"{task['task_id']} has no runnable bounded plan and check. No duplicate task was created."
+    if not hb_task_manager.dependencies_ready(conn,task):
+        return f"{task['task_id']} is waiting for its recorded dependencies. Nothing was queued."
+    grant = hb_owner_sessions.for_task(conn,task['task_id'])
+    if grant:
+        authorised = bool(hb_owner_sessions.for_task(conn,task['task_id'],active=True))
+    else:
+        # Standing machine write authority plus an explicitly enabled, bounded
+        # task is existing authority. The phone line does not create that grant.
+        authorised = autonomous_writes_allowed('ghost') and controls.get('revision',0)>0
+    if not authorised:
+        return f"{task['task_id']} has no active recorded execution grant. Its scope and holds were preserved."
+    hb_tasks.bind(conn,_chat(conn),mid,task_id=task['task_id'],kind='phone_control')
+    after=[]
+    said=hb_commands.handle(conn,_chat(conn),'/continue '+task['task_id'],f'JD via {title}',
+                            interpreter=lambda *a:None,after=after)
+    conn.commit()
+    for callback in after:
+        callback()
+    return str(said)
+
+
 def inbound(conn, channel, key, name, text, reply=None, commands=None, enqueue=None):
     """Handle one message. Returns the text to send straight back on that channel."""
     key, text = str(key).lower(), str(text or '').strip()
@@ -161,7 +229,12 @@ def inbound(conn, channel, key, name, text, reply=None, commands=None, enqueue=N
         else:
             after = []
             from core import hb_commands
-            said = str((commands or hb_commands.run)(conn, _chat(conn), verb, args, f'JD via {title}', after))
+            # Use the same parser/confirmations as main chat. A malformed phone
+            # command must not reach run() with missing arguments or bypass /yes.
+            said = str(commands(conn, _chat(conn), verb, args, f'JD via {title}', after) if commands else
+                       hb_commands.handle(conn, _chat(conn), text, f'JD via {title}',
+                                          interpreter=lambda *a: None, after=after))
+            conn.commit()  # executor callbacks may open another writer or use the network
             for job in after:
                 try:
                     job()
@@ -169,12 +242,13 @@ def inbound(conn, channel, key, name, text, reply=None, commands=None, enqueue=N
                     pass
         _log(conn, channel, 'delivered', 'hummingbird', _post(conn, 'hummingbird', said), said)
         return said
-    if kind == 'request':
-        from core import peer_bridge
-        ids = (enqueue or peer_bridge.enqueue)(conn, _chat(conn), mid, text, ['apex'], sender='user')
-        said = f'📌 APEX takes this as a task (request {ids[0] if ids else "?"}); progress and questions come here and in main chat.'
-        _log(conn, channel, 'out', 'hummingbird', None, said)
-        return said
+    if who == 'owner':
+        said = _owner_operating_request(conn, text, mid, title)
+        if said is not None:
+            _log(conn, channel, 'delivered', 'hummingbird', _post(conn, 'hummingbird', said), said)
+            conn.commit()
+            return said
+    conn.commit()  # the queued reader must see its input, with no transaction held
     JOBS.put({'channel': channel, 'key': key, 'question': text, 'message_id': mid, 'reply': reply or {}})
     return '🔎 APEX is on it - the answer comes here and in main chat (research questions take a few minutes).'
 
