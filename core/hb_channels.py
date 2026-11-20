@@ -29,7 +29,8 @@ import urllib.request
 SAFE_COMMANDS = {'help', 'status', 'tasks', 'stuck', 'approvals', 'queue', 'pause', 'continue', 'cancel', 'done', 'clipboard', 'clip',
                  'workflow', 'plan', 'accept', 'reject', 'today', 'drive', 'yes', 'no', 'examples', 'merits', 'downloads', 'scorecards',
                  'consult', 'choose', 'pick', 'note', 'notes', 'email', 'channels', 'board', 'train'}
-USER_COMMANDS = {'help'}
+USER_COMMANDS = {'help', 'about', 'mine', 'start'}   # Practice 212: guest commands (core/hb_guest.py)
+WELCOME_IN_TESTS = False   # Practice 212: no real Telegram welcome from a test
 HB_OWN = ('sevenpotato9@', 'ninepotato7@')           # HB's own mailboxes: never a request (no loops)
 TITLE = {'telegram': 'Telegram', 'email': 'Email', 'discord': 'Discord'}
 QUESTION = re.compile(r"^\s*(what|how|why|when|where|who|which|whose|is|are|was|were|can|could|does|do|did|should|would|will|tell me|"
@@ -223,7 +224,10 @@ def inbound(conn, channel, key, name, text, reply=None, commands=None, enqueue=N
         verb, *args = text[1:].split()
         verb = verb.lower()
         allowed = SAFE_COMMANDS if who == 'owner' else USER_COMMANDS
-        if verb not in allowed:
+        if who != 'owner':   # Practice 212: a guest gets the guest list (/help /about /mine), never the owner's commands
+            from core import hb_guest
+            said = hb_guest.command(conn, key, verb)
+        elif verb not in allowed:
             said = (f'/{verb} needs the screen (it changes the machine, runs as admin or spends money) - use main chat.'
                     if who == 'owner' else 'Enrolled users can ask questions; commands are for the owner.')
         else:
@@ -695,6 +699,11 @@ def command(conn, args, actor):
             return f'{key} can no longer talk to HB.'
         who = 'owner' if len(args) > 2 and args[2].lower() == 'owner' else 'user'
         conn.execute('INSERT OR REPLACE INTO hb_channel_identities VALUES (?,?,?,?,?)', (key, who, key, actor, time.time()))
+        import os
+        if who == 'user' and key.startswith('telegram:') and (WELCOME_IN_TESTS or not os.environ.get('PYTEST_CURRENT_TEST')):   # Practice 212: guest welcome
+            from core import hb_guest
+            threading.Thread(target=telegram_send, args=(key.split(':', 1)[1], hb_guest.welcome()), name='hb-guest-welcome', daemon=True).start()
+            return f'{key} is enrolled as user - a guest (questions only; he sees only his own questions and answers). HB sent him a welcome.'
         return f'{key} is enrolled as {who} ({"your rights" if who == "owner" else "questions only"}).'
     return 'Use /channels, /channels trust <key> [owner] or /channels untrust <key>.'
 
