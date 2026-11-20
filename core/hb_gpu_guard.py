@@ -184,6 +184,79 @@ def spill_tick(conn, now=None, procs=None, path=None, idle=_idle, reload=_reload
     return line
 
 
+# Practice 192 (owner 20 Nov 2026: "I always want at least 2 GB in GPU for Ghost (me). Sometimes the system just hangs and I can't scroll ...
+# there should be the housekeeping in place on HB to make sure that I can always talk and use the Linux system"). The desktop draws on the
+# same RX 6800 as APEX; with APEX at 13.9 GB and the desktop at 1.2 GB only 0.9 GB was left, and the desktop's buffers were pushed out of
+# the GPU (laggy mouse, stalled scrolling). APEX now loads with an 8-bit KV cache and a --fit margin of at least GHOST_MARGIN_MIB
+# (core/hb_apex_swap.render), and ghost_tick() watches the free VRAM: three low readings in a row while APEX is idle raise the margin by
+# MARGIN_STEP_MIB (up to MARGIN_MAX_MIB) and say so in main chat.
+GHOST_GB = 2.0
+GHOST_MARGIN_MIB = 3584
+GHOST_GAP_S = 1800
+GHOST_HINT_GAP_S = 6 * 3600
+
+
+def vram_free_gb(root='/sys/class/drm'):
+    from pathlib import Path
+    for card in sorted(Path(root).glob('card*/device')):
+        try:
+            total = int((card / 'mem_info_vram_total').read_text())
+            used = int((card / 'mem_info_vram_used').read_text())
+        except (OSError, ValueError):
+            continue
+        return round((total - used) / 2 ** 30, 2)
+    return None
+
+
+def ghost_tick(conn, now=None, free=None, path=None, idle=_idle, reload=_reload, restart=_restart, answers=_answers, say=None):
+    now = now or time.time()
+    conn.execute('CREATE TABLE IF NOT EXISTS hb_ghost_reserve(at REAL, free_gb REAL, action TEXT)')
+    free = vram_free_gb() if free is None else free
+    if free is None:
+        return None
+    conn.execute('INSERT INTO hb_ghost_reserve VALUES (?,?,NULL)', (now, free))
+    conn.execute('DELETE FROM hb_ghost_reserve WHERE at < ? AND action IS NULL', (now - 3600,))
+    recent = [r[0] for r in conn.execute('SELECT free_gb FROM hb_ghost_reserve WHERE action IS NULL ORDER BY at DESC LIMIT 3')]
+    if len(recent) < 3 or max(recent) >= GHOST_GB:
+        return None
+    acted = conn.execute("SELECT MAX(at) FROM hb_ghost_reserve WHERE action='raised'").fetchone()[0]
+    if acted and now - acted < GHOST_GAP_S:
+        return None
+    path = path or dropin()
+    try:
+        text = path.read_text()
+    except OSError:
+        return None
+    old = margin(text)
+    if old is not None and old >= MARGIN_MAX_MIB:
+        hinted = conn.execute("SELECT MAX(at) FROM hb_ghost_reserve WHERE action='hint'").fetchone()[0]
+        if hinted and now - hinted < GHOST_HINT_GAP_S:
+            return None
+        conn.execute("INSERT INTO hb_ghost_reserve VALUES (?,?,'hint')", (now, free))
+        line = (f"⚠ Only {free} GB of the GPU is free for your desktop (HB keeps {GHOST_GB} GB for you) and APEX already leaves the most "
+                "room it can. Closing a GPU-heavy program (a browser with many tabs, a game) helps; a smaller APEX model would too.")
+    else:
+        if not idle():
+            return None
+        new = min((old or GHOST_MARGIN_MIB) + MARGIN_STEP_MIB, MARGIN_MAX_MIB)
+        changed = with_margin(text, new)
+        if changed is None:
+            return None
+        path.with_name(path.name + '.before-hb').write_text(text)
+        path.write_text(changed)
+        ok = bool(reload() and restart() and answers())
+        conn.execute("INSERT INTO hb_ghost_reserve VALUES (?,?,'raised')", (now, free))
+        line = (f"↺ HB gave your desktop more of the GPU: only {free} GB was free (HB keeps {GHOST_GB} GB for you), so APEX now leaves "
+                f"{new} MiB free (was {old}). " + ('A test answer works.' if ok else 'It does not answer yet; the GPU guard keeps watching.'))
+    if say:
+        say(line)
+    else:
+        from core.hb_chat import owner_chat
+        conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                     (owner_chat(conn), line))
+    return line
+
+
 # Practice 158 (owner 18 Nov 2026): at 13:36:56 the card reset during a research turn (kernel: "ring comp_1.0.1 reset ... device wedged,
 # but recovered through reset"). APEX's server kept saying /health ok but answered nothing until JD restarted it by hand: tick() only
 # reacts to failed background-worker requests, and this failure came through another path. reset_tick() reads the kernel log itself;

@@ -20,7 +20,7 @@ ROWS = [{'name': 'gpt-oss:20b', 'path': '/blobs/gptoss', 'template': '/t/gpt-oss
 
 def test_practice_152_render_changes_only_model_and_template():
     new = s.render(DROPIN, ROWS[1])
-    assert '-m /m/swift.gguf' in new and '--chat-template-file' not in new and '-fitt 1536' in new and '--jinja' in new
+    assert '-m /m/swift.gguf' in new and '--chat-template-file' not in new and '-fitt 3584' in new and '--jinja' in new   # Practice 192: Ghost reserve floor
     assert 'Description=APEX swift-qwen3.8-27b Vulkan llama-server' in new
     back = s.render(new, ROWS[0])
     assert '-m /blobs/gptoss' in back and '--jinja --chat-template-file /t/gpt-oss.jinja' in back

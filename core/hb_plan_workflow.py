@@ -446,6 +446,8 @@ def restart_tick(conn, now=None, run=None):
             return None
     except Exception:
         pass
+    if _has(conn, 'hb_peer_work') and conn.execute("SELECT 1 FROM hb_peer_work WHERE state='running'").fetchone():
+        return None                                # Practice 192: a running APEX/Fred turn finishes first
     import os, subprocess, sys
     from pathlib import Path
     scope = 'all' if any(r[1] == 'all' for r in rows) else 'ui'

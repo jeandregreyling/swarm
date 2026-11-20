@@ -74,6 +74,14 @@ def _plain_name(conn,task):
 EMAIL_GAP_S = 6 * 3600    # Practice 191: at most one email per task per 6 hours
 
 
+def _send_owner_email(subject, body):
+    """Practice 192: from HB's sevenpotato9 account (lib.email.email_handler.send_reply: delivery records, retries) to the owner address
+    in config. ninepotato7's login is refused by Google until it has an app password."""
+    from utils.config import GHOST_EMAIL
+    from lib.email.email_handler import send_reply
+    return send_reply(GHOST_EMAIL, subject, body, sender_name='Hummingbird')
+
+
 def email_owner(conn, task, text, send=None, now=None):
     """Practice 191 (owner 20 Nov 2026: "the system should run autonomously for the most part unless something is really stuck, send me an
     email, you know I'm not going to be watching over you all as a hawk"): when HB stops and asks JD, the question also goes to his email
@@ -94,7 +102,7 @@ def email_owner(conn, task, text, send=None, now=None):
 
     def go():
         try:
-            (send or __import__('utils.config', fromlist=['nine_email']).nine_email)(subject, body)
+            (send or _send_owner_email)(subject, body)
         except Exception:
             pass
     threading.Thread(target=go, name='hb-email-owner', daemon=True).start()

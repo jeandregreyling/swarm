@@ -19,12 +19,12 @@ GPT = {'name': 'gpt-oss:20b', 'path': '/blobs/gptoss', 'template': '/t/gpt-oss.j
 
 def test_practice_159_27b_gets_small_batches_and_gpt_oss_gets_them_back():
     new = s.render(DROPIN, SWIFT)
-    assert '-b 512 -ub 256 --no-webui' in new and '-fitt 1536' in new and '-m /m/swift.gguf' in new
+    assert '-b 512 -ub 256 -ctk q8_0 -ctv q8_0 --no-webui' in new and '-fitt 3584' in new and '-m /m/swift.gguf' in new   # Practice 192
     back = s.render(new, GPT)
-    assert '-b 2048 -ub 1024 --no-webui' in back and '-m /blobs/gptoss' in back
+    assert '-b 2048 -ub 1024 --no-webui' in back and '-m /blobs/gptoss' in back and '-ctk' not in back
 
 
 def test_practice_159_missing_flags_are_added():
     plain = DROPIN.replace(' -b 2048 -ub 1024', '')
     new = s.render(plain, SWIFT)
-    assert '-b 512 -ub 256 --no-webui' in new
+    assert '-b 512 -ub 256 -ctk q8_0 -ctv q8_0 --no-webui' in new   # Practice 192: 8-bit KV for the 27B

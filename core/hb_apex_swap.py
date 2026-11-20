@@ -74,6 +74,16 @@ def render(text, cand):
             new = re.sub(r'((?<=\s)' + re.escape(flag) + r'\s+)\S+', lambda m: m.group(1) + value, new, count=1)
         else:
             new = new.replace('--no-webui', f'{flag} {value} --no-webui', 1)
+    for flag in ('-ctk', '-ctv'):   # Practice 192: KV cache types belong to the model that asked for them; a swap removes them
+        if flag not in server_args(cand['name']):
+            new = re.sub(r'\s' + re.escape(flag) + r'\s+\S+', '', new, count=1)
+    try:   # Practice 192: never less than the Ghost reserve margin (JD's desktop keeps 2 GB+ of the GPU); higher spill margins stay
+        floor = guard.GHOST_MARGIN_MIB
+        current = guard.margin(new)
+        if current is not None and current < floor:
+            new = guard.with_margin(new, floor)
+    except Exception:
+        pass
     return new
 
 
@@ -82,7 +92,7 @@ def render(text, cand):
 # compute-ring timeout. gpt-oss:20b is a mixture-of-experts model (~3.6B active per token) and never came close. Each model now gets its
 # own batch sizes at a swap; the defaults come back when another model plays APEX.
 DEFAULT_ARGS = {'-b': '2048', '-ub': '1024'}
-ARGS_BY_MODEL = {'swift-qwen3.8-27b': {'-b': '512', '-ub': '256'}, 'qwen2.5:14b-instruct': {'-b': '1024', '-ub': '512'},
+ARGS_BY_MODEL = {'swift-qwen3.8-27b': {'-b': '512', '-ub': '256', '-ctk': 'q8_0', '-ctv': 'q8_0'},   # Practice 192: 8-bit KV 'qwen2.5:14b-instruct': {'-b': '1024', '-ub': '512'},
                  'fred-cpu:24b': {'-b': '512', '-ub': '256'}}
 
 

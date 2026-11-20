@@ -246,6 +246,12 @@ def start():
                             conn.commit()
                         except Exception:
                             LOG.exception('APEX settings reload failed')
+                        try:  # Practice 192: JD's desktop keeps 2 GB+ of the GPU (Ghost reserve)
+                            from core.hb_gpu_guard import ghost_tick
+                            ghost_tick(conn)
+                            conn.commit()
+                        except Exception:
+                            LOG.exception('Ghost reserve check failed')
                         try:  # Practice 182: a translator HB started for an Asian-language reply stops after 30 quiet minutes
                             from core.hb_translator import idle_tick as translator_idle
                             translator_idle(conn)
