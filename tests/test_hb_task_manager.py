@@ -75,7 +75,7 @@ def test_recorded_token_counts_and_project_age_do_not_end_the_goal(flow):
 def test_legacy_decision_failure_is_checkpoint_not_dead_end(flow):
     conn,p=flow;decision,evidence=four_handoffs(flow);task=hb_tasks.for_request(conn,decision)
     manager.register(conn,task,request_id=decision)
-    posted=reply(conn,p['apex'],decision,'Decision parser failed',outcome='failed')
+    posted=reply(conn,p['codex-instructor'],decision,'Decision parser failed',outcome='failed')
     text=conn.execute('SELECT content FROM messages WHERE id=?',(posted['message_id'],)).fetchone()[0]
     assert 'checkpoint' in text and 'blocked' not in text.lower()
     assert hb_tasks.get(conn,task['task_id'])['state']=='active'
@@ -120,7 +120,7 @@ def test_transition_to_review_does_not_retry_a_known_unavailable_provider(flow):
     manager.register(conn,task,request_id=rid)
     conditions.record_failure(conn,task,rid,'quota exceeded')
     conn.execute("UPDATE hb_peer_work SET state='failed'")
-    conn.execute("UPDATE hb_task_manager SET phase='execute',recovery_count=2")
+    conn.execute("UPDATE hb_task_manager SET phase='execute',recovery_count=3")   # Practice 215: review after 4 stagnant turns
     before=conn.execute('SELECT COUNT(*) FROM peer_messages').fetchone()[0]
     assert manager.tick(conn)==[]
     assert conn.execute('SELECT COUNT(*) FROM peer_messages').fetchone()[0]==before
@@ -213,7 +213,7 @@ def test_one_scheduling_failure_cannot_roll_back_other_tasks(flow,monkeypatch):
 def test_repeated_failed_checks_do_not_masquerade_as_implementation_progress(flow):
     conn,p=flow;rid=owner(conn,'apex');task=hb_tasks.for_request(conn,rid)
     manager.register(conn,task,request_id=rid)
-    for _ in range(3):
+    for _ in range(4):   # Practice 215: review after 4 stagnant turns
         conn.execute("UPDATE hb_peer_work SET state='failed'")
         conn.execute('UPDATE hb_task_manager SET next_due=0')
         hb_tasks.event(conn,task,'apex','test_result',{'alm_run_status':'fail','summary':'Same failing check; no source correction'})
@@ -231,6 +231,7 @@ def test_stalled_task_gets_local_help_before_the_owner_and_never_asks_for_codex(
     tools (a working turn on Fred's model) instead of only advising."""
     from core import hb_online
     monkeypatch.setattr(hb_online,'status',lambda conn,provider:{'usable':False,'authorised':True,'reason':'usage limit reached'})
+    monkeypatch.setattr(manager, 'apex_tries', lambda *a: manager.APEX_TRIES)   # Practice 215: APEX has made his four attempts (stall test)
     conn,p=flow;rid=owner(conn,'apex');task=hb_tasks.for_request(conn,rid)
     conn.execute("UPDATE hb_tasks SET step_id='S-ABCDEF0123' WHERE task_id=?",(task['task_id'],))
     manager.register(conn,task,request_id=rid)
@@ -241,7 +242,7 @@ def test_stalled_task_gets_local_help_before_the_owner_and_never_asks_for_codex(
             conn.execute("UPDATE hb_task_manager SET next_due=0")
             hb_tasks.event(conn,task,'apex','test_result',{'alm_run_status':'fail','summary':'Same failing check'})
             manager.tick(conn)
-    stall(3)
+    stall(4)   # Practice 215: review after 4 stagnant turns
     questions=lambda:' '.join(json.loads(r[0]).get('text','') for r in conn.execute("SELECT payload FROM hb_task_events WHERE kind='owner_question'"))
     fred=conn.execute("SELECT request_id FROM hb_task_events WHERE kind='fred_turn'").fetchone()[0]
     scope=json.loads(conn.execute("SELECT payload FROM hb_task_events WHERE kind='tool_scope' AND request_id=?",(fred,)).fetchone()[0])
@@ -251,7 +252,7 @@ def test_stalled_task_gets_local_help_before_the_owner_and_never_asks_for_codex(
     assert conn.execute("SELECT COUNT(*) FROM messages WHERE content LIKE '🛠 Fred is taking over%'").fetchone()[0]==1
     assert questions()==''
     conn.execute("UPDATE hb_peer_work SET state='completed' WHERE request_id=?",(fred,))   # Fred's turn ran to the end
-    stall(3)                                                                     # ...and still no progress
+    stall(4)                                                                     # ...and still no progress (Practice 215: 4)
     text=questions()
     assert 'APEX is stuck on' in text and 'Fred took over and could not finish it either' in text
     assert '/continue '+task['task_id'] in text and '/accept' not in text and '/online codex' not in text
@@ -308,6 +309,7 @@ def _planned(conn,task):
 
 def test_going_round_in_circles_hands_the_step_to_fred_before_jd(flow,monkeypatch):
     """Owner 14 Nov: DOES rename 5 failed the same patch 3 times and HB asked JD without trying Fred."""
+    monkeypatch.setattr(manager, 'apex_tries', lambda *a: manager.APEX_TRIES)   # Practice 215: APEX has made his four attempts (circles test)
     conn,p=flow;rid=owner(conn,'apex');task=_planned(conn,hb_tasks.for_request(conn,rid))
     manager.register(conn,task,request_id=rid)
     conn.execute("UPDATE hb_peer_work SET state='failed'")
@@ -323,6 +325,7 @@ def test_going_round_in_circles_hands_the_step_to_fred_before_jd(flow,monkeypatc
 
 def test_a_crashed_fred_turn_gets_one_retry(flow,monkeypatch):
     """14 Nov: Fred's first working turn crashed (APEX's prompt did not fit his context); that is not Fred's try."""
+    monkeypatch.setattr(manager, 'apex_tries', lambda *a: manager.APEX_TRIES)   # Practice 215: APEX has made his four attempts (crash test)
     conn,p=flow;rid=owner(conn,'apex');task=_planned(conn,hb_tasks.for_request(conn,rid))
     manager.register(conn,task,request_id=rid)
     assert manager.local_help(conn,task)=='submitted'

@@ -131,6 +131,18 @@ def ask_owner(conn,task,what,options,kind='halt'):
 
 MAX_CHECKPOINTS_WITHOUT_PASS=8      # DREAM stop rule: checkpoints with no passing check
 MAX_REPEATED_FAILURES=3             # DREAM stop rule: identical tool error in a row
+APEX_TRIES=4                        # Practice 215 (JD 21 Nov: "FRED is only there in case of emergency"): APEX's own attempts before Fred
+APEX_FIRST='unavailable: APEX first'
+
+
+def apex_tries(conn,task_id,since):
+    """Practice 215: APEX's own turns on this task since `since` (a time) - requests to APEX that were not Fred's takeover turns."""
+    try:
+        return conn.execute("SELECT COUNT(*) FROM hb_task_requests r JOIN peer_messages p ON p.id=r.request_id WHERE r.task_id=? "
+                            "AND p.recipient='apex' AND p.created_at>=? AND r.request_id NOT IN (SELECT request_id FROM hb_task_events "
+                            "WHERE task_id=? AND kind='fred_turn' AND request_id IS NOT NULL)",(task_id,since or 0,task_id)).fetchone()[0]
+    except Exception:
+        return APEX_TRIES
 
 
 FRED_HANDS=('FRED TAKES OVER: you are Fred (Mistral Small 3 24B on the CPU). APEX was stuck on this step. Do not advise - act: read the saved plan '
@@ -140,7 +152,7 @@ LOCAL_HELP_QUESTION=('APEX is stuck on this task: its last turns made no change 
     'name the most likely reason and the single next tool call APEX should make (file, exact text or command), and how it checks the result.')
 
 
-def local_help(conn,task):
+def local_help(conn,task,*,selected=False):
     """Ask the larger local model (Fred) once per progress point. Returns 'submitted', or the existing job's status
     ('queued', 'running', 'completed', 'failed', ...), or 'unavailable: <why>'."""
     from core import hb_local_jobs, hb_model_switches
@@ -159,8 +171,15 @@ def local_help(conn,task):
         except Exception:
             row=None
         from core.hb_plan_workflow import vague_step,SPEC_MARK
-        if row and (SPEC_MARK in str(row[0] or '') or vague_step(row[0])):
+        from core.hb_dream_method import done_when
+        # A selected doer starts after workflow scoping/homework approval; those criteria live on the task card.
+        scoped=selected and bool(done_when(conn,task)[1])
+        if row and (SPEC_MARK in str(row[0] or '') or vague_step(row[0])) and not scoped:
             return 'unavailable: the step is too vague to build - it needs a spec, not Fred'
+    if not selected:   # Practice 215: Fred is the emergency, not the next step - APEX makes his four attempts first
+        tries=apex_tries(conn,task['task_id'],progress)
+        if tries<APEX_TRIES:
+            return f'{APEX_FIRST}: {tries} of {APEX_TRIES} APEX attempts since the last progress'
     # Owner 14 Nov: "instead of just inspecting and reporting, let it make the fix and tell APEX/HB what it's done - give it some teeth".
     # A stalled task gets ONE Fred working turn per progress point: Fred's model runs the same tools and checks APEX has.
     turns=conn.execute("SELECT request_id FROM hb_task_events WHERE task_id=? AND kind='fred_turn' AND created_at>=? ORDER BY event_id DESC",
@@ -174,14 +193,18 @@ def local_help(conn,task):
     row=conn.execute('SELECT * FROM hb_task_manager WHERE task_id=?',(task['task_id'],))
     names=[d[0] for d in row.description];row=dict(zip(names,row.fetchone()))
     try:
-        rid=_queue(conn,task,row,'execute','APEX was stuck: Fred takes over this step with the same tools',model='fred-cpu:24b')
+        rid=_queue(conn,task,row,'execute','Clipboard selected Fred for this step' if selected else 'APEX was stuck: Fred takes over this step with the same tools',model='fred-cpu:24b',selected=selected)
     except (PermissionError,ValueError) as exc:
         return 'unavailable: '+str(exc)[:120]
-    hb_tasks.event(conn,task,'hummingbird','fred_turn',{'model':'fred-cpu:24b','why':'stalled; Codex cannot be used'},request_id=rid)
+    why='selected as clipboard doer' if selected else 'stalled; Codex cannot be used'
+    hb_tasks.event(conn,task,'hummingbird','fred_turn',{'model':'fred-cpu:24b','why':why},request_id=rid)
     from core.hb_plain import message
-    note=message(f"🛠 Fred is taking over {_plain_name(conn,task)}: APEX was stuck.",
+    lead=(f"🛠 Fred starts {_plain_name(conn,task)}: selected on the clipboard." if selected else
+          f"🛠 Fred is taking over {_plain_name(conn,task)}: APEX was stuck.")
+    note=message(lead,
                  'Fred (the larger local model, on the CPU) works with the same tools and checks, makes the fix, runs the check and reports what it did. '
-                 'It is slow (often 10-20 min); the queue waits for it.',details=[f"task {task['task_id']}",f'request {rid}'])
+                 + ('APEX can work on the next ready step on the GPU.' if selected else 'It is slow (often 10-20 min); the queue waits for it.'),
+                 details=[f"task {task['task_id']}",f'request {rid}'])
     mid=conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
                      (task['conversation_id'],note)).lastrowid
     hb_tasks.bind(conn,task['conversation_id'],mid,task_id=task['task_id'],kind='reply')
@@ -256,7 +279,7 @@ def review_recipient(conn):
     return 'codex-instructor'
 
 
-def _queue(conn,task,row,phase,reason,model=None):
+def _queue(conn,task,row,phase,reason,model=None,selected=False):
     from core import peer_bridge,peer_turns
     sequence=row['sequence']+1
     evidence=[r[0] for r in conn.execute("SELECT event_id FROM hb_task_events WHERE task_id=? AND kind IN ('mutation','test_result','tool_failure','reply') ORDER BY event_id DESC LIMIT 6",(task['task_id'],))]
@@ -282,7 +305,8 @@ def _queue(conn,task,row,phase,reason,model=None):
             tools=[tool for tool in EXECUTION_TOOLS if tool in allowed]
         extra=step_extra_tools(conn,task)      # 13 Nov: a plan step may name extra HB tools it needs (approved list only)
         if extra:tools=[*tools,*[t for t in extra if t not in tools]]
-        action=(FRED_HANDS if model else '')+('Continue the unfinished owner-authorized task. First inspect task_context and the saved plan/receipt references below. '
+        fred_instruction=(FRED_HANDS.replace('APEX was stuck on this step.', 'The clipboard selected you to execute this step.') if selected else FRED_HANDS)
+        action=(fred_instruction if model else '')+('Continue the unfinished owner-authorized task. First inspect task_context and the saved plan/receipt references below. '
             'Complete the next unverified action with real tools, then guarded tests and a concrete evidence report. '
             'A tool-round or context limit is a checkpoint, never task completion. Reconcile previous effects before retrying; '
             'identical successful source operations have durable receipts and must not be written again. Existing owner approvals remain valid. '
@@ -381,13 +405,14 @@ def tick(conn,*,now=None,memory=None):
             if local in ('submitted','queued','running'):
                 hb_tasks.event(conn,task,'hummingbird','stuck',{'reason':stuck,'recovery':'Fred takes over with the same tools'})
                 _set(conn,task['task_id'],'queued','Going round in circles ('+stuck[:80]+'); Fred took over with the same tools');continue
-            if row['state']!='needs_owner':
-                hb_tasks.event(conn,task,'hummingbird','stuck',{'reason':stuck,
-                    'recovery':'Owner decides: clarify the goal, give acceptance checks, or press Continue for a fresh allowance.'})
-                ask_owner(conn,task,f"⚠ APEX stopped {_plain_name(conn,task)}: it was going round in circles. "
-                          f"Keep working gives it a fresh try; Cancel drops it.",
-                          f"why: {stuck} · /continue {task['task_id']} gives it a fresh try; /cancel {task['task_id']} drops it.")
-            _set(conn,task['task_id'],'needs_owner','Stopped, not looping: '+stuck);continue
+            if not str(local).startswith(APEX_FIRST):   # Practice 215: before his 4 attempts APEX simply gets his next turn
+                if row['state']!='needs_owner':
+                    hb_tasks.event(conn,task,'hummingbird','stuck',{'reason':stuck,
+                        'recovery':'Owner decides: clarify the goal, give acceptance checks, or press Continue for a fresh allowance.'})
+                    ask_owner(conn,task,f"⚠ APEX stopped {_plain_name(conn,task)}: it was going round in circles. "
+                              f"Keep working gives it a fresh try; Cancel drops it.",
+                              f"why: {stuck} · /continue {task['task_id']} gives it a fresh try; /cancel {task['task_id']} drops it.")
+                _set(conn,task['task_id'],'needs_owner','Stopped, not looping: '+stuck);continue
         live=conn.execute("SELECT p.id,w.state,p.recipient FROM hb_task_requests r JOIN peer_messages p ON p.id=r.request_id JOIN hb_peer_work w ON w.request_id=p.id WHERE r.task_id=? AND p.delivered_at IS NULL AND w.state IN ('queued','running') ORDER BY p.id DESC LIMIT 1",(task['task_id'],)).fetchone()
         if live and live[1]=='queued' and retired_agent(conn,live[2]):
             # owner 15 Nov: the git agent was retired while its review request was queued; the queue waited for it all night
@@ -426,7 +451,7 @@ def tick(conn,*,now=None,memory=None):
             and conn.execute("SELECT 1 FROM hb_peer_replies WHERE request_id=? AND outcome='answer'",(row['request_id'],)).fetchone())
         # A held/failed review is still pending. Its phase does not prove that
         # an instructor actually answered it.
-        phase=('execute' if review_returned else 'review') if row['phase']=='review' else 'review' if ready or stagnant>=3 else 'execute'
+        phase=('execute' if review_returned else 'review') if row['phase']=='review' else 'review' if ready or stagnant>=APEX_TRIES else 'execute'   # Practice 215: was 3
         if phase=='review' and ready:
             from core.hb_plan_workflow import auto_accept_for
             if auto_accept_for(conn,task):
@@ -450,7 +475,9 @@ def tick(conn,*,now=None,memory=None):
                 if local in ('submitted','queued','running'):
                     conn.execute("UPDATE hb_task_manager SET phase='execute',recovery_count=0 WHERE task_id=?",(task['task_id'],))
                     _set(conn,task['task_id'],'queued','Fred (24B, CPU) took over the stuck step with the same tools');continue
-                if review_recipient(conn)!='codex-instructor':
+                if str(local).startswith(APEX_FIRST):
+                    phase='execute'   # Practice 215: APEX has not made his four attempts yet - he gets the next turn, not Fred or JD
+                elif review_recipient(conn)!='codex-instructor':
                     pass   # 14 Nov: an attached VS Code instructor takes the review; the scheduler below queues it
                 else:
                     conn.execute('UPDATE hb_task_manager SET phase=? WHERE task_id=?',(phase,task['task_id']))
