@@ -409,7 +409,31 @@ def pull(model: str, stream: bool = True) -> Iterable[dict]:
     return _get_ollama().pull(model, stream=stream)
 
 
-def chat_via_gateway(
+def chat_via_gateway(model: str, messages: list[dict], **kwargs) -> tuple[str, int]:
+    """HB Live L1 (owner 20 Nov 2026, docs/spec-hb-live-dashboard.md): every local model call is one entry in hb_activity_log - start
+    and finish (or error) with the real model, its lane and device, how long it took and the tokens - inside the run that made it
+    (an APEX turn, a Fred job) when there is one. The call itself is _chat_via_gateway_impl, unchanged. Logging never breaks a call."""
+    from core import hb_activity_log as live
+    try:
+        actor, lane, device, real = live.who(model)
+        parent = live.current()
+        call = live.begin(actor, lane, f'model call: {real}', model=real, device=device,
+                          purpose=(parent.base.get('purpose') if parent else None) or 'model call')
+    except Exception:
+        call = None
+    try:
+        content, tokens = _chat_via_gateway_impl(model, messages, **kwargs)
+    except BaseException as exc:
+        if call:
+            call.finish(False, f'{type(exc).__name__}: {exc}'[:160])
+        raise
+    if call:
+        failed = isinstance(content, str) and content.startswith('[local runtime error')
+        call.finish(not failed, (content[:160] if failed else f'{int(tokens or 0)} tokens'))
+    return content, tokens
+
+
+def _chat_via_gateway_impl(
     model: str,
     messages: list[dict],
     *,

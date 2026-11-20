@@ -1589,6 +1589,11 @@ def say_step(text):
         report_model_progress({'stage': 'step', 'text': str(text)[:200]})
     except Exception:
         pass
+    try:                                          # HB Live L1: the same line in the turn's run in hb_activity_log
+        from core import hb_activity_log
+        hb_activity_log.step(str(text)[:200], 'check' if str(text).startswith('HB ') else 'step')
+    except Exception:
+        pass
 
 
 def _playing_name():
@@ -1600,7 +1605,34 @@ def _playing_name():
         return ''
 
 
-def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
+def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt, *args, **kwargs) -> tuple[str, int, list[dict]]:
+    """HB Live L1: one APEX turn (main chat or workflow) is one run in hb_activity_log on the GPU lane; its model calls and step lines
+    (Practice 176) are recorded inside it. The turn itself is _run_apex_tools, unchanged."""
+    from core import hb_activity_log as live
+    question = next((str(m.get('content') or '') for m in reversed(messages or []) if m.get('role') == 'user'
+                     and not str(m.get('content') or '').startswith(('BACKEND', 'HB note', 'HB task reference'))), '')
+    try:
+        actor, lane, device, real = live.who('apex')
+    except Exception:
+        lane, device, real = 'gpu', None, None
+    task = step_id = None
+    try:
+        from core.agent_identity import CURRENT
+        actor_ctx = CURRENT.get() or {}
+        task, step_id = actor_ctx.get('task_id'), actor_ctx.get('step_id')
+    except Exception:
+        pass
+    with live.run('apex', lane or 'gpu', 'APEX: ' + (' '.join(question.split())[:110] or 'turn'), model=real, device=device,
+                  task_id=task, step_id=step_id, purpose='workflow step' if task else 'main-chat turn') as r:
+        result = _run_apex_tools(call_model, messages, authorize, emit_receipt, *args, **kwargs)
+        try:
+            r.finish(True, f'answered - {len(result[2])} tool call(s)')
+        except Exception:
+            pass
+        return result
+
+
+def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                    repository: ReadOnlyRepository | None = None, proposal_handler=None,
                    prepare_messages=None, prepare_receipts=None, studio_handler=None,
                    web_handler=None, test_handler=None) -> tuple[str, int, list[dict]]:
