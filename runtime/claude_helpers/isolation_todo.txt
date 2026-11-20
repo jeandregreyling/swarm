@@ -1,0 +1,2 @@
+tests/test_chat_continuity.py::test_explicit_codex_address_bypasses_local_model_even_from_local_ui (order-dependent: fails alone)
+tests/test_chat_ghost_logs.py (2 tests): slow (140-220 s) and timing-dependent; failed before Practice 191 too

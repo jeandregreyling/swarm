@@ -1,0 +1,3 @@
+    {'path': 'tests/test_practice_170_admin_steps.py',
+     'old': "    assert 'terminal window' in out and launched and launched[0][1] == ['apt-get', 'update']\n",
+     'new': "    assert 'terminal window' in out and launched and launched[0][1][0] == 'apt-get' and launched[0][1][-1] == 'update'   # + Practice 171 options\n"},
