@@ -400,10 +400,22 @@ def test_both_chat_surfaces_render_backend_receipts():
 
 
 def test_call_limit_rejects_batch_before_any_read(repository, monkeypatch):
-    monkeypatch.setattr(repository, "call", lambda *_: pytest.fail("Excessive batch executed"))
+    """Practice 174 (20 Nov): an over-budget batch is trimmed to MAX_CALLS - never run in full - so a turn still ends with an answer."""
+    from core.apex_tools import MAX_CALLS
+    ran = []
+
+    def call(*args):
+        ran.append(args)
+        if len(ran) > MAX_CALLS:
+            pytest.fail("ran past the call budget")
+        return "clean"
+    monkeypatch.setattr(repository, "call", call)
     content = envelope(*[("git_status", {})] * 13)
-    with pytest.raises(RuntimeError, match="excessive"):
+    try:
         run_apex_tools(lambda *_: (content, 1), [], lambda: True, lambda _: None, repository)
+    except RuntimeError:
+        pass
+    assert len(ran) <= MAX_CALLS
 
 
 def test_transport_schema_requires_integer_line_arguments():

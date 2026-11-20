@@ -176,7 +176,7 @@
       btn.classList.toggle('show', true);
       btn.classList.toggle('idle', !(away || auto));
       btn.classList.toggle('away', away);                 // Practice 179: glow while scrolled up
-      if (!away) btn.classList.remove('fresh');
+      if (!away) btn.classList.toggle('fresh', false);
       const input = document.getElementById('home-chat-input-area');
       btn.style.bottom = ((input ? input.offsetHeight : 0) + 28) + 'px';
     };
@@ -185,7 +185,7 @@
     new MutationObserver(() => {
       if (auto && Date.now() - (list._hcPrependAt || 0) > 400) list.scrollTop = list.scrollHeight;
       else if (!auto && Date.now() - (list._hcPrependAt || 0) > 400
-               && list.scrollHeight - list.scrollTop - list.clientHeight > 120) btn.classList.add('fresh');   // Practice 179
+               && list.scrollHeight - list.scrollTop - list.clientHeight > 120) btn.classList.toggle('fresh', true);   // Practice 179
       update();
     }).observe(list, { childList: true, subtree: true });
     btn.addEventListener('click', () => list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' }));

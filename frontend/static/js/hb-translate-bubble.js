@@ -553,8 +553,8 @@ zh ::= [^\n]+`;
       if (!d.running && d.mode === 'off' && serverOn === null) serverOn = false;
     }).catch(() => {});
   }
-  setInterval(watchServer, 30000);
-  setTimeout(watchServer, 1500);
+  const watchTimers = [setInterval(watchServer, 30000), setTimeout(watchServer, 1500)];
+  watchTimers.forEach((t) => { if (t && typeof t.unref === 'function') t.unref(); });   // Practice 185: never keeps Node alive
 
   function refreshToggle() {
     if (!toggleBtn) return;

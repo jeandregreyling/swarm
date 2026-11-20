@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_jump_arrow_states():
     js = (ROOT / 'frontend/static/js/views/home-chat.js').read_text()
     css = (ROOT / 'frontend/static/css/home-chat.css').read_text()
-    assert "btn.classList.toggle('away', away)" in js and "btn.classList.add('fresh')" in js and "classList.toggle('locked', !auto)" in js
+    assert "btn.classList.toggle('away', away)" in js and "btn.classList.toggle('fresh', true)" in js and "classList.toggle('locked', !auto)" in js
     assert 'Auto scroll LOCKED' in js and 'Auto scroll ON' in js
     assert '@keyframes hcJumpGlow' in css and '#hc-jump-bottom.fresh::before' in css and 'max-width: 40px' in css
 

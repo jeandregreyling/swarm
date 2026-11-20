@@ -64,10 +64,13 @@ def snapshot(conn, now=None, background=None, limit=6):
         lines += live_lines(conn, now)
     except Exception:
         pass
-    last = None
+    out = {'running': bool(lines), 'lines': lines}
     if not lines and {'hb_executions', 'hb_tasks'} <= tables:   # Practice 179: when idle, what ran last and when it finished
-        row = conn.execute("SELECT e.agent, t.title, e.updated_at FROM hb_executions e JOIN hb_tasks t ON t.task_id=e.task_id "
-                           "WHERE e.state!='running' ORDER BY e.updated_at DESC LIMIT 1").fetchone()
+        try:                                                     # Practice 185: older tables have no updated_at - then no 'last'
+            row = conn.execute("SELECT e.agent, t.title, e.updated_at FROM hb_executions e JOIN hb_tasks t ON t.task_id=e.task_id "
+                               "WHERE e.state!='running' ORDER BY e.updated_at DESC LIMIT 1").fetchone()
+        except Exception:
+            row = None
         if row:
-            last = {'agent': row[0], 'title': str(row[1])[:90], 'at': row[2]}
-    return {'running': bool(lines), 'lines': lines, 'last': last}
+            out['last'] = {'agent': row[0], 'title': str(row[1])[:90], 'at': row[2]}
+    return out

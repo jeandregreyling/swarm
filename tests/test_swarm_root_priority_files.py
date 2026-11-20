@@ -31,6 +31,17 @@ def _file_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+@pytest.fixture
+def _isolate_modules():
+    """Save and restore sys.modules and sys.path around each test."""
+    saved_modules = dict(sys.modules)
+    saved_path = list(sys.path)
+    yield
+    sys.modules.clear()
+    sys.modules.update(saved_modules)
+    sys.path[:] = saved_path
+
+
 @pytest.mark.parametrize("py_file", PRIORITY_FILES)
 def test_no_hardcoded_swarm_root_literal(py_file: Path):
     """Each file must not contain the literal /home/seven/swarm string."""
@@ -51,7 +62,7 @@ def test_uses_swarm_root_env_or_file_derive(py_file: Path):
     )
 
 
-def test_task_runner_uses_swarm_root_env(tmp_path, monkeypatch):
+def test_task_runner_uses_swarm_root_env(tmp_path, monkeypatch, _isolate_modules):
     """When SWARM_ROOT is set, task_runner should insert that path."""
     fake_root = str(tmp_path / "swarm")
     os.makedirs(fake_root, exist_ok=True)
@@ -69,7 +80,7 @@ def test_task_runner_uses_swarm_root_env(tmp_path, monkeypatch):
     assert tr._SWARM_ROOT == fake_root
 
 
-def test_scheduler_uses_swarm_root_env(tmp_path, monkeypatch):
+def test_scheduler_uses_swarm_root_env(tmp_path, monkeypatch, _isolate_modules):
     """When SWARM_ROOT is set, scheduler should insert that path and utils subpath."""
     fake_root = str(tmp_path / "swarm")
     os.makedirs(fake_root, exist_ok=True)
@@ -92,7 +103,7 @@ def test_scheduler_uses_swarm_root_env(tmp_path, monkeypatch):
     assert sched._SWARM_ROOT == fake_root
 
 
-def test_file_versioning_uses_swarm_root_env(tmp_path, monkeypatch):
+def test_file_versioning_uses_swarm_root_env(tmp_path, monkeypatch, _isolate_modules):
     """When SWARM_ROOT is set, file_versioning dirs should be under that root."""
     fake_root = str(tmp_path / "swarm")
     os.makedirs(fake_root, exist_ok=True)
@@ -114,7 +125,7 @@ def test_file_versioning_uses_swarm_root_env(tmp_path, monkeypatch):
     assert fv.VERSIONS_DIR == os.path.join(fake_root, ".swarm_versions")
     assert fv.RESTORE_BIN_DIR == os.path.join(fake_root, ".restore_bin")
     
-def test_shell_whitelist_behavior(tmp_path, monkeypatch):
+def test_shell_whitelist_behavior(tmp_path, monkeypatch, _isolate_modules):
     """Test shell whitelist behavior at the current root and rejection of the retired root."""
     current_root = str(tmp_path / "swarm")
     retired_root = "/home/seven/swarm"
@@ -122,8 +133,8 @@ def test_shell_whitelist_behavior(tmp_path, monkeypatch):
     monkeypatch.setenv("SWARM_ROOT", current_root)
 
     # Remove retired root from sys.path so we can verify the module doesn't re-add it.
-    if retired_root in sys.path:
-        sys.path.remove(retired_root)
+    # Practice 185: old test modules add it at import, several times in a full run - remove every copy (restored afterwards)
+    monkeypatch.setattr(sys, "path", [p for p in sys.path if p != retired_root])
 
     # Remove module from cache so re-import picks up the new env.
     for key in list(sys.modules):

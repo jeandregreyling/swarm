@@ -25,7 +25,6 @@ def _seven_models_on_disk(monkeypatch, tmp_path):
         path.write_bytes(b"GGUF" + bytes(64))
         monkeypatch.setattr(registry, name, str(path))
     monkeypatch.setattr(registry, "REGISTRY_PATH", str(tmp_path / "no-registry.yaml"))   # not this machine's registry file
-    monkeypatch.setattr(registry, "_ollama_store_entries", lambda: [])                   # nor its Ollama store
     seven = registry._optional_defaults()
     names = {m.name for m in seven}
     monkeypatch.setattr(registry, "DEFAULTS", [m for m in registry.DEFAULTS if m.name not in names] + seven)
