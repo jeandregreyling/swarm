@@ -307,7 +307,7 @@ def chunks(text, size=TELEGRAM_CHUNK, most=3):
     return parts
 
 
-def needs_lines(conn, seen):
+def _needs_entries(conn, seen):
     """New Needs-you items as one message each, with the reply commands that settle them."""
     try:
         from core.hb_commands import waiting_items
@@ -325,37 +325,80 @@ def needs_lines(conn, seen):
         if i.get('task_id'):
             replies += [f"/continue {i['task_id']}", f"/cancel {i['task_id']}"]
         replies += [a['command'] for a in i.get('actions') or [] if a.get('command')]
-        out.append(f"⚑ Needs you: {i.get('label', '')}\n{str(i.get('why') or i.get('title') or '')[:300]}" +
-                   (f"\nReply: {' · '.join(dict.fromkeys(replies))}" if replies else ''))
+        out.append((i.get('key'), f"⚑ Needs you: {i.get('label', '')}\n{str(i.get('why') or i.get('title') or '')[:300]}" +
+                    (f"\nReply: {' · '.join(dict.fromkeys(replies))}" if replies else '')))
     return out, sorted(k for k in keys if k)
 
 
+def needs_lines(conn, seen):
+    entries, keys = _needs_entries(conn, seen)
+    return [text for _, text in entries], keys
+
+
 def mirror_once(conn, send):
-    """Send new main-chat posts and Needs-you items to the owner's Telegram. Returns how many messages were sent."""
+    """Durable, ordered delivery. A failed chunk stays pending; no DB lock spans a send.
+
+    A transport timeout after remote acceptance can still duplicate the unacknowledged
+    chunk. Telegram supplies no idempotency key, so this is at-least-once delivery.
+    """
+    from core.hb_process_lock import ProcessLock
+    lock = ProcessLock('channel-mirror')
+    if not lock.acquire(0):
+        return 0
+    try:
+        return _mirror_locked(conn, send)
+    finally:
+        lock.release()
+
+
+def _mirror_locked(conn, send):
     ensure(conn)
     chat = _chat(conn)
-    top = conn.execute('SELECT COALESCE(MAX(id),0) FROM messages WHERE conversation_id=?', (chat,)).fetchone()[0]
     last = cursor(conn, 'mirror_last_id')
-    if last is None:                                    # first start: from now on, not the whole history
+    if last is None:
+        top = conn.execute('SELECT COALESCE(MAX(id),0) FROM messages WHERE conversation_id=?', (chat,)).fetchone()[0]
         set_cursor(conn, 'mirror_last_id', top)
         set_cursor(conn, 'needs_seen', json.dumps(needs_lines(conn, [])[1]))
+        conn.commit()
         return 0
-    # Practice 196 (emergency 20 Nov 21:25): the first version wrote the cursor and then sent each message to Telegram inside the same open
-    # write transaction; JD's emergency produced several posts at once, the lock was held for seconds and HB's login check and inbox
-    # failed with "database is locked" (the page broke). Now: collect, write the cursors, COMMIT, and only then talk to Telegram.
-    echoes = {r[0] for r in conn.execute("SELECT message_id FROM hb_channel_log WHERE direction IN ('in','delivered') AND message_id IS NOT NULL")}
-    outgoing, newest = [], int(last)
-    for mid, sender, content, kind in conn.execute('SELECT id, from_agent, content, message_type FROM messages WHERE conversation_id=? AND id>? '
-                                                   'ORDER BY id LIMIT 30', (chat, int(last))).fetchall():
-        newest = mid
-        if mid in echoes or not worth_mirroring(sender, content, kind):
-            continue
-        outgoing += chunks(f'{SENDER_LABEL.get(sender, sender)}: {plain(content)}')
-    lines, keys = needs_lines(conn, json.loads(cursor(conn, 'needs_seen', '[]')))
-    set_cursor(conn, 'mirror_last_id', newest)
-    set_cursor(conn, 'needs_seen', json.dumps(keys))
+    pending = json.loads(cursor(conn, 'mirror_pending', '[]'))
+    seen = set(json.loads(cursor(conn, 'needs_seen', '[]')))
+    if not pending:
+        echoes = {r[0] for r in conn.execute("SELECT message_id FROM hb_channel_log WHERE direction IN ('in','delivered') AND message_id IS NOT NULL")}
+        rows = conn.execute('SELECT id, from_agent, content, message_type FROM messages WHERE conversation_id=? AND id>? '
+                            'ORDER BY id LIMIT 30', (chat, int(last))).fetchall()
+        for mid, sender, content, kind in rows:
+            parts = (chunks(f'{SENDER_LABEL.get(sender, sender)}: {plain(content)}')
+                     if mid not in echoes and worth_mirroring(sender, content, kind) else [])
+            pending.append({'message_id': mid, 'parts': parts, 'next': 0})
+        entries, _ = _needs_entries(conn, seen)
+        pending += [{'needs_key': key, 'parts': chunks(text), 'next': 0} for key, text in entries]
+        set_cursor(conn, 'mirror_pending', json.dumps(pending))
+    # Practice 196 remains a hard boundary: release transactions BEFORE network I/O.
     conn.commit()
-    return sum(1 for text in outgoing + lines if send(text))
+    sent = 0
+    while pending:
+        item = pending[0]
+        while item['next'] < len(item['parts']):
+            try:
+                ok = send(item['parts'][item['next']])
+            except Exception:
+                ok = False
+            if not ok:
+                return sent
+            sent += 1
+            item['next'] += 1
+            set_cursor(conn, 'mirror_pending', json.dumps(pending))
+            conn.commit()
+        if 'message_id' in item:
+            set_cursor(conn, 'mirror_last_id', item['message_id'])
+        if item.get('needs_key'):
+            seen.add(item['needs_key'])
+            set_cursor(conn, 'needs_seen', json.dumps(sorted(seen)))
+        pending.pop(0)
+        set_cursor(conn, 'mirror_pending', json.dumps(pending))
+        conn.commit()
+    return sent
 
 
 # ------------------------------------------------------------------ Telegram
