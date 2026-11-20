@@ -89,9 +89,13 @@ def run_recorded_tests(args: dict, runner, validate=None) -> dict:
     command = "pytest " + " ".join(test_args.get("tests") or [])
     if test_args.get("keyword"):
         command += f" -k {test_args['keyword']!r}"
+    # Practice 195 (20 Nov 2026): at 19:07 HB auto-approved "Bug: seven direct runtime" because a run of ONE selected test passed
+    # ("1 passed, 33 deselected") and that run was rolled up onto the step's own case - the file still failed 6 tests. A focused run
+    # (-k keyword) is evidence while working; it is not linked to the case, so only the whole check can mark the step's case passed.
+    focused = bool(test_args.get("keyword"))
     run_id = test_runs.start_run("apex:pytest", command=command, triggered_by="apex",
                                  project_id=case["project_id"], step_id=case["step_id"],
-                                 case_id=case["case_id"])
+                                 case_id=None if focused else case["case_id"])
     if not run_id:
         raise RuntimeError("ALM test run could not be recorded; no tests started")
     try:
@@ -106,5 +110,11 @@ def run_recorded_tests(args: dict, runner, validate=None) -> dict:
                                 stdout_tail=tail.strip()):
         raise RuntimeError(f"ALM test run {run_id} started but its result could not be saved")
     # Lead with the verdict and run handles so archived 600-character excerpts keep them.
-    return {"verdict": result.get("verdict"), "alm_run_id": run_id, "alm_run_status": status,
-            "alm_case_id": case["case_id"], **({"note": note} if note else {}), **result}
+    out = {"verdict": result.get("verdict"), "alm_run_id": run_id, "alm_run_status": status,
+           "alm_case_id": case["case_id"], **({"note": note} if note else {}), **result}
+    if focused:                                        # Practice 195: never counts as the step's check
+        out["alm_run_status"] = "focused"
+        out["note"] = ((out.get("note") + " ") if out.get("note") else "") + (
+            f"This run used keyword {test_args['keyword']!r}, so it checked only part of the step; it does not count as the step's "
+            "check. Run the step's whole check (no keyword) before saying the step is done.")
+    return out

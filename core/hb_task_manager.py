@@ -412,7 +412,8 @@ def tick(conn,*,now=None,memory=None):
         cases=conn.execute('SELECT status FROM project_test_cases WHERE step_id=?',(task['step_id'],)).fetchall() if 'project_test_cases' in tables else []
         last_mutation=conn.execute("SELECT MAX(created_at) FROM hb_task_events WHERE task_id=? AND kind='mutation'",(task['task_id'],)).fetchone()[0]
         last_instruction=conn.execute("SELECT MAX(created_at) FROM hb_task_events WHERE task_id=? AND kind='instruction'",(task['task_id'],)).fetchone()[0]
-        passed=conn.execute("SELECT MAX(created_at) FROM hb_task_events WHERE task_id=? AND kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'",(task['task_id'],)).fetchone()[0]
+        passed=conn.execute("SELECT MAX(created_at) FROM hb_task_events WHERE task_id=? AND kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass' "
+                            "AND COALESCE(json_extract(payload,'$.verdict'),'') NOT LIKE '%deselected%'",(task['task_id'],)).fetchone()[0]   # Practice 195
         plan_time=conn.execute("SELECT created_at FROM hb_task_events WHERE event_id=?",(row['plan_event_id'],)).fetchone()
         ready=bool(cases and all(c[0]=='passed' for c in cases) and passed and passed>=max(last_mutation or 0,last_instruction or 0,plan_time[0] if plan_time else 0))
         # 14 Nov: a recorded deliverable (studio_note/studio_task) is progress too - research steps produce notes, not

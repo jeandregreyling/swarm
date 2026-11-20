@@ -51,13 +51,13 @@ def test_read_step_rejects_malformed_ids(alm, bad):
 
 def test_recorded_run_saves_real_outcome_on_the_case(alm):
     result = apex_alm.run_recorded_tests(
-        {"tests": ["tests/test_x.py"], "keyword": "truncated", "case_id": alm["case"]},
+        {"tests": ["tests/test_x.py"], "case_id": alm["case"]},     # Practice 195: a -k run is focused, not the case's check
         passing, validate=accept)
     run = alm["runs"].get_run(result["alm_run_id"])
     assert list(result)[:3] == ["verdict", "alm_run_id", "alm_run_status"]
     assert run["status"] == "pass" and run["triggered_by"] == "apex"
     assert run["case_id"] == alm["case"] and run["step_id"] == alm["step"]
-    assert "2 passed" in run["stdout_tail"] and "-k 'truncated'" in run["command"]
+    assert "2 passed" in run["stdout_tail"] and "-k" not in run["command"]
     assert alm["projects"].get_test_case(alm["case"])["status"] == "passed"
     step = apex_alm.read_step(alm["step"])
     assert "recent_runs" not in step and "not results of this turn" in step["earlier_runs_note"]
