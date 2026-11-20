@@ -48,20 +48,57 @@ def current(conn, now):
     return [i for i in items if _worth(conn, i)]
 
 
+def _task_of(conn, key):
+    try:
+        if key.startswith('P-'):
+            row = conn.execute('SELECT task_id FROM hb_task_requests WHERE request_id=?', (int(key[2:]),)).fetchone()
+        else:
+            row = conn.execute("SELECT task_id FROM hb_activity_log WHERE run_id=? AND task_id IS NOT NULL LIMIT 1", (key,)).fetchone()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
+def _accepted(conn, task_id):
+    """The task's own record says the work is done: task completed, its step done, or an acceptance event."""
+    if not task_id:
+        return False
+    try:
+        row = conn.execute('SELECT state, step_id FROM hb_tasks WHERE task_id=?', (task_id,)).fetchone()
+        if not row:
+            return False
+        if row[0] == 'completed':
+            return True
+        if row[1] and conn.execute("SELECT 1 FROM project_steps WHERE step_id=? AND status='done'", (row[1],)).fetchone():
+            return True
+        return bool(conn.execute("SELECT 1 FROM hb_task_events WHERE task_id=? AND kind IN ('accepted','owner_accepted') LIMIT 1",
+                                 (task_id,)).fetchone())
+    except Exception:
+        return False
+
+
 def _outcome(conn, key):
-    """(ok, why) for a run that ended: the log's last word, or the peer request's state."""
+    """('done'|'failed'|'unknown', why) for a run that ended (Practice 214, Codex's phone flow 3: at 07:45 HB said "✗ APEX stopped: Repair 10
+    ... cancelled" after JD had accepted it - the peer transport ended 'cancelled' because acceptance closed it). The task's own record wins
+    over the transport; a genuine failure of unfinished work stays a failure; a run with no terminal record is never called a success."""
+    if _accepted(conn, _task_of(conn, key)):
+        return 'done', ''
     try:
         if key.startswith('P-'):
             row = conn.execute('SELECT state, stage FROM hb_peer_work WHERE request_id=?', (int(key[2:]),)).fetchone()
-            if row and row[0] in ('failed', 'cancelled', 'needs_review'):
-                return False, f'{row[0]}' + (f' - {str(row[1])[:120]}' if row[1] else '')
-            return True, ''
+            if not row:
+                return 'unknown', ''
+            if row[0] == 'completed':
+                return 'done', ''
+            if row[0] in ('failed', 'cancelled', 'needs_review'):
+                return 'failed', f'{row[0]}' + (f' - {str(row[1])[:120]}' if row[1] else '')
+            return 'unknown', ''
         row = conn.execute("SELECT kind, text FROM hb_activity_log WHERE run_id=? AND kind IN ('finish','error') ORDER BY id DESC LIMIT 1", (key,)).fetchone()
-        if row and row[0] == 'error':
-            return False, str(row[1] or '')[:120]
+        if not row:
+            return 'unknown', ''
+        return ('failed', str(row[1] or '')[:120]) if row[0] == 'error' else ('done', '')
     except Exception:
-        pass
-    return True, ''
+        return 'unknown', ''
 
 
 def tick(conn, now=None, items=None, post=None):
@@ -92,8 +129,10 @@ def tick(conn, now=None, items=None, post=None):
         conn.execute('DELETE FROM hb_announce WHERE key=?', (k,))
         mins = max(0.0, now - (since or now)) / 60
         took = f'{mins:.0f} min' if mins >= 1 else 'under a minute'
-        ok, why = _outcome(conn, k)
-        said.append(f'✓ {who} finished: {title} ({took})' if ok else f'✗ {who} stopped: {title} ({took})' + (f' - {why}' if why else ''))
+        state, why = _outcome(conn, k)
+        said.append(f'✓ {who} finished: {title} ({took})' if state == 'done' else
+                    f'✗ {who} stopped: {title} ({took})' + (f' - {why}' if why else '') if state == 'failed' else
+                    f'■ {who} ended: {title} ({took}) - no result recorded')
     for line in said:
         post(conn, line)
     return said

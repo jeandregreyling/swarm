@@ -15,7 +15,7 @@ def test_start_and_finish_are_posted_with_names():
     assert a.tick(c, now=100, items=[job], post=post) == ['▶ APEX started: Repair 9: transport']
     assert a.tick(c, now=110, items=[job], post=post) == []                      # still running: nothing new
     assert a.tick(c, now=200, items=[], post=post) == []                         # missing once: not yet
-    assert a.tick(c, now=400, items=[], post=post) == ['✓ APEX finished: Repair 9: transport (5 min)']
+    assert a.tick(c, now=400, items=[], post=post) == ['■ APEX ended: Repair 9: transport (5 min) - no result recorded']   # Practice 214
 
 
 def test_failed_run_says_stopped():
