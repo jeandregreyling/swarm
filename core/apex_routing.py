@@ -65,15 +65,19 @@ def _loopback(endpoint):
         return False
 
 
-def select_local_model(message, entries, endpoint_models=None, *, exists=None, available_gb=None, switches=None):
+def select_local_model(message, entries, endpoint_models=None, *, exists=None, available_gb=None, switches=None,
+                       served_ctx=None):
     """Pure policy over a supplied catalogue and verified endpoint identities.
 
     Managed GGUFs load through the existing resource-admitted llama.cpp pool.
     Endpoint aliases qualify only when that endpoint actually advertises them.
     No paid provider, download, or peer dispatch is part of this selection.
+    served_ctx {endpoint: {model id: n_ctx}}: the window an external service actually serves (owner 15 Nov 2026:
+    "chat context window should be dynamic, let the system decide") - it replaces the registry ctx, which is only a hint.
     """
     exists = exists or (lambda path: Path(path).is_file())
     endpoint_models = endpoint_models or {}
+    served_ctx = served_ctx or {}
     text = str(message or '').lower()
     category = _classify_category(text)
     if re.search(r'\b(code|python|javascript|typescript|traceback|syntax|epipe|broken pipe)\b'
@@ -100,33 +104,41 @@ def select_local_model(message, entries, endpoint_models=None, *, exists=None, a
     for entry in entries:
         if switches.get(entry.name) == 'off':
             continue
-        if (entry.driver != 'llamacpp' or entry.role == 'embed' or int(entry.ctx) < 16384
+        if (entry.driver != 'llamacpp' or entry.role == 'embed'
                 or entry.options.get('raw_completion') or not entry.path or not exists(entry.path)):
             continue
+        ctx = int(entry.ctx)
         if entry.endpoint:
             if not _loopback(entry.endpoint):
                 continue
             expected = str(entry.options.get('api_model') or entry.name)
             if expected not in endpoint_models.get(entry.endpoint.rstrip('/'), set()):
                 continue
+            ctx = int(served_ctx.get(entry.endpoint.rstrip('/'), {}).get(expected) or ctx)
+        if ctx < 16384:
+            continue
         # The pool performs authoritative admission when loading. This prefilter
         # avoids choosing a known oversized model when a smaller local one fits.
         if available_gb is not None and float(entry.ram_gb or 0) + 2 > available_gb:
             continue
-        preferred_rank = (-1 if switches.get(entry.name) == 'on' else
+        # Practice 198 (emergency 20 Nov): in Auto the fixed preference lists (written before the 27B) never named APEX's own server,
+        # so every turn went to a 7B stand-in. The model served on APEX's port (8080) now ranks first unless it is switched Off.
+        apex_port = bool(entry.endpoint) and entry.endpoint.rstrip('/').endswith(':8080')
+        preferred_rank = (-2 if apex_port and switches.get(entry.name) != 'off' else
+                          -1 if switches.get(entry.name) == 'on' else
                           preferred.index(entry.name) if entry.name in preferred else len(preferred))
         role_rank = 0 if entry.role == ('coder' if category == 'coder' else 'general') else 1
-        candidates.append(((preferred_rank, role_rank, float(entry.ram_gb), entry.name), entry))
+        candidates.append(((preferred_rank, role_rank, float(entry.ram_gb), entry.name), entry, ctx))
     if not candidates:
         raise RuntimeError('No eligible local chat model is available in the HB harness; no online agent was invoked')
-    entry = min(candidates, key=lambda item: item[0])[1]
+    _, entry, ctx = min(candidates, key=lambda item: item[0])
     reason = ('complex task' if complex_task else category) + '; local catalogue and resource policy'
-    return LocalRoute(entry.name, category, int(entry.ctx), reason)
+    return LocalRoute(entry.name, category, ctx, reason)
 
 
 def choose_local_model(message):
     entries = registry.list_models()
-    identities = {}
+    identities, served = {}, {}
     for endpoint in {entry.endpoint.rstrip('/') for entry in entries
                      if entry.driver == 'llamacpp' and entry.endpoint and _loopback(entry.endpoint)}:
         identities[endpoint] = set()
@@ -135,9 +147,12 @@ def choose_local_model(message):
             response.raise_for_status()
             for item in response.json().get('data', []):
                 if isinstance(item, dict):
-                    if isinstance(item.get('id'), str):
-                        identities[endpoint].add(item['id'])
-                    identities[endpoint].update(alias for alias in item.get('aliases', []) if isinstance(alias, str))
+                    names = ([item['id']] if isinstance(item.get('id'), str) else []) + [
+                        alias for alias in item.get('aliases', []) if isinstance(alias, str)]
+                    identities[endpoint].update(names)
+                    n_ctx = (item.get('meta') or {}).get('n_ctx') if isinstance(item.get('meta') or {}, dict) else None
+                    if type(n_ctx) is int and n_ctx > 0:     # the window the server really serves (llama.cpp --fit)
+                        served.setdefault(endpoint, {}).update(dict.fromkeys(names, n_ctx))
         except (requests.RequestException, ValueError, TypeError, AttributeError):
             pass
     available = None
@@ -147,7 +162,8 @@ def choose_local_model(message):
     except (OSError, ValueError, StopIteration):
         pass
     from core.hb_model_switches import current_modes
-    return select_local_model(message, entries, identities, available_gb=available, switches=current_modes())
+    return select_local_model(message, entries, identities, available_gb=available, switches=current_modes(),
+                              served_ctx=served)
 
 
 def owner_chosen_model(name):

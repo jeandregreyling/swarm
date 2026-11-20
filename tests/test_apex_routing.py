@@ -21,11 +21,11 @@ def choose(message, entries=None, **kwargs):
 
 
 @pytest.mark.parametrize('message,model', [
-    ('hello', 'gemma-direct:3'),
-    ('debug this traceback', 'apex-direct:7b'),
+    ('hello', 'qwen2.5:14b-instruct'),                 # Practice 198: APEX's own port (8080) answers everything in Auto
+    ('debug this traceback', 'qwen2.5:14b-instruct'),
     ('verify the memory files', 'qwen2.5:14b-instruct'),
     ('analyse the architecture', 'qwen2.5:14b-instruct'),
-    ('Read frontend/chat.py', 'apex-direct:7b'),
+    ('Read frontend/chat.py', 'qwen2.5:14b-instruct'),
     ('test tools and memory', 'qwen2.5:14b-instruct'),
     ('why is APEX doing nothing?', 'qwen2.5:14b-instruct'),
 ])
@@ -102,3 +102,21 @@ def test_focused_local_repair_can_use_8k_cpu24b_with_real_headroom(tmp_path,monk
     route=routing.assigned_local_model('fred-cpu:24b',available_gb=54)
     assert route.model=='fred-cpu:24b' and route.context_tokens==8192
     with pytest.raises(RuntimeError,match='headroom'):routing.assigned_local_model('fred-cpu:24b',available_gb=20)
+
+
+def test_endpoint_route_carries_the_window_the_server_actually_serves():
+    """Owner 15 Nov 2026: "chat context window should be dynamic, let the system decide". The registry ctx is a hint;
+    an external service's route uses the n_ctx it reports (llama.cpp --fit sizes it to free VRAM)."""
+    entries = [ModelEntry('gpt-oss:20b', 'llamacpp', path='/oss', ctx=16384, ram_gb=14, endpoint='http://127.0.0.1:8080',
+                          options={'api_model': 'gpt-oss:20B'}),
+               ModelEntry('gemma-direct:3', 'llamacpp', path='/gemma', ctx=16384, ram_gb=3)]
+    served = {'http://127.0.0.1:8080': {'gpt-oss:20B'}}
+    on = {'gpt-oss:20b': 'on'}
+    route = select_local_model('check the inbox', entries, served, exists=lambda _: True, switches=on,
+                               served_ctx={'http://127.0.0.1:8080': {'gpt-oss:20B': 40960}})
+    assert (route.model, route.context_tokens) == ('gpt-oss:20b', 40960)
+    assert select_local_model('check the inbox', entries, served, exists=lambda _: True,
+                              switches=on).context_tokens == 16384           # nothing reported: the registry hint
+    small = select_local_model('check the inbox', entries, served, exists=lambda _: True, switches=on,
+                               served_ctx={'http://127.0.0.1:8080': {'gpt-oss:20B': 8192}})
+    assert small.model == 'gemma-direct:3'                                    # a server serving under 16k is not picked
