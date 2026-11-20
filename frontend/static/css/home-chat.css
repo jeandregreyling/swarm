@@ -1665,6 +1665,18 @@
 #hc-jump-bottom::after { content: 'Double-click for auto scroll'; position: absolute; right: 44px; white-space: nowrap; font-size: 11px; padding: 3px 8px; border-radius: 10px; background: var(--card); color: var(--text-dim); border: 1px solid var(--border); opacity: 0; pointer-events: none; transition: opacity .15s; }
 #hc-jump-bottom.auto::after { content: 'Auto scroll on - double-click to stop'; }
 #hc-jump-bottom:hover::after { opacity: 1; }
+/* Practice 179 (owner 20 Nov 2026): a floating arrow you notice - glows while scrolled up, red dot for new messages below, amber when
+   auto scroll is locked off. Never stretched into a bar. */
+#hc-jump-bottom { flex: none; width: 40px; height: 40px; min-width: 40px; max-width: 40px; right: 26px; padding: 0; }
+#hc-jump-bottom.show.idle { opacity: .6; }
+#hc-jump-bottom.auto:not(.away) { box-shadow: 0 0 10px rgba(67,160,71,.75); }
+#hc-jump-bottom.locked { background: var(--card); color: #ffb300; border: 2px solid #ffb300; box-shadow: 0 0 10px rgba(255,179,0,.55); opacity: .95; }
+#hc-jump-bottom.away { opacity: 1; animation: hcJumpGlow 1.6s ease-in-out infinite; }
+#hc-jump-bottom.away:not(.locked) { background: var(--accent, #00e08a); color: #000; border-color: transparent; }
+#hc-jump-bottom.fresh::before { content: ''; position: absolute; top: -3px; right: -3px; width: 11px; height: 11px; border-radius: 50%;
+  background: #ff5252; box-shadow: 0 0 6px #ff5252; }
+#hc-jump-bottom.locked::after { content: 'Auto scroll locked - double-click to follow the latest'; }
+@keyframes hcJumpGlow { 0%, 100% { box-shadow: 0 0 5px var(--accent, #00e08a); } 50% { box-shadow: 0 0 20px var(--accent, #00e08a); } }
 
 /* Owner 13 Nov: Fred's advice sits inline under APEX, indented, joined by a dotted line to the message it answers */
 .hc-bubble.hc-fred {

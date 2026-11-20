@@ -149,12 +149,22 @@
     btn.title = 'Click: jump to the latest message. Double-click: auto scroll on or off';
     let auto = localStorage.getItem('hc-auto-follow') !== '0';
     btn.classList.toggle('auto', auto);
+    // Practice 179 (owner 20 Nov 2026: "it's a white bar completely at the bottom of the chat type box and it doesn't glow ... it's not
+    // really useful unless you know it's there"): the arrow floats over the messages; it glows while you are scrolled up, shows a red
+    // dot when something new arrived below, and is amber while auto scroll is locked off. The tooltip says what a double-click does now.
+    const label = () => {
+      btn.title = auto ? 'Auto scroll ON: the chat follows the latest. Double-click to lock it where you are. Click: jump to the latest.'
+                       : 'Auto scroll LOCKED: the chat stays where you are. Double-click to follow the latest again. Click: jump to the latest.';
+      btn.classList.toggle('locked', !auto);
+    };
     btn.addEventListener('dblclick', () => {
       auto = !auto;
-      localStorage.setItem('hc-auto-follow', auto ? '1' : '0');
+      try { localStorage.setItem('hc-auto-follow', auto ? '1' : '0'); } catch (e) {}
       btn.classList.toggle('auto', auto);
+      label();
       if (auto) list.scrollTop = list.scrollHeight;
     });
+    label();
     btn.setAttribute('aria-label', 'Jump to the latest message');
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v13M6 12l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     main.appendChild(btn);
@@ -165,13 +175,17 @@
       // It now always shows; faint ('idle') when there is nothing to jump to and auto scroll is off.
       btn.classList.toggle('show', true);
       btn.classList.toggle('idle', !(away || auto));
+      btn.classList.toggle('away', away);                 // Practice 179: glow while scrolled up
+      if (!away) btn.classList.remove('fresh');
       const input = document.getElementById('home-chat-input-area');
-      btn.style.bottom = ((input ? input.offsetHeight : 0) + 14) + 'px';
+      btn.style.bottom = ((input ? input.offsetHeight : 0) + 28) + 'px';
     };
     list.addEventListener('scroll', update, { passive: true });
     if (window.ResizeObserver) new ResizeObserver(update).observe(list);
     new MutationObserver(() => {
       if (auto && Date.now() - (list._hcPrependAt || 0) > 400) list.scrollTop = list.scrollHeight;
+      else if (!auto && Date.now() - (list._hcPrependAt || 0) > 400
+               && list.scrollHeight - list.scrollTop - list.clientHeight > 120) btn.classList.add('fresh');   // Practice 179
       update();
     }).observe(list, { childList: true, subtree: true });
     btn.addEventListener('click', () => list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' }));

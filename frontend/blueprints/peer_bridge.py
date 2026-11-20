@@ -582,7 +582,7 @@ def hb_activity(current_user=None):
     with closing(get_connection()) as conn:
         live = hb_live_activity.snapshot(conn)
         return jsonify(ok=True,running=act.running(conn),chains=act.chains(conn),requests=act.requests(conn),
-                       live=bool(live.get('running')),lines=live.get('lines') or [])
+                       live=bool(live.get('running')),lines=live.get('lines') or [],last=live.get('last'))
 
 
 @peer_bridge_bp.route('/api/peer/v1/hb/queue',methods=['GET','POST'])

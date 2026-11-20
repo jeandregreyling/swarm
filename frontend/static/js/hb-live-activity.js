@@ -36,7 +36,13 @@
       bar.appendChild(pill);
     }
     var lines = (data && data.running && data.lines) ? data.lines : [];
-    pill.textContent = 'HB now: ' + (lines.length ? String(lines[0]).replace(/\s+/g, ' ') : 'idle');
+    var last = data && data.last, idle = 'idle';
+    if (!lines.length && last && last.at) {     // Practice 179: "idle since 16:50 - last: APEX, Practice 178 ..."
+      var t = new Date(last.at * 1000);
+      idle = 'idle since ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') +
+        ' - last: ' + String(last.agent || '').toUpperCase() + ', ' + String(last.title || '');
+    }
+    pill.textContent = 'HB now: ' + (lines.length ? String(lines[0]).replace(/\s+/g, ' ') : idle);
     pill.title = lines.length ? lines.join('\n') : 'Nothing is running: no APEX turn, no Fred turn, no background job.';
     pill.style.color = lines.length ? 'var(--accent,#0f9)' : 'var(--text-dim,#888)';
   }
