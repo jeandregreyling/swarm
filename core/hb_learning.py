@@ -184,7 +184,16 @@ def apex_lessons():
     """Practice 201 (JD 20 Nov: "assume the role of trainer"): the standing lessons on every APEX card (core/capability_packs/apex.lessons.v1.json)."""
     from pathlib import Path
     pack = json.loads((Path(__file__).resolve().parent / 'capability_packs' / 'apex.lessons.v1.json').read_text())
-    return 'Your lessons (trainer, JD\'s order - follow them): ' + ' '.join(f'({i}) {s}' for i, s in enumerate(pack['rules'], 1))
+    rules = list(pack['rules'])
+    try:   # Practice 203: lessons APEX learned in training (an exercise failed twice) ride along
+        from contextlib import closing
+        from utils.db._connection import get_connection
+        from core.hb_training import lessons_learned
+        with closing(get_connection()) as conn:
+            rules += [r for r in lessons_learned(conn) if r not in rules]
+    except Exception:
+        pass
+    return 'Your lessons (trainer, JD\'s order - follow them): ' + ' '.join(f'({i}) {s}' for i, s in enumerate(rules, 1))
 
 
 def bugfix_method():

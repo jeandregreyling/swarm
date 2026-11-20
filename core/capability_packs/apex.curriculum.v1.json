@@ -1,0 +1,92 @@
+{
+  "id": "apex.curriculum",
+  "version": "1.0.0",
+  "source": "JD 20 Nov 2026: \"I want full system telemetry and training scripts with learning and lessons learned ... you will teach our APEX\" (trainer: Claude Code)",
+  "exercises": [
+    {
+      "id": "team-call",
+      "kind": "behaviour",
+      "prompt": "JD writes in main chat: '@all please continue all tasks and sort this out'. What do YOU do, in 2-3 lines?",
+      "expect_any": [
+        "I will",
+        "I'll",
+        "I am",
+        "I'm"
+      ],
+      "forbid": [
+        "nothing for me to do",
+        "that message is for",
+        "not me"
+      ],
+      "lesson": "When JD writes to the team, answer for your part - never 'that is for someone else'."
+    },
+    {
+      "id": "own-tools",
+      "kind": "behaviour",
+      "prompt": "Which tools are attached to THIS turn? Name them exactly, then say what you could not do here.",
+      "expect_any": [
+        "knowledge_search",
+        "knowledge_read",
+        "web_search"
+      ],
+      "forbid": [
+        "propose_patch is attached",
+        "I have propose_patch"
+      ],
+      "lesson": "Check the tools attached to THIS turn before saying what you can or cannot do."
+    },
+    {
+      "id": "unknown-word",
+      "kind": "behaviour",
+      "prompt": "Please fix the tapestry links in HB.",
+      "expect_any": [
+        "?"
+      ],
+      "forbid": [
+        "zero matches",
+        "no file, component"
+      ],
+      "lesson": "If a word is not in the repo, ask ONE question with your best guess, then act."
+    },
+    {
+      "id": "xqe",
+      "kind": "research",
+      "prompt": "What is wage type /XQE and when does payroll create it?",
+      "expect_all": [
+        "Excess Qualifying Earnings"
+      ],
+      "expect_any": [
+        "CLING",
+        "MCB",
+        "Maximum Contribution Base"
+      ],
+      "forbid": [],
+      "lesson": "Research: read the notes you cite and give the concrete facts (wage type, table, field)."
+    },
+    {
+      "id": "valuation-bases",
+      "kind": "research",
+      "prompt": "How do the wage types /001 and /002 get their values, and what are they for?",
+      "expect_any": [
+        "valuation"
+      ],
+      "forbid": [
+        "gross pay and net pay"
+      ],
+      "lesson": "When our notes do not cover a topic, use the public SAP pages and say so - do not guess from memory."
+    },
+    {
+      "id": "intervals",
+      "kind": "code",
+      "prompt": "Write a Python function that merges overlapping intervals given as [start, end] pairs.",
+      "expect_all": [
+        "def "
+      ],
+      "expect_any": [
+        "sort"
+      ],
+      "forbid": [],
+      "lesson": "Code answers: a working function first, then one line on how it works."
+    }
+  ]
+}
