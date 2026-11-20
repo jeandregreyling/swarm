@@ -335,7 +335,19 @@ def inbox(conn, principal: dict, after_id: int = 0, limit: int = MAX_BATCH, *, p
             task=hb_tasks.for_request(conn,row[0])
             if task:
                 routing['task_id']=task['task_id']
-                routing['task_context']=hb_tasks.packet(conn,task)
+                try:
+                    routing['task_context']=hb_tasks.packet(conn,task)
+                except ValueError as exc:
+                    if not str(exc).startswith('Pinned task instructions exceed'):
+                        raise
+                    # One unrepresentable instruction must not take down every
+                    # worker inbox. Retain the exact request for explicit review.
+                    detail='Task context exceeds its budget; exact request retained for review'
+                    conn.execute("""INSERT INTO hb_peer_work VALUES(?,?,'needs_review',?,?)
+                        ON CONFLICT(request_id) DO UPDATE SET state='needs_review',stage=excluded.stage,updated_at=excluded.updated_at
+                        WHERE hb_peer_work.state='queued'""", (row[0],row[4],detail,time.time()))
+                    hb_tasks.event(conn,task,'hummingbird','context_blocked',{'reason':detail,'request_retained':True},request_id=row[0])
+                    continue
                 routing['owner_objective']=task['objective']
                 scope=hb_tasks.invitation_tools(conn,row[0])
                 if scope is not None:routing['allowed_tools']=sorted(scope)

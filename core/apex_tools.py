@@ -46,7 +46,7 @@ TOOL_SCHEMAS = {
     "git_clear_stale_lock":{},
 
     "gemini_status": {}, "gemini_reload": {"provider_model":"optional verified endpoint gemini-2.5-flash; omit to retain current selection"},
-    "task_context": {}, "task_memory": {},
+    "task_context": {"offset": "optional older-instruction index or objective character offset", "section": "instructions or objective; omit arguments for current context"}, "task_memory": {},
     "task_evidence":{"evidence_id":"task event ID", "offset":"original evidence offset"},
     "studio_status":{"status":"todo/doing/blocked/partial; independent acceptance closes work"},
     "studio_task":{"title":"child step title", "content":"bounded objective and acceptance criteria, 1500 characters"},
@@ -135,6 +135,7 @@ _ARGUMENT_PROPERTIES = {
     "end": {"type": "integer", "minimum": 1},
     "raw": {"type": "boolean"},
     "offset": {"type": "integer", "minimum": 0},
+    "section": {"type": "string", "enum": ["instructions", "objective"]},
     "focus": {"type": "string", "maxLength": 200},   # Practice 141: knowledge_read
     "command": {"type": "string", "minLength": 1, "maxLength": 1000},
     "repo": {"type": "string", "minLength": 3, "maxLength": 200},

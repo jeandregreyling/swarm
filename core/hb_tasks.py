@@ -343,6 +343,25 @@ def recent_source_paths(conn,task,limit=4):
     return paths[:limit]
 
 
+
+def instruction_references(conn, task, offset=0, page_size=8):
+    """Page the original instruction index; exact bodies remain in task_evidence."""
+    rows = conn.execute("""SELECT m.id,m.from_agent,m.content,
+        (SELECT MIN(e.event_id) FROM hb_task_events e WHERE e.task_id=tm.task_id
+         AND e.message_id=m.id AND e.kind='instruction')
+        FROM hb_task_messages tm JOIN messages m ON m.id=tm.message_id
+        WHERE tm.task_id=? AND tm.kind='instruction' AND m.id<>?
+        ORDER BY m.id LIMIT ? OFFSET ?""", (task['task_id'],task['root_message_id'],page_size+1,offset)).fetchall()
+    entries=[]
+    for mid,agent,content,eid in rows[:page_size]:
+        entries.append({'message_id':mid,'from_agent':agent,
+            'reference':{'bytes':len(content.encode()),'sha256':hashlib.sha256(content.encode()).hexdigest(),
+                         'read':{'tool':'task_evidence','arguments':{'evidence_id':eid,'offset':0}} if eid else {'message_id':mid}}})
+    return {'instructions':entries,'offset':offset,
+            'next_offset':offset+page_size if len(rows)>page_size else None,
+            'notice':'Original instruction references, in order. Read exact evidence before changing scope; prior constraints still apply.'}
+
+
 def packet(conn, task, limit=10000):
     # Exact instruction text is pinned, not rewritten or silently truncated.
     instructions = [dict(zip(('message_id','content','from_agent'), r)) for r in conn.execute('''SELECT m.id,m.content,m.from_agent FROM messages m
@@ -385,30 +404,30 @@ def packet(conn, task, limit=10000):
                              'preview': original[:160],
                              'read': {'tool': 'task_evidence', 'arguments': {'evidence_id': evidence[0], 'offset': 0}} if evidence
                              else {'message_id': item['message_id']}}
-    # Practice 207 (21 Nov 2026, "Pinned task instructions exceed the context budget" stopped APEX's whole inbox): the packet always fits.
-    # (1) a huge objective (a pasted email) becomes an extract plus a reference; (2) beyond the newest 12 instructions, older ones are
-    # listed by message id only; (3) a huge current instruction becomes an extract plus a reference.
-    def _ref(text, message_id, keep):
-        return {'bytes': len(text.encode()), 'sha256': hashlib.sha256(text.encode()).hexdigest(), 'kept_chars': keep,
-                'read': {'message_id': message_id}}
+    # Preserve Practice207's large-email support, with working authenticated
+    # pagination for the full objective and complete older-instruction index.
     if len(json.dumps(result)) > limit and len(result.get('objective') or '') > 1500:
         text = result['objective']
         result['objective'] = text[:1200]
-        result['objective_reference'] = _ref(text, task.get('root_message_id'), 1200)
-    if len(json.dumps(result)) > limit and len(instructions) > 12:
-        older = instructions[:-12]
-        result['instructions'] = instructions = instructions[-12:]
-        result['older_instructions'] = {'count': len(older), 'message_ids': [i['message_id'] for i in older][-60:],
-                                        'note': 'Older instructions in this task; read one by message id if it matters.'}
+        result['objective_reference'] = {'bytes':len(text.encode()),'sha256':hashlib.sha256(text.encode()).hexdigest(),
+            'kept_chars':1200,'read':{'tool':'task_context','arguments':{'section':'objective','offset':0}}}
     if len(json.dumps(result)) > limit and instructions and len(str(instructions[-1].get('content') or '')) > 3000:
-        text = instructions[-1]['content']
-        instructions[-1]['content'] = text[:3000]
-        instructions[-1]['reference'] = _ref(text, instructions[-1]['message_id'], 3000)
-    while len(json.dumps(result)) > limit and len(instructions) > 1:
-        dropped = instructions.pop(0)
-        older = result.setdefault('older_instructions', {'count': 0, 'message_ids': [], 'note': 'Older instructions in this task; read one by message id if it matters.'})
-        older['count'] += 1
-        older['message_ids'] = ([dropped['message_id']] + older['message_ids'])[-60:]
+        item = instructions[-1]
+        text = item['content']
+        eid = conn.execute("SELECT event_id FROM hb_task_events WHERE task_id=? AND message_id=? AND kind='instruction' ORDER BY event_id LIMIT 1", (task['task_id'],item['message_id'])).fetchone()
+        item['content'] = text[:3000]
+        item['reference'] = {'bytes':len(text.encode()),'sha256':hashlib.sha256(text.encode()).hexdigest(),
+            'kept_chars':3000,'read':{'tool':'task_evidence','arguments':{'evidence_id':eid[0],'offset':0}} if eid else {'message_id':item['message_id']}}
+    if len(json.dumps(result)) > limit and len(instructions) > 1:
+        # After many turns, even references can exceed the packet. Keep the
+        # current instruction exact and expose the complete durable index in pages.
+        total = len(instructions)
+        result['older_instructions'] = {'total':total,'count':0,
+            'read':{'tool':'task_context','arguments':{'offset':0}},
+            'notice':'Older instruction references are paginated, not discarded. Prior constraints still apply.'}
+        while (len(json.dumps(result)) > limit or len(instructions)>12) and len(instructions) > 1:
+            instructions.pop(0)
+            result['older_instructions']['count'] += 1
     if len(json.dumps(result)) > limit:
         raise ValueError('Pinned task instructions exceed the context budget; narrow the task explicitly')
     return result
@@ -491,11 +510,19 @@ def call(tool, args):
         if not task or task['conversation_id'] != actor.get('conversation_id'):
             raise PermissionError('No task belongs to this invitation')
         if tool == 'task_context':
-            if args:
-                raise ValueError('task_context takes no arguments')
+            if (set(args)-{'offset','section'} or args.get('section','instructions') not in ('instructions','objective')
+                or 'offset' in args and (type(args['offset']) is not int or args['offset']<0)):
+                raise ValueError('task_context accepts only instructions/objective section and nonnegative offset')
             if actor.get('peer_request_id'):
                 conn.execute('UPDATE hb_task_requests SET task_version=? WHERE request_id=?',(task['version'],actor['peer_request_id']))
                 conn.commit()
+            if args.get('section')=='objective':
+                offset=args.get('offset',0)
+                text=task['objective'][offset:offset+2000]
+                return {'task_id':task['task_id'],'section':'objective','content':text,'offset':offset,
+                        'next_offset':offset+len(text) if offset+len(text)<len(task['objective']) else None}
+            if args:
+                return {'task_id':task['task_id'], **instruction_references(conn,task,args.get('offset',0))}
             return {'task':packet(conn, task), 'budget':budget(conn, task)}
         if tool == 'task_memory':
             if args:
