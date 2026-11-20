@@ -28,7 +28,7 @@ import urllib.request
 
 SAFE_COMMANDS = {'help', 'status', 'tasks', 'stuck', 'approvals', 'queue', 'pause', 'continue', 'cancel', 'done', 'clipboard', 'clip',
                  'workflow', 'plan', 'accept', 'reject', 'today', 'drive', 'yes', 'no', 'examples', 'merits', 'downloads', 'scorecards',
-                 'consult', 'choose', 'pick', 'note', 'notes', 'email', 'channels'}
+                 'consult', 'choose', 'pick', 'note', 'notes', 'email', 'channels', 'board'}
 USER_COMMANDS = {'help'}
 HB_OWN = ('sevenpotato9@', 'ninepotato7@')           # HB's own mailboxes: never a request (no loops)
 TITLE = {'telegram': 'Telegram', 'email': 'Email', 'discord': 'Discord'}

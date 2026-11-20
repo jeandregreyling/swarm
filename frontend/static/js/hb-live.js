@@ -129,19 +129,118 @@
     return html || '<div class="hbl-empty">No readings.</div>';
   }
 
-  const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, took, esc, ICON, SHORT };
+  // ── Practice 194: the board inside main chat (owner 20 Nov: "the top banner becomes the main chat window output and this should be
+  // resizable ... visible in main chat ... I don't care about the ones not doing anything ... 'needs you' still pops up ... one list with
+  // HB orchestrating ... one-click, one window to rule them all") ─────────────────────────────────────────────────────────────────
+  const GROUPS = [['needs_you', 'Needs you'], ['now', 'Now'], ['next', 'Next'], ['claude', 'With Claude Code'], ['waiting', 'Waiting'],
+    ['spec', 'Needs a spec'], ['parked', 'Parked by HB'], ['blocked', 'Blocked'], ['roadmap', 'Roadmap']];
+  const FOLDED = { roadmap: true, blocked: true };
+
+  function activeItems(snap) {
+    const out = [];
+    (snap.lanes || []).forEach((l) => { if (l.id !== 'system') (l.items || []).forEach((it) => out.push(Object.assign({ lane: l.id }, it))); });
+    return out;
+  }
+
+  function renderActive(snap, now) {
+    const items = activeItems(snap);
+    const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status');
+    const chips = items.map((it, n) => `<button type="button" class="hbl-chip hbl-busy" data-card="${n}" title="${esc(it.title)}">` +
+      `<span class="hbl-dot"></span><span class="hbl-ico">${ICON[it.lane] || '•'}</span><b>${esc(SHORT[it.lane] || it.lane)}</b>` +
+      `<span class="hbl-line">${esc(it.last_step || it.title || 'working')}</span></button>`).join('');
+    const alert = (snap.unexplained || []).length ? `<span class="hbl-chip hbl-error"><span class="hbl-dot"></span><b>System</b>` +
+      `<span class="hbl-line">⚠ ${esc(snap.unexplained[0].evidence)}</span></span>` : '';
+    const needChip = needs.length ? `<button type="button" class="hbl-chip hbl-waiting" data-needs-open="1"><span class="hbl-dot"></span>` +
+      `<b>Needs you</b><span class="hbl-count">${needs.length}</span></button>` : '';
+    if (!items.length && !needs.length && !alert) {
+      const last = (snap.history || [])[0];
+      return `<div class="hbl-idle">Everyone is idle${last ? ` · last: ${esc(SHORT[last.lane] || last.lane)} - ${esc(last.title)} (${took(last.took_s)}, ${clock(last.at)})` : ''}</div>`;
+    }
+    const cards = items.map((it, n) => `<div class="hbl-item" data-card-body="${n}"><div class="hbl-item-head">` +
+      `<b>${esc(it.actor || SHORT[it.lane] || '')}</b>` + (it.model ? ` · ${esc(it.model)}` : '') + (it.device ? ` · ${esc(it.device)}` : '') +
+      (it.since ? ` · <span class="hbl-elapsed">${took((now || snap.at || 0) - it.since)}</span>` : '') + (it.purpose ? ` · <i>${esc(it.purpose)}</i>` : '') +
+      `</div><div class="hbl-item-title">${esc(it.title)}</div>` + renderTrail((it.trail || []).slice(-6)) + '</div>').join('');
+    return `<div class="hbl-active">${needChip}${chips}${alert}</div>${cards ? `<div class="hbl-cards">${cards}</div>` : ''}`;
+  }
+
+  function primaryFor(i) {
+    const step = esc(i.step_id || ''), task = esc(i.task_id || '');
+    const g = i.group || i.state;
+    if (g === 'needs_you' && i.step_id) return `<button type="button" class="hbl-primary" data-q="task" data-a="accept" data-id="${step}">Approve</button>`;
+    if (g === 'now' && i.task_id) return `<button type="button" class="hbl-primary" data-q="task" data-a="pause" data-id="${task}">Pause</button>`;
+    if (g === 'parked' && i.task_id) return `<button type="button" class="hbl-primary" data-q="task" data-a="continue" data-id="${task}">Try again</button>`;
+    if (g === 'spec' && i.task_id) return `<button type="button" class="hbl-primary" data-fill="/done ${task} ">Say what done means</button>`;
+    if (g === 'next' && i.step_id) return `<button type="button" class="hbl-primary" data-cmd="/workflow next ${step}">Start now</button>`;
+    if (g === 'waiting' && i.task_id) return `<button type="button" class="hbl-primary" data-q="task" data-a="continue" data-id="${task}">Continue</button>`;
+    return '';
+  }
+
+  function renderList(snap, controls, needsControls, open) {
+    const m = snap.master || {}, items = m.items || [];
+    const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status');
+    const openNow = open || {};
+    let html = `<div class="hbl-list-head">HB is ${m.on === false ? '<b>paused</b>' : 'driving'}${m.auto ? ' · auto-approve on' : ''} · ` +
+      `${items.filter((i) => (i.group || i.state) !== 'roadmap').length} open` +
+      (controls ? ` <button type="button" class="hbl-mini" data-switch="auto" data-on="${m.on === false ? 1 : 0}">${m.on === false ? 'Let HB drive' : 'Pause all'}</button>` : '') +
+      ` <button type="button" class="hbl-mini" data-cmd="/board" title="HB posts the list in chat (also from Telegram)">Post the list</button>` +
+      '<span class="hbl-said hbl-dim"></span></div>';
+    if (needs.length) {
+      html += '<div class="hbl-sub">Needs you</div><ul class="hbl-list">' + needs.map((n) =>
+        `<li class="hbl-needs" title="${esc(n.why || n.title || '')}"><span class="hbl-row-title">${esc(n.label || n.text || '')}</span>` +
+        (needsControls ? needsControls(n) : '') + '</li>').join('') + '</ul>';
+    }
+    GROUPS.forEach(([key, word]) => {
+      if (key === 'needs_you') return;
+      const rows = items.filter((i) => (i.group || i.state || 'waiting') === key);
+      if (!rows.length) return;
+      const folded = FOLDED[key] && !openNow[key];
+      html += `<div class="hbl-sub"><button type="button" class="hbl-fold" data-fold="${key}">${folded ? '▸' : '▾'} ${word} (${rows.length})</button></div>`;
+      if (folded) return;
+      html += '<ul class="hbl-list">' + rows.map((i) =>
+        `<li data-step="${esc(i.step_id)}" data-task="${esc(i.task_id || '')}" title="${esc(i.note || i.why || '')}">` +
+        `<span class="hbl-row-title">${esc(i.title)}</span><span class="hbl-tag">${esc(i.doer || 'apex')}</span>` +
+        (i.live ? `<div class="hbl-live-line">● ${esc(SHORT[i.live.lane] || i.live.lane)}: ${esc(i.live.last_step || 'working')}</div>` : '') +
+        (i.note && key === 'spec' ? `<div class="hbl-dim">${esc(i.note)}</div>` : '') +
+        `<div class="hbl-row-ctl">${primaryFor(i)}` + (controls && key !== 'roadmap' ? `<button type="button" class="hbl-more" data-more="${esc(i.step_id)}" title="More">…</button>` +
+          `<div class="hbl-more-box" data-more-box="${esc(i.step_id)}" hidden>${controls(i)}</div>` : '') + '</div></li>').join('') + '</ul>';
+    });
+    if (!items.length && !needs.length) html += '<div class="hbl-empty">Nothing open.</div>';
+    return html;
+  }
+
+  function renderBoard(snap, opts) {
+    const o = opts || {};
+    return `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
+      `<span class="hbl-dim">${esc(systemLine(snap))}</span></div>` +
+      (o.collapsed ? renderActive(snap, o.now).replace(/<div class="hbl-cards">[\s\S]*$/, '') :
+        renderActive(snap, o.now) + `<div class="hbl-board">${renderList(snap, o.controls, o.needsControls, o.open)}</div>`);
+  }
+
+  function systemLine(snap) {
+    const t = snap.telemetry || {}, g = t.gpu || {}, c = t.cpu || {};
+    const free = g.vram_total_gb != null && g.vram_used_gb != null ? (g.vram_total_gb - g.vram_used_gb).toFixed(1) + ' GB free for you' : '';
+    return [g.busy_pct != null ? 'GPU ' + Math.round(g.busy_pct) + '%' : '', free, g.temp_c != null ? Math.round(g.temp_c) + '°C' : '',
+      c.load1 != null ? 'CPU load ' + c.load1 : ''].filter(Boolean).join(' · ');
+  }
+
+  function renderNeedsPopup(n, needsControls) {
+    return `<div class="hbl-pop-head">⚑ Needs you</div><div class="hbl-pop-title">${esc(n.label || '')}</div>` +
+      (n.title && n.title !== n.label ? `<div class="hbl-dim">${esc(n.title)}</div>` : '') +
+      (n.why ? `<div class="hbl-pop-why">${esc(String(n.why).slice(0, 400))}</div>` : '') +
+      (needsControls ? needsControls(n) : '') + '<div class="hbl-ctl"><button type="button" data-later="1">Later</button></div>';
+  }
+
+  const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
+    primaryFor, systemLine, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
   // ── Page layer ───────────────────────────────────────────────────────────
-  const KEY = 'hbLive.windows';
-  const S = { snap: null, version: null, wins: {}, busy: false, controls: null };
-  function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
-  function save() {
-    const out = {};
-    Object.keys(S.wins).forEach((id) => { const w = S.wins[id]; out[id] = { x: w.x, y: w.y, min: w.min, w: w.w, h: w.h }; });
-    try { localStorage.setItem(KEY, JSON.stringify(out)); } catch (e) {}
+  const S = { snap: null, busy: false, controls: null, needsControls: null, open: {}, popup: null };
+  function ls(key, value) {
+    try { if (value === undefined) return localStorage.getItem(key); localStorage.setItem(key, value); } catch (e) { return null; }
+    return null;
   }
 
   function style() {
@@ -149,148 +248,129 @@
     const st = document.createElement('style');
     st.id = 'hb-live-style';
     st.textContent = `
-#hb-live-strip{display:flex;gap:6px;padding:6px 10px;overflow-x:auto;border-bottom:1px solid var(--border,#333);flex:0 0 auto;scrollbar-width:thin}
-.hbl-chip{display:flex;align-items:center;gap:5px;min-width:0;max-width:260px;flex:0 0 auto;padding:4px 9px;border-radius:14px;cursor:pointer;
-  border:1px solid var(--border,#333);background:var(--card,#1b1b1b);color:var(--text,#ddd);font-size:11.5px;line-height:1.3}
-.hbl-chip b{font-weight:600;white-space:nowrap}.hbl-ico{opacity:.8}
-.hbl-line{color:var(--text-dim,#999);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+#hb-live-pane{flex:0 0 auto;max-height:65vh;min-height:34px;overflow:auto;resize:vertical;padding:4px 10px 6px;border-bottom:2px solid var(--border,#333);
+  background:var(--card,#161616);color:var(--text,#ddd);font-size:12.5px}
+.hbl-pane-head{display:flex;gap:10px;align-items:center;margin-bottom:4px}.hbl-pane-head .hbl-dim{font-size:11.5px}
+.hbl-active{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 4px}
+.hbl-chip{display:flex;align-items:center;gap:5px;max-width:320px;padding:3px 9px;border-radius:14px;cursor:pointer;border:1px solid var(--border,#333);
+  background:var(--bg,#111);color:var(--text,#ddd);font-size:11.5px}
+.hbl-chip b{white-space:nowrap}.hbl-ico{opacity:.8}.hbl-line{color:var(--text-dim,#999);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
 .hbl-dot{width:8px;height:8px;border-radius:50%;background:#777;flex:0 0 8px}
-.hbl-busy .hbl-dot{background:#2ecc71;box-shadow:0 0 0 0 rgba(46,204,113,.7);animation:hblPulse 1.4s infinite}
-.hbl-waiting .hbl-dot{background:#ffb300}.hbl-error .hbl-dot{background:#ff5252}.hbl-error{border-color:#ff5252}
-.hbl-busy{border-color:rgba(46,204,113,.6)}.hbl-waiting{border-color:rgba(255,179,0,.6)}
+.hbl-busy .hbl-dot{background:#2ecc71;animation:hblPulse 1.4s infinite}.hbl-waiting .hbl-dot{background:#ffb300}.hbl-error .hbl-dot{background:#ff5252}
+.hbl-busy{border-color:rgba(46,204,113,.6)}.hbl-waiting{border-color:rgba(255,179,0,.7)}.hbl-error{border-color:#ff5252}
 .hbl-count{background:#ffb300;color:#000;border-radius:9px;padding:0 6px;font-weight:700;font-size:10.5px}
 @keyframes hblPulse{0%{box-shadow:0 0 0 0 rgba(46,204,113,.7)}70%{box-shadow:0 0 0 7px rgba(46,204,113,0)}100%{box-shadow:0 0 0 0 rgba(46,204,113,0)}}
-.hbl-win{position:fixed;z-index:9000;width:420px;max-width:calc(100vw - 32px);max-height:70vh;display:flex;flex-direction:column;
-  background:var(--card,#1b1b1b);color:var(--text,#ddd);border:1px solid var(--border,#333);border-radius:10px;box-shadow:0 10px 32px rgba(0,0,0,.45);
-  resize:both;overflow:hidden;font-size:12.5px}
-.hbl-win-head{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:move;border-bottom:1px solid var(--border,#333);user-select:none}
-.hbl-win-head b{flex:1}.hbl-win-head button{background:none;border:0;color:var(--text-dim,#999);cursor:pointer;font-size:15px;padding:0 4px}
-.hbl-win-body{overflow:auto;padding:8px 10px;flex:1}
-.hbl-item{border-left:3px solid var(--accent,#00e08a);padding:4px 8px;margin:6px 0}.hbl-item-head{color:var(--text-dim,#999);font-size:11.5px}
-.hbl-item-title{font-weight:600;margin:2px 0}.hbl-trail{margin:4px 0 0 16px;padding:0;line-height:1.45}
-.hbl-trail li.hbl-k-check{color:#ffb300}.hbl-trail li.hbl-k-error{color:#ff5252}.hbl-t{opacity:.55;font-variant-numeric:tabular-nums}
-.hbl-sub{margin:10px 0 3px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim,#999)}
-.hbl-list,.hbl-hist{list-style:none;margin:0;padding:0}.hbl-list li,.hbl-hist li{padding:4px 2px;border-bottom:1px solid var(--border,#2a2a2a)}
-.hbl-tag{display:inline-block;margin-left:6px;padding:0 6px;border:1px solid var(--border,#444);border-radius:8px;font-size:10.5px;color:var(--text-dim,#aaa)}
-.hbl-amber{border-color:#ffb300;color:#ffb300}.hbl-needs .hbl-tag{border-color:#ffb300;color:#ffb300}
-.hbl-live-line{color:#2ecc71;font-size:11.5px;margin-top:2px}.hbl-dim{color:var(--text-dim,#999)}.hbl-err{color:#ff8a80}
-.hbl-note{color:var(--text-dim,#999);margin:2px 0 6px}.hbl-empty{color:var(--text-dim,#999);padding:8px 0}.hbl-warn{color:#ff5252;margin:6px 0}
-.hbl-gauge{display:grid;grid-template-columns:80px 1fr auto;gap:8px;align-items:center;margin:6px 0}
-.hbl-bar{height:8px;border-radius:4px;background:var(--border,#333);overflow:hidden}.hbl-bar i{display:block;height:100%;background:var(--accent,#00e08a)}
-.hbl-ctl{display:inline-flex;gap:4px;margin-left:6px}.hbl-ctl button,.hbl-ctl select{font-size:10.5px;padding:1px 6px;border-radius:6px;cursor:pointer;
-  border:1px solid var(--border,#444);background:var(--bg,#111);color:var(--text,#ddd)}
-#hb-live-dock{position:fixed;right:10px;top:30%;z-index:9001;display:flex;flex-direction:column;gap:8px}
-.hbl-bubble{width:40px;height:40px;border-radius:50%;border:1px solid var(--border,#444);background:var(--card,#1b1b1b);color:var(--text,#ddd);
-  cursor:pointer;font-size:16px;box-shadow:0 4px 12px rgba(0,0,0,.35)}.hbl-bubble.hbl-busy{border-color:#2ecc71;animation:hblPulse 1.4s infinite}
+.hbl-idle{color:var(--text-dim,#999);padding:2px 0 4px}
+.hbl-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:6px;margin-bottom:6px}
+.hbl-item{border-left:3px solid #2ecc71;padding:4px 8px;background:var(--bg,#111);border-radius:4px}
+.hbl-item-head{color:var(--text-dim,#999);font-size:11.5px}.hbl-item-title{font-weight:600;margin:2px 0}
+.hbl-trail{margin:2px 0 0 16px;padding:0;line-height:1.4;font-size:11.5px}.hbl-trail li.hbl-k-check{color:#ffb300}.hbl-trail li.hbl-k-error{color:#ff5252}
+.hbl-t{opacity:.55;font-variant-numeric:tabular-nums}
+.hbl-list-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--text-dim,#999);margin:4px 0}
+.hbl-sub{margin:6px 0 2px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim,#999)}
+.hbl-fold{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0;text-transform:inherit;letter-spacing:inherit}
+.hbl-list{list-style:none;margin:0;padding:0}.hbl-list li{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 2px;border-bottom:1px solid var(--border,#262626)}
+.hbl-row-title{flex:1 1 260px;min-width:0}.hbl-row-ctl{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.hbl-tag{padding:0 6px;border:1px solid var(--border,#444);border-radius:8px;font-size:10.5px;color:var(--text-dim,#aaa)}
+.hbl-needs .hbl-row-title{color:#ffb300}.hbl-live-line{flex-basis:100%;color:#2ecc71;font-size:11.5px}
+.hbl-primary,.hbl-mini,.hbl-more,.hbl-ctl button,.hbl-ctl select{font-size:11px;padding:2px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--border,#444);
+  background:var(--bg,#111);color:var(--text,#ddd)}
+.hbl-primary{border-color:var(--accent,#00e08a);color:var(--accent,#00e08a);font-weight:600}
+.hbl-more-box{flex-basis:100%}.hbl-ctl{display:inline-flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.hbl-dim{color:var(--text-dim,#999)}.hbl-empty{color:var(--text-dim,#999);padding:6px 0}.hbl-said{font-size:11px}
+#hb-live-pop{position:fixed;z-index:9500;left:50%;top:18%;transform:translateX(-50%);width:440px;max-width:calc(100vw - 32px);padding:14px 16px;
+  background:var(--card,#1b1b1b);color:var(--text,#ddd);border:2px solid #ffb300;border-radius:12px;box-shadow:0 0 0 4px rgba(255,179,0,.15),0 14px 40px rgba(0,0,0,.5)}
+.hbl-pop-head{color:#ffb300;font-weight:700;margin-bottom:6px}.hbl-pop-title{font-weight:600;margin-bottom:4px}.hbl-pop-why{margin:6px 0;white-space:pre-wrap;font-size:12px}
+.hbl-cmd{display:inline;padding:0 6px;margin:0 1px;border-radius:6px;border:1px solid var(--accent,#00e08a);background:transparent;color:var(--accent,#00e08a);
+  font:inherit;font-size:.92em;cursor:pointer}
+.hbl-json summary{cursor:pointer;color:var(--text-dim,#999)}
 body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-clipboard,body.hb-live-on #home-chat-main .hb-needs-you{display:none!important}
-@media (max-width:640px){.hbl-win{left:8px!important;right:8px;width:auto}.hbl-line{max-width:90px}}`;
+@media (max-width:640px){.hbl-line{max-width:110px}.hbl-cards{grid-template-columns:1fr}}`;
     document.head.appendChild(st);
   }
 
   function classic() { try { return localStorage.getItem('hbLive.classic') === '1'; } catch (e) { return false; } }
-  function strip() {
+  function pane() {
     if (classic()) { document.body.classList.remove('hb-live-on'); return null; }
-    document.body.classList.add('hb-live-on');   // HB Live L5: hides the HB-now pill, live box, HB Driving board and Needs-you bar in main chat
-    let el = document.getElementById('hb-live-strip');
+    document.body.classList.add('hb-live-on');   // HB Live: hides the HB-now pill, live box, HB Driving board and Needs-you bar in main chat
+    let el = document.getElementById('hb-live-pane');
     if (el) return el;
     const main = document.getElementById('home-chat-main'), bar = document.getElementById('home-chat-bar');
     if (!main) return null;
-    el = document.createElement('div');
-    el.id = 'hb-live-strip';
-    el.setAttribute('role', 'toolbar');
-    el.setAttribute('aria-label', 'What HB and the models are doing');
+    el = document.createElement('section');
+    el.id = 'hb-live-pane';
+    el.setAttribute('aria-label', 'HB Live: who is working, and the list of open tasks');
+    const h = Number(ls('hbLive.paneHeight'));
+    if (h > 40) el.style.height = h + 'px';
     if (bar && bar.parentNode === main) bar.insertAdjacentElement('afterend', el); else main.prepend(el);
-    el.addEventListener('click', (e) => { const b = e.target.closest('[data-win]'); if (b) toggle(b.dataset.win); });
+    if (window.ResizeObserver) new ResizeObserver(() => { if (el.offsetHeight > 40 && el.style.height) ls('hbLive.paneHeight', String(el.offsetHeight)); }).observe(el);
+    el.addEventListener('mouseup', () => { if (el.style.height) ls('hbLive.paneHeight', String(el.offsetHeight)); });
     return el;
   }
-  function dock() {
-    let d = document.getElementById('hb-live-dock');
-    if (!d) { d = document.createElement('div'); d.id = 'hb-live-dock'; document.body.appendChild(d); }
-    return d;
-  }
 
-  const TITLE = { needs: 'Needs you', master: 'Tasks (HB clipboard)', system: 'System', gpu: 'GPU · APEX', fred: 'CPU · Fred',
-    small: 'CPU · small models', online: 'Online models', hb: 'HB (orchestrator)', admin: 'Admin (sudo in your terminal)', 'claude-code': 'Claude Code' };
-  function title(id) { return (ICON[id] || '') + ' ' + (TITLE[id] || id); }
-
-  function open(id, saved) {
-    if (S.wins[id]) { S.wins[id].min = false; place(id); render(); save(); return; }
-    const n = Object.keys(S.wins).length;
-    const w = Object.assign({ x: Math.max(16, window.innerWidth - 460 - n * 26), y: 90 + n * 26, min: false }, saved || {});
-    const el = document.createElement('section');
-    el.className = 'hbl-win';
-    el.dataset.win = id;
-    el.innerHTML = `<div class="hbl-win-head"><b>${R.esc(title(id))}</b><button type="button" data-act="min" aria-label="Minimise" title="Minimise to a bubble">–</button>` +
-      '<button type="button" data-act="close" aria-label="Close" title="Close">×</button></div><div class="hbl-win-body"></div>';
-    document.body.appendChild(el);
-    w.el = el;
-    S.wins[id] = w;
-    el.querySelector('[data-act=min]').onclick = () => { w.min = true; place(id); save(); renderDock(); };
-    el.querySelector('[data-act=close]').onclick = () => close(id);
-    drag(el, w);
-    place(id);
-    render();
-    save();
-  }
-  function close(id) { const w = S.wins[id]; if (!w) return; w.el.remove(); delete S.wins[id]; save(); renderDock(); }
-  function toggle(id) { const w = S.wins[id]; if (w && !w.min) close(id); else open(id); }
-  function place(id) {
-    const w = S.wins[id];
-    w.x = Math.min(Math.max(0, w.x), Math.max(0, window.innerWidth - 120));
-    w.y = Math.min(Math.max(0, w.y), Math.max(0, window.innerHeight - 60));
-    w.el.style.left = w.x + 'px'; w.el.style.top = w.y + 'px';
-    w.el.style.display = w.min ? 'none' : 'flex';
-    if (w.w) w.el.style.width = w.w + 'px';
-    if (w.h) w.el.style.height = w.h + 'px';
-    renderDock();
-  }
-  function drag(el, w) {
-    const head = el.querySelector('.hbl-win-head');
-    head.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button')) return;
-      const dx = e.clientX - w.x, dy = e.clientY - w.y;
-      head.setPointerCapture(e.pointerId);
-      const move = (ev) => { w.x = ev.clientX - dx; w.y = ev.clientY - dy; el.style.left = w.x + 'px'; el.style.top = w.y + 'px'; };
-      const up = () => { head.removeEventListener('pointermove', move); head.removeEventListener('pointerup', up); place(w.el.dataset.win); save(); };
-      head.addEventListener('pointermove', move);
-      head.addEventListener('pointerup', up);
-    });
-    if (window.ResizeObserver) new ResizeObserver(() => { if (!w.min && w.el.offsetWidth) { w.w = w.el.offsetWidth; w.h = w.el.offsetHeight; } }).observe(el);
-  }
-  function laneState(id) {
-    const s = S.snap || {};
-    if (id === 'needs') return (s.needs_you || []).some((n) => n.kind !== 'status') ? 'waiting' : 'idle';
-    if (id === 'master') return ((s.master || {}).items || []).some((i) => i.live) ? 'busy' : 'idle';
-    if (id === 'system') return (s.unexplained || []).length ? 'error' : 'idle';
-    const l = (s.lanes || []).find((x) => x.id === id);
-    return l ? l.state : 'idle';
-  }
-  function renderDock() {
-    const d = dock();
-    const mins = Object.keys(S.wins).filter((id) => S.wins[id].min);
-    d.innerHTML = mins.map((id) => `<button type="button" class="hbl-bubble hbl-${laneState(id)}" data-win="${R.esc(id)}" title="${R.esc(title(id))}">${ICON[id] || '•'}</button>`).join('');
-    d.querySelectorAll('[data-win]').forEach((b) => { b.onclick = () => open(b.dataset.win); });
-  }
-
-  function body(id) {
-    const s = S.snap || {};
-    if (id === 'master' || id === 'needs') return R.renderMaster(s, S.controls, S.needsControls);
-    if (id === 'system') return R.renderSystem(s);
-    return R.renderLane(s, id, Date.now() / 1000);
-  }
   function render() {
     if (!S.snap) return;
     style();
-    const el = strip();
-    if (el) el.innerHTML = R.renderStrip(S.snap);
-    Object.keys(S.wins).forEach((id) => {
-      const w = S.wins[id], b = w.el.querySelector('.hbl-win-body');
-      if (w.min) return;
-      const top = b.scrollTop, atEnd = b.scrollHeight - b.scrollTop - b.clientHeight < 30;
-      b.innerHTML = body(id);
-      b.scrollTop = atEnd && id !== 'master' && id !== 'needs' ? b.scrollHeight : top;
+    const el = pane();
+    if (!el) return;
+    const top = el.scrollTop;
+    const open = Array.from(el.querySelectorAll('[data-more-box]:not([hidden])')).map((b) => b.dataset.moreBox);
+    el.innerHTML = R.renderBoard(S.snap, { collapsed: ls('hbLive.collapsed') === '1', now: Date.now() / 1000, controls: S.controls,
+      needsControls: S.needsControls, open: S.open });
+    open.forEach((id) => { const b = el.querySelector(`[data-more-box="${CSS.escape(id)}"]`); if (b) b.hidden = false; });
+    el.scrollTop = top;
+    popup();
+    decorate();
+  }
+
+  // Needs-you is the only pop-up: a new item (not seen in this browser) opens it, with one-click answers
+  function seen() { try { return new Set(JSON.parse(ls('hbLive.needsSeen') || '[]')); } catch (e) { return new Set(); } }
+  function popup() {
+    const needs = ((S.snap || {}).needs_you || []).filter((n) => n.kind !== 'status' && !n.info);
+    const known = seen();
+    const fresh = needs.find((n) => n.key && !known.has(n.key));
+    let box = document.getElementById('hb-live-pop');
+    if (!fresh) { if (box && S.popup && !needs.some((n) => n.key === S.popup)) { box.remove(); S.popup = null; } return; }
+    if (S.popup === fresh.key && box) return;
+    if (!box) { box = document.createElement('div'); box.id = 'hb-live-pop'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Needs you'); document.body.appendChild(box); }
+    S.popup = fresh.key;
+    box.innerHTML = R.renderNeedsPopup(fresh, S.needsControls);
+  }
+  function settle(key) {
+    const known = seen();
+    if (key) known.add(key);
+    ls('hbLive.needsSeen', JSON.stringify(Array.from(known).slice(-300)));
+    const box = document.getElementById('hb-live-pop');
+    if (box) box.remove();
+    S.popup = null;
+    popup();
+  }
+
+  // In chat: /commands in HB's and APEX's messages are one-click buttons; HB's raw JSON hand-offs read as one line
+  const CMD = /(^|[\s(])(\/(?:accept|reject|continue|pause|cancel|plan|workflow|drive|done|board|status|tasks|approvals|clip|yes|no|today|channels)\b(?: [A-Z]-[0-9A-F]{6,12}| (?:on|off|next|status|auto)\b| S-[0-9A-F]{10})*)/g;
+  function decorate() {
+    document.querySelectorAll('#home-chat-messages .hc-bubble:not([data-hbl-done])').forEach((b) => {
+      b.dataset.hblDone = '1';
+      const body = b.querySelector('.hc-bubble-body') || b;
+      const text = (body.textContent || '').trim();
+      if (text.startsWith('{"task_type"')) {
+        let one = 'HB handed a task back to APEX';
+        try { const j = JSON.parse(text); one = `↻ HB resumed ${j.task_id || 'a task'} for APEX: ${String(j.next_task || '').split('\n')[0].slice(0, 160)}`; } catch (e) {}
+        body.innerHTML = `<details class="hbl-json"><summary>${R.esc(one)}</summary><pre style="white-space:pre-wrap">${R.esc(text)}</pre></details>`;
+        return;
+      }
+      const sender = String((b._chatMessage || {}).from_agent || (b._chatMessage || {}).sender || '').toLowerCase();
+      if (!['hummingbird', 'apex', 'hb'].includes(sender)) return;
+      const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) if (CMD.test(walker.currentNode.nodeValue)) nodes.push(walker.currentNode);
+      nodes.forEach((node) => {
+        if (node.parentNode && node.parentNode.closest('pre, code, button, a')) return;
+        const span = document.createElement('span');
+        span.innerHTML = R.esc(node.nodeValue).replace(CMD, (m, pre, cmd) => `${pre}<button type="button" class="hbl-cmd" data-cmd="${cmd.trim()}">${cmd.trim()}</button>`);
+        node.parentNode.replaceChild(span, node);
+      });
     });
-    renderDock();
   }
 
   // ── HB Live L4a: controls in the Tasks window, through HB's own routes (/hb/queue task, clip, switch) ──
@@ -324,22 +404,9 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       refresh();
     }).catch(() => { if (note) note.textContent = 'HB did not answer - try again.'; });
   }
-  document.addEventListener('click', (e) => {
-    const b = e.target.closest('.hbl-win [data-q]');
-    if (b && b.tagName === 'BUTTON') {
-      if (b.dataset.confirm && !window.confirm(b.dataset.confirm)) return;
-      send({ [b.dataset.q]: [b.dataset.a, b.dataset.id] }, b.closest('.hbl-win'));
-    }
-    const sw = e.target.closest('.hbl-win [data-switch]');
-    if (sw) send({ switch: sw.dataset.switch, on: sw.dataset.on === '1' }, sw.closest('.hbl-win'));
-  });
-  document.addEventListener('change', (e) => {
-    const s = e.target.closest('.hbl-win select[data-q]');
-    if (s) send({ [s.dataset.q]: [s.dataset.a, s.dataset.id, s.value] }, s.closest('.hbl-win'));
-  });
   S.controls = controlsFor;
 
-  // HB Live L5: everything the old Needs-you bar could do, in the Tasks window
+  // HB Live L5: everything the old Needs-you bar could do
   function needsControlsFor(n) {
     let html = '<div class="hbl-ctl">';
     if (n.kind === 'accept' && n.step_id) html += `<button type="button" data-q="task" data-a="accept" data-id="${R.esc(n.step_id)}">Approve</button>`;
@@ -352,17 +419,58 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     return html + '</div>';
   }
   S.needsControls = needsControlsFor;
+
+  function runCommand(text, fill) {
+    const input = document.getElementById('home-chat-input');
+    if (!input) return;
+    input.value = text;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    if (fill) { input.focus(); return; }
+    document.getElementById('home-chat-send-btn')?.click();
+  }
+  const SCOPE = '#hb-live-pane, #hb-live-pop, #home-chat-messages';
   document.addEventListener('click', (e) => {
-    const show = e.target.closest('.hbl-win [data-show]');
+    const t = e.target;
+    if (!t.closest || !t.closest(SCOPE)) return;
+    const pop = t.closest('#hb-live-pop');
+    const q = t.closest('button[data-q]');
+    if (q) {
+      if (q.dataset.confirm && !window.confirm(q.dataset.confirm)) return;
+      send({ [q.dataset.q]: [q.dataset.a, q.dataset.id] }, t.closest('#hb-live-pane') || pop);
+      if (pop) settle(S.popup);
+      return;
+    }
+    const sw = t.closest('[data-switch]');
+    if (sw) { send({ switch: sw.dataset.switch, on: sw.dataset.on === '1' }, t.closest('#hb-live-pane')); return; }
+    const cmd = t.closest('[data-cmd]');
+    if (cmd) {
+      const c = cmd.dataset.cmd;
+      if (/^\/(cancel|reject|stop)\b/.test(c) && !window.confirm(`Run ${c}?`)) return;
+      runCommand(c);
+      if (pop) settle(S.popup);
+      return;
+    }
+    const fill = t.closest('[data-fill]');
+    if (fill) { runCommand(fill.dataset.fill, true); return; }
+    const show = t.closest('[data-show]');
     if (show) {
       const m = document.querySelector(`#home-chat-messages [data-message-id="${Number(show.dataset.show)}"]`);
       if (m) { m.scrollIntoView({ behavior: 'smooth', block: 'center' }); m.style.outline = '2px solid #ffb300'; setTimeout(() => { m.style.outline = ''; }, 2500); }
+      return;
     }
-    const cmd = e.target.closest('.hbl-win [data-cmd]');
-    if (cmd) {
-      const input = document.getElementById('home-chat-input');
-      if (input) { input.value = cmd.dataset.cmd; input.dispatchEvent(new Event('input', { bubbles: true })); document.getElementById('home-chat-send-btn')?.click(); }
-    }
+    if (t.closest('[data-later]')) { settle(S.popup); return; }
+    const more = t.closest('[data-more]');
+    if (more) { const b = document.querySelector(`[data-more-box="${CSS.escape(more.dataset.more)}"]`); if (b) b.hidden = !b.hidden; return; }
+    const fold = t.closest('[data-fold]');
+    if (fold) { S.open[fold.dataset.fold] = !S.open[fold.dataset.fold]; render(); return; }
+    if (t.closest('[data-pane-fold]')) { ls('hbLive.collapsed', ls('hbLive.collapsed') === '1' ? '0' : '1'); render(); return; }
+    if (t.closest('[data-needs-open]')) { ls('hbLive.needsSeen', '[]'); popup(); return; }
+    const chip = t.closest('[data-card]');
+    if (chip) { const c = document.querySelector(`[data-card-body="${chip.dataset.card}"]`); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  });
+  document.addEventListener('change', (e) => {
+    const s = e.target.closest && e.target.closest('#hb-live-pane select[data-q], #hb-live-pop select[data-q]');
+    if (s) send({ [s.dataset.q]: [s.dataset.a, s.dataset.id, s.value] }, e.target.closest('#hb-live-pane'));
   });
 
   let pending = null;
@@ -377,10 +485,13 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
   }
   function soon() { clearTimeout(pending); pending = setTimeout(refresh, 300); }
 
-  root.hbLive = { classic: (on) => { try { localStorage.setItem('hbLive.classic', on ? '1' : '0'); } catch (e) {} location.reload(); }, open, close, toggle, refresh, state: S, setControls: (fn) => { S.controls = fn; render(); } };
+  root.hbLive = { classic: (on) => { try { localStorage.setItem('hbLive.classic', on ? '1' : '0'); } catch (e) {} location.reload(); }, refresh, state: S };
   document.addEventListener('sse:chat', soon);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   setInterval(refresh, 2000);
-  const restore = () => { const saved = load(); Object.keys(saved).forEach((id) => open(id, saved[id])); refresh(); };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', restore); else restore();
+  if (window.MutationObserver) {
+    const watch = () => { const list = document.getElementById('home-chat-messages'); if (list) new MutationObserver(decorate).observe(list, { childList: true }); else setTimeout(watch, 1000); };
+    watch();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh); else refresh();
 })(typeof window !== 'undefined' ? window : globalThis);

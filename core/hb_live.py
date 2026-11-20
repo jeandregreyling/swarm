@@ -155,18 +155,99 @@ def _needs_you(conn):
         return []
 
 
+def _group(item, risk):
+    """Practice 194: the board's group for a clipboard row - needs_you, now, next, claude, waiting, spec, parked, blocked."""
+    state, why = item.get('state') or 'waiting', str(item.get('why') or '').lower()
+    if state in ('needs_you', 'now', 'next', 'blocked'):
+        return state
+    if item.get('parked'):
+        return 'parked'
+    if 'needs a spec' in why or str(risk or '').lower().startswith('needs a spec') or 'needs a spec' in str(risk or '').lower():
+        return 'spec'
+    if item.get('doer') == 'claude' and 'no hb task' in why:
+        return 'claude'
+    return 'waiting'
+
+
 def _master(conn, by_task):
     try:
         from core import hb_queue
         q = hb_queue.status(conn)
     except Exception:
         return {'on': None, 'auto': None, 'items': []}
+    risks = {}
+    try:
+        risks = {sid: risk for sid, risk in conn.execute('SELECT step_id, residual_risk FROM project_steps')}
+    except Exception:
+        pass
     items = []
     for i in q.get('items', []):
         live = by_task.get(i.get('task_id'))
         items.append({**{k: i.get(k) for k in ('step_id', 'task_id', 'title', 'state', 'why', 'doer', 'importance', 'ready', 'check_result', 'parked')},
+                      'group': _group(i, risks.get(i.get('step_id'))), 'note': (risks.get(i.get('step_id')) or '')[:300],
                       'live': {'lane': live['lane'], 'last_step': live['last_step'], 'since': live['since']} if live else None})
+    # Practice 194 (owner 20 Nov: "a clear queue and visual board of open tasks"): steps other actors own (Claude Code's register, the
+    # roadmap) are on the board too, folded under Roadmap - the one list shows everything that is open, not only APEX's queue.
+    try:
+        project = getattr(hb_queue, 'PROJECT', None)
+        shown = {i['step_id'] for i in items}
+        for sid, title, owner, risk in conn.execute("SELECT step_id, title, COALESCE(owner,''), residual_risk FROM project_steps WHERE project_id=? "
+                                                    "AND status NOT IN ('done','skipped') ORDER BY order_idx, created_at", (project,)).fetchall():
+            if sid in shown:
+                continue
+            items.append({'step_id': sid, 'task_id': None, 'title': title, 'state': 'roadmap', 'why': f'owned by {owner or "nobody"}',
+                          'doer': owner or None, 'importance': None, 'ready': False, 'check_result': None, 'parked': False,
+                          'group': 'roadmap', 'note': (risk or '')[:300], 'live': None})
+    except Exception:
+        pass
     return {'on': q.get('on'), 'auto': q.get('auto'), 'note': q.get('note', '')[:300], 'items': items}
+
+
+BOARD_GROUPS = (('needs_you', 'Needs you'), ('now', 'Now'), ('next', 'Next'), ('claude', 'With Claude Code'), ('waiting', 'Waiting'),
+                ('spec', 'Needs a spec'), ('parked', 'Parked by HB'), ('blocked', 'Blocked'))
+
+
+def board_text(snap, roadmap_lines=0):
+    """Practice 194: the list as one main-chat post (HB's /board) - every row with the command that moves it. Commands in HB's posts are
+    one-click buttons in main chat and work as replies from Telegram."""
+    m = snap.get('master') or {}
+    items = m.get('items') or []
+    needs = [n for n in snap.get('needs_you') or [] if n.get('kind') != 'status']
+    open_items = [i for i in items if i.get('group') != 'roadmap']
+    lines = [f"📋 HB's list - {len(open_items)} open, {len(needs)} need you · HB is {'paused (Auto off)' if m.get('on') is False else 'driving'}"]
+    if needs:
+        lines.append('Needs you:')
+        for n in needs[:8]:
+            cmds = []
+            if n.get('kind') == 'accept' and n.get('step_id'):
+                cmds.append(f"/accept {n['step_id']}")
+            if n.get('task_id') and n.get('kind') != 'accept':
+                cmds += [f"/continue {n['task_id']}", f"/cancel {n['task_id']}"]
+            lines.append(f"  • {n.get('label', '')}" + (' → ' + ' · '.join(cmds) if cmds else ''))
+    for key, word in BOARD_GROUPS[1:]:
+        rows = [i for i in open_items if i.get('group') == key]
+        if not rows:
+            continue
+        lines.append(f'{word}:')
+        for i in rows[:8]:
+            cmd = ''
+            if key == 'now' and i.get('task_id'):
+                cmd = f" → /pause {i['task_id']}"
+            elif key == 'next' and i.get('step_id'):
+                cmd = f" → /workflow next {i['step_id']}"
+            elif key == 'parked' and i.get('task_id'):
+                cmd = f" → /continue {i['task_id']}"
+            elif key == 'spec' and i.get('task_id'):
+                cmd = f" → /done {i['task_id']} <what done means>"
+            live = f" ({i['live']['last_step'][:60]})" if i.get('live') else ''
+            lines.append(f"  • {i.get('title', '')[:90]}{live}{cmd}")
+        if len(rows) > 8:
+            lines.append(f'  … and {len(rows) - 8} more on the board')
+    roadmap = [i for i in items if i.get('group') == 'roadmap']
+    if roadmap:
+        lines.append(f'Roadmap: {len(roadmap)} planned items (folded on the board).')
+    lines.append('Options: /drive on (HB drives the list) · /workflow off (pause everything) · /board (this list again)')
+    return '\n'.join(lines)
 
 
 def _history(conn):

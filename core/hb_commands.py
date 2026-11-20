@@ -61,6 +61,7 @@ COMMANDS = [
     ('scorecards', '/scorecards', "Per model and task type: checked successes, corrections, turns answered and time, from HB's own records", False),
     ('examples', '/examples <words>', 'Worked examples: how a similar change was done before and which check passed', False),
     ('note', '/note <number>', 'Look up an SAP Note with your S-user (from the keyring) and keep it in the Knowledge Centre', False),
+    ('board', '/board', "HB's list of open tasks in one post, each with the command that moves it (works from Telegram too)", False),
     ('channels', '/channels [trust <telegram:id|discord:id|email:address> [owner] | untrust <key>]', 'Telegram / email / Discord: who can talk to HB from their phone, and whether each channel is up', False),
     ('email', '/email [check | trust <address> | untrust <address>]', "Email intake: what you send to HB's mailbox (spreadsheets too) is saved in the Knowledge Centre", False),
     ('notes', '/notes [run KC<id>]', 'SAP notes jobs: the notes a spreadsheet\'s "needs check" tab lists, fetched into the Knowledge Centre', False),
@@ -861,6 +862,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'note':
         from core import hb_sap_notes
         return hb_sap_notes.command(conn, args[0])
+    if command == 'board':   # Practice 194: the list as one post - commands in it are buttons in main chat and replies on Telegram
+        from core import hb_live
+        return hb_live.board_text(hb_live.snapshot(conn))
     if command == 'channels':   # Practice 193
         from core import hb_channels
         return hb_channels.command(conn, args, actor)
