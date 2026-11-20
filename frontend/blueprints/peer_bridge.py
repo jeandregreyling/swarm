@@ -585,6 +585,18 @@ def hb_activity(current_user=None):
                        live=bool(live.get('running')),lines=live.get('lines') or [],last=live.get('last'))
 
 
+@peer_bridge_bp.route('/api/peer/v1/hb/turn-steps',methods=['GET'])
+@require_owner
+def hb_turn_steps_view(current_user=None):
+    """Practice 181: the saved steps of APEX replies, for "How APEX got here" under each answer. ?ids=1,2,3"""
+    from contextlib import closing
+    from core import hb_turn_steps
+    ids=[i for i in str(request.args.get('ids','')).split(',') if i.strip().isdigit()][:200]
+    with closing(get_connection()) as conn:
+        steps=hb_turn_steps.for_messages(conn,ids)
+    return jsonify(ok=True,steps={str(k):v for k,v in steps.items()})
+
+
 @peer_bridge_bp.route('/api/peer/v1/hb/queue',methods=['GET','POST'])
 @require_owner
 def hb_queue_status(current_user=None):

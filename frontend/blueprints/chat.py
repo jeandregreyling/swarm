@@ -3573,9 +3573,13 @@ def api_chat():
                 return budget_receipts(current, receipts, archive_history=operator is not None,
                                        telemetry=context_telemetry.append, pointer=history_pointer)
 
+            turn_steps, turn_started = [], time.monotonic()   # Practice 181: kept with the reply
+
             def model_progress(event):
                 # Practice 176: APEX's own step lines go to the thinking bubble as they are
                 stage = str(event.get('text') or '') or (str(event.get('stage') or 'running').replace('_', ' ') + ': ' + selected_model)
+                if event.get('text'):
+                    turn_steps.append({'t': round(time.monotonic() - turn_started, 1), 'text': stage[:200]})
                 _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=selected_model, stage=stage)
 
             queued_turn = []
@@ -3682,6 +3686,14 @@ def api_chat():
                 elapsed_ms = int((time.monotonic() - started) * 1000)
                 log_message(conv_id, APEX_AGENT['name'], response_text, to_agent='user',
                             message_type='response', tokens_used=tokens_used)
+                try:                                        # Practice 181: the steps stay with the reply
+                    from core import hb_turn_steps
+                    with __import__('contextlib').closing(get_connection()) as steps_conn, steps_conn:
+                        reply_id = steps_conn.execute("SELECT MAX(id) FROM messages WHERE conversation_id=? AND from_agent=?",
+                                                      (conv_id, APEX_AGENT['name'])).fetchone()[0]
+                        hb_turn_steps.save(steps_conn, conv_id, reply_id, turn_steps)
+                except Exception:
+                    pass
                 if operator:
                     _share_apex_exchange(conv_id, operator_message_id, message, response_text,
                                          tool_receipts, peer_targets)
