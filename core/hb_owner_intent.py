@@ -70,6 +70,39 @@ def status_text(conn, conversation_id=None):
                    details=['from HB\'s own records; /tasks, /queue and the board above the chat show the same'])
 
 
+_CLEAR_EXISTING = re.compile(
+    r"(?:(?:^|[.!?\n]\s*)(?:please\s+|you (?:need|have) to\s+|(?:can|could|would) you\s+(?:please\s+)?)?"
+    r"|(?<!\w)@(?:apex|hb|hummingbird)[,:]?\s+you (?:need|have) to\s+)"
+    r"clear (?:(?:the|your|all|open|remaining)\s+)*(?:task list|tasks|backlog)"
+    r"(?=\s*(?:$|[.!?,;]|\b(?:and|then|so)\b))", re.I)
+
+
+def clear_task_list_request(text):
+    """A direct go-ahead to finish existing work; questions about clearing a backlog are research."""
+    body = _FILLER.sub('', str(text or '')).strip()
+    return len(body.split()) <= 80 and not _CONCRETE.search(body) and bool(_CLEAR_EXISTING.search(body))
+
+
+
+_OPERATING_DIRECTIVE = re.compile(
+    r"(?:^|[.!?\n,:;]\s*)(?:please\s+|you (?:need|have) to\s+|i (?:want|need) you to\s+|"
+    r"(?:can|could|would) you\s+(?:please\s+)?)?"
+    r"(?:be (?:(?:super|very|more|really)\s+)*(?:nice|polite|respectful|patient)\b|behave\b|"
+    r"(?:listen to|learn from) (?:(?:the|your|those|larger|learning|teaching|online|local|worked)\s+)*"
+    r"(?:models?|teachers?|instructors?|examples?|codex|claude|copilot|gemini)\b)", re.I)
+
+
+def operating_feedback(text):
+    """Direct guidance about APEX's conduct, without a concrete implementation or research request.
+
+    Keep this conservative: embedded questions/conditionals and mixed work requests
+    retain their normal routing. The word 'learning' alone is never a research request.
+    """
+    body = _FILLER.sub('', str(text or '')).strip()
+    return bool(body and len(body.split()) <= 80 and not _CONCRETE.search(body)
+                and not _ACTION.search(body) and _OPERATING_DIRECTIVE.search(body))
+
+
 def classify(text):
     """'drive', 'remark', 'agents' (onboard @X: HB answers) or None (a real request: a new task)."""
     body = _FILLER.sub('', str(text or '')).strip()
@@ -82,8 +115,10 @@ def classify(text):
         return 'sap_notes'                               # 16 Nov: HB queues the SAP notes job itself, no model, no archive tool
     if _CONCRETE.search(body) or words > 80:
         return None
-    if _DRIVE_WHOLE.match(body) or _DRIVE.search(body):
+    if _DRIVE_WHOLE.match(body) or _DRIVE.search(body) or clear_task_list_request(body):
         return 'drive'
+    if operating_feedback(body):
+        return 'remark'
     if _SELF.search(body) or _FEELING.search(body):
         return 'remark'
     if _GO.search(body) and not _ACTION.search(body):

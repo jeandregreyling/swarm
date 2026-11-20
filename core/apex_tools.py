@@ -1059,6 +1059,10 @@ def research_question(text) -> bool:
     t = str(text or '')
     if t.lstrip().startswith('{'):
         return False
+    # Owner go-aheads drive the existing backlog even when they mention learning along the way.
+    from core.hb_owner_intent import clear_task_list_request, operating_feedback
+    if clear_task_list_request(t) or operating_feedback(t):
+        return False
     # Practice 162 (owner 18 Nov 2026, question suite): "What is wage type /XQE and when does payroll create it?" was taken for a change
     # request because of "create". Only an instruction - the verb starting a sentence, or "can/could/would you ..." - is a change request.
     if re.search(r"(?:^|[.!?\n]\s*)(?:please\s+|(?:can|could|would) you\s+(?:please\s+)?)?"

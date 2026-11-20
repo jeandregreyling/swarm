@@ -48,6 +48,10 @@ def safe_arguments(args):
 def skills_for_text(text):
     text = str(text or '').lower()
     found = {skill for skill, rx in SKILL_WORDS.items() if re.search(rx, text)}
+    if 'research' in found:
+        from core.hb_owner_intent import operating_feedback
+        if operating_feedback(text):
+            found.discard('research')
     return found or {'wrapper'}
 
 
