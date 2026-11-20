@@ -385,6 +385,30 @@ def packet(conn, task, limit=10000):
                              'preview': original[:160],
                              'read': {'tool': 'task_evidence', 'arguments': {'evidence_id': evidence[0], 'offset': 0}} if evidence
                              else {'message_id': item['message_id']}}
+    # Practice 207 (21 Nov 2026, "Pinned task instructions exceed the context budget" stopped APEX's whole inbox): the packet always fits.
+    # (1) a huge objective (a pasted email) becomes an extract plus a reference; (2) beyond the newest 12 instructions, older ones are
+    # listed by message id only; (3) a huge current instruction becomes an extract plus a reference.
+    def _ref(text, message_id, keep):
+        return {'bytes': len(text.encode()), 'sha256': hashlib.sha256(text.encode()).hexdigest(), 'kept_chars': keep,
+                'read': {'message_id': message_id}}
+    if len(json.dumps(result)) > limit and len(result.get('objective') or '') > 1500:
+        text = result['objective']
+        result['objective'] = text[:1200]
+        result['objective_reference'] = _ref(text, task.get('root_message_id'), 1200)
+    if len(json.dumps(result)) > limit and len(instructions) > 12:
+        older = instructions[:-12]
+        result['instructions'] = instructions = instructions[-12:]
+        result['older_instructions'] = {'count': len(older), 'message_ids': [i['message_id'] for i in older][-60:],
+                                        'note': 'Older instructions in this task; read one by message id if it matters.'}
+    if len(json.dumps(result)) > limit and instructions and len(str(instructions[-1].get('content') or '')) > 3000:
+        text = instructions[-1]['content']
+        instructions[-1]['content'] = text[:3000]
+        instructions[-1]['reference'] = _ref(text, instructions[-1]['message_id'], 3000)
+    while len(json.dumps(result)) > limit and len(instructions) > 1:
+        dropped = instructions.pop(0)
+        older = result.setdefault('older_instructions', {'count': 0, 'message_ids': [], 'note': 'Older instructions in this task; read one by message id if it matters.'})
+        older['count'] += 1
+        older['message_ids'] = ([dropped['message_id']] + older['message_ids'])[-60:]
     if len(json.dumps(result)) > limit:
         raise ValueError('Pinned task instructions exceed the context budget; narrow the task explicitly')
     return result
