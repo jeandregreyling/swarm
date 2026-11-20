@@ -135,6 +135,13 @@ def card(conn, task):
     past = related(conn, task)
     lines.append('Related past work: ' + ('; '.join(f"{p['task_id']} \"{p['title']}\" ({p['state']}, KC document {p['document_id']})"
                                                     for p in past) if past else 'none found'))
+    try:   # Practice 216 (JD 21 Nov: "HB breaking it down into more manageable chunks for apex"): one chunk at a time
+        from core.hb_chunks import focus
+        chunk = focus(conn, task)
+        if chunk:
+            lines.insert(1, chunk)
+    except Exception:
+        pass
     try:   # Practice 210: JD's everyday words -> HB's parts and files
         from core.hb_learning import glossary_for
         latest = conn.execute("SELECT m.content FROM hb_task_messages tm JOIN messages m ON m.id=tm.message_id WHERE tm.task_id=? "

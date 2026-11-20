@@ -28,7 +28,7 @@ import urllib.request
 
 SAFE_COMMANDS = {'help', 'status', 'tasks', 'stuck', 'approvals', 'queue', 'pause', 'continue', 'cancel', 'done', 'clipboard', 'clip',
                  'workflow', 'plan', 'accept', 'reject', 'today', 'drive', 'yes', 'no', 'examples', 'merits', 'downloads', 'scorecards',
-                 'consult', 'choose', 'pick', 'note', 'notes', 'email', 'channels', 'board', 'train'}
+                 'consult', 'choose', 'pick', 'note', 'notes', 'email', 'channels', 'board', 'train', 'chunks'}
 USER_COMMANDS = {'help', 'about', 'mine', 'start'}   # Practice 212: guest commands (core/hb_guest.py)
 WELCOME_IN_TESTS = False   # Practice 212: no real Telegram welcome from a test
 HB_OWN = ('sevenpotato9@', 'ninepotato7@')           # HB's own mailboxes: never a request (no loops)
