@@ -41,7 +41,11 @@ def grade(ex, answer):
 
 
 def lessons_learned(conn):
-    ensure(conn)
+    # Cards/inbox may already hold the writer on another connection. Reading an
+    # optional lesson must not attempt DDL and deadlock that enclosing request.
+    # Training run/report initialise their schema through ensure().
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='hb_training_lessons'").fetchone():
+        return []
     return [r[0] for r in conn.execute('SELECT lesson FROM hb_training_lessons ORDER BY learned_at')]
 
 
