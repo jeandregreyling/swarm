@@ -1612,9 +1612,10 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt, *a
     question = next((str(m.get('content') or '') for m in reversed(messages or []) if m.get('role') == 'user'
                      and not str(m.get('content') or '').startswith(('BACKEND', 'HB note', 'HB task reference'))), '')
     try:
-        actor, lane, device, real = live.who('apex')
+        from core.apex_routing import active_model      # Practice 191: Fred's turns show as Fred on the CPU lane
+        actor, lane, device, real = live.who(active_model())
     except Exception:
-        lane, device, real = 'gpu', None, None
+        actor, lane, device, real = 'apex', 'gpu', None, None
     task = step_id = None
     try:
         from core.agent_identity import CURRENT
@@ -1622,7 +1623,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt, *a
         task, step_id = actor_ctx.get('task_id'), actor_ctx.get('step_id')
     except Exception:
         pass
-    with live.run('apex', lane or 'gpu', 'APEX: ' + (' '.join(question.split())[:110] or 'turn'), model=real, device=device,
+    who_name = 'Fred' if actor == 'fred' else 'APEX'
+    with live.run(actor if actor in ('apex', 'fred') else 'apex', lane or 'gpu', who_name + ': ' + (' '.join(question.split())[:110] or 'turn'), model=real, device=device,
                   task_id=task, step_id=step_id, purpose='workflow step' if task else 'main-chat turn') as r:
         result = _run_apex_tools(call_model, messages, authorize, emit_receipt, *args, **kwargs)
         try:

@@ -71,6 +71,36 @@ def _plain_name(conn,task):
     return step_name(conn,task['step_id'],task.get('title')) if task.get('step_id') else name(task.get('title'))
 
 
+EMAIL_GAP_S = 6 * 3600    # Practice 191: at most one email per task per 6 hours
+
+
+def email_owner(conn, task, text, send=None, now=None):
+    """Practice 191 (owner 20 Nov 2026: "the system should run autonomously for the most part unless something is really stuck, send me an
+    email, you know I'm not going to be watching over you all as a hawk"): when HB stops and asks JD, the question also goes to his email
+    (utils.config.nine_email, the owner address in config), in the background, at most once per task per EMAIL_GAP_S. Never under pytest
+    unless a test passes `send`. Returns True when an email was started."""
+    import os
+    import threading
+    now = now or time.time()
+    if send is None and os.environ.get('PYTEST_CURRENT_TEST'):
+        return False
+    last = conn.execute("SELECT MAX(created_at) FROM hb_task_events WHERE task_id=? AND kind='owner_emailed'", (task['task_id'],)).fetchone()
+    if last and last[0] and now - last[0] < EMAIL_GAP_S:
+        return False
+    hb_tasks.event(conn, task, 'hummingbird', 'owner_emailed', {'at': now})
+    subject = 'HB needs you: ' + ' '.join(str(task.get('title') or task['task_id']).split())[:90]
+    body = (str(text) + '\n\nOpen HB main chat to answer - the question is pinned under Needs you.\n'
+            '(HB sends at most one email per task every 6 hours.)')
+
+    def go():
+        try:
+            (send or __import__('utils.config', fromlist=['nine_email']).nine_email)(subject, body)
+        except Exception:
+            pass
+    threading.Thread(target=go, name='hb-email-owner', daemon=True).start()
+    return True
+
+
 def ask_owner(conn,task,what,options,kind='halt'):
     """HB halts and asks the owner in the task's own chat (posted once per halt by the callers).
     kind 'plan' marks a workflow plan waiting for approval (shown as "Plan" in the Needs-you bar)."""
@@ -83,6 +113,11 @@ def ask_owner(conn,task,what,options,kind='halt'):
     except Exception:
         mid=None                                   # minimal test schemas have no messages table
     hb_tasks.event(conn,task,'hummingbird','owner_question',{'text':text,'message_id':mid,'kind':kind})
+    if kind!='plan':
+        try:
+            email_owner(conn,task,text)       # Practice 191: stuck work reaches JD by email
+        except Exception:
+            pass
     return mid
 
 
