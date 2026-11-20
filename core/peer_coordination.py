@@ -256,6 +256,12 @@ def start():
                             conn.commit()
                         except Exception:
                             LOG.exception('Ghost reserve check failed')
+                        try:  # Practice 209: HB says in main chat when anyone starts or stops work
+                            from core.hb_announce import tick as announce_tick
+                            announce_tick(conn)
+                            conn.commit()
+                        except Exception:
+                            LOG.exception('Work announcements failed')
                         try:  # Practice 193: Telegram / email / Discord talk to HB from the phone (core/hb_channels.py)
                             from core.hb_channels import tick as channels_tick
                             channels_tick(conn)

@@ -275,7 +275,7 @@
     st.id = 'hb-live-style';
     st.textContent = `
 .hbl-clip-open{display:block;margin:4px 0;padding:4px 10px;background:none;border:1px solid #2ecc71;border-radius:4px;color:inherit;font:inherit;cursor:pointer}
-#hb-live-pane{flex:0 0 auto;max-height:65vh;min-height:34px;overflow:auto;resize:vertical;padding:4px 10px 6px;border-bottom:2px solid var(--border,#333);
+#hb-live-pane{flex:0 0 auto;max-height:60vh;min-height:34px;overflow:auto;padding:4px 10px 6px;border-bottom:2px solid var(--border,#333);
   background:var(--card,#161616);color:var(--text,#ddd);font-size:12.5px}
 .hbl-meter{position:sticky;top:-4px;z-index:2;margin:-4px -10px 4px;padding:5px 10px;background:var(--bg,#111);border-bottom:1px solid var(--border,#333);font-size:12.5px}
 .hbl-meter-busy{border-bottom:2px solid #2ecc71}.hbl-meter-down{color:#ff5252}
@@ -330,11 +330,10 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     el = document.createElement('section');
     el.id = 'hb-live-pane';
     el.setAttribute('aria-label', 'HB Live: who is working, and the list of open tasks');
-    const h = Number(ls('hbLive.paneHeight'));
-    if (h > 40) el.style.height = h + 'px';
+    // Practice 209 (JD 21 Nov: "I hate that the ribbon needs me to manually grip and drag to open, it should be dynamic"): the pane sizes
+    // itself to what is in it (up to 60% of the screen, then it scrolls); a height dragged earlier is forgotten.
+    ls('hbLive.paneHeight', '');
     if (bar && bar.parentNode === main) bar.insertAdjacentElement('afterend', el); else main.prepend(el);
-    if (window.ResizeObserver) new ResizeObserver(() => { if (el.offsetHeight > 40 && el.style.height) ls('hbLive.paneHeight', String(el.offsetHeight)); }).observe(el);
-    el.addEventListener('mouseup', () => { if (el.style.height) ls('hbLive.paneHeight', String(el.offsetHeight)); });
     return el;
   }
 
@@ -534,6 +533,13 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (t.closest('[data-later]')) { settle(S.popup); return; }
     const more = t.closest('[data-more]');
     if (more) { const b = document.querySelector(`[data-more-box="${CSS.escape(more.dataset.more)}"]`); if (b) b.hidden = !b.hidden; return; }
+    // Practice 209: the Tasks chip in the top bar opens the clipboard (unfolds the pane and scrolls to the list)
+    if (t.closest('[data-win="master"]')) {
+      ls('hbLive.collapsed', '0'); render();
+      const list = document.querySelector('#hb-live-pane .hbl-board');
+      if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     const fold = t.closest('[data-fold]');
     if (fold) { S.open[fold.dataset.fold] = !S.open[fold.dataset.fold]; render(); return; }
     if (t.closest('[data-pane-fold]')) { ls('hbLive.collapsed', ls('hbLive.collapsed') === '1' ? '0' : '1'); render(); return; }

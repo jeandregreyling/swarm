@@ -82,5 +82,5 @@ def test_commands_in_chat_become_buttons_and_page_keeps_one_fetch():
         " process.stdout.write(JSON.stringify(t.match(CMD).map(s => s.trim())));"
     found = _node(code)
     assert found == ['/continue T-ABCDEF123456', '/accept S-ABCDEF0123', '/workflow off']
-    assert js.count("fetch('/api/peer/v1/hb/live'") == 1 and 'resize:vertical' in js and "id = 'hb-live-pop'" in js
+    assert js.count("fetch('/api/peer/v1/hb/live'") == 1 and 'resize:vertical' not in js and "id = 'hb-live-pop'" in js
     assert "text.startsWith('{\"task_type\"')" in js
