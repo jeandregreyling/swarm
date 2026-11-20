@@ -91,6 +91,15 @@ def grant(conn, task):
     try:
         row = conn.execute('SELECT actor, decided_at, project_id FROM hb_plan_workflow WHERE enabled=1 AND task_id=?',
                            (task['task_id'],)).fetchone()
+        if not row and _has(conn, 'hb_task_events'):
+            # Moving Fred off the GPU slot keeps this enabled workflow's grant until its CPU lane closes.
+            row = conn.execute("SELECT w.actor, w.decided_at, w.project_id FROM hb_plan_workflow w "
+                               "JOIN hb_task_events e ON json_extract(e.payload,'$.project_id')=w.project_id "
+                               "WHERE w.enabled=1 AND e.task_id=? AND e.kind='workflow_lane' "
+                               "AND json_extract(e.payload,'$.lane')='cpu' AND NOT EXISTS "
+                               "(SELECT 1 FROM hb_task_events c WHERE c.task_id=e.task_id "
+                               "AND c.kind='workflow_lane_closed' AND c.event_id>e.event_id) "
+                               "ORDER BY e.event_id DESC LIMIT 1", (task['task_id'],)).fetchone()
     except sqlite3.OperationalError:
         return None
     return {'actor': row[0] or 'owner', 'since': row[1], 'project_id': row[2]} if row else None
@@ -226,6 +235,41 @@ def park(conn, w, task, why, now):
     _update(conn, w['project_id'], task_id=None, step_id=None, stage='idle', request_id=None, note=f"Parked {task['step_id']}: {why[:100]}")
 
 
+def give_task(conn, step_id, conversation_id=None):
+    """Practice 211 (JD 21 Nov: "why are we stalling?"): an APEX step with no HB task gets one, so the workflow can start it. Until now only
+    steps someone bound by hand ever ran; the rest sat as 'no HB task in main chat' while APEX was idle."""
+    row = conn.execute('SELECT title, description, project_id FROM project_steps WHERE step_id=?', (step_id,)).fetchone()
+    if not row:
+        return None
+    title, desc, project_id = row
+    conversation_id = conversation_id or 2845
+    mid = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','apex',?,'response',0)",
+                       (conversation_id, f"📋 HB gives APEX the next plan step: {title} ({step_id})")).lastrowid
+    task = hb_tasks.bind(conn, conversation_id, mid, objective=f"Studio step {step_id} ({project_id}): {title}\n{desc or ''}", title=title,
+                         project_id=project_id, step_id=step_id)
+    hb_tasks.event(conn, task, 'hummingbird', 'workflow_gave_task', {'step_id': step_id})
+    return task
+
+
+def _give_next_task(conn, w):
+    """Practice 211: when no step is ready, give the next untasked APEX step (preferred first, then clipboard order) its task."""
+    all_steps = steps(conn, w['project_id'])
+    if any(not s['skip'] for s in all_steps) and not w.get('preferred_step'):
+        return None
+    untasked = [s for s in all_steps if s['skip'] == 'no HB task in main chat']
+    if not untasked:
+        return None
+    try:
+        from core.hb_clipboard import ordered
+        untasked = ordered(conn, untasked)
+    except Exception:
+        pass
+    pick = next((s for s in untasked if s['step_id'] == w.get('preferred_step')), None)
+    if pick is None and any(not s['skip'] for s in all_steps):
+        return None
+    return give_task(conn, (pick or untasked[0])['step_id'], w.get('conversation_id'))
+
+
 def next_ready(conn, project_id=DEFAULT_PROJECT, preferred=None):
     ready = [s for s in steps(conn, project_id) if not s['skip']]
     try:   # owner 14 Nov: HB's clipboard decides the order (pinned, then importance, then plan order)
@@ -289,10 +333,10 @@ def start(conn, w, step, now=None):
     if card and card.get('ready'):
         from core.hb_dream_method import set_done
         criteria = set_done(conn, task, [card['check']], f"HB homework ({card.get('model')} on the CPU; owner approved all automation)")
-        _run(conn, task, w, 'Homework done on the CPU: the spec card gives the check and the plan', card.get('plan') or [])
-        _update(conn, w['project_id'], stage='running')
+        with_fred = _run(conn, task, w, 'Homework done on the CPU: the spec card gives the check and the plan', card.get('plan') or [])
         from core.hb_plain import message
-        text = message(f"▶ Starting: {name_of(step['title'])}.", 'The homework is done (spec card from the CPU model), so APEX starts straight away.',
+        executor = 'Fred works on the CPU' if with_fred else 'APEX starts straight away'
+        text = message(f"▶ Starting: {name_of(step['title'])}.", f'The homework is done (spec card from the CPU model), so {executor}.',
                        details=[f"step {step['step_id']}", f"task {task['task_id']}", f"check: {card['check']}"])
         hb_tasks.event(conn, task, 'hummingbird', 'workflow_started', {'project_id': w['project_id'], 'step_id': step['step_id'],
                                                                        'actor': w.get('actor'), 'homework': True})
@@ -303,8 +347,10 @@ def start(conn, w, step, now=None):
         conn.execute("UPDATE hb_task_manager SET enabled=1, phase='execute', state='queued', next_due=?, detail=?, updated_at=? "
                      "WHERE task_id=?", (now, 'Workflow started it; done criteria already set', now, task['task_id']))
         _update(conn, w['project_id'], stage='running')
+        with_fred = _dispatch_doer(conn, w, task, now)
         from core.hb_plain import message, name
-        text = message(f"▶ Starting: {name(step['title'])}.", "APEX works on it now. HB only asks you if it gets stuck.",
+        executor = 'Fred works on it on the CPU' if with_fred else 'APEX works on it now'
+        text = message(f"▶ Starting: {name(step['title'])}.", f"{executor}. HB only asks you if it gets stuck.",
                        details=[f"step {step['step_id']}", f"task {task['task_id']}", f"done criteria from: {source}"])
     else:
         _queue_plan(conn, w, task, now)
@@ -519,6 +565,25 @@ def _to_cpu_lane(conn, w, task, now):
     _update(conn, w['project_id'], task_id=None, step_id=None, stage='idle', request_id=None, note=f"{task['step_id']} with Fred (CPU lane)")
 
 
+def _dispatch_doer(conn, w, task, now):
+    """Once execution is authorised, use the clipboard's Fred choice without occupying APEX's lane."""
+    if not w or not w.get('enabled'):
+        return False
+    from core import hb_clipboard, hb_task_manager as tm
+    doer = hb_clipboard.facts(conn, {'step_id': task['step_id'], 'task_id': task['task_id']})['doer']
+    if doer == 'apex':
+        return False
+    result = tm.local_help(conn, task, selected=True) if doer == 'fred' else 'this doer is not wired into workflow execution yet'
+    if doer == 'fred' and result in ('submitted', 'queued', 'running'):
+        hb_tasks.event(conn, task, 'hummingbird', 'workflow_doer', {'requested': doer, 'actual': 'fred', 'result': result})
+        _to_cpu_lane(conn, w, task, now)
+        return True
+    reason = 'no current Fred turn (' + result + ')' if doer == 'fred' else result
+    hb_tasks.event(conn, task, 'hummingbird', 'workflow_doer', {'requested': doer, 'actual': 'apex', 'reason': reason})
+    _post(conn, task, f"Clipboard doer {doer} could not start: {reason}. APEX continues this step locally.")
+    return False
+
+
 def _close_lanes(conn):
     """A CPU-lane step that is done gets its restart queued, like the plan's own step."""
     if not _has(conn, 'hb_task_events'):
@@ -597,6 +662,10 @@ def tick(conn, now=None):
             w.update(task_id=None, stage='idle')
         if w['stage'] == 'finished' and now - (w['updated_at'] or 0) < FINISHED_RECHECK_S:
             continue
+        try:   # Practice 211: nothing ready because the next APEX step has no task yet - give it one
+            _give_next_task(conn, w)
+        except Exception:
+            pass
         step = next_ready(conn, w['project_id'], w.get('preferred_step'))
         if step:
             posted.append(start(conn, w, step, now))
@@ -673,6 +742,9 @@ def command(conn, conversation_id, args, actor, project_id=DEFAULT_PROJECT):
         found = [s for s in steps(conn, project_id) if s['step_id'] == step_id]
         if not found:
             return f'{step_id} is not an open step of {project_id}.'
+        if found[0]['skip'] == 'no HB task in main chat':   # Practice 211: 'Start now' gives the step its task
+            give_task(conn, step_id, conversation_id)
+            found = [s for s in steps(conn, project_id) if s['step_id'] == step_id]
         if found[0]['skip']:
             return f"{step_id} cannot start: {found[0]['skip']}."
         ensure_schema(conn)
@@ -738,6 +810,7 @@ def _run(conn, task, w, detail, plan):
                  "updated_at=? WHERE task_id=?", (plan_event, now, detail, now, task['task_id']))
     if w:
         _update(conn, w['project_id'], stage='running')
+    return _dispatch_doer(conn, w, task, now)
 
 
 def after_done(conn, task):
