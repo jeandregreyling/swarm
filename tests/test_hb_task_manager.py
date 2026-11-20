@@ -297,9 +297,18 @@ def test_workflow_auto_approve_accepts_a_step_whose_checks_pass(flow):
     assert not conn.execute("SELECT 1 FROM hb_task_events WHERE kind='owner_question'").fetchone()
 
 
+
+def _planned(conn,task):
+    """Backlog sweep 20 Nov: the task carries a planned Studio step with a spec - Fred only takes over those (owner 15 Nov)."""
+    conn.execute("CREATE TABLE IF NOT EXISTS project_steps(step_id TEXT PRIMARY KEY, project_id TEXT, title TEXT, description TEXT, status TEXT, owner TEXT, order_idx REAL, created_at REAL, updated_at REAL, residual_risk TEXT)")
+    conn.execute("INSERT OR IGNORE INTO project_steps VALUES('S-FED0000001','P-2AB8250A87','Practice F','Change x.\\nDone when: python -m pytest tests/test_x.py passes','todo','apex',1,0,0,NULL)")
+    conn.execute("UPDATE hb_tasks SET step_id='S-FED0000001',project_id='P-2AB8250A87' WHERE task_id=?",(task['task_id'],))
+    return hb_tasks.get(conn,task['task_id'])
+
+
 def test_going_round_in_circles_hands_the_step_to_fred_before_jd(flow,monkeypatch):
     """Owner 14 Nov: DOES rename 5 failed the same patch 3 times and HB asked JD without trying Fred."""
-    conn,p=flow;rid=owner(conn,'apex');task=hb_tasks.for_request(conn,rid)
+    conn,p=flow;rid=owner(conn,'apex');task=_planned(conn,hb_tasks.for_request(conn,rid))
     manager.register(conn,task,request_id=rid)
     conn.execute("UPDATE hb_peer_work SET state='failed'")
     for _ in range(manager.MAX_REPEATED_FAILURES):
@@ -314,7 +323,7 @@ def test_going_round_in_circles_hands_the_step_to_fred_before_jd(flow,monkeypatc
 
 def test_a_crashed_fred_turn_gets_one_retry(flow,monkeypatch):
     """14 Nov: Fred's first working turn crashed (APEX's prompt did not fit his context); that is not Fred's try."""
-    conn,p=flow;rid=owner(conn,'apex');task=hb_tasks.for_request(conn,rid)
+    conn,p=flow;rid=owner(conn,'apex');task=_planned(conn,hb_tasks.for_request(conn,rid))
     manager.register(conn,task,request_id=rid)
     assert manager.local_help(conn,task)=='submitted'
     first=conn.execute("SELECT request_id FROM hb_task_events WHERE kind='fred_turn'").fetchone()[0]

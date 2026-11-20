@@ -62,7 +62,7 @@ function context(user, {authStatus = 200, failAuth = false, invalidJson = false}
         if (failAuth) throw new Error('Network unavailable');
         return {ok: authStatus === 200, status: authStatus, json: async () => {
           if (invalidJson) throw new Error('Invalid JSON');
-          return {user};
+          return {ok: true, user};   // as /api/auth/me (login_bp)
         }};
       }
       if (url === '/api/interests/seed') return {ok: true, json: async () => ({ok: true, count: 2})};

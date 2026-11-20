@@ -17,7 +17,14 @@ _os.environ.setdefault('SWARM_WORKER_AGENT', 'fred')
 _os.environ.setdefault('SWARM_WORKER_MODEL', 'mistral-small:24b')
 
 import os
+import sys
 import tempfile
+
+# Backlog sweep 20 Nov: frontend/terminal.py puts frontend/ on sys.path so 'services' imports; tests that import chat.py alone
+# failed with "No module named 'services'" unless another test had imported terminal.py first.
+_FRONTEND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend')
+if _FRONTEND not in sys.path:
+    sys.path.append(_FRONTEND)
 
 def pytest_ignore_collect(collection_path, config):
     """Keep the standalone triage smoke script from mutating pytest's process."""

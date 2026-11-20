@@ -95,6 +95,9 @@ def test_cpu_backup_transport_uses_its_finite_caller_budget(monkeypatch):
         return Response()
 
     monkeypatch.setattr(gateway.requests, 'post', post)
+    # Backlog sweep 20 Nov: Fred is a registered direct llama-server model now; this test is about the HTTP backup transport itself
+    monkeypatch.setattr(gateway, '_is_registered_direct_model', lambda model: False)
+    monkeypatch.setattr(gateway, '_seven_runtime_enabled', lambda: False)
     result = gateway.chat('fred-cpu:24b', [{'role': 'user', 'content': 'ready'}],
                           idle_timeout_s=180, absolute_timeout_s=600, options={'num_gpu': 0})
     assert result.ok

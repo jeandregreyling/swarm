@@ -91,7 +91,7 @@ def test_patch_nonunique_match_fails_without_transaction(repository, text):
     repository.root.joinpath("probe.py").write_text("value = 1\nvalue = 2\n")
     store = ApprovalStore()
     with pytest.raises(ValueError, match="larger unique context"):
-        patch_proposal(store, repository, exact_old_text=text)
+        patch_proposal(store, repository, exact_old_text=text, new_text="value = 3")   # a change not already in the file
     assert store.list_for("ghost", "session-1") == []
 
 

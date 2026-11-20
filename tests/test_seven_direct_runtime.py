@@ -10,6 +10,30 @@ from core.seven_llm.driver_llamacpp import _extract_cli_answer, _messages_to_pro
 from core.seven_llm.inventory import scan_gguf
 from core.seven_llm.prompt_profiles import get_profile
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _seven_models_on_disk(monkeypatch, tmp_path):
+    """Backlog sweep 20 Nov: Seven's GGUF files left the repo (agents/seven/models no longer exists). These tests check the code,
+    not this machine's disks, so each test gets small stand-in files at the registry's paths."""
+    root = tmp_path / "agents" / "seven" / "models"
+    (root / "small").mkdir(parents=True)
+    paths = {"_SEVEN_DAILY_GGUF": root / "small" / "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+             "_SEVEN_Q8_GGUF": root / "seven-7b-q8_0.gguf", "_SEVEN_FP16_GGUF": root / "seven-7b-fp16.gguf"}
+    for name, path in paths.items():
+        path.write_bytes(b"GGUF" + bytes(64))
+        monkeypatch.setattr(registry, name, str(path))
+    monkeypatch.setattr(registry, "REGISTRY_PATH", str(tmp_path / "no-registry.yaml"))   # not this machine's registry file
+    monkeypatch.setattr(registry, "_ollama_store_entries", lambda: [])                   # nor its Ollama store
+    seven = registry._optional_defaults()
+    names = {m.name for m in seven}
+    monkeypatch.setattr(registry, "DEFAULTS", [m for m in registry.DEFAULTS if m.name not in names] + seven)
+    registry.reload()
+    yield root
+    monkeypatch.undo()
+    registry.reload()
+
 
 def test_direct_chat_reserves_tokens_for_a_final_answer():
     payload = llama_server._chat_payload('apex-direct:7b', [], temperature=0, options={})

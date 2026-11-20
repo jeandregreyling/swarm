@@ -18,7 +18,7 @@ THE MAP (every path below exists)
 - `frontend/blueprints/` HTTP routes: `chat.py`, `proposals.py`, `docs.py`. `frontend/services/` helpers: `chat_history.py` is your routing block, `chat_jobs.py` the job tracking.
 - `agents/fred/fred_agent.py` the worker engine (any worker seat agent runs through it). `agents/skills_loop.py` runs your SKILL lines.
 - `fridays/skills.py` every skill. `fridays/task_runner.py` and `fridays/scheduler.py` the scheduled tasks.
-- `utils/watchdog_deos.py` Watchdog's work cycle. `utils/config.py` your system prompt. `utils/db/` database helpers. `core/knowledge/projects.py` Studio projects and steps.
+- `utils/watchdog_does.py` Watchdog's work cycle. `utils/config.py` your system prompt. `utils/db/` database helpers. `core/knowledge/projects.py` Studio projects and steps.
 - Real guides: `docs/FRED_OPERATIONS.md`, `docs/ONE_MODEL_AND_MIND.md`. Generated indexes: `swarm_docs/SYSTEM_INDEX.md`, `swarm_docs/SYSTEM_LANDSCAPE.json`.
 - Yours: your own `sandpits/<name>/`. Your backups: `runtime/backups/fs/`.
 

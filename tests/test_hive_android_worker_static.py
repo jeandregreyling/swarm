@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -11,7 +12,7 @@ def test_hive_worker_supports_dynamic_join_deep_link():
     assert 'android:scheme="swarmhive"' in manifest
     assert 'android:host="join"' in manifest
     assert 'parseJoinIntent' in main
-    assert 'DEFAULT_LEADER = "http://100.87.66.45:5050"' in main
+    assert re.search(r'DEFAULT_LEADER = "http://[0-9.]+:5050"', main)   # the Tailscale address changes; the form does not
     assert 'node_id' in main
 
 

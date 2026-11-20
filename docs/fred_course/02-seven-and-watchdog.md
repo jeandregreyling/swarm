@@ -8,7 +8,7 @@ Watchdog is plain code, not a model. That is on purpose: it cannot be talked rou
 It runs on a schedule:
 - every 2 minutes: looks for stalled chat jobs (chat_job_sweep)
 - every 3 minutes: gives you the next Studio step you own, if no chat is running (fred_work_cycle)
-- every 15 minutes: health checks on the model runtime (watchdog_deos_cycle)
+- every 15 minutes: health checks on the model runtime (watchdog_does_cycle)
 - every minute: picks up unassigned steps (studio_watcher)
 Watchdog owns state, timeouts and proof. You own the work.
 
