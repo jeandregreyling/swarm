@@ -76,15 +76,44 @@ def telemetry(root='/sys/class/drm'):
     return {'gpu': gpu, 'cpu': cpu, 'ram': ram}
 
 
+def _real_model(model):
+    """Practice 208 (JD 21 Nov: "APEX is showing QWEN 3.8 at the top and GPT 20B in chat, they can't both be right"): the stand-in names
+    of APEX's port (gpt-oss:20b, apex-direct:20b) shown as the model that really plays APEX."""
+    try:
+        from core.hb_activity_log import who
+        return who(model)[3] or model
+    except Exception:
+        return model
+
+
+def _title(text):
+    """Practice 208: HB's own continuation notes are JSON; a card shows them as words, not as raw JSON."""
+    t = str(text or '')
+    if '{' not in t or '"task_type"' not in t:
+        return t
+    head, _, body = t.partition('{')
+    try:
+        data = json.loads('{' + body)
+    except Exception:
+        import re
+        m = re.search(r'"task_id":\s*"([^"]+)"', t)
+        return f"{head}continuing {m.group(1) if m else 'a task'}"
+    kind = str(data.get('task_type') or '').replace('hb_', '').replace('_', ' ')
+    why = str(data.get('reason') or data.get('next_task') or '')[:90]
+    return f"{head}{kind} {data.get('task_id') or ''}" + (f" - {why}" if why else '')
+
+
 def _log_items(conn, now):
     from core import hb_activity_log as live
     items = []
     for r in live.open_runs(conn, now=now):
         if r['parent']:
             continue                                 # a model call inside a turn shows in that turn's trail
+        if r.get('purpose') == 'main-chat turn' and r['at'] < STARTED:
+            continue                                 # Practice 208: a main-chat turn from before HB's last restart is gone, not running
         trail = [t for t in live.trail(conn, r['run_id']) if t['kind'] != 'start' or t['text'] != r['title']]
         items.append({'lane': _lane_for(r['actor'], r['model'], lane=r['lane']), 'source': 'log', 'run_id': r['run_id'], 'actor': r['actor'],
-                      'model': r['model'], 'device': r['device'], 'title': r['title'], 'since': r['at'], 'task_id': r['task_id'],
+                      'model': _real_model(r['model']), 'device': r['device'], 'title': _title(r['title']), 'since': r['at'], 'task_id': r['task_id'],
                       'step_id': r['step_id'], 'purpose': r['purpose'], 'last_step': trail[-1]['text'] if trail else '', 'trail': trail})
     return items
 
@@ -100,7 +129,7 @@ def _peer_items(conn):
         for m in chain['members']:
             lane = _lane_for(m.get('role'), m.get('model'))
             items.append({'lane': lane, 'source': 'peer', 'run_id': f"P-{m['request_id']}" if m.get('request_id') else None,
-                          'actor': m.get('role'), 'model': m.get('model'), 'device': m.get('where'), 'title': chain.get('task') or m.get('role'),
+                          'actor': m.get('role'), 'model': _real_model(m.get('model')), 'device': m.get('where'), 'title': _title(chain.get('task') or m.get('role')),
                           'since': None, 'task_id': chain.get('task_id'), 'step_id': None, 'purpose': 'peer request',
                           'last_step': m.get('now') or '', 'trail': [{'at': s.get('at'), 'kind': 'step', 'text': s.get('what')} for s in m.get('steps', [])]})
     return items

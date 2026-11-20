@@ -404,6 +404,16 @@ def packet(conn, task, limit=10000):
                              'preview': original[:160],
                              'read': {'tool': 'task_evidence', 'arguments': {'evidence_id': evidence[0], 'offset': 0}} if evidence
                              else {'message_id': item['message_id']}}
+    try:   # Practice 208 (JD 21 Nov: "'Chat with JD' shouldn't be a placeholder"): chat is not a task - only the last 3 lines ride along
+        from core.hb_owner_intent import is_chat_task
+        if is_chat_task(task) and len(instructions) > 3:
+            older = instructions[:-3]
+            result['instructions'] = instructions = instructions[-3:]
+            result['older_instructions'] = {'count': len(older), 'message_ids': [i['message_id'] for i in older][-60:],
+                                            'read': {'tool': 'task_context', 'arguments': {'offset': 0}},
+                                            'note': 'Earlier chat lines; main chat holds them. Read them only if they matter.'}
+    except ImportError:
+        pass
     # Preserve Practice207's large-email support, with working authenticated
     # pagination for the full objective and complete older-instruction index.
     if len(json.dumps(result)) > limit and len(result.get('objective') or '') > 1500:

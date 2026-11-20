@@ -101,7 +101,8 @@ def on_accept(conn, step_id, task_ids, title):
             _add(conn, 'success', role, model, category=cat, task_id=tid, step_id=step_id, ref=tid, note=title)
         if people:
             from core.hb_plain import name
-            who = ' and '.join(f"{r} ({m})" if m else r for r, m, _ in people)
+            from core.hb_live import _real_model   # Practice 208: the real model, not APEX's port stand-in name
+            who = ' and '.join(f"{r} ({_real_model(m)})" if m else r for r, m, _ in people)
             lines.append(f"🌺 HB gives {who} a flower: {name(title)} is done and its check passed. (+{POINTS['success']} {cat})")
     return [_post(conn, line) for line in lines]
 

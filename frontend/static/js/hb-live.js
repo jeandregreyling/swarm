@@ -173,6 +173,8 @@
     if (g === 'spec' && i.task_id) return `<button type="button" class="hbl-primary" data-fill="/done ${task} ">Say what done means</button>`;
     if (g === 'next' && i.step_id) return `<button type="button" class="hbl-primary" data-cmd="/workflow next ${step}">Start now</button>`;
     if (g === 'waiting' && i.task_id) return `<button type="button" class="hbl-primary" data-q="task" data-a="continue" data-id="${task}">Continue</button>`;
+    // Practice 208 (JD: "the clipboard which I still can't manage"): a step with no HB task yet starts with one click too
+    if ((g === 'waiting' || g === 'claude') && i.step_id && !i.task_id) return `<button type="button" class="hbl-primary" data-cmd="/workflow next ${step}">Start now</button>`;
     return '';
   }
 
@@ -180,7 +182,7 @@
     const m = snap.master || {}, items = m.items || [];
     const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status');
     const openNow = open || {};
-    let html = `<div class="hbl-list-head">HB is ${m.on === false ? '<b>paused</b>' : 'driving'}${m.auto ? ' · auto-approve on' : ''} · ` +
+    let html = `<div class="hbl-list-head">📋 <b>Clipboard</b> · HB is ${m.on === false ? '<b>paused</b>' : 'driving'}${m.auto ? ' · auto-approve on' : ''} · ` +
       `${items.filter((i) => (i.group || i.state) !== 'roadmap').length} open` +
       (controls ? ` <button type="button" class="hbl-mini" data-switch="auto" data-on="${m.on === false ? 1 : 0}">${m.on === false ? 'Let HB drive' : 'Pause all'}</button>` : '') +
       ` <button type="button" class="hbl-mini" data-cmd="/board" title="HB posts the list in chat (also from Telegram)">Post the list</button>` +
@@ -229,8 +231,15 @@
     const o = opts || {};
     return renderMeter(snap.apex_live, o.rate) + `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
       `<span class="hbl-dim">${esc(systemLine(snap))}</span></div>` +
-      (o.collapsed ? renderActive(snap, o.now).replace(/<div class="hbl-cards">[\s\S]*$/, '') :
-        renderActive(snap, o.now) + `<div class="hbl-board">${renderList(snap, o.controls, o.needsControls, o.open)}</div>`);
+      // Practice 208 (JD 21 Nov: "the clipboard ... there's nothing in there"): the list sat under the worker cards and vanished when the
+      // box was short or folded. Now: who is busy (one row) -> the clipboard -> the worker cards; folded still shows the clipboard's count.
+      (() => {
+        const active = renderActive(snap, o.now), cut = active.indexOf('<div class="hbl-cards">');
+        const chips = cut < 0 ? active : active.slice(0, cut), cards = cut < 0 ? '' : active.slice(cut);
+        const open = ((snap.master || {}).items || []).filter((i) => (i.group || i.state) !== 'roadmap').length;
+        return o.collapsed ? chips + `<button type="button" class="hbl-clip-open" data-pane-fold="1">📋 Clipboard · ${open} open - show</button>`
+          : chips + `<div class="hbl-board">${renderList(snap, o.controls, o.needsControls, o.open)}</div>` + cards;
+      })();
   }
 
   function systemLine(snap) {
@@ -265,6 +274,7 @@
     const st = document.createElement('style');
     st.id = 'hb-live-style';
     st.textContent = `
+.hbl-clip-open{display:block;margin:4px 0;padding:4px 10px;background:none;border:1px solid #2ecc71;border-radius:4px;color:inherit;font:inherit;cursor:pointer}
 #hb-live-pane{flex:0 0 auto;max-height:65vh;min-height:34px;overflow:auto;resize:vertical;padding:4px 10px 6px;border-bottom:2px solid var(--border,#333);
   background:var(--card,#161616);color:var(--text,#ddd);font-size:12.5px}
 .hbl-meter{position:sticky;top:-4px;z-index:2;margin:-4px -10px 4px;padding:5px 10px;background:var(--bg,#111);border-bottom:1px solid var(--border,#333);font-size:12.5px}
