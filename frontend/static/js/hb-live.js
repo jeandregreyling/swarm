@@ -147,7 +147,8 @@
     const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status');
     const chips = items.map((it, n) => `<button type="button" class="hbl-chip hbl-busy" data-card="${n}" title="${esc(it.title)}">` +
       `<span class="hbl-dot"></span><span class="hbl-ico">${ICON[it.lane] || '•'}</span><b>${esc(SHORT[it.lane] || it.lane)}</b>` +
-      `<span class="hbl-line">${esc(it.last_step || it.title || 'working')}</span></button>`).join('');
+      `<span class="hbl-line">${esc(it.last_step || it.title || 'working')}</span></button>` +
+      (it.task_id ? `<button type="button" class="hbl-mini" data-q="task" data-a="pause" data-id="${esc(it.task_id)}" title="Pause ${esc(it.title || 'this task')}">Pause</button>` : '')).join('');
     const alert = (snap.unexplained || []).length ? `<span class="hbl-chip hbl-error"><span class="hbl-dot"></span><b>System</b>` +
       `<span class="hbl-line">⚠ ${esc(snap.unexplained[0].evidence)}</span></span>` : '';
     const needChip = needs.length ? `<button type="button" class="hbl-chip hbl-waiting" data-needs-open="1"><span class="hbl-dot"></span>` +

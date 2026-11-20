@@ -25,7 +25,7 @@ COMMANDS = [
     ('stuck', '/stuck', 'Tasks that keep failing or looping, with the exact error', False),
     ('approvals', '/approvals', 'Everything waiting for your decision', False),
     ('queue', '/queue', 'Queued and running agent requests', False),
-    ('pause', '/pause T-xxxx', 'Hold a task (same as its Off control)', False),
+    ('pause', '/pause [T-xxxx]', 'Hold the running task, or a named task (same as its Off control)', False),
     ('continue', '/continue T-xxxx', 'Resume a task (same as its On control)', False),
     ('cancel', '/cancel T-xxxx', 'Drop a task that is no longer needed (asks first)', True),
     ('done', '/done T-xxxx what must be true; another check', 'Define what "done" means for a task (DREAM)', False),
@@ -115,6 +115,8 @@ def parse(body):
         return None
     if cmd in ('pause', 'continue', 'cancel'):
         m = TASK_RE.search(body)
+        if cmd == 'pause' and len(words) == 1:
+            return ('pause', [])
         return (cmd, [m.group(0).upper()]) if m else None
     if cmd == 'done':
         m = TASK_RE.search(body)
@@ -226,8 +228,9 @@ def suggest(body):
         return None
     cmd = close[0]
     rebuilt = ' '.join([cmd] + words[1:])
-    if parse(rebuilt):
-        return rebuilt if cmd not in ('pause', 'continue', 'cancel') else f'{cmd} {TASK_RE.search(rebuilt).group(0).upper()}'
+    parsed = parse(rebuilt)
+    if parsed:
+        return rebuilt if cmd not in ('pause', 'continue', 'cancel') else ' '.join([parsed[0]] + parsed[1])
     return cmd if parse(cmd) else None
 
 
@@ -272,7 +275,7 @@ def interpret(body, tasks, base=LLAMA, timeout=60):
     parsed = parse(cmd)
     if not parsed or parsed[0] in ('help', 'yes', 'no'):
         return None
-    if parsed[0] in ('pause', 'continue', 'cancel') and parsed[1][0] not in {t['task_id'] for t in tasks}:
+    if parsed[0] in ('pause', 'continue', 'cancel') and (not parsed[1] or parsed[1][0] not in {t['task_id'] for t in tasks}):
         return None                                        # never act on a task id the model invented
     return ' '.join([parsed[0]] + parsed[1])
 
@@ -601,6 +604,24 @@ def close_finished_reviews(conn, now=None):
          if 'hb_task_manager' in tables else 0)
 
 
+def _running_tasks(conn, conversation_id):
+    """Task identities behind this chat's current workflow, peer turns and live activity. Never select merely by recency."""
+    sources = [
+        "SELECT task_id FROM hb_plan_workflow WHERE enabled=1 AND stage IN ('planning','plan_ready','running')",
+        "SELECT r.task_id FROM hb_task_requests r JOIN hb_peer_work w ON w.request_id=r.request_id WHERE w.state='running'",
+        "SELECT s.task_id FROM hb_activity_log s WHERE s.kind='start' AND s.parent IS NULL AND s.task_id IS NOT NULL "
+        "AND s.at>=? AND NOT EXISTS (SELECT 1 FROM hb_activity_log f WHERE f.run_id=s.run_id AND f.kind IN ('finish','error'))",
+    ]
+    candidates = set()
+    for query in sources:
+        try:
+            candidates.update(r[0] for r in conn.execute(query, (time.time() - 21600,) if '?' in query else ()))
+        except sqlite3.OperationalError:
+            continue                    # older/minimal installations may not have every activity source
+    return [tid for (tid,) in conn.execute("SELECT task_id FROM hb_tasks WHERE conversation_id=? AND state='active' ORDER BY task_id",
+                                           (conversation_id,)) if tid in candidates]
+
+
 def _set_mode(conn, task_id, mode, actor):
     from core import hb_tasks
     from core.hb_chat_controls import continuation, set_continuation
@@ -775,6 +796,13 @@ def run(conn, conversation_id, command, args, actor, after=None):
         from core.hb_dream_cycle import build_report
         return build_report(conn)['text']
     if command in ('pause', 'continue'):
+        if command == 'pause' and not args:
+            running = _running_tasks(conn, conversation_id)
+            if not running:
+                return 'No task is running in this chat. /tasks shows the open tasks; /pause T-xxxx holds a named task.'
+            if len(running) > 1:
+                return 'More than one task is running. Choose one: ' + ' · '.join('/pause ' + tid for tid in running)
+            args = running
         said = _set_mode(conn, args[0], 'off' if command == 'pause' else 'on', actor + ' via /' + command)
         if command == 'pause' and after is not None:   # owner 15 Nov: pause also stops the turn that is running right now
             def stop(task_id=args[0]):
