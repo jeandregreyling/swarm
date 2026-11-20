@@ -23,6 +23,7 @@ MAX_FILE_BYTES = 1024 * 1024
 MAX_WRITE_BYTES = 256_000
 MAX_DIFF_BYTES = 4 * 1024 * 1024
 MAX_CALLS = 12
+MAX_WEB_CALLS = 4     # Practice 175: web_search calls have their own allowance on top of MAX_CALLS
 MAX_ROUNDS = 6
 MAX_READ_LINES = 100
 MAX_GREP_FILES = 2000
@@ -2074,16 +2075,28 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             return handoff(f"APEX asked for more tools after {final_reason}")
         well_formed = (set(payload) in ({"tool_calls"}, {"tool_calls", "answer"}) and not payload.get("answer")
                        and isinstance(calls, list) and bool(calls))
-        if well_formed and len(calls) + len(receipts) > MAX_CALLS:
-            # Practice 174 (overnight suite 20 Nov 2026, on ROCm): STP2, tax thresholds and retro each had a good answer that a coverage
-            # or read check sent back for more notes; APEX then asked for more reads than the turn's MAX_CALLS and the turn ended with
-            # "Invalid or excessive APEX tool calls" - no answer at all. Well-formed calls past the budget are trimmed to what is left;
-            # with nothing left the turn ends like a turn out of rounds (handoff: APEX's last real answer, else HB's research digest).
-            room = MAX_CALLS - len(receipts)
-            if room <= 0:
+        # Practice 174 (overnight suite 20 Nov 2026, on ROCm): STP2, tax thresholds and retro each had a good answer that a coverage
+        # or read check sent back for more notes; APEX then asked for more reads than the turn's MAX_CALLS and the turn ended with
+        # "Invalid or excessive APEX tool calls" - no answer at all. Well-formed calls past the budget are trimmed to what is left;
+        # with nothing left the turn ends like a turn out of rounds (handoff: APEX's last real answer, else HB's research digest).
+        # Practice 175 (suite rerun 20 Nov 2026): /001 and /002 - ten knowledge calls found nothing, HB's online check rightly asked for
+        # web_search, and the two searches did not fit the two calls left, so the turn ended with a list of unrelated notes. Knowledge
+        # calls count against MAX_CALLS, web searches against their own MAX_WEB_CALLS.
+        used_web = sum(1 for r in receipts if r.get("tool") == "web_search")
+        if well_formed:
+            room, web_room, kept = MAX_CALLS - (len(receipts) - used_web), MAX_WEB_CALLS - used_web, []
+            for call in calls:
+                web = isinstance(call, dict) and call.get("name") == "web_search"
+                if web and web_room > 0:
+                    web_room -= 1
+                    kept.append(call)
+                elif not web and room > 0:
+                    room -= 1
+                    kept.append(call)
+            if not kept:
                 return handoff(f"APEX used all {MAX_CALLS} tool calls this turn")
-            calls = payload["tool_calls"] = calls[:room]
-        if not well_formed or len(calls) + len(receipts) > MAX_CALLS:
+            calls = payload["tool_calls"] = kept
+        if not well_formed or len(calls) + len(receipts) > MAX_CALLS + MAX_WEB_CALLS:
             raise RuntimeError("Invalid or excessive APEX tool calls")
         if isinstance(calls, list) and calls and all(isinstance(call, dict) and set(call) == {"name", "arguments"}
                and isinstance(call["arguments"], dict) and repeated_read(call, receipts)
