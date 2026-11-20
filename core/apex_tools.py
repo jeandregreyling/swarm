@@ -1174,6 +1174,22 @@ _NOTHING_MORE = re.compile(r"no (?:additional|other|further|more) (?:sap )?notes
                            r"nothing (?:else )?(?:is )?(?:missing|unfinished)|are the relevant .{0,40}identified", re.I)
 
 
+# Practice 178 (suite 20 Nov 2026, /001 and /002): the delivered answer opened "Correction to my earlier answer - /001 and /002 are not
+# gross pay and net pay". JD never saw that earlier answer: HB's online check had sent the draft back. When a draft was sent back this
+# turn, a leading phrase about correcting an earlier/previous answer is removed; the rest of the sentence stays.
+_RETRY_TALK = re.compile(r"^\s*(?:\*\*)?(?:correction(?: to| of)? my (?:earlier|previous|first|last) answer|correcting my (?:earlier|previous|first|last) "
+                         r"answer|to correct my (?:earlier|previous|first|last) answer|(?:i was wrong|my (?:earlier|previous|first) answer was wrong)"
+                         r"(?: earlier| before)?)\s*(?:[-\u2013\u2014:,.]\s*)?(?:\*\*)?\s*(?:[-\u2013\u2014:,.]\s*)?", re.I)
+
+
+def drop_retry_talk(answer) -> str:
+    text = str(answer or '')
+    new = _RETRY_TALK.sub('', text, count=1)
+    if new == text:
+        return text
+    return new[:1].upper() + new[1:]
+
+
 def drop_nothing_more(answer) -> str:
     """Practice 150: sentences claiming there is nothing more, removed when HB adds the notes the answer left out."""
     out = []
@@ -2016,6 +2032,8 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         """The answer checks above first; an answer they would deliver is then checked for parroting (Practice 87)."""
         nonlocal repeat_retry_used
         delivered = _grounded(answer, can_retry, can_fix)
+        if isinstance(delivered, str) and any(m.get('rejected_answer') for m in working):
+            delivered = drop_retry_talk(delivered)        # Practice 178: JD never saw the draft that was sent back
         if delivered is None:                     # Practice 176: say which HB check sent it back, and why
             say_step(check_line(next((m.get('content') for m in reversed(working) if m.get('role') == 'user'), '')))
         if delivered is not None and can_retry and not repeat_retry_used and repeats_earlier(answer, messages):
