@@ -15,6 +15,7 @@ import ast
 import difflib
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -247,10 +248,17 @@ def commit(step_id, title='', root=ROOT):
     message = f"HB change set {step_id}: {' '.join(str(title or cs.get('why', '')).split())[:140]}\n\nFiles: {', '.join(paths)}\nApproved in Hummingbird; committed locally by HB."
     if carried:
         message += f"\nAlso carries earlier uncommitted edits in: {', '.join(carried)} (they were in the file before this change set)."
-    done = git('commit', '--only', '-m', message, '--', *paths)
+    done = git('-c', 'core.abbrev=40', '-c', 'color.ui=false', 'commit', '--no-quiet', '--only', '-m', message, '--', *paths)
     if done.returncode != 0:
         return {'state': 'git commit failed', 'note': (done.stderr or done.stdout)[-300:]}
-    sha = git('rev-parse', '--short', 'HEAD').stdout.strip()
+    # HEAD may already belong to another accepted component. Pin the object
+    # named by THIS commit's own summary, then resolve only that immutable id.
+    summaries = re.findall(r'^\[[^\]\n]*\b([0-9a-f]{40})\]\s', done.stdout, re.M)
+    resolved = git('rev-parse', '--verify', summaries[-1] + '^{commit}') if summaries else None
+    sha = resolved.stdout.strip() if resolved and resolved.returncode == 0 else ''
+    if not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', sha):
+        return {'state': 'committed without receipt',
+                'note': 'Git committed the files, but its commit identity could not be verified. Inspect Git history; no HEAD-based receipt was saved.'}
     (_dir(step_id, root) / 'commit.json').write_text(json.dumps({'commit': sha, 'at': time.strftime('%Y-%m-%d %H:%M'), 'files': paths}))
     return {'state': 'committed', 'commit': sha, 'files': paths}
 
