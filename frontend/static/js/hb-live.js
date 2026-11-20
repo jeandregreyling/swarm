@@ -416,18 +416,40 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     }
     return html + '</div>';
   }
+  // Bound headers AND JSON, including stalled transports that do not reject on abort.
+  function boundedRequest(start) {
+    const controller = new AbortController();
+    let timer;
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        const error = new Error('HB did not confirm within 15 seconds. Check current status before trying again.');
+        error.name = 'TimeoutError';
+        reject(error);
+        controller.abort();
+      }, 15000);
+    });
+    let response;
+    try { response = start(controller.signal); } catch (error) { response = Promise.reject(error); }
+    const result = Promise.resolve(response).then(async (r) => ({ ok: r.ok, data: await r.json() }));
+    return Promise.race([result, deadline]).finally(() => clearTimeout(timer));
+  }
+
   function send(body, win, url) {
     const note = win && win.querySelector('.hbl-said');
     const options = { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
-    const response = url ? fetch(url, options) : fetch('/api/peer/v1/hb/queue', options);
-    return response.then(async (r) => {
-      const d = await r.json();
+    return boundedRequest((signal) => {
+      const requestOptions = { ...options, signal };
+      return url ? fetch(url, requestOptions) : fetch('/api/peer/v1/hb/queue', requestOptions);
+    }).then(({ ok, data: d }) => {
       const said = d && (d.said || d.error || d.changed || d.response);
-      if (note) note.textContent = said || (!r.ok || !d || !d.ok ? 'HB could not do that - try again.' : '');
-      if (!r.ok || !d || d.ok !== true) return false;
+      if (note) note.textContent = said || (!ok || !d || !d.ok ? 'HB could not do that - try again.' : '');
+      if (!ok || !d || d.ok !== true) return false;
       refresh();
       return true;
-    }).catch(() => { if (note) note.textContent = 'HB did not answer - try again.'; return false; });
+    }).catch((error) => {
+      if (note) note.textContent = error.name === 'TimeoutError' ? error.message : 'HB did not answer - try again.';
+      return false;
+    });
   }
   S.controls = controlsFor;
 
@@ -518,8 +540,8 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
   function refresh() {
     if (document.hidden || S.busy || classic()) return;
     S.busy = true;
-    fetch('/api/peer/v1/hb/live', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)).then((d) => {
-      if (!d || !d.ok) return;
+    boundedRequest((signal) => fetch('/api/peer/v1/hb/live', { credentials: 'same-origin', signal })).then(({ ok, data: d }) => {
+      if (!ok || !d || !d.ok) return;
       // Practice 200: HB restarted (new code) - reload this page once, unless JD is typing
       if (S.started && d.started && d.started !== S.started) {
         const input = document.getElementById('home-chat-input');
