@@ -50,8 +50,51 @@ def record_run(conversation_id,model,category,status,started,before,tokens,recei
     return {'run_id':run_id,'memory':after,'status':status}
 
 
+def rig_status(run=None):
+    """Practice 202 (JD 20 Nov: "I want full system telemetry"; APEX: "I can own the AMD rig ... what I need: rig status"): one read-only
+    picture of the machine for APEX - GPU/CPU/RAM with temperatures, APEX's live tokens, what every worker is doing, HB's services, disk,
+    and whether JD's desktop still has its 2 GB of the GPU."""
+    import shutil
+    import subprocess as _sp
+    out = {}
+    try:
+        from core import hb_live
+        out['telemetry'] = hb_live.telemetry()
+        out['apex_live'] = hb_live.apex_live()
+        with closing(get_connection()) as conn:
+            snap = hb_live.snapshot(conn, tele=out['telemetry'])
+        out['workers'] = {l['id']: [{'actor': i.get('actor'), 'title': i.get('title'), 'last_step': i.get('last_step')} for i in l['items']]
+                          for l in snap['lanes'] if l['items']}
+        out['unexplained'] = snap.get('unexplained', [])
+    except Exception as exc:
+        out['telemetry_error'] = type(exc).__name__
+    try:
+        from core.hb_gpu_guard import GHOST_GB, vram_free_gb
+        free = vram_free_gb()
+        out['ghost_reserve'] = {'free_gb': free, 'keeps_gb': GHOST_GB, 'ok': free is None or free >= GHOST_GB}
+    except Exception:
+        pass
+    services = {}
+    for name in ('apex-server', 'hummingbird-apex-peer', 'hb-translate'):
+        try:
+            services[name] = (run or _sp.run)(['systemctl', '--user', 'is-active', name], capture_output=True, text=True, timeout=5).stdout.strip()
+        except Exception:
+            services[name] = 'unknown'
+    out['services'] = services
+    try:
+        du = shutil.disk_usage('/srv/archive')
+        out['disk'] = {'free_gb': round(du.free / 2 ** 30, 1), 'total_gb': round(du.total / 2 ** 30, 1)}
+    except Exception:
+        pass
+    return out
+
+
 def runtime_history():
     result={'memory':memory_snapshot(),'recent_runs':[],'comparisons':[]}
+    try:   # Practice 202: the whole rig, not only host RAM
+        result['rig']=rig_status()
+    except Exception as exc:
+        result['rig_error']=type(exc).__name__
     try:  # B40: "why is it hot / slow" needs the GPU and what is actually loaded, not only host RAM
         from core.hb_hardware import gpu_stats,model_processes,housekeeping_log
         result['gpu']=gpu_stats()
