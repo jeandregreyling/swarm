@@ -24,7 +24,9 @@ from core import service_accounts
 
 MAX_BODY = 4000
 MAX_BATCH = 20
-MAX_PEER_CHAIN = 4  # Actual routed handoffs per HB round, not chat/progress messages.
+INBOX_SCAN_LIMIT = 1000   # owner 15 Nov 2026: how far inbox() reads past requests that cannot run yet
+MAX_PEER_CHAIN = 1_000_000  # Practice 199 (owner 20 Nov: "unbound the rounds from 4 and let them talk until the solution is given to
+# APEX"): no four-turn decision stop; HB's stuck/loop guards and the online switches (Off: local models only) keep it safe.
 HANDOFF_DELAY_S = 0.5  # Reduced from 3.0 to 0.5 for faster APEX handshakes
 THREAD_LIMIT = 12
 THREAD_EXCERPT = 1200
@@ -293,19 +295,31 @@ def inbox(conn, principal: dict, after_id: int = 0, limit: int = MAX_BATCH, *, p
     pending_clause=(" AND delivered_at IS NULL AND NOT EXISTS "
                     "(SELECT 1 FROM hb_peer_work w WHERE w.request_id=peer_messages.id "
                     "AND w.state IN ('completed','failed','needs_review','cancelled'))") if pending_only else ""
-    # Stop at the first paced handoff so later messages are never delivered ahead of it.
-    rows = conn.execute(
-        f"""SELECT id, conversation_id, message_id, sender, recipient, body, created_at, delivered_at, not_before
+    want = max(1, min(MAX_BATCH, int(limit)))
+    query = f"""SELECT id, conversation_id, message_id, sender, recipient, body, created_at, delivered_at, not_before
             FROM peer_messages WHERE recipient IN ({marks}) AND id > ? {pending_clause}
             AND recipient IN (SELECT id FROM service_principals WHERE enabled=1)
             AND body NOT LIKE '[TEAM COPY, observe:%'
-            ORDER BY id ASC LIMIT ?""",
-        (*recipients, int(after_id), max(1, min(MAX_BATCH, int(limit)))),
-    ).fetchall()
+            ORDER BY id ASC LIMIT ?"""
+
+    def pages():
+        """Owner 15 Nov 2026 ("fix HB"): read on past requests that cannot run yet. One LIMIT taken before the readiness
+        check let 52 stale requests of paused/held/off tasks fill every batch, so ready work behind them never arrived."""
+        cursor, scanned = int(after_id), 0
+        while scanned < INBOX_SCAN_LIMIT:
+            batch = conn.execute(query, (*recipients, cursor, want)).fetchall()
+            yield from batch
+            if len(batch) < want:
+                return
+            cursor, scanned = batch[-1][0], scanned + len(batch)
+
     now = time.time()
     keys = ("id", "conversation_id", "message_id", "sender", "recipient", "body", "created_at", "delivered_at")
     ready = []
-    for row in rows:
+    for row in pages():
+        if len(ready) >= want:
+            break
+        # Stop at the first paced handoff so later messages are never delivered ahead of it.
         if row[8] is not None and row[8] > now:
             break
         from core import peer_turns
