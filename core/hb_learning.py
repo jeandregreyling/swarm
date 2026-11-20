@@ -180,6 +180,13 @@ def coding_lessons():
     return 'Coding lessons learned in earlier tasks (follow them): ' + ' '.join(f'({i}) {l}' for i, l in enumerate(pack['lessons'], 1))
 
 
+def apex_lessons():
+    """Practice 201 (JD 20 Nov: "assume the role of trainer"): the standing lessons on every APEX card (core/capability_packs/apex.lessons.v1.json)."""
+    from pathlib import Path
+    pack = json.loads((Path(__file__).resolve().parent / 'capability_packs' / 'apex.lessons.v1.json').read_text())
+    return 'Your lessons (trainer, JD\'s order - follow them): ' + ' '.join(f'({i}) {s}' for i, s in enumerate(pack['rules'], 1))
+
+
 def bugfix_method():
     """Practice 166 (owner 18 Nov 2026: "teach apex how to spot the bugs and fix them"): the method on the clipboard of a 'Bug:' task
     (core/capability_packs/bugfix.method.v1.json)."""

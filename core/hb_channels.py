@@ -181,6 +181,19 @@ def inbound(conn, channel, key, name, text, reply=None, commands=None, enqueue=N
 
 # ------------------------------------------------------------------ answers (answer-only APEX turn with the research tools)
 def answer_only(question, history=()):
+    """Practice 201: one APEX at a time - a phone answer queues on main chat's own APEX turn lock ('apex-turn') instead of taking the model
+    directly (at 22:33 three phone answers made JD's main-chat turn fail with "model busy: queue wait exceeded 1s")."""
+    from core.hb_process_lock import ProcessLock
+    turn = ProcessLock('apex-turn')
+    if not turn.acquire(1260):
+        return 'APEX is finishing a main-chat turn; your message is next - ask again in a minute.'
+    try:
+        return _answer_only(question, history)
+    finally:
+        turn.release()
+
+
+def _answer_only(question, history=()):
     """One APEX turn like a main-chat research turn, without task tools: knowledge_search/read and web search. Returns the answer."""
     import time as _t
     from core import llm

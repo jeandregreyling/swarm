@@ -144,8 +144,12 @@ def call(tool, args):
         from core.apex_alm import run_recorded_tests
         with closing(get_connection()) as conn:
             task=hb_tasks.for_request(conn,actor['peer_request_id']) if actor.get('peer_request_id') else hb_tasks.get(conn,actor['task_id'])
-        if not task:
-            raise PermissionError('Tests require a linked Studio task')
+        if not task or not task.get('step_id'):
+            # Practice 201: in main chat ("Chat with JD" has no Studio step) run_tests used to crash APEX's whole turn. It now runs the
+            # tests and says plainly that the run is not recorded against a step.
+            out=dict(run_tests(dict(args)))
+            out['note']=((out.get('note')+' ') if out.get('note') else '')+'Not recorded against a Studio step (this task has none).'
+            return out
         values=dict(args)
         if values.get('case_id') in (None,'',task['step_id']):   # APEX often passes its step id; the step's own case is meant
             values.pop('case_id',None)

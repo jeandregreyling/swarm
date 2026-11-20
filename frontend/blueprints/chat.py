@@ -3005,7 +3005,7 @@ def api_chat():
                 options['reasoning_effort'] = APEX_REASONING_EFFORT
             return llm.chat_via_gateway(
                 model, messages, temperature=0.2, idle_timeout_s=min(60, remaining), absolute_timeout_s=remaining,
-                queue_timeout_s=1,
+                queue_timeout_s=min(240, max(1, remaining // 2)),   # Practice 201: wait for the model instead of failing after 1 s
                 options=options,
                 response_format=response_format_for_turn() if apex_lane and not (fault or continuing_recovery) else None,
             )
