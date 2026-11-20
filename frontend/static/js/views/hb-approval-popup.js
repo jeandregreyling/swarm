@@ -44,8 +44,28 @@
     const el = popup();
     el.innerHTML = `${ico('flag')} <b>Needs you:</b> ${esc(WORD[top.kind] || 'Review')} - ${esc(top.label)}` +
       (fresh.length > 1 ? `<div class="hb-pop-more">and ${fresh.length - 1} more waiting</div>` : '') +
-      `<div><button type="button" class="hb-pop-show">Show</button><button type="button" class="hb-pop-later">Later</button></div>`;
-    el.querySelector('.hb-pop-show').onclick = () => { if (typeof window.hbNeedsFocusBar === 'function') window.hbNeedsFocusBar(); };
+      // Practice 204 (JD 21 Nov: "the approve gold window still doesn't let me click approve"): it only had Show and Later, and Show
+      // pointed at the old Needs-you bar that HB Live hides. Now: one-click answers, and Show opens the HB Live board.
+      `<div>${top.kind === 'accept' && top.step_id ? `<button type="button" class="hb-pop-act" data-q="accept" data-id="${esc(top.step_id)}">Approve</button>` : ''}` +
+      `${top.task_id && top.kind !== 'accept' ? `<button type="button" class="hb-pop-act" data-q="continue" data-id="${esc(top.task_id)}">Continue</button>` +
+        `<button type="button" data-q="cancel" data-id="${esc(top.task_id)}">Cancel</button>` : ''}` +
+      `<button type="button" class="hb-pop-show">Show</button><button type="button" class="hb-pop-later">Later</button></div><div class="hb-pop-more hb-pop-said"></div>`;
+    (el.querySelectorAll ? Array.from(el.querySelectorAll('button[data-q]')) : []).forEach((b) => {
+      b.onclick = () => {
+        if (b.dataset.q === 'cancel' && !window.confirm('Cancel this task?')) return;
+        b.disabled = true;
+        fetch('/api/peer/v1/hb/queue', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task: [b.dataset.q, b.dataset.id] }) }).then((r) => r.json()).then((d) => {
+          el.querySelector('.hb-pop-said').textContent = (d && (d.said || d.error)) || 'Done.';
+          S.later.add(top.key); S.sig = null; setTimeout(check, 2500);
+        }).catch(() => { b.disabled = false; el.querySelector('.hb-pop-said').textContent = 'HB did not answer - try again.'; });
+      };
+    });
+    el.querySelector('.hb-pop-show').onclick = () => {
+      const pane = document.getElementById && document.getElementById('hb-live-pane');
+      if (pane) { pane.scrollIntoView({ behavior: 'smooth', block: 'start' }); pane.style.outline = '2px solid #ffb300'; setTimeout(() => { pane.style.outline = ''; }, 2500); }
+      else if (typeof window.hbNeedsFocusBar === 'function') window.hbNeedsFocusBar();
+    };
     el.querySelector('.hb-pop-later').onclick = () => { fresh.forEach(i => S.later.add(i.key)); S.sig = null; check(); };
   }
   window.hbApprovalPopupCheck = check;
