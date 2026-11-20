@@ -137,7 +137,8 @@ def card(conn, task):
                                                     for p in past) if past else 'none found'))
     try:   # Practice 216 (JD 21 Nov: "HB breaking it down into more manageable chunks for apex"): one chunk at a time
         from core.hb_chunks import focus
-        chunk = focus(conn, task)
+        from utils.db._connection import get_connection
+        chunk = focus(conn, task, writer=get_connection)   # Practice 217: saved and committed
         if chunk:
             lines.insert(1, chunk)
     except Exception:

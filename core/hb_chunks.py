@@ -10,7 +10,7 @@ Finished chunks stay in hb_chunks (and the task's events), so APEX's card carrie
 import re
 import time
 
-DO = re.compile(r'^\s*Do:\s*(.+)$', re.M | re.I)
+DO = re.compile(r'\bDo:\s*(.+)$', re.M | re.I)   # Practice 217: prepared steps say '... change set. Do: ...' mid-line
 ITEM = re.compile(r'^\s*(?:\d+[.)]|[-*\u2022])\s+(.+)$', re.M)
 SKIP = re.compile(r'^\s*(?:Done when|HB extra tools|HB restart after|PREPARED|Owner\b|JD\b)', re.I)
 PROGRESS = ("kind IN ('mutation','studio_note','studio_task') OR (kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass')")
@@ -76,8 +76,15 @@ def advance(conn, task):
     return cur[0]
 
 
-def focus(conn, task):
-    """The line for APEX's card, or '' when the task has no chunks."""
+def focus(conn, task, writer=None):
+    """The line for APEX's card, or '' when the task has no chunks. Practice 217: with writer (a connect function) the chunks are
+    saved on their own connection and committed - the card is built inside a transaction nobody commits, so they vanished."""
+    if writer is not None:
+        from contextlib import closing
+        with closing(writer()) as w:
+            line = focus(w, task)
+            w.commit()
+        return line
     rows = ensure(conn, task)
     if not rows:
         return ''
