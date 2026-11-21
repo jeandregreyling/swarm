@@ -230,4 +230,5 @@ def test_checkpoint_prompt_contains_actual_reply_ids_and_retains_narrowed_scope(
     assert all(item['content'] for item in continued['pending_requested_work'])
 
 
+
 pytestmark = pytest.mark.usefixtures("owner_turned_continuation_on")
