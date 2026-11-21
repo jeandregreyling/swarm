@@ -403,6 +403,11 @@ def tick(conn,*,now=None,memory=None):
             _set(conn,task['task_id'],'waiting_resources','The task resource allowance is exhausted; its On control can renew it');continue
         if hb_executions.active(conn,task['task_id']):
             _set(conn,task['task_id'],'running','Verified process owns this task execution');continue
+        try:   # Practice 232: chunks move at the end of every turn, BEFORE HB decides whether APEX is stuck (a finished chunk is progress)
+            from core.hb_chunks import advance as chunks_advance
+            chunks_advance(conn,task)
+        except Exception:
+            pass
         stuck=stuck_reason(conn,task['task_id'])
         if stuck:
             # Owner 14 Nov: going round in circles is exactly when Fred should take over (with tools) before JD is asked.
