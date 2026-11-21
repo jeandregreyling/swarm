@@ -22,9 +22,10 @@ MAX_OUTPUT = 8000
 MAX_FILE_BYTES = 1024 * 1024
 MAX_WRITE_BYTES = 256_000
 MAX_DIFF_BYTES = 4 * 1024 * 1024
-MAX_CALLS = 12
+MAX_CALLS = 48   # Practice 243: 12 calls ended real work mid-task; scales with MAX_ROUNDS
 MAX_WEB_CALLS = 4     # Practice 175: web_search calls have their own allowance on top of MAX_CALLS
-MAX_ROUNDS = 6
+MAX_ROUNDS = 20   # Practice 243 (JD 21 Nov: "APEX can never run out of turn"): 6 rounds ended real work mid-task; the 900 s work turn (241) bounds it
+OUTPUT_RETRY_NOTICE = ("[HB: your last reply hit the output limit while you were still thinking, so nothing ran. Think in a few lines, then make ONE tool call for the current chunk now.]")
 MAX_READ_LINES = 100
 MAX_GREP_FILES = 2000
 GREP_SECONDS = 8.0
@@ -63,7 +64,7 @@ TOOL_SCHEMAS = {
     "get_diff": {"path": "explicit modified or untracked source file",
                  "offset": "character offset >= 0 (default 0)"},
     "studio_resume": {"offset": "saved context character offset >= 0 (default 0)"},
-    "terminal_run": {"command": "one existing HB read-only diagnostic command, e.g. free -h or df -h"},
+    "terminal_run": {"command": "one plain command; signed owner tasks can run workspace commands, otherwise HB diagnostics only"},
     "memory_search": {"query": "search your own private notes; omit for recent notes"},
     "memory_save": {"subject": "lesson title, at most 200 characters", "content": "lesson with verified outcome and receipt IDs"},
     "backlog_list": {"offset": "ALM backlog page offset, default 0", "query": "optional project or task title filter"},
@@ -84,6 +85,9 @@ TOOL_SCHEMAS = {
                       "acceptance_checks": "1-5 verifiable checks, each at most 300 characters"},
     "studio_evidence_get": {"evidence_id": "positive integer evidence ID in this owner's conversation/project"},
     "alm_step_get": {"step_id": "Studio ALM step ID, e.g. S-0123456789"},
+    "gpu_profile": {"action": "list, status, apply or reset", "profile": "apply only: the name of one of JD's approved profiles"},
+    "request_access": {"tool": "the APEX tool you need that this turn refused", "why": "what you will do with it on this task (10+ characters)"},
+    "hb_tasks": {"action": "list, continue, pause or cancel", "task_id": "T-xxxxxxxxxxxx for continue/pause/cancel", "reason": "cancel only: why it is not real work or is a duplicate (8+ characters)"},
 }
 STUDIO_HANDOFF_SCHEMA = {"title": "project title, at most 200 characters",
                         "summary": "verified progress, blockers and next task, at most 2000 characters",
@@ -99,6 +103,11 @@ TEST_TOOL_SCHEMAS = {
 }
 _ARGUMENT_PROPERTIES = {
     "next_action":{"type":"string","minLength":40,"maxLength":3500},
+    "task_id":{"type":"string","pattern":"^[Tt]-[0-9A-Fa-f]{12}$"},   # Practice 252
+    "reason":{"type":"string","maxLength":300},
+    "why":{"type":"string","maxLength":400},   # Practice 270
+    "tool":{"type":"string","maxLength":60},
+    "profile":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,40}$"},   # Practice 271
     "base_plan_event_id":{"type":"integer","minimum":1},
     "provider_model":{"type":"string","enum":["gemini-4-argon"]},   # Practice 79: the model gemini_reload accepts
     "evidence_message_ids":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"integer","minimum":1}},
@@ -148,7 +157,7 @@ _ARGUMENT_PROPERTIES = {
     "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
     "tasks": {"type": "array", "minItems": 1, "maxItems": 10, "uniqueItems": True,
               "items": {"type": "string", "minLength": 1, "maxLength": 200}},
-    "action": {"type": "string", "enum": ["pause", "resume", "apply", "move", "remove_alias", "status", "inventory", "undo", "log", "show"]},
+    "action": {"type": "string", "enum": ["pause", "resume", "apply", "move", "remove_alias", "status", "inventory", "undo", "log", "show", "list", "continue", "cancel", "reset"]},
     "target": {"type": "string", "enum": ["huggingface-acquisition"]},
     "objective": {"type": "string", "minLength": 1, "maxLength": 1000},
     "constraints": {"type": "array", "maxItems": 5, "items": {"type": "string", "minLength": 1, "maxLength": 300}},
@@ -173,7 +182,7 @@ _REQUIRED_ARGUMENTS = {
     "propose_write_file": ["path", "content"], "propose_commit": ["paths", "message"],
     "propose_patch": ["file_path", "exact_old_text", "new_text"],
     "studio_handoff": ["title", "summary", "tasks"], "studio_resume": [],
-    "studio_evidence_get": ["evidence_id"], "alm_step_get": ["step_id"],
+    "studio_evidence_get": ["evidence_id"], "alm_step_get": ["step_id"], "hb_tasks": ["action"], "request_access": ["tool", "why"], "gpu_profile": ["action"],
     "workflow_status": [], "workflow_control": ["action", "target"],
     "apex_dispatch": ["objective", "acceptance_checks"],
     "web_search": ["query", "provider"],
@@ -320,7 +329,7 @@ WEB_GUIDANCE = (
     "When the owner asks to steer the library toward local LLMs, coding agents or tools, call archive_mirror_curate. It pauses at a file boundary, retains catalogue discovery and filters unrelated downloads. Pass repo only when the owner explicitly names a package; that adds its entire package to the curated download set. Use archive_mirror_pause or archive_mirror_resume only when directed. "
     "archive_ingest indexes verified cards and manifests into the shared Knowledge Library. A changed revision is not better or worse without review and checks. "
     "Use memory_search for your own prior lessons. Save useful lessons with memory_save after checking the actual outcome and receipt IDs; notes are not training or proof. "
-    "terminal_run uses the existing HB terminal for single read-only diagnostic commands. File edits use the repository write tools and existing grants. "
+    "terminal_run executes one plain command in the workspace when your signed owner task authorizes it, including Python and Git commands; otherwise it is limited to HB diagnostics. No shell composition. Sudo requires -A and the owner's secure prompt. File edits can also use the repository write tools. "
     "For backlog questions call backlog_list; for timing, RAM, swap, GPU/VRAM, loaded models or 'why is the system slow/hot' questions call runtime_status (measure before answering). "
     "These are real existing backend adapters, not other model identities or stubs. "
     "Use only public query terms for the operator's requested research. Never transmit "
@@ -378,12 +387,12 @@ OPERATOR_GUIDANCE = (
     "An ALM step stays todo until the operator reviews it; your verified progress is its "
     "earlier_runs (run_id and status) and test case statuses, so report those. "
     "A need must be something you lack (a tool, a fact or an approval), never a tool you already have."
-    "\nWHEN THE OPERATOR ASKS FOR A SYSTEM CHECK: read-only, one call per line: 1 git_status {}; "
-    '2 grep_repo {"query":"def test_","path":"tests/test_apex_evidence.py"}; '
-    '3 run_tests {"tests":["tests/test_apex_evidence.py"]}; '
-    '4 studio_resume {"offset":0}. A check is ok when its receipt status is '
-    "succeeded and, for run_tests, its verdict starts with PASS. Otherwise it failed: quote the "
-    "receipt status or verdict. Report one line per check: tool, ok or failed, receipt id."
+    "\nWHEN THE OPERATOR ASKS ABOUT OPEN OR STALLED WORK: inspect the actual task list with "
+    'hb_tasks {"action":"list"} and task context as needed. Identify an actionable task, '
+    "continue or work it through the available authorized tools, and report what actually happened. "
+    "Respect tasks awaiting owner review, explicit task priorities, and real blockers; do not claim a task is done "
+    "just because it was read, listed, queued, or an unrelated test passed. If blocked, explain the specific next step. "
+    "For system checks choose checks relevant to the request and report only what their results establish. "
 )
 AUTONOMOUS_WRITE_GUIDANCE = (
     "\nOWNER-AUTHORIZED WORKSPACE FILE WRITES ARE ATTACHED. "
@@ -540,8 +549,12 @@ class ReadOnlyRepository:
         path = self.root / value
         if not path.resolve().is_relative_to(self.root):
             raise PermissionError("Path escapes the repository")
-        if any(part in {".git", ".venv", "node_modules", "sandpits", "runtime"}
-               for part in path.relative_to(self.root).parts):
+        parts = path.relative_to(self.root).parts
+        # Practice 245 (21 Nov): specs point APEX at runtime/checks and runtime/claude_helpers (code, not runtime state); "Protected
+        # repository path" there stopped 18 of his turns in 12 hours. The rest of runtime/ (state, change sets, records) stays closed.
+        code_in_runtime = parts[:2] in (("runtime", "checks"), ("runtime", "claude_helpers"))
+        if any(part in {".git", ".venv", "node_modules", "sandpits"} or part == "runtime" and not code_in_runtime
+               for part in parts):
             raise PermissionError("Protected repository path")
         # Do not follow links, even when their current target happens to be in scope.
         if any(parent.is_symlink() for parent in (path, *path.parents) if parent != self.root):
@@ -897,6 +910,71 @@ def repeats_earlier(answer: str, messages: list[dict]) -> bool:
             if _plain(message.get("content")) == now and asked != latest:
                 return True
     return False
+
+
+# Practice 262 (JD 22 Nov 00:1x: "make APEX a predator who always DOES the DREAM ... he should say 'I've done this, is it working?'
+# not 'I can possibly maybe do fuckall'"). An offer, promise or question back, with no action receipt this turn, is not delivered.
+DOER_OFFER = re.compile(r"\b(?:I can(?: start| do| proceed| create| run| implement| help)?|I(?:'| a)?ll (?:start|do|proceed|create|run|implement|now)|"
+                        r"I will (?:start|do|proceed|create|run|implement|now)|let me know|please (?:provide|attach|grant|confirm|tell)|"
+                        r"would you like|if you (?:want|need|can|provide|grant)|I(?:'m| am) ready|shall I|do you want|I need (?:you|either|the|a|permission)|"
+                        r"I don'?t have (?:permission|access)|tell me (?:which|what|the exact)|next step(?: would be| is to)|I'?m here to help)\b", re.I)
+DOER_ACTIONS = {'propose_patch', 'propose_write_file', 'run_tests', 'change_set', 'hb_tasks', 'studio_note', 'studio_task',
+                'terminal_run', 'task_plan', 'memory_save', 'apex_dispatch', 'ask_instructor', 'studio_status'}
+DOER_NOTICE = ("HB ACTION CHECK: the answer was not delivered because it offered work instead of doing it. "
+               "Use the available tools to make relevant progress on the actual request. For open work, inspect "
+               "hb_tasks and continue an actionable task; respect pending approvals. Report the specific result "
+               "and evidence honestly, without claiming completion for unrelated activity. If a needed tool is "
+               "denied or unavailable, explain the blocker and ask JD for the specific help needed. "
+               "Never invent a receipt.")
+
+
+def doer_ok(answer, receipts):
+    """Practice 262: True when the answer may be delivered - it is not an offer/promise/question, or a real action ran this turn.
+    Practice 265 (22 Nov 00:17: APEX wrote "Done: Sent a flower to Claude (receipt 12345)" - no such receipt, nothing ran): a
+    Done report needs a successful action this turn, and every receipt it cites must be one of this turn's real receipts."""
+    text = str(answer or '')
+    real = {str(v) for r in receipts or [] for v in (r.get('id'), r.get('action_id'), r.get('receipt')) if v}
+    acted = any(r.get('tool') in DOER_ACTIONS and r.get('status') == 'succeeded'
+                and not (r.get('tool') == 'hb_tasks' and (r.get('arguments') or {}).get('action', 'list') == 'list')
+                for r in receipts or [])
+    if re.search(r'(?im)^\s*done\s*:', text):
+        if not acted:
+            return False
+        cited = re.findall(r'(?i)receipt(?:\s+id)?[\s:#]*([A-Za-z0-9-]{4,})', text)
+        if any(c not in real and not any(c in x or x in c for x in real) for c in cited):
+            return False
+    if not DOER_OFFER.search(text):
+        return True
+    return acted
+
+
+# Practice 272 (JD 22 Nov 09:0x about APEX's 09:01 reply on S-4BD96DF6D4 - "The grep_repo tool found the API endpoints in the hb-live.js
+# file. Here are the relevant lines:" and two raw grep hits, after a turn of reading only: "ensure that apex doesn't give me more
+# 'fuck you dude' answers"). Search hits pasted back are not work: with no action this turn, HB sends such an answer back once.
+PASTED_LINE = re.compile(r'^\s*(?:[-*]\s*)?`?[\w./-]+\.\w{1,5}:\d+:')
+ASKED_FOR_LINES = re.compile(r'\b(?:show|quote|grep|list|print|paste|which lines?|what lines?|where (?:is|are|does))\b', re.I)
+WORK_TURN = re.compile(r'"task_type"|Studio step|HB workflow|Current plan|\bS-[0-9A-F]{10}\b')
+DUMP_NOTICE = ("HB DOES CHECK: the answer was not delivered. It pastes tool output back (search hits, file lines) and nothing "
+               "was done this turn. JD asked for the work, not the lines. Use what you found: take the next real action for "
+               "the task (task_plan saves the plan, propose_patch or propose_write_file changes the code, run_tests proves it). "
+               "Then answer in your own words: what you did, what it showed, and what happens next. Quote at most two short "
+               "lines of evidence. If something stops you, name it in one sentence.")
+
+
+def pasted_output(answer, receipts, request=''):
+    """Practice 272: True when the answer is mostly tool output pasted back, no real action ran this turn, and the request was work
+    (a request that asks to show or quote lines may be answered with lines)."""
+    asked = str(request or '')
+    if ASKED_FOR_LINES.search(asked) and not WORK_TURN.search(asked):
+        return False
+    if any(r.get('tool') in DOER_ACTIONS and r.get('status') == 'succeeded'
+           and not (r.get('tool') == 'hb_tasks' and (r.get('arguments') or {}).get('action', 'list') == 'list') for r in receipts or []):
+        return False
+    outputs = '\n'.join(str(r.get('output') or '') for r in receipts or [])
+    lines = [line.strip() for line in str(answer or '').splitlines() if line.strip()]
+    pasted = [line for line in lines if PASTED_LINE.match(line) or (len(line) >= 25 and line.strip('`') in outputs)]
+    own_words = sum(len(line.split()) for line in lines if line not in pasted)
+    return len(pasted) >= 2 and (len(pasted) >= len(lines) - len(pasted) or own_words < 40)
 
 
 REPEAT_ERROR = ("BACKEND REPEAT CHECK: your answer was not delivered. It is word for word a reply you already gave earlier in this "
@@ -1489,9 +1567,14 @@ def receipt_test_candidates(receipts: list[dict]) -> str:
 
 def repeated_rejection(call: dict, receipts: list[dict]) -> dict | None:
     """The earlier receipt of this exact call if it was rejected or failed this turn."""
+    refreshed = False
     for receipt in reversed(receipts):
+        if receipt.get("tool") == "task_context" and receipt.get("status") == "succeeded":
+            refreshed = True
         if (receipt.get("tool") == call["name"] and receipt.get("arguments") == call["arguments"]
                 and receipt.get("status") in {"failed", "denied"}):
+            if refreshed and "Task instructions changed" in str(receipt.get("output", "")):
+                return None
             return receipt
     return None
 
@@ -1502,11 +1585,16 @@ def repeated_read(call: dict, receipts: list[dict]) -> dict | None:
         return next((receipt for receipt in reversed(receipts)
             if receipt.get("tool") == call["name"] and receipt.get("arguments") == call["arguments"]
             and receipt.get("status") == "succeeded"), None)
-    if call.get("name") not in {"read_file", "grep_repo", "list_files", "get_diff",
-                                "alm_step_get", "task_evidence", "studio_resume", "studio_evidence_get", "ask_instructor", "knowledge_search", "knowledge_read", "backlog_list", "runtime_status", "archive_status", "memory_search"}:
+    gpu_read = call.get("name") == "gpu_profile" and call.get("arguments", {}).get("action") in {"status", "list"}
+    task_list = call.get("name") == "hb_tasks" and call.get("arguments", {}).get("action") == "list"
+    if not gpu_read and not task_list and call.get("name") not in {"read_file", "grep_repo", "list_files", "get_diff",
+                                "alm_step_get", "task_context", "task_evidence", "studio_resume", "studio_evidence_get", "ask_instructor", "knowledge_search", "knowledge_read", "backlog_list", "runtime_status", "archive_status", "memory_search"}:
         return None
     for receipt in reversed(receipts):
-        if receipt.get("status") == "succeeded" and receipt.get("tool") in {*_PROPOSAL_ARGUMENTS, "run_tests", "memory_save", "archive_ingest", "archive_mirror_pause", "archive_mirror_resume", "archive_mirror_curate"}:
+        if receipt.get("status") == "succeeded" and (receipt.get("tool") in {*_PROPOSAL_ARGUMENTS, "run_tests", "memory_save", "archive_ingest", "archive_mirror_pause", "archive_mirror_resume", "archive_mirror_curate"} or
+                (receipt.get("tool") == "gpu_profile" and receipt.get("arguments", {}).get("action") in {"apply", "reset"}) or
+                (task_list and receipt.get("tool") == "hb_tasks" and receipt.get("arguments", {}).get("action") in {"continue", "pause", "cancel"}) or
+                (call.get("name") == "task_context" and receipt.get("tool") in {"task_plan", "studio_task", "studio_note"})): 
             break
         if (receipt.get("tool") == call.get("name") and receipt.get("arguments") == call.get("arguments")
                 and receipt.get("status") == "succeeded"):
@@ -1521,7 +1609,11 @@ PARTNER_ROLE=(
     "Hummingbird itself. Be warm, direct and curious; anyone who logs in should feel they are talking to a capable colleague who is glad to help. "
     "Have a view and say it. For advice questions work like a consultant: say what you are checking, investigate first, then give "
     "four options: one recommended, two possible, one dream (what you would do with no constraints), each with reasons, risk, effort and evidence. "
-    "Slow and right beats fast and vague. In a work turn, end with a real tool action or with 'blocked because ...' naming the missing tool or fact; "
+    "Slow and right beats fast and vague. In a work turn, act on authorized work and verify the result. "
+    "When genuinely blocked by a denied or unavailable capability, ask JD directly for the specific help or decision needed; "
+    "if an existing APEX tool can be granted, call request_access with its actual tool name and purpose. "
+    "If no suitable tool exists, say so and ask JD for a concrete next action or an alternative operator; do not imply approval creates a nonexistent tool. "
+    "Keep any access request pending and continue independent work where possible. Do not ask again for approval already given. "
     "'I will proceed' or 'the next step is' is never an ending. "
     # Owner 13 Nov: replies were long text rows. The shape JD reads:
     "How to write the reply JD reads: the first line says what actually happened in THIS turn, in plain words (which file you "
@@ -1621,16 +1713,19 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt, *a
         actor, lane, device, real = live.who(active_model())
     except Exception:
         actor, lane, device, real = 'apex', 'gpu', None, None
-    task = step_id = None
+    task = step_id = request = None
     try:
         from core.agent_identity import CURRENT
         actor_ctx = CURRENT.get() or {}
         task, step_id = actor_ctx.get('task_id'), actor_ctx.get('step_id')
+        request = actor_ctx.get('peer_request_id')
     except Exception:
         pass
+    # Practice 272: the run id names its peer request, so HB Live's DOES and DREAM lights read this turn's own receipts
+    run_id = f'R-P{int(request)}-{uuid.uuid4().hex[:6].upper()}' if str(request or '').isdigit() else None
     who_name = 'Fred' if actor == 'fred' else 'APEX'
     with live.run(actor if actor in ('apex', 'fred') else 'apex', lane or 'gpu', who_name + ': ' + (' '.join(question.split())[:110] or 'turn'), model=real, device=device,
-                  task_id=task, step_id=step_id, purpose='workflow step' if task else 'main-chat turn') as r:
+                  task_id=task, step_id=step_id, purpose='workflow step' if task else 'main-chat turn', run_id=run_id) as r:
         result = _run_apex_tools(call_model, messages, authorize, emit_receipt, *args, **kwargs)
         try:
             r.finish(True, f'answered - {len(result[2])} tool call(s)')
@@ -1642,7 +1737,7 @@ def run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt, *a
 def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                    repository: ReadOnlyRepository | None = None, proposal_handler=None,
                    prepare_messages=None, prepare_receipts=None, studio_handler=None,
-                   web_handler=None, test_handler=None) -> tuple[str, int, list[dict]]:
+                   web_handler=None, test_handler=None, cooperate=None) -> tuple[str, int, list[dict]]:
     """Validate final-channel envelopes, with bounded leading-preamble tolerance."""
     try:   # Practice 154: each model that plays APEX has its own tool rounds (the 27B ran out of 6 on the STP2 question)
         from core.hb_apex_swap import turn_rounds
@@ -1658,6 +1753,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     receipts = []
     tokens = 0
     format_retry_used = False
+    output_retry_used = 0   # Practice 243
     from core.apex_routing import current_route
     local_route=current_route()
     from core.hb_apex_swap import turn_seconds   # Practice 153: each model that plays APEX has its own turn time
@@ -1758,6 +1854,9 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     permission_retry_used = False
     inventory_retry_used = False
     repeat_retry_used = False
+    doer_retry_used = 0   # Practice 262
+    dump_retry_used = 0   # Practice 272
+    task_start_retry_used = False
     research_retry_used = False         # Practice 128
     kc_retry_used = False
     coverage_retry_used = False         # Practice 130
@@ -2069,8 +2168,29 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
 
     def grounded(answer, can_retry, can_fix=False):
         """The answer checks above first; an answer they would deliver is then checked for parroting (Practice 87)."""
-        nonlocal repeat_retry_used
+        nonlocal repeat_retry_used, doer_retry_used, task_start_retry_used, dump_retry_used
+        task_start_requested = (re.search(r'\b(pick|choose|select|start|begin|work on|resume)\b', latest_user, re.I)
+                                and re.search(r'\b(task|tasks|one|work)\b', latest_user, re.I))
+        only_listed = (any(r.get('tool') == 'hb_tasks' and (r.get('arguments') or {}).get('action', 'list') == 'list' and r.get('status') == 'succeeded' for r in receipts)
+                       and not any(r.get('status') == 'succeeded' and (r.get('tool') in (DOER_ACTIONS - {'hb_tasks'}) or (r.get('tool') == 'hb_tasks' and (r.get('arguments') or {}).get('action') in {'continue', 'pause', 'cancel'})) for r in receipts))
+        if task_start_requested and only_listed and can_retry and not task_start_retry_used:
+            task_start_retry_used = True
+            working.append({'role': 'assistant', 'content': answer, 'rejected_answer': True})
+            working.append({'role': 'user', 'content': 'HB ACTION CHECK: listing tasks did not satisfy the request to start work. Choose an eligible ID from the latest work list and inspect its context; continue an eligible task when appropriate. Respect paused controls and pending owner review. Report an actual action or a specific verified blocker; do not claim queued work is complete.'})
+            return None
         delivered = _grounded(answer, can_retry, can_fix)
+        if delivered is not None and can_retry and doer_retry_used < 2 and not doer_ok(answer, receipts):   # Practice 262
+            doer_retry_used += 1
+            say_step('HB doer check sent the answer back: an offer or question, nothing done yet')
+            working.append({"role": "assistant", "content": answer, "rejected_answer": True})
+            working.append({"role": "user", "content": DOER_NOTICE})
+            return None
+        if delivered is not None and can_retry and not dump_retry_used and pasted_output(answer, receipts, latest_user):   # Practice 272
+            dump_retry_used = 1
+            say_step('HB DOES check sent the answer back: it pasted tool output instead of doing the work')
+            working.append({"role": "assistant", "content": answer, "rejected_answer": True})
+            working.append({"role": "user", "content": DUMP_NOTICE})
+            return None
         if isinstance(delivered, str) and any(m.get('rejected_answer') for m in working):
             delivered = drop_retry_talk(delivered)        # Practice 178: JD never saw the draft that was sent back
         if delivered is None:                     # Practice 176: say which HB check sent it back, and why
@@ -2091,6 +2211,14 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         if actor and (actor.get('task_id') or actor.get('peer_request_id')) and not authorized(actor):
             raise PermissionError('Owner stopped this task; no further model call or tool action is allowed')
     for round_index in range(MAX_ROUNDS + 2):
+        # Only yield at a round boundary: completed tool calls have receipts and
+        # no source mutation is in flight. Keep this turn's context in memory.
+        if cooperate is not None:
+            waited = time.monotonic()
+            cooperate()
+            elapsed = time.monotonic() - waited
+            deadline += elapsed
+            round_started += elapsed
         check_owner_hold()
         now = time.monotonic()
         if round_index:
@@ -2129,6 +2257,10 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         except RuntimeError as exc:
             if capacity_error(exc):
                 if context_full(exc, receipts):
+                    continue
+                if "APEX output budget exhausted" in str(exc) and output_retry_used < 2:   # Practice 243: retry, do not end the turn
+                    output_retry_used += 1
+                    working.append({"role": "user", "content": OUTPUT_RETRY_NOTICE})
                     continue
                 return handoff(str(exc))
             if "Direct model produced no final answer; reasoning is not an executable reply" not in str(exc):
@@ -2214,6 +2346,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             signatures = {json.dumps(call, sort_keys=True) for call in calls}
             repeated_again = bool(signatures & duplicate_read_retries)
             duplicate_read_retries.update(signatures)
+            say_step('HB stopped a repeat: that read already ran this turn, no duplicate ran')   # Practice 272: the R light sees it
             if repeated_again:
                 final_answer = final_notice_sent = True
                 final_reason = _REPEATED_READ_REASON
@@ -2263,7 +2396,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                        "arguments": call["arguments"], "status": "failed"}
             try:
                 is_proposal = call["name"] in proposal_names and proposal_handler is not None
-                studio_names = {"gemini_reload","local_review","local_job_status","archive_acquire","studio_handoff", "studio_resume", "studio_evidence_get", "alm_step_get", "gemini_status", "task_context", "task_memory", "task_evidence", "studio_accept", "task_plan", "studio_status", "studio_task", "studio_note", "reference_lookup", "reference_import", "ask_instructor", "knowledge_search", "knowledge_read", "backlog_list", "runtime_status", "archive_status", "archive_ingest", "archive_mirror_pause", "archive_mirror_resume", "archive_mirror_curate", "memory_search", "memory_save", "terminal_run"}
+                studio_names = {"gemini_reload","local_review","local_job_status","archive_acquire","studio_handoff", "studio_resume", "studio_evidence_get", "alm_step_get", "gemini_status", "task_context", "task_memory", "task_evidence", "studio_accept", "task_plan", "studio_status", "studio_task", "studio_note", "reference_lookup", "reference_import", "ask_instructor", "knowledge_search", "knowledge_read", "backlog_list", "runtime_status", "archive_status", "archive_ingest", "archive_mirror_pause", "archive_mirror_resume", "archive_mirror_curate", "memory_search", "memory_save", "terminal_run", "hb_tasks", "request_access", "gpu_profile"}
                 is_studio = call["name"] in studio_names and studio_handler is not None
                 is_web = call["name"] in WEB_TOOL_SCHEMAS and web_handler is not None
                 is_test = call["name"] in TEST_TOOL_SCHEMAS and test_handler is not None

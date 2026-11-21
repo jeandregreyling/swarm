@@ -77,7 +77,8 @@ def test_telemetry_reads_sysfs(tmp_path):
     (dev / 'mem_info_vram_total').write_text(str(16 * 2 ** 30))
     (dev / 'hwmon' / 'hwmon4' / 'temp1_input').write_text('51000')
     t = hb_live.telemetry(root=str(tmp_path))
-    assert t['gpu'] == {'busy_pct': 42.0, 'vram_used_gb': 8.0, 'vram_total_gb': 16.0, 'temp_c': 51.0} and t['ram']['total_gb'] > 0
+    four = {k: t['gpu'][k] for k in ('busy_pct', 'vram_used_gb', 'vram_total_gb', 'temp_c')}   # Practice 271 added clocks, fan, power
+    assert four == {'busy_pct': 42.0, 'vram_used_gb': 8.0, 'vram_total_gb': 16.0, 'temp_c': 51.0} and t['ram']['total_gb'] > 0
 
 
 def test_route_is_registered():

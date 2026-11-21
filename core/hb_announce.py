@@ -30,16 +30,20 @@ def _key(it):
 def _worth(conn, it):
     if it.get('purpose') in QUIET or not it.get('title'):
         return False
-    if it.get('purpose') == 'main-chat turn':
-        if not it.get('task_id'):
-            return False                     # a plain chat answer: the chat already shows it
+    # Conversation records can appear through peer, workflow or activity lanes.
+    # None is an unfinished work assignment, irrespective of its display purpose.
+    if str(it.get('title') or '').strip().casefold() == 'chat with jd':
+        return False
+    task_id = it.get('task_id') or _task_of(conn, _key(it))
+    if task_id:
         try:
             from core import hb_tasks
             from core.hb_owner_intent import is_chat_task
-            return not is_chat_task(hb_tasks.get(conn, it['task_id']))
+            if is_chat_task(hb_tasks.get(conn, task_id)):
+                return False
         except Exception:
-            return True
-    return True
+            pass
+    return not (it.get('purpose') == 'main-chat turn' and not task_id)
 
 
 def current(conn, now):
@@ -89,7 +93,7 @@ def _outcome(conn, key):
             if not row:
                 return 'unknown', ''
             if row[0] == 'completed':
-                return 'done', ''
+                return ('turn', '') if _task_of(conn, key) else ('done', '')
             from core.hb_calm import interrupted
             if row[0] in ('failed', 'needs_review') and interrupted(row[1]):   # Practice 220: a restart is a pause, not a failure
                 return 'paused', 'HB restarted during the turn; the work carries on in the next turn'
@@ -99,9 +103,23 @@ def _outcome(conn, key):
         row = conn.execute("SELECT kind, text FROM hb_activity_log WHERE run_id=? AND kind IN ('finish','error') ORDER BY id DESC LIMIT 1", (key,)).fetchone()
         if not row:
             return 'unknown', ''
-        return ('failed', str(row[1] or '')[:120]) if row[0] == 'error' else ('done', '')
+        return ('failed', str(row[1] or '')[:120]) if row[0] == 'error' else (('turn', '') if _task_of(conn, key) else ('done', ''))
     except Exception:
         return 'unknown', ''
+
+
+def _lit(conn, key):
+    """Practice 272: a finished APEX turn's DOES and DREAM lights, and what was not lit, under its finished line ('' when none)."""
+    try:
+        from core import hb_lights
+        request = int(key[2:]) if key.startswith('P-') and key[2:].isdigit() else None
+        lights = hb_lights.turn(conn, request_id=request, run_id=key if key.startswith('R-P') else None)
+        if not lights.get('request_id') or all(l['state'] == 'off' for l in lights['does']):
+            return ''
+        why = hb_lights.why_line(lights)
+        return '\n' + hb_lights.chat_line(lights) + (f' ({why})' if why else '')
+    except Exception:
+        return ''
 
 
 def tick(conn, now=None, items=None, post=None):
@@ -112,7 +130,7 @@ def tick(conn, now=None, items=None, post=None):
         items = current(conn, now)
     if post is None:
         from core.hb_model_bench import _post as post
-    seen = {_key(i): i for i in items}
+    seen = {_key(i): i for i in items if _worth(conn, i)}
     known = {r[0]: r for r in conn.execute('SELECT key, who, title, since, misses FROM hb_announce')}
     said = []
     for k, it in seen.items():
@@ -124,6 +142,9 @@ def tick(conn, now=None, items=None, post=None):
         conn.execute('INSERT INTO hb_announce VALUES (?,?,?,?,0)', (k, who, title, now))
         said.append(f'▶ {who} started: {title}')
     for k, (_, who, title, since, misses) in known.items():
+        if str(title or '').strip().casefold() == 'chat with jd':
+            conn.execute('DELETE FROM hb_announce WHERE key=?', (k,))
+            continue
         if k in seen:
             continue
         if not misses:
@@ -133,10 +154,11 @@ def tick(conn, now=None, items=None, post=None):
         mins = max(0.0, now - (since or now)) / 60
         took = f'{mins:.0f} min' if mins >= 1 else 'under a minute'
         state, why = _outcome(conn, k)
-        said.append(f'✓ {who} finished: {title} ({took})' if state == 'done' else
+        said.append((f'✓ {who} finished: {title} ({took})' if state == 'done' else
+                    f'■ {who} finished a turn: {title} ({took}) - task remains open' if state == 'turn' else
                     f'⏸ {who} paused: {title} ({took}) - {why}' if state == 'paused' else
                     f'✗ {who} stopped: {title} ({took})' + (f' - {why}' if why else '') if state == 'failed' else
-                    f'■ {who} ended: {title} ({took}) - no result recorded')
+                    f'■ {who} ended: {title} ({took}) - no result recorded') + _lit(conn, k))
     for line in said:
         post(conn, line)
     return said

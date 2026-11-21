@@ -14,6 +14,7 @@ Sources (read only, nothing is written here):
 import hashlib
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -42,13 +43,14 @@ def _lane_for(actor='', model='', agent='', lane=''):
 
 def _read(path, cast=float, scale=1.0):
     try:
-        return round(cast(Path(path).read_text().strip()) * scale, 1)
-    except Exception:
+        value = cast(Path(path).read_text().strip())
+        return value if isinstance(value, str) else round(value * scale, 1)
+    except (OSError, ValueError, TypeError):
         return None
 
 
 def telemetry(root='/sys/class/drm'):
-    """GPU (first card with gpu_busy_percent), CPU load and temperature, RAM. Missing values are None."""
+    """Live GPU performance, CPU load/temperature and CPU0 clocks/governor, RAM. Missing values are None."""
     gpu = {}
     for card in sorted(Path(root).glob('card*/device')):
         if (card / 'gpu_busy_percent').exists():
@@ -56,8 +58,25 @@ def telemetry(root='/sys/class/drm'):
             gpu = {'busy_pct': _read(card / 'gpu_busy_percent'), 'vram_used_gb': _read(card / 'mem_info_vram_used', scale=1 / 2 ** 30),
                    'vram_total_gb': _read(card / 'mem_info_vram_total', scale=1 / 2 ** 30),
                    'temp_c': _read(hw / 'temp1_input', scale=1 / 1000) if hw else None}
+            gpu.update({
+                'junction_temp_c': _read(hw / 'temp2_input', scale=1 / 1000) if hw else None,
+                'fan_rpm': _read(hw / 'fan1_input') if hw else None,
+                'power_w': _read(hw / 'power1_average', scale=1 / 10 ** 6) if hw else None,
+                'power_cap_w': _read(hw / 'power1_cap', scale=1 / 10 ** 6) if hw else None,
+                'performance_mode': _read(card / 'power_dpm_force_performance_level', str),
+            })
+            clocks = _read(card / 'pp_dpm_sclk', str)
+            selected = re.search(r'(?im)^\d+:\s*(\d+)mhz\s*\*', clocks) if clocks else None
+            gpu['clock_mhz'] = int(selected[1]) if selected else None
+            overdrive = _read(card / 'pp_od_clk_voltage', str)
+            maximum = re.search(r'(?im)^1:\s*(\d+)mhz', overdrive.partition('OD_MCLK:')[0]) if overdrive else None
+            gpu['clock_limit_mhz'] = int(maximum[1]) if maximum else None
             break
     cpu = {'cores': os.cpu_count()}
+    frequency = Path('/sys/devices/system/cpu/cpu0/cpufreq')
+    cpu.update({'clock_mhz': _read(frequency / 'scaling_cur_freq', scale=1 / 1000),
+                'max_clock_mhz': _read(frequency / 'cpuinfo_max_freq', scale=1 / 1000),
+                'governor': _read(frequency / 'scaling_governor', str)})
     try:
         cpu['load1'] = float(Path('/proc/loadavg').read_text().split()[0])
     except Exception:
@@ -245,6 +264,42 @@ def _with_chunks(conn, items):
     return items
 
 
+def _with_lights(conn, items):
+    """Practice 272 (JD 22 Nov: "built into HB as icons so I can see the system actually using DREAM to do its work"): each APEX or
+    Fred turn carries its DOES lights (queue started, inference, receipts, continuity) and DREAM lights, from its own records."""
+    try:
+        from core import hb_lights
+    except Exception:
+        return items
+    for item in items:
+        if item.get('lane') not in ('gpu', 'fred'):
+            continue
+        run = str(item.get('run_id') or '')
+        request = int(run[2:]) if run.startswith('P-') and run[2:].isdigit() else None
+        try:
+            lights = hb_lights.turn(conn, task_id=item.get('task_id'), request_id=request, run_id=run if run.startswith('R-') else None)
+        except Exception:
+            continue
+        if lights.get('request_id') or lights.get('task_id'):
+            item['lights'] = lights
+    return items
+
+
+def _apex_lights(conn):
+    """Practice 272: the lights of APEX's newest turn (running now, or the last one) for the meter on top of main chat."""
+    try:
+        from core import hb_lights
+        row = conn.execute("SELECT w.request_id, w.state FROM hb_peer_work w JOIN peer_messages p ON p.id=w.request_id "
+                           "WHERE p.recipient='apex' ORDER BY w.request_id DESC LIMIT 1").fetchone()
+        if not row:
+            return None
+        lights = hb_lights.turn(conn, request_id=row[0])
+        lights['running'] = row[1] == 'running'
+        return lights
+    except Exception:
+        return None
+
+
 BOARD_GROUPS = (('needs_you', 'Needs you'), ('now', 'Now'), ('next', 'Next'), ('claude', 'With Claude Code'), ('waiting', 'Waiting'),
                 ('spec', 'Needs a spec'), ('parked', 'Parked by HB'), ('blocked', 'Blocked'))
 
@@ -347,8 +402,10 @@ def snapshot(conn, now=None, tele=None, items=None):
         unexplained.append({'lane': 'gpu', 'evidence': f'GPU {busy:.0f}% busy and no APEX run is recorded'})
     master = _master(conn, by_task)
     _with_chunks(conn, found + master.get('items', []))     # Practice 234: chunk n of N on every worker and every row
+    _with_lights(conn, found)                               # Practice 272: DOES and DREAM lights on every APEX / Fred turn
     out = {'lanes': lanes, 'needs_you': _needs_you(conn), 'master': master, 'history': _history(conn), 'unexplained': unexplained}
     out['version'] = hashlib.sha1(json.dumps(out, sort_keys=True, default=str).encode()).hexdigest()[:12]
     out['telemetry'], out['at'] = tele, now
     out['apex_live'], out['started'] = apex_live(), STARTED      # Practice 200 (outside the version hash: it changes every read)
+    out['apex_lights'] = _apex_lights(conn)                    # Practice 272: always on the meter, live or the last turn
     return out

@@ -31,7 +31,17 @@
     if (!lane.items || !lane.items.length) return lane.note || 'idle';
     const it = lane.items[0];
     const more = lane.items.length > 1 ? ' (+' + (lane.items.length - 1) + ')' : '';
-    return (it.last_step || it.title || 'working') + more;
+    return itemLine(it) + more;
+  }
+
+  function itemLine(it) {
+    const title = String(it.title || '').trim(), stage = String(it.last_step || '').trim();
+    return title && stage && title !== stage ? title + ' · ' + stage : (title || stage || 'working');
+  }
+
+  function chunkLine(chunks) {
+    if (!chunks || !chunks.total || !chunks.doing || typeof chunks.doing !== 'object') return '';
+    return 'chunk ' + chunks.doing.n + '/' + chunks.total + ': ' + chunks.doing.text;
   }
 
   function renderStrip(snap) {
@@ -72,7 +82,7 @@
       html += '<div class="hbl-item"><div class="hbl-item-head">' +
         `<b>${esc(it.actor || SHORT[laneId] || '')}</b>` + (it.model ? ` · ${esc(it.model)}` : '') + (it.device ? ` · ${esc(it.device)}` : '') +
         (it.since ? ` · <span class="hbl-elapsed">${took(t - it.since)}</span>` : '') + (it.purpose ? ` · <i>${esc(it.purpose)}</i>` : '') +
-        `</div><div class="hbl-item-title">${esc(it.title)}</div>` + renderTrail(it.trail) + '</div>';
+        `</div><div class="hbl-item-title">${esc(it.title)}</div>` + renderLights(it.lights) + renderTrail(it.trail) + '</div>';
     });
     const done = (snap.history || []).filter((h) => h.lane === laneId).slice(0, 8);
     if (done.length) {
@@ -124,6 +134,13 @@
     let html = bar('GPU busy', g.busy_pct, null, '%') + bar('VRAM', g.vram_used_gb, g.vram_total_gb, ' GB') +
       bar('GPU temp', g.temp_c, 100, '°C') + bar('CPU load', c.load1, c.cores, '') + bar('CPU temp', c.temp_c, 100, '°C') +
       bar('RAM', r.used_gb, r.total_gb, ' GB');
+    const reading = (label, value, unit) => value == null ? '' :
+      `<div class="hbl-note">${esc(label)}: ${esc(value)}${esc(unit || '')}</div>`;
+    html += reading('GPU clock', g.clock_mhz, ' MHz') + reading('GPU clock limit', g.clock_limit_mhz, ' MHz') +
+      reading('GPU hotspot', g.junction_temp_c, '°C') + reading('GPU fan', g.fan_rpm, ' RPM') +
+      reading('GPU power', g.power_w, ' W') + reading('GPU power cap', g.power_cap_w, ' W') +
+      reading('GPU mode', g.performance_mode) + reading('CPU0 clock', c.clock_mhz, ' MHz') +
+      reading('CPU0 governor', c.governor);
     (snap.unexplained || []).forEach((u) => { html += `<div class="hbl-warn">⚠ ${esc(u.evidence)}</div>`; });
     (snap.lanes || []).filter((l) => l.note).forEach((l) => { html += `<div class="hbl-note">${esc(SHORT[l.id] || l.id)}: ${esc(l.note)}</div>`; });
     return html || '<div class="hbl-empty">No readings.</div>';
@@ -147,7 +164,7 @@
     const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status');
     const chips = items.map((it, n) => `<button type="button" class="hbl-chip hbl-busy" data-card="${n}" title="${esc(it.title)}">` +
       `<span class="hbl-dot"></span><span class="hbl-ico">${ICON[it.lane] || '•'}</span><b>${esc(SHORT[it.lane] || it.lane)}</b>` +
-      `<span class="hbl-line">${esc(it.last_step || it.title || 'working')}</span></button>` +
+      `<span class="hbl-line">${esc(itemLine(it))}</span></button>` +
       (it.task_id ? `<button type="button" class="hbl-mini" data-q="task" data-a="pause" data-id="${esc(it.task_id)}" title="Pause ${esc(it.title || 'this task')}">Pause</button>` : '')).join('');
     const alert = (snap.unexplained || []).length ? `<span class="hbl-chip hbl-error"><span class="hbl-dot"></span><b>System</b>` +
       `<span class="hbl-line">⚠ ${esc(snap.unexplained[0].evidence)}</span></span>` : '';
@@ -160,7 +177,9 @@
     const cards = items.map((it, n) => `<div class="hbl-item" data-card-body="${n}"><div class="hbl-item-head">` +
       `<b>${esc(it.actor || SHORT[it.lane] || '')}</b>` + (it.model ? ` · ${esc(it.model)}` : '') + (it.device ? ` · ${esc(it.device)}` : '') +
       (it.since ? ` · <span class="hbl-elapsed">${took((now || snap.at || 0) - it.since)}</span>` : '') + (it.purpose ? ` · <i>${esc(it.purpose)}</i>` : '') +
-      `</div><div class="hbl-item-title">${esc(it.title)}</div>` + renderTrail((it.trail || []).slice(-6)) + '</div>').join('');
+      `</div><div class="hbl-item-title">${esc(it.title)}</div>` + renderLights(it.lights) +
+      (chunkLine(it.chunks) ? `<div class="hbl-live-line">${esc(chunkLine(it.chunks))}</div>` : '') +
+      (it.last_step ? `<div class="hbl-dim">${esc(it.last_step)}</div>` : '') + renderTrail((it.trail || []).slice(-6)) + '</div>').join('');
     return `<div class="hbl-active">${needChip}${chips}${alert}</div>${cards ? `<div class="hbl-cards">${cards}</div>` : ''}`;
   }
 
@@ -201,7 +220,8 @@
       if (folded) return;
       html += '<ul class="hbl-list">' + rows.map((i) =>
         `<li data-step="${esc(i.step_id)}" data-task="${esc(i.task_id || '')}" title="${esc(i.note || i.why || '')}">` +
-        `<span class="hbl-row-title">${esc(i.title)}</span><span class="hbl-tag">${esc(i.doer || 'apex')}</span>` +
+        `<span class="hbl-row-title">${esc(i.title)}${i.chunks && i.chunks.doing ? ' · ' + esc(i.chunks.doing.n) + '/' + esc(i.chunks.total) : ''}</span><span class="hbl-tag">${esc(i.doer || 'apex')}</span>` +
+        (chunkLine(i.chunks) ? `<div class="hbl-live-line">${esc(chunkLine(i.chunks))}</div>` : '') +
         (i.live ? `<div class="hbl-live-line">● ${esc(SHORT[i.live.lane] || i.live.lane)}: ${esc(i.live.last_step || 'working')}</div>` : '') +
         (i.note && key === 'spec' ? `<div class="hbl-dim">${esc(i.note)}</div>` : '') +
         `<div class="hbl-row-ctl">${primaryFor(i)}` + (controls && key !== 'roadmap' ? `<button type="button" class="hbl-more" data-more="${esc(i.step_id)}" title="More">…</button>` +
@@ -211,9 +231,21 @@
     return html;
   }
 
+  // Practice 272 (JD 22 Nov: "I want those three icons you just lit up built into HB ... 'queue started' 'Inference and Continuity' ...
+  // so I can see the system actually using DREAM to do its work"): DOES and DREAM lights, lit only from the turn's own records
+  // (core/hb_lights.py). Green = happened, pulsing = happening now, amber = HB had to step in or only part done, red = failed,
+  // dim = not used this turn. Hover a light for its evidence.
+  function renderLights(lights, label) {
+    if (!lights || !lights.does || !lights.dream) return '';
+    const one = (l, word) => `<span class="hbl-light hbl-l-${esc(l.state)}" title="${esc(l.word + ': ' + l.why)}">${esc(l.icon)}` +
+      (word ? ` <small>${esc(String(l.word).split(' · ').pop())}</small>` : '') + '</span>';
+    return `<div class="hbl-lights">${label ? `<span class="hbl-dim">${esc(label)}</span>` : ''}<span class="hbl-lg">DOES</span>` +
+      lights.does.map((l) => one(l, true)).join('') + '<span class="hbl-lg">DREAM</span>' + lights.dream.map((l) => one(l, false)).join('') + '</div>';
+  }
+
   // Practice 200: the APEX meter - always on top of main chat (owner: "let me see the actual token count and what APEX is doing")
-  function renderMeter(a, rate) {
-    if (!a || !a.up) return '<div class="hbl-meter hbl-meter-down">⬢ APEX\'s model server is not answering</div>';
+  function renderMeter(a, rate, lit) {
+    if (!a || !a.up) return '<div class="hbl-meter hbl-meter-down">⬢ APEX\'s model server is not answering' + (lit || '') + '</div>';
     const n = (x) => Number(x || 0).toLocaleString('en-AU');
     const who = `⬢ <b>APEX</b> <span class="hbl-dim">${esc(a.model || '')}${a.device ? ' · ' + esc(a.device) : ''}</span>`;
     let what;
@@ -224,12 +256,13 @@
         (rate ? ` <span class="hbl-dim">${n(Math.round(rate))} tok/s</span>` : '');
     } else what = `<b>writing</b> ${n(a.generated)} tokens` + (rate ? ` <span class="hbl-dim">· ${rate.toFixed(1)} tok/s</span>` : '');
     const ctx = a.ctx ? ` <span class="hbl-dim">· context ${n(a.prompt_tokens + a.generated)} / ${n(a.ctx)}</span>` : '';
-    return `<div class="hbl-meter${a.busy ? ' hbl-meter-busy' : ''}">${who} · ${what}${ctx}</div>`;
+    return `<div class="hbl-meter${a.busy ? ' hbl-meter-busy' : ''}">${who} · ${what}${ctx}${lit || ''}</div>`;
   }
 
   function renderBoard(snap, opts) {
     const o = opts || {};
-    return renderMeter(snap.apex_live, o.rate) + `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
+    const lit = snap.apex_lights ? renderLights(snap.apex_lights, snap.apex_lights.running ? 'this turn' : 'last turn') : '';
+    return renderMeter(snap.apex_live, o.rate, lit) + `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
       `<span class="hbl-dim">${esc(systemLine(snap))}</span></div>` +
       // Practice 208 (JD 21 Nov: "the clipboard ... there's nothing in there"): the list sat under the worker cards and vanished when the
       // box was short or folded. Now: who is busy (one row) -> the clipboard -> the worker cards; folded still shows the clipboard's count.
@@ -246,7 +279,11 @@
     const t = snap.telemetry || {}, g = t.gpu || {}, c = t.cpu || {};
     const free = g.vram_total_gb != null && g.vram_used_gb != null ? (g.vram_total_gb - g.vram_used_gb).toFixed(1) + ' GB free for you' : '';
     return [g.busy_pct != null ? 'GPU ' + Math.round(g.busy_pct) + '%' : '', free, g.temp_c != null ? Math.round(g.temp_c) + '°C' : '',
-      c.load1 != null ? 'CPU load ' + c.load1 : ''].filter(Boolean).join(' · ');
+      g.clock_mhz != null ? g.clock_mhz + ' MHz' : '',
+      g.clock_limit_mhz != null ? 'limit ' + g.clock_limit_mhz + ' MHz' : '',
+      c.load1 != null ? 'CPU load ' + c.load1 : '',
+      c.clock_mhz != null ? 'CPU0 ' + Math.round(c.clock_mhz) + ' MHz' : '',
+      c.governor ? c.governor : ''].filter(Boolean).join(' · ');
   }
 
   function renderNeedsPopup(n, needsControls) {
@@ -257,7 +294,7 @@
   }
 
   const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
-    primaryFor, systemLine, renderMeter, took, esc, ICON, SHORT };
+    primaryFor, systemLine, renderMeter, renderLights, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -314,6 +351,17 @@
 .hbl-cmd{display:inline;padding:0 6px;margin:0 1px;border-radius:6px;border:1px solid var(--accent,#00e08a);background:transparent;color:var(--accent,#00e08a);
   font:inherit;font-size:.92em;cursor:pointer}
 .hbl-json summary{cursor:pointer;color:var(--text-dim,#999)}
+.hbl-lights{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:3px 0;font-size:11px}
+.hbl-lg{font-weight:700;font-size:10px;letter-spacing:.06em;color:var(--text-dim,#999);margin:0 1px 0 6px}
+.hbl-light{display:inline-flex;align-items:center;gap:3px;min-width:16px;justify-content:center;padding:0 6px;border-radius:9px;
+  border:1px solid var(--border,#444);color:var(--text-dim,#777);opacity:.5;cursor:help}
+.hbl-light small{font-size:10px}
+.hbl-l-on{opacity:1;color:#2ecc71;border-color:rgba(46,204,113,.7);background:rgba(46,204,113,.12)}
+.hbl-l-live{opacity:1;color:#2ecc71;border-color:#2ecc71;animation:hblPulse 1.4s infinite}
+.hbl-l-wait{opacity:1;color:#ffb300;border-color:#ffb300;animation:hblPulse 1.4s infinite}
+.hbl-l-warn{opacity:1;color:#ffb300;border-color:rgba(255,179,0,.8);background:rgba(255,179,0,.12)}
+.hbl-l-bad{opacity:1;color:#ff5252;border-color:#ff5252;background:rgba(255,82,82,.12)}
+.hbl-meter .hbl-lights{margin:3px 0 0}
 body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-clipboard,body.hb-live-on #home-chat-main .hb-needs-you{display:none!important}
 @media (max-width:640px){.hbl-line{max-width:110px}.hbl-cards{grid-template-columns:1fr}}`;
     document.head.appendChild(st);
@@ -334,6 +382,14 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     // itself to what is in it (up to 60% of the screen, then it scrolls); a height dragged earlier is forgotten.
     ls('hbLive.paneHeight', '');
     if (bar && bar.parentNode === main) bar.insertAdjacentElement('afterend', el); else main.prepend(el);
+    // Chunk A: drag divider between Live pane and chat log
+    const div = document.createElement('div');
+    div.className = 'hb-live-divider';
+    div.setAttribute('role', 'separator');
+    div.setAttribute('aria-orientation', 'horizontal');
+    div.addEventListener('mousedown', (e) => { e.preventDefault(); dragDivider(div, e); });
+    div.addEventListener('touchstart', (e) => { dragDivider(div, e.touches[0]); });
+    el.insertAdjacentElement('afterend', div);
     return el;
   }
 
