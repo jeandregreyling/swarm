@@ -172,6 +172,33 @@
       ],
       "means": "the translation bubble for non-English text",
       "where": "core/hb_translator.py"
+    },
+    {
+      "words": [
+        "library",
+        "file library",
+        "files",
+        "where are the files",
+        "hb files",
+        "the archive",
+        "house in order"
+      ],
+      "means": "HB's file library: one root linking every place HB keeps files (inbox, docs, models, work folders, conversations, backups, code mirrors, HF archive); every readable document is in the KC with its path",
+      "where": "/srv/archive/HB-Library/INDEX.md (sections 00-inbox ... 80-vortex); KC page hb://library and one KC document per file (source ref file:<path>); rebuilt by runtime/claude_helpers/file_library.py"
+    },
+    {
+      "words": [
+        "models",
+        "model library",
+        "gguf",
+        "blobs",
+        "unbounded",
+        "champions",
+        "who does what",
+        "local friends"
+      ],
+      "means": "every local model under its real name with its role, HB exam, agent account, unbound class and job tags (coder, generalist, router, summariser, file organiser, queue organiser, whippersnapper, duck ...)",
+      "where": "/srv/archive/models/MODELS.md and models.json; KC page hb://library/models; hb_agents tags (class:, role:, job:); hb_model_jobs (ranked who does what); rebuilt by runtime/claude_helpers/model_library.py"
     }
   ]
 }
