@@ -163,7 +163,8 @@ def local_help(conn,task,*,selected=False):
     if hb_model_switches.modes(conn).get(hb_model_switches.FRED)=='off':
         return 'unavailable: Fred is switched Off in Live status'
     hb_local_jobs.ensure_schema(conn)
-    progress=conn.execute("SELECT COALESCE(MAX(created_at),0) FROM hb_task_events WHERE task_id=? AND (kind='mutation' OR "
+    # Practice 226: a newly prepared change set is new information - APEX's four attempts and Fred's turn count again from it
+    progress=conn.execute("SELECT COALESCE(MAX(created_at),0) FROM hb_task_events WHERE task_id=? AND (kind IN ('mutation','change_set_prepared') OR "
                           "(kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]
     # Owner 15 Nov: a chat line with no Studio step ("share the open tasks") went to Fred, who held the queue for ten minutes.
     if not task.get('step_id'):
