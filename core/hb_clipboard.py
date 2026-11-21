@@ -19,9 +19,10 @@ import time
 
 from core import hb_tasks
 
-DOERS = ('hb', 'small', 'apex', 'fred', 'codex', 'gemini', 'claude')   # HB Live L4a (owner 20 Nov): online models are doers too
+DOERS = ('hb', 'small', 'apex', 'fred', 'codex', 'gemini', 'claude', 'copilot')   # Practice 279: copilot (@git)   # HB Live L4a (owner 20 Nov): online models are doers too
 DOER_WORDS = {'hb': 'HB itself (no model)', 'small': 'small CPU model', 'apex': 'APEX (on the GPU)', 'fred': 'Fred (24B on the CPU)',
-              'codex': 'Codex (online)', 'gemini': 'Gemini (online)', 'claude': 'Claude Code (online)'}
+              'codex': 'Codex (online)', 'gemini': 'Gemini (online)', 'claude': 'Claude Code (online)',
+              'copilot': 'Copilot (@git, VS Code)'}
 
 
 def ensure_schema(conn):
@@ -91,10 +92,39 @@ def rows(conn):
     return out
 
 
+# Practice 279 (JD 22 Nov: "I see Apex and Fred, where's Claude, Codex, GIT?"): picking an online agent is JD's own request to it, sent the
+# way typing @codex / @claude / @git in main chat sends it, so the agent answers even when HB may not call it by itself.
+ONLINE_PICK = {'codex': ('codex-instructor', '@codex', 'Codex'), 'claude': ('claude-code', '@claude', 'Claude Code'),
+               'copilot': ('copilot-instructor', '@git', 'Copilot')}
+
+
+def _send_online(conn, step_id, doer):
+    recipient, mention, name = ONLINE_PICK[doer]
+    try:
+        from core import peer_bridge
+        step = conn.execute('SELECT title, description FROM project_steps WHERE step_id=?', (step_id,)).fetchone()
+        task = conn.execute("SELECT task_id, conversation_id FROM hb_tasks WHERE step_id=? AND state NOT IN ('completed','cancelled') "
+                            "ORDER BY created_at DESC LIMIT 1", (step_id,)).fetchone()
+        conversation = task[1] if task else 2845
+        body = (f"{mention} JD picked you on the task list for {step_id} {step[0] if step else ''}"
+                + (f" (task {task[0]})" if task else '') + '. Do this step and report in main chat what you did and how you checked it.\n'
+                + str(step[1] if step else '')[:1500])
+        mid = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'user',?,?,'chat',0)",
+                           (conversation, recipient, body)).lastrowid
+        if task:
+            hb_tasks.bind(conn, conversation, mid, task_id=task[0], kind='relay')
+        peer_bridge.enqueue(conn, conversation, mid, body, [recipient], sender='user')
+    except Exception as exc:
+        return f' - could not send it to {name}: {exc}'[:200]
+    return f' - sent to {name} as your request ({mention} in main chat).'
+
+
 def hand_over(conn, step_id, doer, actor):
     """Practice 278 (JD 22 Nov: "I'm trying to click on the agent selection of a task"): JD's pick takes effect now. Picking Fred switches
     him on if he is off and hands him the step's open task at once (core/hb_task_manager.local_help); with no task yet he takes it when
     the step starts. Returns the words the list shows. Only the owner's routes reach edit(), so this is always JD's own choice."""
+    if doer in ONLINE_PICK:
+        return _send_online(conn, step_id, doer)
     if doer != 'fred':
         return ''
     try:

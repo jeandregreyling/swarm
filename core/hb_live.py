@@ -285,6 +285,15 @@ def _with_lights(conn, items):
     return items
 
 
+def _copilot_linked(conn):
+    try:
+        row = conn.execute("SELECT last_used_at FROM service_tokens WHERE principal_id='copilot-instructor' AND revoked_at IS NULL "
+                           "AND last_used_at IS NOT NULL ORDER BY id DESC LIMIT 1").fetchone()
+        return bool(row and time.time() - row[0] < 900)
+    except Exception:
+        return False
+
+
 def _doers(conn):
     """Practice 276 (JD 22 Nov: the task list showed "actors that aren't even available"): who HB can really give a step to from the list.
     APEX always; Fred unless his switch is Off. Other names are not wired into HB's workflow (core/hb_plan_workflow._dispatch_doer)."""
@@ -297,7 +306,25 @@ def _doers(conn):
     return [{'id': 'apex', 'name': 'APEX', 'ok': True, 'off': False, 'why': 'APEX does the step on the GPU'},
             {'id': 'fred', 'name': 'Fred', 'ok': True, 'off': off,
              'why': ('Fred is switched off - picking him switches him on and hands him this task now' if off
-                     else 'Fred (24B on the CPU) takes this task now; your pick counts as you calling Fred')}]
+                     else 'Fred (24B on the CPU) takes this task now; your pick counts as you calling Fred')}] + _online_doers(conn)
+
+
+def _online_doers(conn):
+    """Practice 279 (JD 22 Nov: "where's Claude, Codex, GIT?"): a pick sends the agent the task as JD's @ request; the note says its state."""
+    out = []
+    try:
+        from core import hb_online
+        for key, name, mention in (('claude', 'Claude Code', '@claude'), ('codex', 'Codex', '@codex')):
+            s = hb_online.status(conn, key)
+            note = '' if s.get('available') else ('out of usage' if 'usage' in str(s.get('reason', '')).lower() else 'unavailable')
+            out.append({'id': key, 'name': name, 'ok': True, 'off': False, 'note': note,
+                        'why': f"Sends it this task as your {mention} request" + (f": {str(s.get('reason', ''))[:120]}" if note else '')})
+    except Exception:
+        pass
+    linked = _copilot_linked(conn)
+    out.append({'id': 'copilot', 'name': 'Copilot', 'ok': True, 'off': False, 'note': '' if linked else 'not connected',
+                'why': 'Sends it this task as your @git request' + ('' if linked else ': its VS Code link has not called HB in 15 minutes')})
+    return out
 
 
 def _apex_lights(conn):

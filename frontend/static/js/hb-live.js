@@ -299,7 +299,7 @@
   // names in it, not sure why it's showing actors that aren't even available, and also does nothing when I click on any of them"): one
   // button per doer HB can really run now (snapshot.doers: APEX, and Fred unless he is switched off); the current one is lit. A doer set
   // earlier that HB cannot run (e.g. Claude Code's plan rows) shows as a plain tag. Buttons, so the 2 s redraw cannot swallow the click.
-  const DOER_NAMES = { apex: 'APEX', fred: 'Fred', claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini', hb: 'HB', small: 'small model' };
+  const DOER_NAMES = { apex: 'APEX', fred: 'Fred', claude: 'Claude Code', codex: 'Codex', copilot: 'Copilot', gemini: 'Gemini', hb: 'HB', small: 'small model' };
   function renderDoers(i, doers) {
     if (!i || !i.step_id) return '';
     const now = i.doer || 'apex', ok = (doers || [{ id: 'apex', name: 'APEX', ok: true }]).filter((d) => d.ok);
@@ -307,7 +307,7 @@
     if (!ok.some((d) => d.id === now)) html += ` <span class="hbl-tag" title="Set earlier; HB cannot run this doer from the list">${esc(DOER_NAMES[now] || now)}</span>`;
     html += ok.map((d) => d.id === now
       ? ` <b class="hbl-doer hbl-doer-on" title="${esc(d.why || '')}">${esc(d.name)}</b>`
-      : ` <button type="button" class="hbl-doer" data-q="clip" data-a="doer" data-id="${esc(i.step_id)}" data-v="${esc(d.id)}" title="${esc(d.why || '')}">${esc(d.name)}${d.off ? ' (off)' : ''}</button>`).join('');   // Practice 278
+      : ` <button type="button" class="hbl-doer" data-q="clip" data-a="doer" data-id="${esc(i.step_id)}" data-v="${esc(d.id)}" title="${esc(d.why || '')}">${esc(d.name)}${d.note ? ' (' + esc(d.note) + ')' : (d.off ? ' (off)' : '')}</button>`).join('');   // Practice 278
     // Practice 277: a doer that cannot work right now is not offered, but the list says why (e.g. Fred is switched Off in Live status)
     html += (doers || []).filter((d) => !d.ok && d.why).map((d) => ` <span class="hbl-dim">· ${esc(d.why)}</span>`).join('');
     return html + '</span>';
