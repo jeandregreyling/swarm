@@ -28,12 +28,18 @@ def test_hive_worker_reports_gpu_capacity_proof():
     assert '"seven-app.gpu.capsule"' in sampler
 
 
-def test_hive_worker_uses_seven_runtime_shared_chat_contract():
+def test_hive_worker_uses_apex_node_chat_contract():
     main = (ROOT / "android/hive-agent/app/src/main/java/com/swarm/hive/MainActivity.kt").read_text()
+    node = (ROOT / "android/hive-agent/app/src/main/java/com/swarm/hive/ApexNode.kt").read_text()
+    payload = (ROOT / "android/hive-agent/app/src/main/java/com/swarm/hive/ApexPayloadBuilder.kt").read_text()
+    client = (ROOT / "android/hive-agent/app/src/main/java/com/swarm/hive/ApexClient.kt").read_text()
     strings = (ROOT / "android/hive-agent/app/src/main/res/values/strings.xml").read_text()
 
-    assert '"/api/localai/mobile/models"' in main
-    assert '"/api/localai/shared-chat"' in main
-    assert '"seven-direct:daily"' in main
+    assert 'sendChatButton.setOnClickListener { sendApexChat() }' in main
+    assert 'apex.handle(sessionId, prompt)' in main
+    assert 'ApexClient.complete(builder.build(sessionId))' in node
+    assert '/v1/chat/completions' in payload
+    assert 'ApexPayloadBuilder.ENDPOINT' in client
+    assert '"gpt-oss:20B"' in payload
     assert '"/api/localai/ollama/shared-chat"' not in main
     assert 'Dell Ollama' not in strings
