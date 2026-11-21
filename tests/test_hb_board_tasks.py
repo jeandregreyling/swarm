@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_practice_75_rows_have_task_controls():
     js = (ROOT / 'frontend/static/js/views/hb-queue.js').read_text()
-    for piece in ('data-task="pause"', 'data-task="continue"', 'data-task="cancel"', 'data-task="accept"', 'JSON.stringify({ task: args })', "window.confirm('Cancel this task?"):
+    for piece in ('data-task="pause"', 'data-task="continue"', 'data-task="cancel"', 'data-task="accept"', 'JSON.stringify({ task: args })', "if (t.dataset.task === 'cancel' && !armedClick(t)) return;"):   # Practice 275: no dialog
         assert piece in js, piece
     assert "if (i.state === 'now') return `<span class=\"hb-clip-edit\">${taskHtml(i)}</span>`;" in js      # the running step can be paused or cancelled
     done = subprocess.run(['node', '--check', str(ROOT / 'frontend/static/js/views/hb-queue.js')], capture_output=True, text=True)

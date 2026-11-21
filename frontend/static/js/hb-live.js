@@ -295,8 +295,15 @@
       (needsControls ? needsControls(n) : '') + '<div class="hbl-said hbl-dim" role="status"></div><div class="hbl-ctl"><button type="button" data-later="1">Later</button></div>';
   }
 
+  // Practice 275: a risky button (Cancel, /cancel, /reject, /stop) arms on the first click and acts on the second within ARM_MS.
+  const ARM_MS = 4000;
+  function arm(state, key, now) {
+    if (state && state.key === key && now <= state.until) return { act: true, armed: null };
+    return { act: false, armed: { key, until: now + ARM_MS } };
+  }
+
   const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
-    primaryFor, systemLine, renderMeter, renderLights, took, esc, ICON, SHORT };
+    primaryFor, systemLine, renderMeter, renderLights, arm, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -364,6 +371,7 @@
 .hbl-l-warn{opacity:1;color:#ffb300;border-color:rgba(255,179,0,.8);background:rgba(255,179,0,.12)}
 .hbl-l-bad{opacity:1;color:#ff5252;border-color:#ff5252;background:rgba(255,82,82,.12)}
 .hbl-meter .hbl-lights{margin:3px 0 0}
+.hbl-armed{background:#c62828 !important;border-color:#ff5252 !important;color:#fff !important;font-weight:700;animation:hblPulse 1.4s infinite}
 body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-clipboard,body.hb-live-on #home-chat-main .hb-needs-you{display:none!important}
 @media (max-width:640px){.hbl-line{max-width:110px}.hbl-cards{grid-template-columns:1fr}}`;
     document.head.appendChild(st);
@@ -408,6 +416,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     el.scrollTop = top;
     popup();
     decorate();
+    showArmed();                                         // Practice 275: an armed Cancel survives the redraw
   }
 
   // Needs-you is the only pop-up: a new item (not seen in this browser) opens it, with one-click answers
@@ -553,6 +562,33 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (fill) { input.focus(); return; }
     document.getElementById('home-chat-send-btn')?.click();
   }
+  // Practice 275 (JD 22 Nov: "when I open the task list and click on cancel it pops up a really fucked up confirmation box, the cancel
+  // button itself should turn into a confirm button so I basically just have to double click on cancel"): no browser dialog. The first
+  // click turns the button red - "Confirm cancel" - and the second within 4 s acts. The 2 s redraw keeps it armed (S.armed).
+  function risky(b) { return !!(b.dataset.confirm || (b.dataset.cmd && /^\/(cancel|reject|stop)\b/.test(b.dataset.cmd))); }
+  function armKey(b) { return b.dataset.q ? b.dataset.q + ':' + b.dataset.a + ':' + b.dataset.id : 'cmd:' + b.dataset.cmd; }
+  function showArmed() {
+    document.querySelectorAll('.hbl-armed').forEach((b) => {
+      if (!S.armed || armKey(b) !== S.armed.key) { b.classList.remove('hbl-armed'); if (b.dataset.armText) b.textContent = b.dataset.armText; }
+    });
+    if (!S.armed || Date.now() > S.armed.until) { S.armed = null; return; }
+    document.querySelectorAll(SCOPE.split(', ').map((s) => s + ' button[data-q], ' + s + ' button[data-cmd]').join(', ')).forEach((b) => {
+      if (!risky(b) || armKey(b) !== S.armed.key || b.classList.contains('hbl-armed')) return;
+      const text = b.textContent.trim();
+      b.dataset.armText = b.textContent;
+      b.textContent = 'Confirm ' + (text.startsWith('/') ? text : text.toLowerCase());
+      b.classList.add('hbl-armed');
+    });
+  }
+  function armedClick(b) {
+    if (!risky(b)) return true;
+    const step = R.arm(S.armed, armKey(b), Date.now());
+    S.armed = step.armed;
+    showArmed();
+    clearTimeout(S.armTimer);
+    if (S.armed) S.armTimer = setTimeout(() => { S.armed = null; showArmed(); }, ARM_MS + 50);
+    return step.act;
+  }
   const SCOPE = '#hb-live-pane, #hb-live-pop, #home-chat-messages';
   document.addEventListener('click', (e) => {
     const t = e.target;
@@ -560,7 +596,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const pop = t.closest('#hb-live-pop');
     const q = t.closest('button[data-q]');
     if (q) {
-      if (q.dataset.confirm && !window.confirm(q.dataset.confirm)) return;
+      if (!armedClick(q)) return;                        // Practice 275: first click arms, second acts
       if (q.disabled) return;
       q.disabled = true;
       // A 200 response can still be a refusal; the snapshot decides whether this item is resolved.
@@ -572,7 +608,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const cmd = t.closest('[data-cmd]');
     if (cmd) {
       const c = cmd.dataset.cmd;
-      if (/^\/(cancel|reject|stop)\b/.test(c) && !window.confirm(`Run ${c}?`)) return;
+      if (!armedClick(cmd)) return;                      // Practice 275
       if (cmd.disabled) return;
       if (pop) {
         cmd.disabled = true;

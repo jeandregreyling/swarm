@@ -24,6 +24,7 @@
     '.hb-clip-list li[data-state=blocked]{opacity:.5}.hb-chip{font-size:10px;padding:0 6px;border-radius:8px;border:1px solid var(--border,#2c3a50);white-space:nowrap}' +
     '.hb-chip.ready{border-color:var(--accent,#6aa9ff);color:var(--accent,#6aa9ff)}' +
     '.hb-chip.parked{border-color:#ffb300;color:#ffb300}' +   // Practice 180
+    '.hb-armed{background:#c62828!important;border-color:#ff5252!important;color:#fff!important;font-weight:700}' +   // Practice 275
     '.hb-switch{font:inherit;font-size:10px;padding:0 9px;border-radius:10px;border:1px solid var(--border,#2c3a50);background:transparent;color:var(--text-dim,#9aa7b8);cursor:pointer;margin-left:6px}' +
     '.hb-switch.on{color:#fff;border-color:var(--accent,#6aa9ff);background:color-mix(in srgb,var(--accent,#6aa9ff) 35%,transparent);box-shadow:0 0 6px var(--accent,#6aa9ff)}';
 
@@ -50,7 +51,7 @@
       const t = e.target.closest('[data-task]');           // owner 15 Nov: pause / continue / approve / cancel a task by clicking
       if (t) {
         e.stopPropagation();
-        if (t.dataset.task === 'cancel' && !window.confirm('Cancel this task? Its queued work is dropped and it will not run again.')) return;
+        if (t.dataset.task === 'cancel' && !armedClick(t)) return;   // Practice 275: first click arms, second cancels
         task([t.dataset.task, t.dataset.id]);
         return;
       }
@@ -156,6 +157,27 @@
     if (box) box.innerHTML = swHtml;
     // owner 15 Nov: the Chat window has no switch row of its own - its board carries the switches in its header
     all.slice(1).forEach(other => { other.innerHTML = el ? el.innerHTML.replace('</div>', swHtml + '</div>') : ''; });
+    paintArmed();
+  }
+
+  // Practice 275 (JD 22 Nov: "the cancel button itself should turn into a confirm button so I basically just have to double click on
+  // cancel"): no browser dialog. The first click turns cancel red - "confirm cancel" - and the second within 4 s cancels.
+  const ARM_MS = 4000;
+  function armedClick(t) {
+    const key = 'cancel:' + t.dataset.id;
+    if (S.armed && S.armed.key === key && Date.now() <= S.armed.until) { S.armed = null; paintArmed(); return true; }
+    S.armed = { key, until: Date.now() + ARM_MS };
+    paintArmed();
+    clearTimeout(S.armTimer);
+    S.armTimer = setTimeout(() => { S.armed = null; paintArmed(); }, ARM_MS + 50);
+    return false;
+  }
+  function paintArmed() {
+    holders().forEach(el => el.querySelectorAll('[data-task="cancel"]').forEach(b => {
+      const on = !!S.armed && S.armed.key === 'cancel:' + b.dataset.id && Date.now() <= S.armed.until;
+      b.classList.toggle('hb-armed', on);
+      b.textContent = on ? 'confirm cancel' : 'cancel';
+    }));
   }
 
   function notOwner() {
