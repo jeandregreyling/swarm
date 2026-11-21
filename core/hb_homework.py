@@ -143,8 +143,8 @@ def judge(card, gathered):
     return not reasons, reasons
 
 
-_VAGUE_STEP = re.compile(r'\b(ensure|verify that|make sure|the necessary|improve|enhance|as needed|appropriate(ly)?)\b', re.I)
-_PATH = re.compile(r'\b(?:core|tests|frontend|scripts|utils|agents|fridays|runtime|docs)/[\w/.-]+\.\w+')
+_VAGUE_STEP = re.compile(r'\b(ensure|verify that|make sure|the necessary|improve|enhance|as needed|appropriate(ly)?|the (whole )?test suite|all (the )?tests)\b', re.I)
+_PATH = re.compile(r'\b(?:core|tests|frontend|scripts|utils|agents|fridays|runtime|docs)/[\w/-]+(?:\.[\w-]+)*\.(?:py|js|html|css|json|md|sh|txt)\b')   # Practice 283: files, not module.function
 
 
 def plan_problems(plan, known, gathered):
