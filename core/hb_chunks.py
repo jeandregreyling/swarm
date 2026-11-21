@@ -207,6 +207,20 @@ def advance(conn, task):
     return finished[-1][0] if finished else None
 
 
+def view(conn, task_id):
+    """Practice 234: a task's chunks for the interface - read-only (the Live pane polls this; it never writes). None: no chunks."""
+    try:
+        rows = conn.execute('SELECT n, text, state FROM hb_chunks WHERE task_id=? ORDER BY n', (task_id,)).fetchall()
+    except Exception:
+        return None
+    if not rows:
+        return None
+    doing = next(({'n': r[0], 'text': r[1]} for r in rows if r[2] == 'doing'), None)
+    nxt = next(({'n': r[0], 'text': r[1]} for r in rows if r[2] == 'todo'), None)
+    return {'total': len(rows), 'done': sum(1 for r in rows if r[2] == 'done'), 'doing': doing, 'next': nxt,
+            'list': [{'n': r[0], 'text': r[1], 'state': r[2]} for r in rows]}
+
+
 def focus(conn, task, writer=None):
     """The line for APEX's card, or '' when the task has no chunks. Practice 217: with writer (a connect function) the chunks are
     saved on their own connection and committed - the card is built inside a transaction nobody commits, so they vanished."""

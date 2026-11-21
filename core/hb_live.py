@@ -232,6 +232,19 @@ def _master(conn, by_task):
     return {'on': q.get('on'), 'auto': q.get('auto'), 'note': q.get('note', '')[:300], 'items': items}
 
 
+def _with_chunks(conn, items):
+    """Practice 234 (chunk-first interface): every row and every active worker that works on a task carries the task's chunks."""
+    from core.hb_chunks import view
+    seen = {}
+    for item in items:
+        tid = item.get('task_id')
+        if tid:
+            if tid not in seen:
+                seen[tid] = view(conn, tid)
+            item['chunks'] = seen[tid]
+    return items
+
+
 BOARD_GROUPS = (('needs_you', 'Needs you'), ('now', 'Now'), ('next', 'Next'), ('claude', 'With Claude Code'), ('waiting', 'Waiting'),
                 ('spec', 'Needs a spec'), ('parked', 'Parked by HB'), ('blocked', 'Blocked'))
 
@@ -332,7 +345,9 @@ def snapshot(conn, now=None, tele=None, items=None):
     busy = (tele.get('gpu') or {}).get('busy_pct')
     if busy is not None and busy >= BUSY_GPU_PCT and not any(i['lane'] == 'gpu' for i in found):
         unexplained.append({'lane': 'gpu', 'evidence': f'GPU {busy:.0f}% busy and no APEX run is recorded'})
-    out = {'lanes': lanes, 'needs_you': _needs_you(conn), 'master': _master(conn, by_task), 'history': _history(conn), 'unexplained': unexplained}
+    master = _master(conn, by_task)
+    _with_chunks(conn, found + master.get('items', []))     # Practice 234: chunk n of N on every worker and every row
+    out = {'lanes': lanes, 'needs_you': _needs_you(conn), 'master': master, 'history': _history(conn), 'unexplained': unexplained}
     out['version'] = hashlib.sha1(json.dumps(out, sort_keys=True, default=str).encode()).hexdigest()[:12]
     out['telemetry'], out['at'] = tele, now
     out['apex_live'], out['started'] = apex_live(), STARTED      # Practice 200 (outside the version hash: it changes every read)
