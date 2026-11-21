@@ -91,6 +91,30 @@ def rows(conn):
     return out
 
 
+def hand_over(conn, step_id, doer, actor):
+    """Practice 278 (JD 22 Nov: "I'm trying to click on the agent selection of a task"): JD's pick takes effect now. Picking Fred switches
+    him on if he is off and hands him the step's open task at once (core/hb_task_manager.local_help); with no task yet he takes it when
+    the step starts. Returns the words the list shows. Only the owner's routes reach edit(), so this is always JD's own choice."""
+    if doer != 'fred':
+        return ''
+    try:
+        from core import hb_model_switches, hb_task_manager as tm
+        note = ''
+        if hb_model_switches.modes(conn).get(hb_model_switches.FRED) == 'off':
+            hb_model_switches.set_mode(conn, hb_model_switches.FRED, 'on', actor)
+            note = 'Fred switched on. '
+        row = conn.execute("SELECT t.task_id FROM hb_tasks t JOIN hb_task_manager m ON m.task_id=t.task_id WHERE t.step_id=? "
+                           "AND t.state NOT IN ('completed','cancelled') ORDER BY t.created_at DESC LIMIT 1", (step_id,)).fetchone()
+        if not row:
+            return f' - {note}Fred takes it when the step starts.'
+        result = tm.local_help(conn, hb_tasks.get(conn, row[0]), selected=True)
+    except Exception as exc:
+        return f' - Fred could not take it: {exc}'[:200]
+    if result in ('submitted', 'queued', 'running'):
+        return f' - {note}Fred has it now.'
+    return f" - {note}Fred could not take it: {str(result).replace('unavailable: ', '')[:160]}"
+
+
 def edit(conn, args, actor):
     """/clip up|down|top S-xxxx · /clip importance S-xxxx 1-5 · /clip doer S-xxxx <doer> · /clip clear S-xxxx (doers: DOERS)"""
     import re
@@ -106,7 +130,7 @@ def edit(conn, args, actor):
         said = f'importance {args[2]}'
     elif action == 'doer' and len(args) > 2 and args[2].lower() in DOERS:
         conn.execute('UPDATE hb_clipboard SET doer=?, edited_by=?, updated_at=? WHERE step_id=?', (args[2].lower(), actor, time.time(), step_id))
-        said = f'doer: {DOER_WORDS[args[2].lower()]}'
+        said = f'doer: {DOER_WORDS[args[2].lower()]}' + hand_over(conn, step_id, args[2].lower(), actor)   # Practice 278
     elif action == 'impact' and len(args) > 2:   # owner 13 Nov: the owner corrects HB's impact class; kept as a training example
         from core import hb_change_impact
         said = hb_change_impact.correct(conn, step_id, args[2].lower(), actor)

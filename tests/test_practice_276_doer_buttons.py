@@ -47,7 +47,7 @@ def test_a_doer_hb_cannot_run_shows_as_a_tag_with_the_real_choices():
 
 def test_the_snapshot_lists_who_can_take_a_step(monkeypatch):
     monkeypatch.setattr(hb_model_switches, 'modes', lambda conn: {hb_model_switches.FRED: 'off'})
-    assert [(d['id'], d['ok']) for d in hb_live._doers(None)] == [('apex', True), ('fred', False)]
+    assert [(d['id'], d['ok'], d['off']) for d in hb_live._doers(None)] == [('apex', True, False), ('fred', True, True)]   # Practice 278
     monkeypatch.setattr(hb_model_switches, 'modes', lambda conn: {})
     assert [(d['id'], d['ok']) for d in hb_live._doers(None)] == [('apex', True), ('fred', True)]
 

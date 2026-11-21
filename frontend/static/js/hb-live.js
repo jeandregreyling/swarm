@@ -307,7 +307,7 @@
     if (!ok.some((d) => d.id === now)) html += ` <span class="hbl-tag" title="Set earlier; HB cannot run this doer from the list">${esc(DOER_NAMES[now] || now)}</span>`;
     html += ok.map((d) => d.id === now
       ? ` <b class="hbl-doer hbl-doer-on" title="${esc(d.why || '')}">${esc(d.name)}</b>`
-      : ` <button type="button" class="hbl-doer" data-q="clip" data-a="doer" data-id="${esc(i.step_id)}" data-v="${esc(d.id)}" title="${esc(d.why || '')}">${esc(d.name)}</button>`).join('');
+      : ` <button type="button" class="hbl-doer" data-q="clip" data-a="doer" data-id="${esc(i.step_id)}" data-v="${esc(d.id)}" title="${esc(d.why || '')}">${esc(d.name)}${d.off ? ' (off)' : ''}</button>`).join('');   // Practice 278
     // Practice 277: a doer that cannot work right now is not offered, but the list says why (e.g. Fred is switched Off in Live status)
     html += (doers || []).filter((d) => !d.ok && d.why).map((d) => ` <span class="hbl-dim">· ${esc(d.why)}</span>`).join('');
     return html + '</span>';

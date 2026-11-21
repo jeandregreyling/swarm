@@ -293,9 +293,11 @@ def _doers(conn):
         off = hb_model_switches.modes(conn).get(hb_model_switches.FRED) == 'off'
     except Exception:
         off = False
-    return [{'id': 'apex', 'name': 'APEX', 'ok': True, 'why': 'APEX does the step on the GPU'},
-            {'id': 'fred', 'name': 'Fred', 'ok': not off,
-             'why': 'Fred is switched Off in Live status' if off else 'Fred (24B on the CPU) does the step; your click counts as you calling Fred'}]
+    # Practice 278 (JD 22 Nov: "if i could actually click on anything"): Fred stays pickable when his switch is off - picking switches him on
+    return [{'id': 'apex', 'name': 'APEX', 'ok': True, 'off': False, 'why': 'APEX does the step on the GPU'},
+            {'id': 'fred', 'name': 'Fred', 'ok': True, 'off': off,
+             'why': ('Fred is switched off - picking him switches him on and hands him this task now' if off
+                     else 'Fred (24B on the CPU) takes this task now; your pick counts as you calling Fred')}]
 
 
 def _apex_lights(conn):
