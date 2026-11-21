@@ -161,18 +161,23 @@ def issue_token(conn: sqlite3.Connection, principal_id: str) -> str:
     return raw
 
 
+LAST_USED_EVERY_S = 60   # Practice 222: "last contact" is kept to the minute; a poll every 2-3 s does not write (and lock) each time
+
+
 def authenticate(conn: sqlite3.Connection, raw: str | None) -> dict | None:
     if not raw or not raw.startswith(TOKEN_PREFIX) or len(raw) > 128:
         return None
     row = conn.execute(
-        """SELECT t.id, t.principal_id, t.scopes, p.display_name
+        """SELECT t.id, t.principal_id, t.scopes, p.display_name, t.last_used_at
            FROM service_tokens t JOIN service_principals p ON p.id = t.principal_id
            WHERE t.token_sha256=? AND t.revoked_at IS NULL AND p.enabled=1""",
         (_digest(raw),),
     ).fetchone()
     if not row:
         return None
-    conn.execute("UPDATE service_tokens SET last_used_at=? WHERE id=?", (time.time(), row[0]))
+    now = time.time()
+    if not row[4] or now - row[4] >= LAST_USED_EVERY_S:
+        conn.execute("UPDATE service_tokens SET last_used_at=? WHERE id=?", (now, row[0]))
     return {"id": row[1], "display_name": row[3], "scopes": set(json.loads(row[2]))}
 
 

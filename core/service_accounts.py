@@ -64,7 +64,12 @@ def initialise(conn: sqlite3.Connection) -> None:
         ("mistral-vibe", "Mistral Vibe"),
         ("claude-code", "Claude Code"),
     ]
+    # Practice 222 (calm swarm 4/5): this runs at the start of EVERY peer request (inbox polls every 2-3 s per worker). INSERT OR
+    # IGNORE takes the write lock even when nothing changes and holds it for the whole request - so only missing accounts are written.
+    have = {row[0] for row in conn.execute('SELECT id FROM service_principals')}
     for pid, name in principals:
+        if pid in have:
+            continue
         conn.execute(
             """
             INSERT OR IGNORE INTO service_principals (
