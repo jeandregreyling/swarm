@@ -9,7 +9,7 @@ FACTS = {'files': [{'path': 'core/hb_live.py'}, {'path': 'frontend/static/js/hb-
 
 
 def _card(plan):
-    return {'goal': 'Show the chunk on each card', 'check': 'python -m pytest tests/test_x.py passes', 'plan': plan,
+    return {'goal': 'Show the chunk on each card', 'check': 'python -m pytest tests/test_x.py passes', 'plan': plan, 'scope_in': ['the Live cards'], 'design': ['renderActive in frontend/static/js/hb-live.js'],   # Practice 284
             'files': ['core/hb_live.py'], 'questions': [], 'doer': 'apex', 'importance': 3, 'why': 'x'}
 
 

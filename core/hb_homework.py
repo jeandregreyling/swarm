@@ -85,8 +85,12 @@ def facts(conn, task, max_files=6):
 
 # ------------------------------------------------------------------ 2 card (CPU model)
 SCHEMA = {'type': 'object', 'additionalProperties': False,
-          'required': ['goal', 'check', 'plan', 'files', 'questions', 'doer', 'importance', 'why'],
+          'required': ['goal', 'scope_in', 'scope_out', 'design', 'risks', 'check', 'plan', 'files', 'questions', 'doer', 'importance', 'why'],
           'properties': {'goal': {'type': 'string', 'maxLength': 300}, 'check': {'type': 'string', 'maxLength': 300},
+                         'scope_in': {'type': 'array', 'maxItems': 5, 'items': {'type': 'string', 'maxLength': 200}},   # Practice 284: the BA's spec
+                         'scope_out': {'type': 'array', 'maxItems': 5, 'items': {'type': 'string', 'maxLength': 200}},
+                         'design': {'type': 'array', 'maxItems': 6, 'items': {'type': 'string', 'maxLength': 240}},
+                         'risks': {'type': 'array', 'maxItems': 4, 'items': {'type': 'string', 'maxLength': 200}},
                          'plan': {'type': 'array', 'maxItems': 8, 'items': {'type': 'string', 'maxLength': 240}},
                          'files': {'type': 'array', 'maxItems': 6, 'items': {'type': 'string', 'maxLength': 200}},
                          'questions': {'type': 'array', 'maxItems': 3, 'items': {'type': 'string', 'maxLength': 200}},
@@ -95,10 +99,12 @@ SCHEMA = {'type': 'object', 'additionalProperties': False,
                          'why': {'type': 'string', 'maxLength': 300}}}
 
 
+BA_METHOD = "You are HB's business analyst (BA). You never change anything. Like a good BA you interrogate one task before anyone builds it, in this order: 1. GOAL - what JD really wants, in one sentence (goal). 2. SCOPE - what is in (scope_in) and what is explicitly out (scope_out), so APEX does not wander. 3. DESIGN - which files and functions from the facts change and how, one line each (design). 4. RISKS - what could break or is unknown (risks); a real blocker that only JD can answer goes in questions, usually none. 5. CHECK - ONE concrete check that proves it is done (check). 6. CHUNKS - the plan APEX works one chunk at a time (plan). Then write the spec card so the GPU model can start with the reading and thinking done. Rules: "   # Practice 284
+
+
 def prompt(task, gathered, rejected=None):
     from core.hb_master_prompt import for_role
-    system = (for_role('default') + '\nYou are HB\'s homework model. You never change anything. You turn one task into a precise spec card '
-              'so the GPU model can start with the reading and thinking done. Rules: goal = one sentence of what JD wants. check = ONE '
+    system = (for_role('default') + '\n' + BA_METHOD + 'goal = one sentence of what JD wants. check = ONE '
               'concrete check that proves it is done: a test file or command to run, or an exact visible behaviour ("the header shows ..."); '
               'never "verify it works". plan = 2-6 short steps, the first doable at once. files = only paths from the facts below that the '
               'work really touches. questions = only real blockers that need JD; usually none. doer: hb if an HB command or tool does it '
@@ -117,7 +123,7 @@ def call_model(messages):
     from core.seven_llm import registry
     entry = registry.get(MODEL)
     text, _ = llm.chat_via_gateway(MODEL, messages, temperature=0.1, absolute_timeout_s=600, idle_timeout_s=300, queue_timeout_s=10,
-                                   keep_alive=900, options={'num_ctx': entry.ctx if entry else 8192, 'num_predict': 600, 'timeout': 600,
+                                   keep_alive=900, options={'num_ctx': entry.ctx if entry else 8192, 'num_predict': 1000, 'timeout': 600,
                                                             'startup_timeout': 240, 'require_complete_output': True},
                                    response_format={'type': 'json_schema', 'json_schema': {'name': 'hb_spec_card', 'strict': True,
                                                                                             'schema': SCHEMA}})
@@ -140,6 +146,10 @@ def judge(card, gathered):
     if card.get('questions'):
         reasons.append('open question for JD: ' + '; '.join(card['questions'])[:200])
     reasons += plan_problems(card.get('plan') or [], known, gathered)   # Practice 282: HB judges the plan too
+    if not [s for s in card.get('scope_in') or [] if str(s).strip()]:   # Practice 284: a BA spec says what is in scope
+        reasons.append('no scope: say what is in (scope_in) and what is out (scope_out)')
+    elif card.get('doer') != 'hb' and not any(p in str(d) or p.rsplit('/', 1)[-1] in str(d) for d in card.get('design') or [] for p in known):
+        reasons.append('the design names no real file: say which file and function from the facts change and how')
     return not reasons, reasons
 
 
@@ -198,8 +208,8 @@ def write(conn, task, model=call_model):
                 task_version=task.get('version'))
     hb_tasks.event(conn, task, 'homework', 'spec_card', card)
     handoff(conn, task, card)                            # Practice 113: a READY backlog card goes to APEX
-    bg.finish('homework', conn, task, (f"📝 Homework card for {str(task.get('title') or '')[:70]}: READY - check: {card.get('check')}"
-                                       if ready else f"📝 Homework card for {str(task.get('title') or '')[:70]}: not ready - {'; '.join(reasons)[:160]}"))
+    bg.finish('homework', conn, task, (f"📝 BA spec for {str(task.get('title') or '')[:70]}: READY - check: {card.get('check')}"
+                                       if ready else f"📝 BA spec for {str(task.get('title') or '')[:70]}: not ready - {'; '.join(reasons)[:160]}"))
     return card
 
 
@@ -237,7 +247,7 @@ def backlog(conn, limit=2):
             chat = owner_chat(conn)
             mid = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
                                "VALUES (?,'hummingbird','user',?,'response',0)",
-                               (chat, message(f'📐 Homework: HB writes a spec for "{str(title)[:120]}" so APEX can work on it.',
+                               (chat, message(f'📐 BA: HB\'s business analyst specs "{str(title)[:120]}" (scope, design, check, chunks) so APEX can work on it.',
                                               details=[f'Studio step {step_id}']))).lastrowid
             # Practice 115 (owner 16 Nov 2026): bind() links only APEX's own steps to Studio ("Selected Studio step is not assigned to
             # APEX"), and the line above was already posted - so every 6 s HB posted it again and failed again (30 lines in 3 minutes).
@@ -292,8 +302,12 @@ def summary(card):
     """The card as a few lines for APEX's DREAM clipboard."""
     if not card:
         return ''
-    lines = [f"Homework (spec card by {card.get('model')} on the CPU; {'READY' if card.get('ready') else 'not ready: ' + '; '.join(card.get('not_ready') or [])}):",
-             f"- goal: {card.get('goal')}", f"- check: {card.get('check')}"]
+    lines = [f"BA spec (by {card.get('model')} on the CPU; {'READY' if card.get('ready') else 'not ready: ' + '; '.join(card.get('not_ready') or [])}):",
+             f"- goal: {card.get('goal')}"]
+    for key, word in (('scope_in', 'in scope'), ('scope_out', 'out of scope'), ('design', 'design'), ('risks', 'risks')):   # Practice 284
+        if card.get(key):
+            lines.append(f'- {word}: ' + ' | '.join(str(x) for x in card[key]))
+    lines.append(f"- check: {card.get('check')}")
     if card.get('plan'):
         lines.append('- plan: ' + ' | '.join(f'{n}. {p}' for n, p in enumerate(card['plan'], 1)))
     for f in (card.get('facts') or {}).get('files', []):

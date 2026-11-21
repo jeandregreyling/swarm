@@ -9,7 +9,8 @@ import time
 
 _LOCK = threading.Lock()
 RUNNING = {}
-ROLE = {'homework': 'Homework', 'counsel': 'Counsel', 'proposal': 'HB check'}
+ROLE = {'homework': 'BA',   # Practice 284: homework is HB's business analyst
+         'counsel': 'Counsel', 'proposal': 'HB check'}
 
 
 def start(kind, task, model, what, conn=None):

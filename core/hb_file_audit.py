@@ -218,7 +218,7 @@ def _report(conn, rel, findings, add_step=None):
     conn.commit()
     conn.execute('UPDATE hb_file_audit SET step_id=? WHERE path=?', (step_id, rel))
     conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
-                 (owner_chat(conn), message(f'🔎 File audit: {rel} - {len(findings)} thing(s) to fix. Homework writes the spec, then APEX takes it.',
+                 (owner_chat(conn), message(f'🔎 File audit: {rel} - {len(findings)} thing(s) to fix. the BA writes the spec, then APEX takes it.',
                                             details=[f'Studio step {step_id}', *[f"line {f['line']}: {f['problem'][:120]}" for f in findings[:4]]])))
     return step_id
 

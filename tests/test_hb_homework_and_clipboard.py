@@ -8,6 +8,7 @@ from test_peer_turns import flow, reply  # noqa: F401
 from test_hb_plan_workflow import plan, P  # noqa: F401
 
 GOOD = {'goal': 'Make waiting approvals visible in the header', 'check': 'tests/test_hb_approval_popup.py passes',
+        'scope_in': ['the header dial'], 'scope_out': [], 'design': ['dial() in frontend/static/js/views/hb-needs-you.js adds the glow'], 'risks': [],
         'plan': ['Read hb-needs-you.js dial()', 'Add the glow'], 'files': ['frontend/static/js/views/hb-needs-you.js', 'made/up.py'],
         'questions': [], 'doer': 'apex', 'importance': 4, 'why': 'code change in the page'}
 
@@ -51,7 +52,7 @@ def test_a_ready_card_replaces_the_gpu_scoping_turn_and_apex_sees_it(plan):
     assert w['task_id'] == t1 and w['stage'] == 'running'                     # no 'planning' turn on the GPU
     assert done_when(conn, task)[1] == ['tests/test_hb_approval_popup.py passes']
     text = dream_card(conn, task)
-    assert 'Homework (spec card by homework-cpu:7b on the CPU; READY)' in text and 'check: tests/test_hb_approval_popup.py passes' in text
+    assert 'BA spec (by homework-cpu:7b on the CPU; READY)' in text and 'check: tests/test_hb_approval_popup.py passes' in text
 
 
 def test_homework_failure_falls_back_to_the_old_scoping(plan):

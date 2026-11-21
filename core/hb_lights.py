@@ -118,7 +118,7 @@ def _goal(conn, task_id):
         spec = None
     if spec:
         p = _payload(spec[0])
-        return 'on', 'Homework spec card: ' + str(p.get('check') or p.get('goal') or '')[:120]
+        return 'on', 'BA spec: ' + str(p.get('check') or p.get('goal') or '')[:120]
     if chat:
         return 'on', "JD's request is the goal"
     return 'warn', 'No done criteria for this task'

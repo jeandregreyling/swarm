@@ -64,6 +64,9 @@ def _update(conn, project_id, **values):
 def auto_accept_for(conn, task):
     """Owner 13 Nov: approvals are automatic while the workflow runs. True when the enabled workflow is running this task with
     auto-accept on. HB then approves a step whose own checks pass after its last change; real problems still stop for the owner."""
+    # Practice 266 (JD 22 Nov 00:2x: 'APEX cannot mark anything as done anymore - he can ask me to confirm only once he has proven
+    # the task is done and I can see the change'): no automatic approval. HB asks JD once, with the proof.
+    return False
     if not _has(conn, 'hb_plan_workflow') or not task or not task.get('step_id'):
         return False
     ensure_schema(conn)
@@ -338,7 +341,7 @@ def start(conn, w, step, now=None):
     if card and card.get('ready'):
         from core.hb_dream_method import set_done
         criteria = set_done(conn, task, [card['check']], f"HB homework ({card.get('model')} on the CPU; owner approved all automation)")
-        with_fred = _run(conn, task, w, 'Homework done on the CPU: the spec card gives the check and the plan', card.get('plan') or [])
+        with_fred = _run(conn, task, w, 'BA spec done on the CPU: it gives the scope, design, check and chunks', card.get('plan') or [])
         from core.hb_plain import message
         executor = 'Fred works on the CPU' if with_fred else 'APEX starts straight away'
         text = message(f"▶ Starting: {name_of(step['title'])}.", f'The homework is done (spec card from the CPU model), so {executor}.',
