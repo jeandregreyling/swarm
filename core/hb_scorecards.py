@@ -8,7 +8,7 @@ next_rung(...)     the doer ladder: after two failed checks in a row a task move
 import json
 import re
 
-LADDER = ('hb', 'small', 'apex', 'fred')
+LADDER = ('hb', 'small', 'apex')   # Practice 281: no Fred rung - Fred works only when JD calls him (Practice 264), so the rung was a dead end
 FAILS_PER_RUNG = 2
 
 

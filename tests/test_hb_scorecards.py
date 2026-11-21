@@ -43,7 +43,7 @@ def test_practice_61_two_failed_checks_move_the_doer_one_rung_up():
     c = db()
     assert s.next_rung('small', 1) == ('small', '')
     assert s.next_rung('small', 2) == ('apex', 'moved up from small after 2 failed checks in a row')
-    assert s.next_rung('apex', 5)[0] == 'fred' and s.next_rung('fred', 9) == ('fred', '')
+    assert s.next_rung('apex', 5) == ('apex', '') and s.next_rung('fred', 9) == ('fred', '')   # Practice 281: the ladder stops at APEX
     for status in ('pass', 'fail', 'fail'):
         c.execute("INSERT INTO hb_task_events(task_id, kind, payload) VALUES ('T-1','test_result',?)", (json.dumps({'alm_run_status': status}),))
     assert s.failed_checks(c, 'T-1') == 2 and s.failed_checks(c, 'T-none') == 0

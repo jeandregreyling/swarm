@@ -75,12 +75,53 @@ def _short_list(piece):
     return bits if len(bits) > 1 and all(len(b) <= 60 for b in bits) else [piece]
 
 
+LETTERED = re.compile(r'(?:^|[,;:]\s+|\s+)(?=[A-H]\.\s)')
+TESTS = re.compile(r'tests/[\w/.-]+\.py')
+
+
+def _lettered(body):
+    """Practice 281: 'intro: A. ..., B. ..., C. ...' -> one chunk per letter; the intro's test file travels with each chunk."""
+    d = _depths(body)
+    cuts = [m.end() for m in LETTERED.finditer(body) if d[min(m.end(), len(d) - 1)] == 0]
+    if len(cuts) < 2:
+        return []
+    intro = body[:cuts[0]]
+    tests = sorted(set(TESTS.findall(intro)))
+    parts = [body[a:b].strip(' ,;.') for a, b in zip(cuts, cuts[1:] + [len(body)])]
+    return [p + (f' (test first in {tests[0]})' if tests and tests[0] not in p else '') for p in parts if p]
+
+
+def _merge_fragments(parts):
+    """Practice 281: 'plan', 'result (core/x.py)', 'any actor can take it' are not chunks - they join the chunk before them."""
+    out = []
+    for p in parts:
+        if out and len(p.split()) <= 3 and re.fullmatch(r'[a-z][a-z -]*', p) and not ACTION.match(p) and not LOOKS.match(p):
+            out[-1] = f'{out[-1]}; {p}'
+        else:
+            out.append(p)
+    return out
+
+
+def test_chunks(text):
+    """Practice 281: a spec with no plan of its own but test files in its 'Done when' line - one chunk per test file."""
+    done = re.search(r'(?im)^\s*done when\s*:\s*(.+)$', str(text or ''))
+    files = list(dict.fromkeys(TESTS.findall(done.group(1)))) if done else []
+    if len(files) == 1:
+        return [f'run {files[0]} and read the first failure: what does it expect that the code does not do',
+                'fix the code that failure points at: read the exact lines first, then patch only those lines',
+                f'run {files[0]} again: repeat read-fix-run until it passes, then report what you changed']
+    if 2 <= len(files) <= 7:
+        return ([f'make {f} pass: run it, read the first failure, read the exact lines it points at, patch only those, run it again' for f in files]
+                + ['run all of them together and report which pass and what you changed'])
+    return []
+
+
 def plan(text, most=8):
     """Split explicit instructions without mistaking a specification for a plan."""
     text = str(text or '')
     m = DO.search(text)
     if m:
-        parts = [b for p in _split_top(m.group(1), SEQ) for b in _short_list(p)]
+        parts = _lettered(m.group(1)) or _merge_fragments([b for p in _split_top(m.group(1), SEQ) for b in _short_list(p)])   # Practice 281
     else:
         # Only a standalone list of actions is a plan. Requirements, safety
         # constraints, and nested lists inside a larger directive are context.
@@ -145,9 +186,11 @@ def _parts(conn, task, source):
     try:   # no Do: list or numbered lines in the spec: homework's plan, if it made one
         from core.hb_homework import latest
         steps = [str(s).strip() for s in ((latest(conn, task) or {}).get('plan') or []) if str(s).strip()]
-        return steps if 2 <= len(steps) <= 8 and all(len(s) <= 500 for s in steps) else []
+        if 2 <= len(steps) <= 8 and all(len(s) <= 500 for s in steps):
+            return steps
     except Exception:
-        return []
+        pass
+    return test_chunks(source)          # Practice 281: no plan anywhere - one chunk per Done-when test file
 
 
 def ensure(conn, task):
