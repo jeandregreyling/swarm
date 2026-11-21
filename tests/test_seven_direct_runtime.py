@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 
+from core import hb_gatekeeper
 from core import model_runtime_gateway as gw
 from core.seven_llm import registry
 from core.seven_llm import llama_server
@@ -32,6 +33,22 @@ def _seven_models_on_disk(monkeypatch, tmp_path):
     yield root
     monkeypatch.undo()
     registry.reload()
+
+
+@pytest.fixture(autouse=True)
+def _isolated_direct_hardware(monkeypatch):
+    """Loader tests use a 16 GB card and 62 GB host, independent of the live APEX service."""
+    monkeypatch.setattr(hb_gatekeeper, "vram", lambda: (16.0, 1.0))
+    monkeypatch.setattr(llama_server, "_vram_free_gb", lambda: 15.0)
+    monkeypatch.setattr(llama_server, "_meminfo_gb", lambda: {
+        "total_gb": 62.0, "available_gb": 40.0, "reserve_gb": 3.0,
+    })
+
+
+@pytest.fixture
+def _fake_server_binary(monkeypatch):
+    """Only tests that already fake Popen opt in; the suite-wide real-loader block stays in force."""
+    monkeypatch.setattr(llama_server, "default_binary", lambda: __file__)
 
 
 def test_direct_chat_reserves_tokens_for_a_final_answer():
@@ -151,10 +168,11 @@ def test_server_environment_loads_adjacent_llama_cpp_libraries(monkeypatch, tmp_
     ]
 
 
-def test_inventory_reports_mounted_root_and_repo_ggufs():
-    snap = scan_gguf(roots=["/mnt/llm", "agents/seven/models"], limit=20)
+def test_inventory_reports_mounted_root_and_repo_ggufs(_seven_models_on_disk):
+    model_root = str(_seven_models_on_disk)
+    snap = scan_gguf(roots=[model_root, "/mnt/llm"], limit=20)
     roots = {r["path"]: r for r in snap["roots"]}
-    assert os.path.abspath("agents/seven/models") in roots
+    assert model_root in roots
     assert any(m["name"] == "seven-7b-q8_0" for m in snap["models"])
     if "/mnt/llm" in roots:
         assert isinstance(roots["/mnt/llm"]["exists"], bool)
@@ -223,7 +241,7 @@ def test_gateway_routes_registered_direct_model_by_name(monkeypatch):
     assert tokens == ["direct", " ok"]
 
 
-def test_llama_server_chat_uses_openai_endpoint(monkeypatch):
+def test_llama_server_chat_uses_openai_endpoint(monkeypatch, _fake_server_binary):
     class FakeProc:
         pid = 12345
 
@@ -275,7 +293,7 @@ def test_llama_server_chat_uses_openai_endpoint(monkeypatch):
     llama_server.stop("seven-direct:q8")
 
 
-def test_llama_server_chat_streams_openai_chunks(monkeypatch):
+def test_llama_server_chat_streams_openai_chunks(monkeypatch, _fake_server_binary):
     class FakeProc:
         pid = 12346
 
@@ -356,7 +374,7 @@ def test_llama_server_resource_guard_blocks_oversized_model(monkeypatch, tmp_pat
         raise AssertionError("oversized direct model should be blocked")
 
 
-def test_llama_server_single_resident_stops_previous_model(monkeypatch):
+def test_llama_server_single_resident_stops_previous_model(monkeypatch, _fake_server_binary):
     class OldProc:
         pid = 111
         terminated = False
@@ -496,6 +514,13 @@ def _budget_env(monkeypatch, *, available_gb, vram_free=None, budget=60.0):
     monkeypatch.setattr(llama_server, "SINGLE_RESIDENT", False)
     monkeypatch.setattr(llama_server, "RAM_BUDGET_GB", budget)
     monkeypatch.setattr(llama_server, "_vram_free_gb", lambda: vram_free)
+
+    def synthetic_vram():
+        free = llama_server._vram_free_gb()
+        return (16.0, 16.0 - free) if free is not None else (None, None)
+
+    # Admission and placement must see the same simulated card, including memory freed by eviction.
+    monkeypatch.setattr(hb_gatekeeper, "vram", synthetic_vram)
     monkeypatch.setattr(llama_server, "_server_alive", lambda endpoint: True)
     monkeypatch.setattr(llama_server, "default_binary", lambda: __file__)
     mem = {"available_gb": available_gb}
