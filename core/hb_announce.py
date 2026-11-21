@@ -90,6 +90,9 @@ def _outcome(conn, key):
                 return 'unknown', ''
             if row[0] == 'completed':
                 return 'done', ''
+            from core.hb_calm import interrupted
+            if row[0] in ('failed', 'needs_review') and interrupted(row[1]):   # Practice 220: a restart is a pause, not a failure
+                return 'paused', 'HB restarted during the turn; the work carries on in the next turn'
             if row[0] in ('failed', 'cancelled', 'needs_review'):
                 return 'failed', f'{row[0]}' + (f' - {str(row[1])[:120]}' if row[1] else '')
             return 'unknown', ''
@@ -131,6 +134,7 @@ def tick(conn, now=None, items=None, post=None):
         took = f'{mins:.0f} min' if mins >= 1 else 'under a minute'
         state, why = _outcome(conn, k)
         said.append(f'✓ {who} finished: {title} ({took})' if state == 'done' else
+                    f'⏸ {who} paused: {title} ({took}) - {why}' if state == 'paused' else
                     f'✗ {who} stopped: {title} ({took})' + (f' - {why}' if why else '') if state == 'failed' else
                     f'■ {who} ended: {title} ({took}) - no result recorded')
     for line in said:

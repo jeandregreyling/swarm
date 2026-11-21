@@ -290,6 +290,10 @@ def enqueue(conn, conversation_id: int, message_id: int, body: str, recipients, 
 
 def inbox(conn, principal: dict, after_id: int = 0, limit: int = MAX_BATCH, *, pending_only=False) -> list[dict]:
     require_scope(principal, "peer.read")
+    if pending_only:
+        from core.hb_calm import restart_pending
+        if restart_pending():   # Practice 220: an announced restart is on its way - no new turn starts now, so none is cut off
+            return []
     recipients = readable_recipients(principal)
     marks = ",".join("?" * len(recipients))
     pending_clause=(" AND delivered_at IS NULL AND NOT EXISTS "

@@ -138,9 +138,13 @@ APEX_FIRST='unavailable: APEX first'
 def apex_tries(conn,task_id,since):
     """Practice 215: APEX's own turns on this task since `since` (a time) - requests to APEX that were not Fred's takeover turns."""
     try:
+        skip=''
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE name='hb_peer_work'").fetchone():
+            from core.hb_calm import INTERRUPTED_SQL   # Practice 220: a turn cut short by a restart is not one of APEX's attempts
+            skip=f" AND r.request_id NOT IN (SELECT request_id FROM hb_peer_work WHERE {INTERRUPTED_SQL})"
         return conn.execute("SELECT COUNT(*) FROM hb_task_requests r JOIN peer_messages p ON p.id=r.request_id WHERE r.task_id=? "
                             "AND p.recipient='apex' AND p.created_at>=? AND r.request_id NOT IN (SELECT request_id FROM hb_task_events "
-                            "WHERE task_id=? AND kind='fred_turn' AND request_id IS NOT NULL)",(task_id,since or 0,task_id)).fetchone()[0]
+                            "WHERE task_id=? AND kind='fred_turn' AND request_id IS NOT NULL)"+skip,(task_id,since or 0,task_id)).fetchone()[0]
     except Exception:
         return APEX_TRIES
 
