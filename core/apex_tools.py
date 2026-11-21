@@ -45,7 +45,7 @@ TOOL_SCHEMAS = {
     "runtime_reload":{},
     "git_clear_stale_lock":{},
 
-    "gemini_status": {}, "gemini_reload": {"provider_model":"optional verified endpoint gemini-2.5-flash; omit to retain current selection"},
+    "gemini_status": {}, "gemini_reload": {"provider_model":"optional verified endpoint gemini-4-argon; omit to retain current selection"},
     "task_context": {"offset": "optional older-instruction index or objective character offset", "section": "instructions or objective; omit arguments for current context"}, "task_memory": {},
     "task_evidence":{"evidence_id":"task event ID", "offset":"original evidence offset"},
     "studio_status":{"status":"todo/doing/blocked/partial; independent acceptance closes work"},
@@ -100,7 +100,7 @@ TEST_TOOL_SCHEMAS = {
 _ARGUMENT_PROPERTIES = {
     "next_action":{"type":"string","minLength":40,"maxLength":3500},
     "base_plan_event_id":{"type":"integer","minimum":1},
-    "provider_model":{"type":"string","enum":["gemini-2.5-flash"]},
+    "provider_model":{"type":"string","enum":["gemini-4-argon"]},   # Practice 79: the model gemini_reload accepts
     "evidence_message_ids":{"type":"array","minItems":1,"maxItems":8,"items":{"type":"integer","minimum":1}},
     "status":{"type":"string","enum":["todo","doing","blocked","partial"]},
     "allow_online":{"type":"boolean"},
