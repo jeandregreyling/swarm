@@ -142,6 +142,11 @@ def peer_post():
                             reply_to_request_id=data.get('reply_to_request_id'),route_reply=data.get('route_reply',True),
                             outcome=data.get('outcome','answer'),decision=data.get('decision'),usage=data.get('usage'),model=data.get('model',''),client_message_id=data.get('client_message_id'))
         conn.commit()
+        try:
+            from utils.db.chat import _translator_watch
+            _translator_watch(result['from_agent'], data.get('text', ''))
+        except Exception:
+            pass  # Translation availability must not discard a saved peer reply.
         _publish(result['conversation_id'], result['from_agent'], peer=True, message_id=result['message_id'])
         return jsonify({'ok': True, **result}), 201
     return _with_peer(handler)
@@ -610,8 +615,11 @@ def hb_translator_view(current_user=None):
             if request.headers.get('Sec-Fetch-Site')=='cross-site' or origin and urlsplit(origin).netloc!=request.host:
                 return jsonify(ok=False,error='Use the authenticated main chat'),403
             body=request.get_json(silent=True) or {}
-            if type(body.get('on')) is not bool:return jsonify(ok=False,error='JSON {on: true|false} required'),400
-            hb_translator.switch(conn,body['on'])
+            if body == {'auto': True}:
+                if not hb_translator.start_auto(conn):return jsonify(ok=False,error='Translator could not start'),503
+            elif type(body.get('on')) is bool and set(body) == {'on'}:
+                hb_translator.switch(conn,body['on'])
+            else:return jsonify(ok=False,error='JSON {on: true|false} or {auto: true} required'),400
             conn.commit()
         current,_=hb_translator.mode(conn)
         return jsonify(ok=True,running=hb_translator.running(),mode=current,languages=hb_translator.languages(conn))
@@ -667,6 +675,11 @@ def hb_queue_status(current_user=None):
                 data=hb_queue.status(conn)
                 data['summary']=hb_queue.summary(conn)
             return jsonify(ok=True,said=str(said)[:400],**data)
+        if isinstance(body,dict) and isinstance(body.get('gpu'),list):   # Practice 280: HB Live's GPU mode buttons (owner only, this route)
+            from core import hb_power
+            try:said=hb_power.switch_gpu(str(body['gpu'][0])[:20] if body['gpu'] else '')
+            except ValueError as exc:return jsonify(ok=False,error=str(exc)),400
+            return jsonify(ok=True,said=said)
         if isinstance(body,dict) and isinstance(body.get('clip'),list):   # owner 15 Nov: the board is editable by clicking (same rules as /clip)
             args=[str(a)[:40] for a in body['clip'][:3]]
             if not args or args[0] not in ('up','down','top','importance','doer','impact','clear'):

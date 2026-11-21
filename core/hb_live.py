@@ -76,7 +76,8 @@ def telemetry(root='/sys/class/drm'):
     frequency = Path('/sys/devices/system/cpu/cpu0/cpufreq')
     cpu.update({'clock_mhz': _read(frequency / 'scaling_cur_freq', scale=1 / 1000),
                 'max_clock_mhz': _read(frequency / 'cpuinfo_max_freq', scale=1 / 1000),
-                'governor': _read(frequency / 'scaling_governor', str)})
+                'governor': _read(frequency / 'scaling_governor', str),
+                'epp': _read(frequency / 'energy_performance_preference', str)})   # Practice 280: what the CPU mode really is
     try:
         cpu['load1'] = float(Path('/proc/loadavg').read_text().split()[0])
     except Exception:
@@ -449,6 +450,12 @@ def snapshot(conn, now=None, tele=None, items=None):
     out['version'] = hashlib.sha1(json.dumps(out, sort_keys=True, default=str).encode()).hexdigest()[:12]
     out['telemetry'], out['at'] = tele, now
     out['apex_live'], out['started'] = apex_live(), STARTED      # Practice 200 (outside the version hash: it changes every read)
+    try:                                                       # Practice 280: GPU mode for HB Live's buttons
+        from core.hb_power import gpu_mode
+        out.setdefault('telemetry', {}).setdefault('gpu', {})
+        out['telemetry']['gpu']['gpu_mode'] = gpu_mode(out['telemetry']['gpu'])
+    except Exception:
+        pass
     out['doers'] = _doers(conn)                                # Practice 276: the task list offers only these
     out['apex_lights'] = _apex_lights(conn)                    # Practice 272: always on the meter, live or the last turn
     return out

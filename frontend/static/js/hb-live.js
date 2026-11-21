@@ -265,7 +265,7 @@
     const o = opts || {};
     const lit = snap.apex_lights ? renderLights(snap.apex_lights, snap.apex_lights.running ? 'this turn' : 'last turn') : '';
     return renderMeter(snap.apex_live, o.rate, lit) + `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
-      `<span class="hbl-dim">${esc(systemLine(snap))}</span></div>` +
+      `<span class="hbl-dim" title="CPU mode: the energy preference of the amd-pstate driver (the CPU still boosts on demand; 'powersave' is only the governor's name)">${esc(systemLine(snap))}</span>${renderPower(snap)}</div>` +
       // Practice 208 (JD 21 Nov: "the clipboard ... there's nothing in there"): the list sat under the worker cards and vanished when the
       // box was short or folded. Now: who is busy (one row) -> the clipboard -> the worker cards; folded still shows the clipboard's count.
       (() => {
@@ -277,6 +277,20 @@
       })();
   }
 
+  // Practice 280 (JD 22 Nov: "a tag at the end that says 'powersave' and doesn't tell me anything"): 'powersave' is the CPU governor's
+  // name; with the amd-pstate-epp driver the CPU still boosts on demand and the energy preference says how eagerly. Shown in words.
+  const EPP = { performance: 'full speed', balance_performance: 'balanced', default: 'balanced', balance_power: 'saving power', power: 'saving power' };
+  function cpuMode(c) { return c.epp ? (EPP[c.epp] || c.epp.replace(/_/g, ' ')) : c.governor; }
+  function renderPower(snap) {
+    const g = (snap.telemetry || {}).gpu || {};
+    if (g.clock_limit_mhz == null && !g.gpu_mode) return '';
+    const now = g.gpu_mode || 'stock';
+    const b = (id, label, tip, risky) => now === id ? `<b class="hbl-doer hbl-doer-on" title="${esc(tip)}">${label}</b>`
+      : `<button type="button" class="hbl-doer" data-q="gpu" data-a="${id}" data-id="gpu"${risky ? ' data-confirm="1"' : ''} title="${esc(tip)}">${label}</button>`;
+    return '<span class="hbl-doers">GPU: ' + b('stock', 'Auto (stock)', 'Driver defaults: the card picks its own clocks, stock power limit, fans auto') + ' ' +
+      b('jd_tested', 'Overclock', "Your tested profile: 2600 MHz core, 1075 MHz memory, 249 W. HB reverts it by itself if the card runs too hot. Click twice to confirm.", true) + '</span>';
+  }
+
   function systemLine(snap) {
     const t = snap.telemetry || {}, g = t.gpu || {}, c = t.cpu || {};
     const free = g.vram_total_gb != null && g.vram_used_gb != null ? (g.vram_total_gb - g.vram_used_gb).toFixed(1) + ' GB free for you' : '';
@@ -285,7 +299,7 @@
       g.clock_limit_mhz != null ? 'limit ' + g.clock_limit_mhz + ' MHz' : '',
       c.load1 != null ? 'CPU load ' + c.load1 : '',
       c.clock_mhz != null ? 'CPU0 ' + Math.round(c.clock_mhz) + ' MHz' : '',
-      c.governor ? c.governor : ''].filter(Boolean).join(' · ');
+      c.governor ? 'CPU ' + cpuMode(c) : ''].filter(Boolean).join(' · ');
   }
 
   function renderNeedsPopup(n, needsControls) {
@@ -321,7 +335,7 @@
   }
 
   const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
-    primaryFor, systemLine, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
+    primaryFor, systemLine, renderPower, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
