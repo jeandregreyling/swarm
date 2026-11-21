@@ -977,6 +977,52 @@ def pasted_output(answer, receipts, request=''):
     return len(pasted) >= 2 and (len(pasted) >= len(lines) - len(pasted) or own_words < 40)
 
 
+# Practice 273 (JD 22 Nov 09:2x, after APEX's 22:14-22:18 answers on S-4A173B424A: 'The next step is to run the tests', 'Provide a
+# larger unique context chunk from a fresh raw read', a restated checklist): on HB's own work turn JD asked nothing, so a turn with no
+# action is not an answer. APEX is sent back once; if he still does nothing, JD gets one honest HB line instead of the junk.
+HB_WORK_TURN = re.compile(r'"task_type":\s*"hb_(?!managed_plan)')
+NO_WORK_NOTICE = ("HB DOES CHECK: the answer was not delivered. This is HB's work turn on a task: JD asked nothing and is not waiting "
+                  "for a plan, a promise, a checklist or a tool's error. No action ran this turn. Do the next action now: if a patch "
+                  "did not fit, read_file the exact lines fresh and propose_patch again with that exact text; if the next step is a "
+                  "test, run_tests. Then report what you did and what it showed. If a tool truly stops you, answer 'blocked because "
+                  "...' in one sentence naming the tool and its error.")
+PARROT_NOTICE = ("HB DOES CHECK: the answer was not delivered. It hands a tool's error to JD, but that error was an instruction to you. "
+                 "Do what it says with your tools (for 'matched 0 locations': read_file the target lines fresh, then propose_patch with "
+                 "that exact text), then report the result in your own words.")
+
+
+def _acted(receipts):
+    return any(r.get('tool') in DOER_ACTIONS and r.get('status') == 'succeeded'
+               and not (r.get('tool') == 'hb_tasks' and (r.get('arguments') or {}).get('action', 'list') == 'list') for r in receipts or [])
+
+
+def no_work(answer, receipts, request=''):
+    """Practice 273: True for an HB work turn (HB's continuation, not JD's message; scoping turns excepted) that ran no real action and
+    does not say 'blocked because ...'."""
+    if not HB_WORK_TURN.search(str(request or '')) or re.match(r'\s*blocked because\b', str(answer or ''), re.I):
+        return False
+    return not _acted(receipts)
+
+
+def parroted_error(answer, receipts):
+    """Practice 273: the answer repeats a sentence of a failed tool's error to JD."""
+    text = ' '.join(str(answer or '').split()).lower()
+    for r in receipts or []:
+        if r.get('status') in ('failed', 'denied'):
+            for sentence in re.split(r'(?<=[.!?])\s+', ' '.join(str(r.get('output') or '').split()).lower()):
+                if len(sentence) >= 30 and sentence in text:
+                    return True
+    return False
+
+
+def no_work_line(receipts):
+    """Practice 273: what JD sees when APEX still did nothing after HB sent his answer back."""
+    failed = next((r for r in reversed(receipts or []) if r.get('status') in ('failed', 'denied')), None)
+    last = f" Last tool error: {failed.get('tool')}: {' '.join(str(failed.get('output') or '').split())[:160]}." if failed else ''
+    return ('⏸ HB DOES check: APEX took no action this turn (his answer was a plan, a promise or a tool error, sent back once).'
+            + last + ' HB gives him the next turn.')
+
+
 REPEAT_ERROR = ("BACKEND REPEAT CHECK: your answer was not delivered. It is word for word a reply you already gave earlier in this "
                 "chat, and the operator's new message is different. Read the newest operator message again and answer that message "
                 "itself. If you cannot do what it asks, say in one or two plain sentences what stops you and what you will do next.")
@@ -1856,6 +1902,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
     repeat_retry_used = False
     doer_retry_used = 0   # Practice 262
     dump_retry_used = 0   # Practice 272
+    no_work_retry_used = 0   # Practice 273
     task_start_retry_used = False
     research_retry_used = False         # Practice 128
     kc_retry_used = False
@@ -2168,7 +2215,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
 
     def grounded(answer, can_retry, can_fix=False):
         """The answer checks above first; an answer they would deliver is then checked for parroting (Practice 87)."""
-        nonlocal repeat_retry_used, doer_retry_used, task_start_retry_used, dump_retry_used
+        nonlocal repeat_retry_used, doer_retry_used, task_start_retry_used, dump_retry_used, no_work_retry_used
         task_start_requested = (re.search(r'\b(pick|choose|select|start|begin|work on|resume)\b', latest_user, re.I)
                                 and re.search(r'\b(task|tasks|one|work)\b', latest_user, re.I))
         only_listed = (any(r.get('tool') == 'hb_tasks' and (r.get('arguments') or {}).get('action', 'list') == 'list' and r.get('status') == 'succeeded' for r in receipts)
@@ -2191,6 +2238,18 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             working.append({"role": "assistant", "content": answer, "rejected_answer": True})
             working.append({"role": "user", "content": DUMP_NOTICE})
             return None
+        if delivered is not None and not no_tools:                    # Practice 273: work, not a plan, promise or tool error
+            idle = proposal_handler is not None and no_work(answer, receipts, latest_user)
+            parrot = parroted_error(answer, receipts)
+            if (idle or parrot) and can_retry and not no_work_retry_used:
+                no_work_retry_used = 1
+                say_step('HB DOES check sent the answer back: ' + ('it handed a tool error to JD' if parrot else 'an HB work turn with no action'))
+                working.append({"role": "assistant", "content": answer, "rejected_answer": True})
+                working.append({"role": "user", "content": PARROT_NOTICE if parrot else NO_WORK_NOTICE})
+                return None
+            if idle:
+                say_step('HB DOES check: no action this turn; JD gets HB\'s line, not the answer')
+                delivered = no_work_line(receipts)
         if isinstance(delivered, str) and any(m.get('rejected_answer') for m in working):
             delivered = drop_retry_talk(delivered)        # Practice 178: JD never saw the draft that was sent back
         if delivered is None:                     # Practice 176: say which HB check sent it back, and why

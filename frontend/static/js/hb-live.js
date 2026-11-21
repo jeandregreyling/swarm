@@ -238,7 +238,7 @@
   function renderLights(lights, label) {
     if (!lights || !lights.does || !lights.dream) return '';
     const one = (l, word) => `<span class="hbl-light hbl-l-${esc(l.state)}" title="${esc(l.word + ': ' + l.why)}">${esc(l.icon)}` +
-      (word ? ` <small>${esc(String(l.word).split(' · ').pop())}</small>` : '') + '</span>';
+      (word ? ` <small>${esc(l.word)}</small>` : '') + '</span>';      // Practice 273: 'Do · queue started' - the DOES letter is named
     return `<div class="hbl-lights">${label ? `<span class="hbl-dim">${esc(label)}</span>` : ''}<span class="hbl-lg">DOES</span>` +
       lights.does.map((l) => one(l, true)).join('') + '<span class="hbl-lg">DREAM</span>' + lights.dream.map((l) => one(l, false)).join('') + '</div>';
   }
