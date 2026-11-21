@@ -227,6 +227,25 @@ def step_extra_tools(conn,task):
     return [t.strip() for t in found.group(1).split(',') if t.strip() in EXTRA_TOOLS] if found else []
 
 
+def park_stuck(conn,task,why):
+    """Practice 235: HB parks a stuck task and moves on - one plain line, never a question (JD 21 Nov: HB orchestrates, it does not ask;
+    Fred is off, APEX lives on the GPU). The task keeps its chunks and receipts; /continue gives it another go."""
+    now=time.time()
+    conn.execute("UPDATE hb_tasks SET state='paused',updated_at=? WHERE task_id=?",(now,task['task_id']))
+    hb_tasks.event(conn,task,'user','continuation_control',{'mode':'off','via':'stalled','actor':'HB (stuck task parked; it moves on)','why':str(why)[:300]})
+    chunk=''
+    try:
+        from core.hb_chunks import view
+        v=view(conn,task['task_id'])
+        if v and v.get('doing'):chunk=f" on chunk {v['doing']['n']} of {v['total']} ({str(v['doing']['text'])[:80]})"
+    except Exception:
+        pass
+    conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                 (task['conversation_id'],f"⏸ HB parked {_plain_name(conn,task)}{chunk}: APEX could not finish it in four tries, so HB moved on "
+                  f"to the next task. /continue {task['task_id']} gives it another go."))
+    _set(conn,task['task_id'],'held','Parked by HB (stuck): '+str(why)[:160])
+
+
 def stuck_reason(conn,task_id):
     """Return a short reason if the task is spinning, else None.
 
@@ -416,13 +435,8 @@ def tick(conn,*,now=None,memory=None):
                 hb_tasks.event(conn,task,'hummingbird','stuck',{'reason':stuck,'recovery':'Fred takes over with the same tools'})
                 _set(conn,task['task_id'],'queued','Going round in circles ('+stuck[:80]+'); Fred took over with the same tools');continue
             if not str(local).startswith(APEX_FIRST):   # Practice 215: before his 4 attempts APEX simply gets his next turn
-                if row['state']!='needs_owner':
-                    hb_tasks.event(conn,task,'hummingbird','stuck',{'reason':stuck,
-                        'recovery':'Owner decides: clarify the goal, give acceptance checks, or press Continue for a fresh allowance.'})
-                    ask_owner(conn,task,f"⚠ APEX stopped {_plain_name(conn,task)}: it was going round in circles. "
-                              f"Keep working gives it a fresh try; Cancel drops it.",
-                              f"why: {stuck} · /continue {task['task_id']} gives it a fresh try; /cancel {task['task_id']} drops it.")
-                _set(conn,task['task_id'],'needs_owner','Stopped, not looping: '+stuck);continue
+                hb_tasks.event(conn,task,'hummingbird','stuck',{'reason':stuck,'recovery':'HB parked it and moved on (Practice 235)'})
+                park_stuck(conn,task,stuck);continue   # Practice 235: park and move on - never ask JD
         live=conn.execute("SELECT p.id,w.state,p.recipient FROM hb_task_requests r JOIN peer_messages p ON p.id=r.request_id JOIN hb_peer_work w ON w.request_id=p.id WHERE r.task_id=? AND p.delivered_at IS NULL AND w.state IN ('queued','running') ORDER BY p.id DESC LIMIT 1",(task['task_id'],)).fetchone()
         if live and live[1]=='queued' and retired_agent(conn,live[2]):
             # owner 15 Nov: the git agent was retired while its review request was queued; the queue waited for it all night
@@ -497,12 +511,7 @@ def tick(conn,*,now=None,memory=None):
                                       (f"/accept {task['step_id']} approves the step; " if task.get('step_id') else '')
                                       +f"/continue {task['task_id']} gives it more work; /pause {task['task_id']} holds it; /cancel {task['task_id']} drops it.")
                         else:
-                            tried=('Fred took over and could not finish it either' if local=='completed' else
-                                   'Fred could not help ('+str(local)+')')
-                            ask_owner(conn,task,f"⚠ APEX is stuck on {_plain_name(conn,task)}: nothing changed and no check passed in its last turns, "
-                                      f"and {tried}. Keep working gives it another go.",
-                                      f"/continue {task['task_id']} gives APEX another go (nothing new to approve); "
-                                      f"/pause {task['task_id']} holds it; /cancel {task['task_id']} drops it.")
+                            park_stuck(conn,task,'nothing changed and no check passed in its last turns ('+str(local)[:80]+')');continue   # Practice 235
                     _set(conn,task['task_id'],'needs_owner',('Finished; waiting for owner acceptance' if ready else
                          'Stalled after local help')+' (Codex is '+why+')');continue
         condition=pending(conn,task,agent=None if phase=='review' else 'apex')

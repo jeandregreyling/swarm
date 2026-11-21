@@ -253,9 +253,10 @@ def test_stalled_task_gets_local_help_before_the_owner_and_never_asks_for_codex(
     assert questions()==''
     conn.execute("UPDATE hb_peer_work SET state='completed' WHERE request_id=?",(fred,))   # Fred's turn ran to the end
     stall(4)                                                                     # ...and still no progress (Practice 215: 4)
-    text=questions()
-    assert 'APEX is stuck on' in text and 'Fred took over and could not finish it either' in text
-    assert '/continue '+task['task_id'] in text and '/accept' not in text and '/online codex' not in text
+    assert questions()==''                                                        # Practice 235 (JD 21 Nov): HB does not ask...
+    parked=conn.execute("SELECT content FROM messages WHERE content LIKE '⏸ HB parked%'").fetchone()[0]   # ...it parks and moves on
+    assert '/continue '+task['task_id'] in parked and '/online codex' not in parked
+    assert conn.execute("SELECT state FROM hb_tasks WHERE task_id=?",(task['task_id'],)).fetchone()[0]=='paused'
     assert conn.execute("SELECT COUNT(*) FROM hb_task_events WHERE kind='fred_turn'").fetchone()[0]==1   # once per progress point
 
 
