@@ -272,9 +272,27 @@
         const active = renderActive(snap, o.now), cut = active.indexOf('<div class="hbl-cards">');
         const chips = cut < 0 ? active : active.slice(0, cut), cards = cut < 0 ? '' : active.slice(cut);
         const open = ((snap.master || {}).items || []).filter((i) => (i.group || i.state) !== 'roadmap').length;
+        if (o.drawer) {    // Practice 285: the list lives in the drawer; the banner keeps who is working and one Tasks chip
+          const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status').length;
+          const tasks = `<button type="button" class="hbl-tasks-chip${needs ? ' hbl-tasks-needs' : ''}" data-drawer="1" title="Open the task list">📋 Tasks · ${open} open${needs ? ' · ' + needs + ' need' + (needs === 1 ? 's' : '') + ' you' : ''}</button>`;
+          return `<div class="hbl-row">${tasks}${renderTalk()}</div>` + chips + (o.collapsed ? '' : cards);
+        }
         return o.collapsed ? chips + `<button type="button" class="hbl-clip-open" data-pane-fold="1">📋 Clipboard · ${open} open - show</button>`
           : chips + `<div class="hbl-board">${renderList(snap, o.controls, o.needsControls, o.open)}</div>` + cards;
       })();
+  }
+
+  // Practice 285 (JD 22 Nov: "the clipboard just sort of dangling below HB live ... modernise it" and the team bar "seems a bit out of
+  // place ... make it more functional"): the task list is a drawer on the right; the team bar is one row of talk-to buttons.
+  function renderDrawer(snap, opts) {
+    const o = opts || {};
+    return '<div class="hbl-drawer-head"><b>📋 Tasks</b><button type="button" class="hbl-mini" data-drawer="1" title="Close">✕</button></div>' +
+      renderList(snap, o.controls, o.needsControls, o.open);
+  }
+  const TALK = [['apex', 'APEX'], ['fred', 'Fred'], ['claude', 'Claude'], ['codex', 'Codex'], ['git', 'Copilot'], ['gemini', 'Gemini']];
+  function renderTalk() {
+    return '<span class="hbl-talk"><span class="hbl-dim">Talk to</span>' + TALK.map(([at, name]) =>
+      `<button type="button" class="hbl-doer" data-at="${at}" title="Start your message with @${at}">${name}</button>`).join('') + '</span>';
   }
 
   // Practice 280 (JD 22 Nov: "a tag at the end that says 'powersave' and doesn't tell me anything"): 'powersave' is the CPU governor's
@@ -335,7 +353,7 @@
   }
 
   const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
-    primaryFor, systemLine, renderPower, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
+    primaryFor, systemLine, renderPower, renderDrawer, renderTalk, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -404,6 +422,15 @@
 .hbl-l-bad{opacity:1;color:#ff5252;border-color:#ff5252;background:rgba(255,82,82,.12)}
 .hbl-meter .hbl-lights{margin:3px 0 0}
 .hbl-armed{background:#c62828 !important;border-color:#ff5252 !important;color:#fff !important;font-weight:700;animation:hblPulse 1.4s infinite}
+#hb-live-drawer{position:fixed;right:14px;top:70px;bottom:96px;width:min(460px,94vw);overflow:auto;z-index:9000;padding:6px 12px 10px;
+  background:var(--card,#161616);color:var(--text,#ddd);border:1px solid var(--border,#333);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);font-size:12.5px}
+.hbl-drawer-head{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-6px;z-index:1;padding:6px 0;background:var(--card,#161616)}
+.hbl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:2px 0 4px}
+.hbl-tasks-chip{font-size:12px;padding:3px 12px;border-radius:14px;border:1px solid var(--accent,#00e08a);background:transparent;color:var(--accent,#00e08a);cursor:pointer;font-weight:600}
+.hbl-tasks-needs{border-color:#ffb300;color:#ffb300}
+.hbl-talk{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;margin-left:auto;font-size:11px}
+body.hb-live-on .chat-team>.chat-team-people,body.hb-live-on .chat-team>.chat-support-team,body.hb-live-on .chat-team>.chat-live-board{display:none!important}
+body.hb-live-on .chat-team{display:flex;justify-content:flex-end;padding:0 10px;margin:0;min-height:0;border:0;background:none;font-size:11px;opacity:.7}
 .hbl-doers{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim,#999)}
 .hbl-doer{font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid var(--border,#444);background:var(--bg,#111);color:var(--text,#ddd);cursor:pointer}
 .hbl-doer:hover{border-color:var(--accent,#00e08a)}.hbl-doer-on{border-color:#2ecc71;color:#2ecc71;background:rgba(46,204,113,.12);cursor:default}
@@ -413,6 +440,20 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
   }
 
   function classic() { try { return localStorage.getItem('hbLive.classic') === '1'; } catch (e) { return false; } }
+  function drawerEl() {         // Practice 285: the task list drawer on the right, over the chat
+    let d = document.getElementById('hb-live-drawer');
+    if (d) return d;
+    try { d = document.createElement('aside'); d.id = 'hb-live-drawer'; d.hidden = true; d.setAttribute('aria-label', 'HB task list'); document.body.appendChild(d); return d; }
+    catch (e) { return { hidden: true, innerHTML: '', scrollTop: 0, contains: () => false, querySelector: () => null, querySelectorAll: () => [] }; }
+  }
+  function insertAt(at) {        // Practice 285: talk-to buttons start the message with @name
+    const input = document.getElementById('home-chat-input');
+    if (!input) return;
+    const rest = input.value.replace(/^@[\w-]+\s*/, '');
+    input.value = '@' + at + ' ' + rest;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.focus();
+  }
   function pane() {
     if (classic()) { document.body.classList.remove('hb-live-on'); return null; }
     document.body.classList.add('hb-live-on');   // HB Live: hides the HB-now pill, live box, HB Driving board and Needs-you bar in main chat
@@ -444,13 +485,18 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const el = pane();
     if (!el) return;
     const focus = document.activeElement;
-    if (focus && focus.tagName === 'SELECT' && el.contains(focus)) return;   // Practice 276: never redraw away an open dropdown
-    const top = el.scrollTop;
-    const open = Array.from(el.querySelectorAll('[data-more-box]:not([hidden])')).map((b) => b.dataset.moreBox);
-    el.innerHTML = R.renderBoard(S.snap, { rate: S.rate, collapsed: ls('hbLive.collapsed') === '1', now: Date.now() / 1000, controls: S.controls,
-      needsControls: S.needsControls, open: S.open });
-    open.forEach((id) => { const b = el.querySelector(`[data-more-box="${CSS.escape(id)}"]`); if (b) b.hidden = false; });
-    el.scrollTop = top;
+    const dr = drawerEl();
+    if (focus && focus.tagName === 'SELECT' && (el.contains(focus) || dr.contains(focus))) return;   // Practice 276: never redraw away an open dropdown
+    const top = el.scrollTop, dtop = dr.scrollTop;
+    const pick = (root) => (root && root.querySelectorAll ? Array.from(root.querySelectorAll('[data-more-box]:not([hidden])')) : []);
+    const open = pick(el).concat(pick(dr)).map((b) => b.dataset.moreBox);
+    const opts = { rate: S.rate, collapsed: ls('hbLive.collapsed') === '1', now: Date.now() / 1000, controls: S.controls,
+      needsControls: S.needsControls, open: S.open, drawer: true };   // Practice 285: the list is in the drawer
+    el.innerHTML = R.renderBoard(S.snap, opts);
+    dr.hidden = ls('hbLive.drawer') !== '1';
+    dr.innerHTML = dr.hidden ? '' : R.renderDrawer(S.snap, opts);
+    open.forEach((id) => { const sel = '[data-more-box="' + CSS.escape(id) + '"]'; const b = (el.querySelector && el.querySelector(sel)) || (dr.querySelector && dr.querySelector(sel)); if (b) b.hidden = false; });
+    el.scrollTop = top; dr.scrollTop = dtop;
     popup();
     decorate();
     showArmed();                                         // Practice 275: an armed Cancel survives the redraw
@@ -623,7 +669,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (S.armed) S.armTimer = setTimeout(() => { S.armed = null; showArmed(); }, ARM_MS + 50);
     return step.act;
   }
-  const SCOPE = '#hb-live-pane, #hb-live-pop, #home-chat-messages';
+  const SCOPE = '#hb-live-pane, #hb-live-pop, #hb-live-drawer, #home-chat-messages';
   document.addEventListener('click', (e) => {
     const t = e.target;
     if (!t.closest || !t.closest(SCOPE)) return;
@@ -635,7 +681,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       q.disabled = true;
       // A 200 response can still be a refusal; the snapshot decides whether this item is resolved.
       send({ [q.dataset.q]: q.dataset.v ? [q.dataset.a, q.dataset.id, q.dataset.v] : [q.dataset.a, q.dataset.id] },   // Practice 276: doer value
-        t.closest('#hb-live-pane') || pop).finally(() => { q.disabled = false; });
+        t.closest('#hb-live-pane') || t.closest('#hb-live-drawer') || pop).finally(() => { q.disabled = false; });
       return;
     }
     const sw = t.closest('[data-switch]');
@@ -664,6 +710,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (more) { const b = document.querySelector(`[data-more-box="${CSS.escape(more.dataset.more)}"]`); if (b) b.hidden = !b.hidden; return; }
     // Practice 209: the Tasks chip in the top bar opens the clipboard (unfolds the pane and scrolls to the list)
     if (t.closest('[data-win="master"]')) {
+      ls('hbLive.drawer', '1');   // Practice 285: the Tasks chip opens the drawer
       ls('hbLive.collapsed', '0'); render();
       const list = document.querySelector('#hb-live-pane .hbl-board');
       if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -671,14 +718,17 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     }
     const fold = t.closest('[data-fold]');
     if (fold) { S.open[fold.dataset.fold] = !S.open[fold.dataset.fold]; render(); return; }
+    if (t.closest('[data-drawer]')) { ls('hbLive.drawer', ls('hbLive.drawer') === '1' ? '0' : '1'); render(); return; }   // Practice 285
+    const at = t.closest('[data-at]');
+    if (at) { insertAt(at.dataset.at); return; }
     if (t.closest('[data-pane-fold]')) { ls('hbLive.collapsed', ls('hbLive.collapsed') === '1' ? '0' : '1'); render(); return; }
     if (t.closest('[data-needs-open]')) { ls('hbLive.needsSeen', '[]'); popup(); return; }
     const chip = t.closest('[data-card]');
     if (chip) { const c = document.querySelector(`[data-card-body="${chip.dataset.card}"]`); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   });
   document.addEventListener('change', (e) => {
-    const s = e.target.closest && e.target.closest('#hb-live-pane select[data-q], #hb-live-pop select[data-q]');
-    if (s) send({ [s.dataset.q]: [s.dataset.a, s.dataset.id, s.value] }, e.target.closest('#hb-live-pane'));
+    const s = e.target.closest && e.target.closest('#hb-live-pane select[data-q], #hb-live-pop select[data-q], #hb-live-drawer select[data-q]');
+    if (s) send({ [s.dataset.q]: [s.dataset.a, s.dataset.id, s.value] }, e.target.closest('#hb-live-pane') || e.target.closest('#hb-live-drawer'));
   });
 
   let pending = null;

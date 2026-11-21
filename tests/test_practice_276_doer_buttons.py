@@ -73,4 +73,4 @@ def test_the_click_sends_the_choice_and_an_open_dropdown_survives_the_redraw():
     js = JS.read_text()
     assert 'data-a="doer"' not in js.split('function renderDoers')[0] and '<select data-q="clip" data-a="doer"' not in js
     assert "q.dataset.v ? [q.dataset.a, q.dataset.id, q.dataset.v] : [q.dataset.a, q.dataset.id]" in js
-    assert "if (focus && focus.tagName === 'SELECT' && el.contains(focus)) return;" in js
+    assert "if (focus && focus.tagName === 'SELECT' && (el.contains(focus) || dr.contains(focus))) return;" in js
