@@ -79,11 +79,19 @@ def advance(conn, task):
 def focus(conn, task, writer=None):
     """The line for APEX's card, or '' when the task has no chunks. Practice 217: with writer (a connect function) the chunks are
     saved on their own connection and committed - the card is built inside a transaction nobody commits, so they vanished."""
-    if writer is not None:
+    # Practice 218: never open the writer while conn already holds a write transaction (peer inbox: authenticate wrote) -
+    # the second connection waited 30 s on its own request's lock on every poll and locked HB's database. That caller commits itself.
+    if writer is not None and not getattr(conn, 'in_transaction', False):
+        import sqlite3
         from contextlib import closing
         with closing(writer()) as w:
-            line = focus(w, task)
-            w.commit()
+            w.execute('PRAGMA busy_timeout=3000')   # Practice 218: a busy database costs this card its chunk line, never 30 s of lock
+            try:
+                line = focus(w, task)
+                w.commit()
+            except sqlite3.OperationalError:
+                w.rollback()
+                return ''
         return line
     rows = ensure(conn, task)
     if not rows:
