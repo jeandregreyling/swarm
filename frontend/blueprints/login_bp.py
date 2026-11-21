@@ -139,6 +139,10 @@ def auth_me():
             renewed = conn.execute("UPDATE user_sessions SET expires_at=? WHERE session_token=? AND is_active=1 AND expires_at<?",
                                    (new_expiry, token, renew_before)).rowcount
             conn.commit()
+        except Exception as exc:   # Practice 219: a busy database skips today's renewal; the session check still answers
+            if 'locked' not in str(exc) and 'busy' not in str(exc):
+                raise
+            renewed = 0
         finally:
             conn.close()
         if renewed:

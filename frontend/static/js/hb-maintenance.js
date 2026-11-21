@@ -71,11 +71,16 @@
     try { window.dispatchEvent(new Event('hummingbird:auth-required')); } catch (_) {}   // friday-auth re-checks the session
   }
 
-  function probe() {
+  // Practice 219 (JD 21 Nov: "looping into maintenance mode every 5 seconds"): the 5-second background check gives HB one more
+  // try 1.5 s later before showing Maintenance - one busy answer is not maintenance. Announced restarts still show at once.
+  function probe(patient) {
     return fetch('/api/hb/maintenance', { cache: 'no-store', credentials: 'same-origin' })
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(data => { if (data.on) show(data.reason); else if (shown || wasDown) back(data); return data; })
-      .catch(() => { show(''); return null; });
+      .catch(() => {
+        if (patient === true && !shown) { setTimeout(() => probe(false), 1500); return null; }
+        show(''); return null;
+      });
   }
 
   // friday-auth.js calls this when the session check cannot reach HB (true) or succeeds again (false).
@@ -85,5 +90,5 @@
   window.hbMaintenanceProbe = probe;
 
   // Announced maintenance shows a few seconds before HB goes down (the restart helper waits for this).
-  setInterval(() => { if (!document.hidden && !timer) probe(); }, 5000);
+  setInterval(() => { if (!document.hidden && !timer) probe(true); }, 5000);
 })();

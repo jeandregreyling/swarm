@@ -59,7 +59,11 @@
     const options = { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(5000) };
     _authCheckPending = fetch('/api/auth/me', options)
       .then(r => {
-        if (!r.ok) throw new Error(`Session check failed (HTTP ${r.status})`);
+        if (!r.ok) {
+          const failed = new Error(`Session check failed (HTTP ${r.status})`);
+          failed.hbAnswered = true;            // Practice 219: HB answered - it is busy, not down
+          throw failed;
+        }
         return r.json();
       })
       .then(data => {
@@ -111,11 +115,19 @@
       })
       .catch(error => {
         if (generation !== _authGeneration) return _currentUser;
+        if (error && error.hbAnswered) {
+          // Practice 219 (JD 21 Nov: "looping into maintenance mode every 5 seconds"): HB answered with an error (a busy
+          // database, one failed request). It is up: keep the session and the page as they are; the next check tries again.
+          console.warn('[Hummingbird auth] session check failed but HB answered; keeping the page', error);
+          return _currentUser;
+        }
         // Owner 13 Nov: HB not answering (restart, maintenance) is NOT a sign-out. Keep the session, show
         // "Maintenance in progress" and check again; the sign-in form appears only if HB says the session is gone.
         console.warn('[Hummingbird auth] HB not reachable; keeping the session', error);
         window.__fridayUser = null;            // no stale owner powers while HB cannot confirm the session...
-        if (typeof window.hbMaintenance === 'function') window.hbMaintenance(true, '');   // ...and no sign-in screen either
+        // Practice 219: Maintenance only when HB itself does not answer (the maintenance probe asks it first)
+        if (typeof window.hbMaintenanceProbe === 'function') window.hbMaintenanceProbe();
+        else if (typeof window.hbMaintenance === 'function') window.hbMaintenance(true, '');   // ...and no sign-in screen either
         return null;                           // the maintenance screen re-checks the session when HB answers again
       })
       .finally(() => {
