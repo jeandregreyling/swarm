@@ -151,8 +151,8 @@ def steps(conn, project_id=DEFAULT_PROJECT):
         if status == 'blocked':
             note = (conn.execute('SELECT residual_risk FROM project_steps WHERE step_id=?', (step_id,)).fetchone()[0] or '').strip()
             why = 'blocked' + (': ' + note[:90] if note else '')
-        elif owner != 'apex':
-            why = f'not APEX work (owner {owner or "unset"})'
+        elif owner != 'apex' and owner.lower() in NOT_HBS_TO_ASSIGN:
+            why = f'not APEX work (owner {owner})'      # Practice 224: only JD's own steps and HB's record rows are skipped
         elif waiting:
             why = 'waiting for your approval'
         elif not task:
@@ -179,6 +179,9 @@ def steps(conn, project_id=DEFAULT_PROJECT):
 
 
 SPEC_MARK = 'HB needs a spec:'
+# Practice 224 (JD 21 Nov: "ENFORCE the policy ... not going 'someone else will do it'"): a step owned by someone who is not
+# working on it (claude-code, codex, unset ...) is HB's to assign - APEX gets it. Only JD's own steps and HB's record rows stay out.
+NOT_HBS_TO_ASSIGN = {'jd', 'owner', 'ghost', 'hummingbird'}
 
 
 def vague_step(description):
@@ -242,6 +245,8 @@ def give_task(conn, step_id, conversation_id=None):
     if not row:
         return None
     title, desc, project_id = row
+    # Practice 224: HB assigns the step, so it becomes APEX's (JD's own steps and HB's record rows never reach here)
+    conn.execute("UPDATE project_steps SET owner='apex' WHERE step_id=? AND COALESCE(owner,'')<>'apex'", (step_id,))
     conversation_id = conversation_id or 2845
     mid = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','apex',?,'response',0)",
                        (conversation_id, f"📋 HB gives APEX the next plan step: {title} ({step_id})")).lastrowid
