@@ -1,6 +1,7 @@
 """Owner 14 Nov: advisors (Gemini, Codex, DeepSeek...) research read-only and write Studio proposals with real code; HB checks each proposal
 by running its test; a passing one becomes APEX's task with a change set; nothing is changed by the advisor itself. Profiles, not names."""
 import json
+import sqlite3
 import sys
 
 import pytest
@@ -25,6 +26,52 @@ def test_profiles_decide_tools_not_names():
     tools = tools_for('gemini-advisor')
     assert 'studio_proposal' in tools and 'read_file' in tools and not {'propose_patch', 'propose_write_file', 'run_tests'} & set(tools)
     assert tools_for('someone-new') == []
+
+
+@pytest.mark.parametrize('principal', ['copilot-instructor', 'codex-instructor', 'gemini-advisor'])
+def test_authenticated_advisor_can_submit_proposal_without_executor_turn(monkeypatch, principal):
+    from core import agent_identity, hb_agent_tools
+
+    monkeypatch.setattr('utils.db._connection.get_connection', lambda: sqlite3.connect(':memory:'))
+    submitted = []
+    def create(conn, author, args, task):
+        submitted.append((author, args, task))
+        return {'step_id': 'S-PROPOSAL', 'state': 'proposed'}
+    monkeypatch.setattr(hp, 'create', create)
+    token = agent_identity.CURRENT.set({'principal': principal, 'credential_id': 46})
+    try:
+        args = {'title': 'Repair task routing', 'why': 'Keep phone feedback out of execution tasks'}
+        assert hb_agent_tools.call('studio_proposal', args)['state'] == 'proposed'
+        assert submitted == [(principal, args, None)]
+        with pytest.raises(PermissionError, match='assigned authenticated APEX turn'):
+            hb_agent_tools.call('run_tests', {'tests': ['tests/test_hb_proposals.py']})
+    finally:
+        agent_identity.CURRENT.reset(token)
+
+
+def test_proposal_dispatch_requires_authenticated_identity():
+    from core import agent_identity, hb_agent_tools
+
+    token = agent_identity.CURRENT.set(None)
+    try:
+        with pytest.raises(PermissionError):
+            hb_agent_tools.call('studio_proposal', {})
+    finally:
+        agent_identity.CURRENT.reset(token)
+
+
+def test_unchanged_edit_is_rejected_before_a_draft_is_created(plan, tmp_path, monkeypatch):
+    conn, _, _ = plan
+    root = _repo(tmp_path)
+    monkeypatch.setattr(cs, 'ROOT', root)
+    from core.knowledge import projects
+    monkeypatch.setattr(projects, 'add_step', lambda *args, **kwargs: pytest.fail('An invalid edit must not create a Studio step'))
+    with pytest.raises(ValueError, match='does not change any text'):
+        hp.create(conn, 'apex', {'title': 'Describe controls', 'why': 'Make UI controls discoverable to local agents',
+                                'edits': [{'path': 'pkg/mod.py', 'old': '    return 1', 'new': '    return 1'}],
+                                'tests': ['tests/test_mod.py']})
+    assert hp.pending(root) == []
+    assert (root / 'pkg/mod.py').read_text().endswith('return 1\n')
 
 
 def test_a_proposal_is_checked_by_hb_and_becomes_apex_work(plan, tmp_path, monkeypatch):

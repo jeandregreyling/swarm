@@ -3,7 +3,8 @@
 "Gemini should have access to write to Studio proposals and tasks but should be instructed to make code changes through HB, not by itself."
 
   create(...)  tool studio_proposal: a Studio step in the living plan ("Proposal (<agent>): <title>") with why, and a DRAFT change set
-               (exact edits and/or new files, plus the test that proves it). Nothing in HB's code changes.
+               (exact edits and/or new files, plus the test that proves it). Unchanged edits fail immediately so the local
+               caller can correct them in its own turn. Nothing in HB's code changes.
   tick(...)    HB checks one draft at a time in the background: core/hb_change_sets.prepare applies it, runs its test and puts the files back.
                Passes -> the step becomes a ready APEX task with the change set ("HB extra tools: change_set"); fails or has no test -> it waits
                for review with the reason. Either way main chat says so.
@@ -38,6 +39,9 @@ def _clean(args):
     files = {str(f.get('path', '')): str(f.get('content', '')) for f in (args.get('new_files') or [])}
     if len(edits) > 20 or len(files) > 5 or any(len(e['old']) + len(e['new']) > 40000 or not e['old'] for e in edits) or any(len(c) > 80000 for c in files.values()):
         raise ValueError('A proposal holds at most 20 exact edits (each with its old text) and 5 new files')
+    for edit in edits:
+        if edit['old'] == edit['new']:
+            raise ValueError(f"Exact edit for {edit['path']!r} does not change any text; supply a real change or omit it")
     for path in [e['path'] for e in edits] + list(files):
         if not path or path.startswith('/') or '..' in Path(path).parts or NEVER.search(path):
             raise PermissionError(f'{path!r} cannot be proposed (outside HB code, or a secrets/config file)')
