@@ -11,6 +11,7 @@ import hashlib
 import sqlite3
 import sys
 import time
+import urllib.error
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT),str(ROOT/'frontend'),str(ROOT/'utils')]
@@ -21,6 +22,32 @@ from core import agent_identity
 def progress(api,request,status,stage):
     return api.call('/api/agent/v1/progress',{'conversation_id':request['conversation_id'],
         'request_id':request['id'],'status':status,'stage':stage[:200]})
+
+
+HB_DOWN=(urllib.error.URLError,ConnectionError,TimeoutError)   # AgentAPI turns HTTP errors into ValueError: these mean HB did not answer
+
+
+def wait_for_hb(api,limit=300,pause=5):
+    """Practice 221 (calm swarm 3/5): HB restarts to load improvements (~20 s). A worker that cannot reach HB waits for it to
+    answer instead of crashing; an HTTP error means HB answered, so it is up."""
+    end=time.monotonic()+limit
+    while True:
+        try:
+            api.call('/api/agent/v1/whoami');return True
+        except ValueError:
+            return True
+        except HB_DOWN:
+            if time.monotonic()>=end:return False
+            time.sleep(pause)
+
+
+def calmly(api,call,*args,**kwargs):
+    """Practice 221: one call to HB that survives a restart - on a connection error, wait for HB and try once more."""
+    try:
+        return call(*args,**kwargs)
+    except HB_DOWN:
+        if not wait_for_hb(api):raise
+        return call(*args,**kwargs)
 
 
 def current_assignment(request,packet):
@@ -410,7 +437,7 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
                         (result.get('thread_id'),answer,json.dumps(reply_payload),request['id']));db.commit()
                     reply_ids=deliver_reply(api,request,result)
                     db.execute("UPDATE jobs SET state='completed',reply_ids=? WHERE request_id=?",(json.dumps(reply_ids),request['id']));db.commit()
-                    progress(api,request,'completed','Agent answer saved and read back in main chat')
+                    calmly(api,progress,api,request,'completed','Agent answer saved and read back in main chat')   # Practice 221
                     execution_outcome='completed'
                 except Exception as exc:
                     try:
@@ -420,12 +447,18 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
                     error=type(exc).__name__+': '+str(exc)[:500]
                     pending_reply=db.execute('SELECT state FROM jobs WHERE request_id=?',(request['id'],)).fetchone()[0]=='reply_pending'
                     db.execute("UPDATE jobs SET state=?,error=? WHERE request_id=?",('reply_pending' if pending_reply else 'failed',error,request['id']));db.commit()
-                    if pending_reply:
-                        progress(api,request,'queued','Saved answer awaiting idempotent delivery; inference will not be repeated')
-                    else:
-                        api.post(conversation,'Attached '+agent+' request did not complete: '+error,
-                                 reply_to_request_id=request['id'],outcome='failed')
-                        progress(api,request,'failed','Request failed; see the actual error in this thread')
+                    try:   # Practice 221: reporting waits out an HB restart instead of crashing the worker
+                        if pending_reply:
+                            calmly(api,progress,api,request,'queued','Saved answer awaiting idempotent delivery; inference will not be repeated')
+                        elif isinstance(exc,HB_DOWN):
+                            # HB was restarting - not a failed turn: recorded as an interruption (a pause, Practice 220), no error post
+                            calmly(api,progress,api,request,'failed','Worker interrupted: HB restarted during the turn; review recorded results before retrying')
+                        else:
+                            calmly(api,api.post,conversation,'Attached '+agent+' request did not complete: '+error,
+                                   reply_to_request_id=request['id'],outcome='failed')
+                            calmly(api,progress,api,request,'failed','Request failed; see the actual error in this thread')
+                    except HB_DOWN as unreachable:
+                        print(f"HB did not answer while recording request {request['id']} ({type(unreachable).__name__}); HB reconciles it",flush=True)
                     if runtime:
                         runtime.close();runtime=None
                 finally:
