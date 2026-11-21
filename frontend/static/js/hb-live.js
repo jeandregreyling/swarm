@@ -295,6 +295,22 @@
       (needsControls ? needsControls(n) : '') + '<div class="hbl-said hbl-dim" role="status"></div><div class="hbl-ctl"><button type="button" data-later="1">Later</button></div>';
   }
 
+  // Practice 276 (JD 22 Nov: "in the task list, I can't reassign tasks to different actors, it shows a really ugly dropdown with some
+  // names in it, not sure why it's showing actors that aren't even available, and also does nothing when I click on any of them"): one
+  // button per doer HB can really run now (snapshot.doers: APEX, and Fred unless he is switched off); the current one is lit. A doer set
+  // earlier that HB cannot run (e.g. Claude Code's plan rows) shows as a plain tag. Buttons, so the 2 s redraw cannot swallow the click.
+  const DOER_NAMES = { apex: 'APEX', fred: 'Fred', claude: 'Claude Code', codex: 'Codex', gemini: 'Gemini', hb: 'HB', small: 'small model' };
+  function renderDoers(i, doers) {
+    if (!i || !i.step_id) return '';
+    const now = i.doer || 'apex', ok = (doers || [{ id: 'apex', name: 'APEX', ok: true }]).filter((d) => d.ok);
+    let html = '<span class="hbl-doers">Doer:';
+    if (!ok.some((d) => d.id === now)) html += ` <span class="hbl-tag" title="Set earlier; HB cannot run this doer from the list">${esc(DOER_NAMES[now] || now)}</span>`;
+    html += ok.map((d) => d.id === now
+      ? ` <b class="hbl-doer hbl-doer-on" title="${esc(d.why || '')}">${esc(d.name)}</b>`
+      : ` <button type="button" class="hbl-doer" data-q="clip" data-a="doer" data-id="${esc(i.step_id)}" data-v="${esc(d.id)}" title="${esc(d.why || '')}">${esc(d.name)}</button>`).join('');
+    return html + '</span>';
+  }
+
   // Practice 275: a risky button (Cancel, /cancel, /reject, /stop) arms on the first click and acts on the second within ARM_MS.
   const ARM_MS = 4000;
   function arm(state, key, now) {
@@ -303,7 +319,7 @@
   }
 
   const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
-    primaryFor, systemLine, renderMeter, renderLights, arm, took, esc, ICON, SHORT };
+    primaryFor, systemLine, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -372,6 +388,9 @@
 .hbl-l-bad{opacity:1;color:#ff5252;border-color:#ff5252;background:rgba(255,82,82,.12)}
 .hbl-meter .hbl-lights{margin:3px 0 0}
 .hbl-armed{background:#c62828 !important;border-color:#ff5252 !important;color:#fff !important;font-weight:700;animation:hblPulse 1.4s infinite}
+.hbl-doers{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-dim,#999)}
+.hbl-doer{font-size:11px;padding:2px 9px;border-radius:10px;border:1px solid var(--border,#444);background:var(--bg,#111);color:var(--text,#ddd);cursor:pointer}
+.hbl-doer:hover{border-color:var(--accent,#00e08a)}.hbl-doer-on{border-color:#2ecc71;color:#2ecc71;background:rgba(46,204,113,.12);cursor:default}
 body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-clipboard,body.hb-live-on #home-chat-main .hb-needs-you{display:none!important}
 @media (max-width:640px){.hbl-line{max-width:110px}.hbl-cards{grid-template-columns:1fr}}`;
     document.head.appendChild(st);
@@ -408,6 +427,8 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     style();
     const el = pane();
     if (!el) return;
+    const focus = document.activeElement;
+    if (focus && focus.tagName === 'SELECT' && el.contains(focus)) return;   // Practice 276: never redraw away an open dropdown
     const top = el.scrollTop;
     const open = Array.from(el.querySelectorAll('[data-more-box]:not([hidden])')).map((b) => b.dataset.moreBox);
     el.innerHTML = R.renderBoard(S.snap, { rate: S.rate, collapsed: ls('hbLive.collapsed') === '1', now: Date.now() / 1000, controls: S.controls,
@@ -470,7 +491,6 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
   }
 
   // ── HB Live L4a: controls in the Tasks window, through HB's own routes (/hb/queue task, clip, switch) ──
-  const DOER_CHOICES = ['apex', 'fred', 'small', 'hb', 'codex', 'gemini', 'claude'];
   function controlsFor(i) {
     const step = R.esc(i.step_id || ''), task = R.esc(i.task_id || '');
     let html = '<div class="hbl-ctl">';
@@ -486,9 +506,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
         `<button type="button" data-q="clip" data-a="up" data-id="${step}" title="Move up">↑</button>` +
         `<button type="button" data-q="clip" data-a="down" data-id="${step}" title="Move down">↓</button>` +
         `<select data-q="clip" data-a="importance" data-id="${step}" title="Importance (5 is highest)">` +
-        [5, 4, 3, 2, 1].map((n) => `<option value="${n}"${Number(i.importance) === n ? ' selected' : ''}>imp ${n}</option>`).join('') + '</select>' +
-        `<select data-q="clip" data-a="doer" data-id="${step}" title="Who does it - HB lines up this model">` +
-        DOER_CHOICES.map((d) => `<option value="${d}"${(i.doer || 'apex') === d ? ' selected' : ''}>${d}</option>`).join('') + '</select>';
+        [5, 4, 3, 2, 1].map((n) => `<option value="${n}"${Number(i.importance) === n ? ' selected' : ''}>imp ${n}</option>`).join('') + '</select>' + R.renderDoers(i, (S.snap || {}).doers);   // Practice 276
     }
     return html + '</div>';
   }
@@ -600,7 +618,8 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       if (q.disabled) return;
       q.disabled = true;
       // A 200 response can still be a refusal; the snapshot decides whether this item is resolved.
-      send({ [q.dataset.q]: [q.dataset.a, q.dataset.id] }, t.closest('#hb-live-pane') || pop).finally(() => { q.disabled = false; });
+      send({ [q.dataset.q]: q.dataset.v ? [q.dataset.a, q.dataset.id, q.dataset.v] : [q.dataset.a, q.dataset.id] },   // Practice 276: doer value
+        t.closest('#hb-live-pane') || pop).finally(() => { q.disabled = false; });
       return;
     }
     const sw = t.closest('[data-switch]');

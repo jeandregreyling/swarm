@@ -31,11 +31,13 @@ def test_tasks_window_has_controls_through_the_queue_route():
         pytest.skip('node is not installed')
     js = JS.read_text()
     assert "fetch('/api/peer/v1/hb/queue'" in js and "data-confirm=\"Cancel this task?\"" in js
-    fn = js[js.index('const DOER_CHOICES'):js.index('function send')]
-    code = ("const R={esc:s=>String(s)};" + fn + "; process.stdout.write(JSON.stringify([controlsFor({step_id:'S-1',task_id:'T-1',state:'waiting',parked:true,doer:'codex',importance:4}),"
+    fn = js[js.index('  function controlsFor'):js.index('  // Bound headers')]   # Practice 276: doer buttons, not a dropdown
+    code = (f"const R=require({json.dumps(str(JS))}); const S={{snap:{{doers:[{{id:'apex',name:'APEX',ok:true}},{{id:'fred',name:'Fred',ok:true}}]}}}};" + fn +
+            "; process.stdout.write(JSON.stringify([controlsFor({step_id:'S-1',task_id:'T-1',state:'waiting',parked:true,doer:'codex',importance:4}),"
             "controlsFor({step_id:'S-2',state:'needs_you'})]))")
     out = subprocess.run([node, '-e', code], capture_output=True, text=True, timeout=20)
     assert out.returncode == 0, out.stderr[-500:]
     parked, needs = json.loads(out.stdout)
-    assert 'Try again' in parked and 'data-a="cancel"' in parked and '<option value="codex" selected>' in parked and 'imp 4</option>' in parked
+    assert 'Try again' in parked and 'data-a="cancel"' in parked and 'imp 4</option>' in parked
+    assert 'Codex' in parked and 'data-v="apex"' in parked and 'data-v="fred"' in parked and '<option value="codex"' not in parked
     assert 'data-a="accept"' in needs and 'data-a="cancel"' not in needs

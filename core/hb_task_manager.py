@@ -7,7 +7,13 @@ from core import hb_tasks
 EXECUTION_TOOLS=['read_file','list_files','grep_repo','get_diff','git_status','propose_patch','propose_write_file',
     'run_tests','terminal_run','task_context','task_evidence','studio_note','studio_status','task_plan','alm_step_get',
     'memory_search','memory_save','knowledge_search','knowledge_read','runtime_status','backlog_list','reference_lookup',
-    'local_review','local_job_status']
+    'local_job_status','hb_tasks','request_access','gpu_profile',   # Practice 252; local_review removed - Practice 264: only JD calls Fred; 270
+    # Practice 258 (JD 22 Nov 00:0x: 'give apex all the tools and skills and auths'): everything APEX has, except approving his
+    # own work (studio_accept - independent acceptance) and switching online models (gemini_reload - JD's local-first rule).
+    'ask_instructor','change_set','studio_task','task_memory','studio_evidence_get','studio_resume','web_search',
+    'workflow_status','workflow_control','archive_status','archive_acquire','archive_ingest','archive_mirror_curate',
+    'archive_mirror_pause','archive_mirror_resume','gemini_status','git_clear_stale_lock','does_rename','layout',
+    'reference_import','runtime_reload','apex_dispatch','studio_proposal']
 REVIEW_TOOLS=['task_context','task_evidence','read_file','grep_repo','get_diff','git_status',
     'studio_accept','task_plan','runtime_reload','knowledge_read','memory_save','memory_search','backlog_list']
 
@@ -157,10 +163,33 @@ LOCAL_HELP_QUESTION=('APEX is stuck on this task: its last turns made no change 
     'name the most likely reason and the single next tool call APEX should make (file, exact text or command), and how it checks the result.')
 
 
+def jd_asked_for_fred(conn,task):
+    """Practice 264 (JD 22 Nov 00:19: "nobody except me can ask Fred to help - cut that cord, APEX and HB use it as a loophole"):
+    Fred works on a task only when JD named Fred in that task's own instructions."""
+    try:
+        if conn.execute("SELECT 1 FROM hb_task_events WHERE task_id=? AND kind='instruction' AND agent='user' "
+                        "AND lower(payload) LIKE '%fred%' LIMIT 1",(task['task_id'],)).fetchone():
+            return True
+    except Exception:
+        pass
+    # Practice 276 (JD 22 Nov: "I can't reassign tasks to different actors"): JD picking Fred on the task list (or /clip doer S-xxxx fred)
+    # is JD calling Fred. Those edits come only through the owner's routes (core/hb_clipboard.edit); rows other code wrote do not count.
+    try:
+        row=conn.execute('SELECT doer, edited_by FROM hb_clipboard WHERE step_id=?',(task.get('step_id'),)).fetchone()
+        return bool(row and row[0]=='fred' and row[1] and not str(row[1]).startswith(AGENT_EDITORS))
+    except Exception:
+        return False
+
+
+AGENT_EDITORS=('APEX','HB','Claude Code','Codex','Gemini','Fred','homework','hummingbird')
+
+
 def local_help(conn,task,*,selected=False):
     """Ask the larger local model (Fred) once per progress point. Returns 'submitted', or the existing job's status
     ('queued', 'running', 'completed', 'failed', ...), or 'unavailable: <why>'."""
     from core import hb_local_jobs, hb_model_switches
+    if not jd_asked_for_fred(conn,task):   # Practice 264: only JD calls Fred
+        return 'unavailable: only JD can call Fred - APEX does the work himself'
     if hb_model_switches.modes(conn).get(hb_model_switches.FRED)=='off':
         return 'unavailable: Fred is switched Off in Live status'
     hb_local_jobs.ensure_schema(conn)
@@ -335,6 +364,8 @@ def _queue(conn,task,row,phase,reason,model=None,selected=False):
             if 'studio_task' in allowed:allowed=[*allowed,'task_plan']  # Existing task-metadata capability, fewer side effects.
             tools=[tool for tool in EXECUTION_TOOLS if tool in allowed]
         extra=step_extra_tools(conn,task)      # 13 Nov: a plan step may name extra HB tools it needs (approved list only)
+        from core.hb_access import granted_tools   # Practice 270: tools an owner granted for this task
+        extra=[*(extra or []),*granted_tools(conn,task['task_id'])]
         if extra:tools=[*tools,*[t for t in extra if t not in tools]]
         fred_instruction=(FRED_HANDS.replace('APEX was stuck on this step.', 'The clipboard selected you to execute this step.') if selected else FRED_HANDS)
         action=(fred_instruction if model else '')+('Continue the unfinished owner-authorized task. First inspect task_context and the saved plan/receipt references below. '
@@ -385,6 +416,42 @@ def _queue(conn,task,row,phase,reason,model=None,selected=False):
     conn.execute("UPDATE hb_task_manager SET state='queued',phase=?,request_id=?,sequence=?,next_due=?,detail=?,updated_at=? WHERE task_id=?",(phase,rid,sequence,time.time()+5,reason,time.time(),task['task_id']))
     hb_tasks.event(conn,task,'hummingbird','continuation_queued',{'request_id':rid,'agent':recipient,'phase':phase,'sequence':sequence,'reason':reason},message_id=mid,request_id=rid)
     return rid
+
+
+FOLLOW_UP=re.compile(r"^\s*(?:\U0001F4F1\s*)?(?:telegram:\s*)?(?:@?apex[,:]?\s+)?(?:please\s+|now\s+|just\s+)?(?:build|do|fix|test|run|finish|continue|go|start|make|ship)\b[^\n]{0,40}$",re.I)
+
+
+def merge_follow_up(conn,task):
+    """Practice 259 (JD 22 Nov 00:0x: Needs-you asked him to define done for '📱 Telegram: Build it Apex'). A short follow-up from JD with
+    no definition of done means 'carry on with the work in hand': it becomes an instruction on the focus task and closes as merged.
+    Returns the focus task id, or None (then HB asks as before)."""
+    text=str(task.get('title') or task.get('objective') or '').strip()
+    if len(text.split())>8 or not FOLLOW_UP.match(text):return None
+    try:
+        from core.peer_bridge import focus_task
+        focus=focus_task(conn)
+    except Exception:
+        focus=None
+    if not focus or focus==task['task_id']:return None
+    target=hb_tasks.get(conn,focus)
+    if not target:return None
+    hb_tasks.event(conn,target,'user','instruction',{'content':'JD (follow-up): '+text[:300]})
+    from core.hb_commands import cancel_task
+    cancel_task(conn,task['task_id'],'HB: follow-up merged into '+focus)
+    conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                 (task['conversation_id'],f"▶ '{text[:60]}' → APEX carries on with {focus} ({str(target.get('title') or '')[:70]})."))
+    return focus
+
+
+def proof(conn,task):
+    """Practice 266: what JD needs to see before approving - the files changed and the last passing check."""
+    files=[]
+    for (p,) in conn.execute("SELECT payload FROM hb_task_events WHERE task_id=? AND kind='mutation' ORDER BY event_id DESC LIMIT 12",(task['task_id'],)):
+        for f in re.findall(r"(?:core|frontend|scripts|tests|utils|lib)/[\w./-]+\.(?:py|js|css|html)",str(p)):
+            if f not in files:files.append(f)
+    test=conn.execute("SELECT json_extract(payload,'$.verdict'),json_extract(payload,'$.alm_run_id') FROM hb_task_events WHERE task_id=? "
+                      "AND kind='test_result' AND json_extract(payload,'$.status')='passed' ORDER BY event_id DESC LIMIT 1",(task['task_id'],)).fetchone()
+    return ('Changed: '+(', '.join(files[:6]) or 'no file change recorded')+'. Check: '+(f'{test[0]} (run {test[1]})' if test else 'none recorded')+'.')
 
 
 def tick(conn,*,now=None,memory=None):
@@ -458,7 +525,11 @@ def tick(conn,*,now=None,memory=None):
             live=None
         if live:
             _set(conn,task['task_id'],live[1],'Executor request #'+str(live[0]));continue
-        if row['phase']=='plan':continue   # workflow scoping turn ended: hb_plan_workflow asks the owner to approve the plan
+        if row['phase']=='plan':
+            # A finished scoping turn no longer owns an execution. Do not leave
+            # the board claiming it is running while the plan workflow waits.
+            _set(conn,task['task_id'],'waiting_plan','Scoping turn ended; waiting for the plan workflow to advance or request review')
+            continue
         tables={r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         inline_history=conn.execute("SELECT 1 FROM hb_executions WHERE task_id=? AND kind='inline' LIMIT 1",(task['task_id'],)).fetchone()
         if not inline_history and 'chat_jobs' in tables and conn.execute("SELECT 1 FROM chat_jobs WHERE conversation_id=? AND status IN ('queued','running') LIMIT 1",(task['conversation_id'],)).fetchone():continue
@@ -519,7 +590,7 @@ def tick(conn,*,now=None,memory=None):
                     conn.execute('UPDATE hb_task_manager SET phase=? WHERE task_id=?',(phase,task['task_id']))
                     if row['state']!='needs_owner':
                         if ready:
-                            ask_owner(conn,task,f"✅ {_plain_name(conn,task)} is finished and its check passed. Approve it?",
+                            ask_owner(conn,task,f"✅ {_plain_name(conn,task)} is finished and its check passed. {proof(conn,task)} Approve it?",
                                       (f"/accept {task['step_id']} approves the step; " if task.get('step_id') else '')
                                       +f"/continue {task['task_id']} gives it more work; /pause {task['task_id']} holds it; /cancel {task['task_id']} drops it.")
                         else:
@@ -534,6 +605,7 @@ def tick(conn,*,now=None,memory=None):
         reason='Independent review returned a remaining action' if review_returned else 'Resume the pending independent review' if row['phase']=='review' else 'Guarded checks passed; independent acceptance is next' if ready else 'Previous model turn ended with unfinished work; reconcile receipts and continue'
         from core.hb_dream_method import done_when
         if not done_when(conn,task)[1]:
+            if merge_follow_up(conn,task):continue   # Practice 259: 'Build it Apex' continues the work in hand; JD is not asked
             # DREAM "Distinguish": HB does not keep a task running automatically without knowing what done means.
             if row['state']!='needs_owner':
                 ask_owner(conn,task,f"❓ {_plain_name(conn,task)} has no definition of done yet, so HB won't keep running it. Say what done means.",

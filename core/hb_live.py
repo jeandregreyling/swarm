@@ -285,6 +285,19 @@ def _with_lights(conn, items):
     return items
 
 
+def _doers(conn):
+    """Practice 276 (JD 22 Nov: the task list showed "actors that aren't even available"): who HB can really give a step to from the list.
+    APEX always; Fred unless his switch is Off. Other names are not wired into HB's workflow (core/hb_plan_workflow._dispatch_doer)."""
+    try:
+        from core import hb_model_switches
+        off = hb_model_switches.modes(conn).get(hb_model_switches.FRED) == 'off'
+    except Exception:
+        off = False
+    return [{'id': 'apex', 'name': 'APEX', 'ok': True, 'why': 'APEX does the step on the GPU'},
+            {'id': 'fred', 'name': 'Fred', 'ok': not off,
+             'why': 'Fred is switched Off in Live status' if off else 'Fred (24B on the CPU) does the step; your click counts as you calling Fred'}]
+
+
 def _apex_lights(conn):
     """Practice 272: the lights of APEX's newest turn (running now, or the last one) for the meter on top of main chat."""
     try:
@@ -407,5 +420,6 @@ def snapshot(conn, now=None, tele=None, items=None):
     out['version'] = hashlib.sha1(json.dumps(out, sort_keys=True, default=str).encode()).hexdigest()[:12]
     out['telemetry'], out['at'] = tele, now
     out['apex_live'], out['started'] = apex_live(), STARTED      # Practice 200 (outside the version hash: it changes every read)
+    out['doers'] = _doers(conn)                                # Practice 276: the task list offers only these
     out['apex_lights'] = _apex_lights(conn)                    # Practice 272: always on the meter, live or the last turn
     return out
