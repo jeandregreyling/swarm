@@ -185,7 +185,10 @@ def _parts(conn, task, source):
         return []
     try:   # no Do: list or numbered lines in the spec: homework's plan, if it made one
         from core.hb_homework import latest
-        steps = [str(s).strip() for s in ((latest(conn, task) or {}).get('plan') or []) if str(s).strip()]
+        card = latest(conn, task) or {}
+        if card.get('ready') is False:   # Practice 282: a plan HB rejected (vague, invented files) is not a chunk list
+            raise ValueError('homework plan rejected')
+        steps = [str(s).strip() for s in (card.get('plan') or []) if str(s).strip()]
         if 2 <= len(steps) <= 8 and all(len(s) <= 500 for s in steps):
             return steps
     except Exception:

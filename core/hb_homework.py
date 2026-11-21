@@ -87,7 +87,7 @@ def facts(conn, task, max_files=6):
 SCHEMA = {'type': 'object', 'additionalProperties': False,
           'required': ['goal', 'check', 'plan', 'files', 'questions', 'doer', 'importance', 'why'],
           'properties': {'goal': {'type': 'string', 'maxLength': 300}, 'check': {'type': 'string', 'maxLength': 300},
-                         'plan': {'type': 'array', 'maxItems': 6, 'items': {'type': 'string', 'maxLength': 240}},
+                         'plan': {'type': 'array', 'maxItems': 8, 'items': {'type': 'string', 'maxLength': 240}},
                          'files': {'type': 'array', 'maxItems': 6, 'items': {'type': 'string', 'maxLength': 200}},
                          'questions': {'type': 'array', 'maxItems': 3, 'items': {'type': 'string', 'maxLength': 200}},
                          'doer': {'type': 'string', 'enum': list(DOERS)},
@@ -95,7 +95,7 @@ SCHEMA = {'type': 'object', 'additionalProperties': False,
                          'why': {'type': 'string', 'maxLength': 300}}}
 
 
-def prompt(task, gathered):
+def prompt(task, gathered, rejected=None):
     from core.hb_master_prompt import for_role
     system = (for_role('default') + '\nYou are HB\'s homework model. You never change anything. You turn one task into a precise spec card '
               'so the GPU model can start with the reading and thinking done. Rules: goal = one sentence of what JD wants. check = ONE '
@@ -103,8 +103,12 @@ def prompt(task, gathered):
               'never "verify it works". plan = 2-6 short steps, the first doable at once. files = only paths from the facts below that the '
               'work really touches. questions = only real blockers that need JD; usually none. doer: hb if an HB command or tool does it '
               'without a model, small for text-only work, apex for code changes, fred only for a hard review. importance 1-5 (5 = blocks '
-              'other work or JD is waiting). why = one line on the doer and importance. Answer JSON only.')
-    user = json.dumps({'task': str(task.get('title') or '')[:200], 'request': str(task.get('objective') or '')[:2500], 'facts': gathered})
+              'other work or JD is waiting). why = one line on the doer and importance. Answer JSON only.'
+              ' Plan rules (Practice 282 - HB turns each plan step into one chunk for APEX, a 12B model that reads 100 lines at a time): each step is ONE action on ONE named file or test from the facts or the request, starting with a verb (run, read, write, add, fix, change, remove); say where (file, and the function or section) and stop. never invent a path that is not in the facts or the request. No vague steps: never ensure, verify that, make sure, update the necessary, improve, enhance. If the request names test files in its Done when line, use one step per test file: make tests/x.py pass: run it, read the first failure, read those exact lines, patch only them, run it again; the last step runs them all. GOOD plan: ["run tests/test_hb_phone_flow.py and read the first failure", "in core/hb_channels.py fix _reply_target so a follow-up keeps its question", "run tests/test_hb_phone_flow.py again until it passes"]. BAD plan (HB rejects it): ["Update hb-live.js to include the necessary API endpoints", "Ensure that the tests pass", "Add tests in tests/test_new_thing.py" (a file that does not exist and is not asked for)]. If your_last_card_was_rejected_because is given, fix exactly those points.')
+    ask = {'task': str(task.get('title') or '')[:200], 'request': str(task.get('objective') or '')[:2500], 'facts': gathered}
+    if rejected:      # Practice 282: corrected, not left to repeat itself
+        ask['your_last_card_was_rejected_because'] = list(rejected)[:6]
+    user = json.dumps(ask)
     return [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]
 
 
@@ -135,7 +139,28 @@ def judge(card, gathered):
         reasons.append('no real file found for the work')
     if card.get('questions'):
         reasons.append('open question for JD: ' + '; '.join(card['questions'])[:200])
+    reasons += plan_problems(card.get('plan') or [], known, gathered)   # Practice 282: HB judges the plan too
     return not reasons, reasons
+
+
+_VAGUE_STEP = re.compile(r'\b(ensure|verify that|make sure|the necessary|improve|enhance|as needed|appropriate(ly)?)\b', re.I)
+_PATH = re.compile(r'\b(?:core|tests|frontend|scripts|utils|agents|fridays|runtime|docs)/[\w/.-]+\.\w+')
+
+
+def plan_problems(plan, known, gathered):
+    """Practice 282: a plan step must be one concrete action; vague steps and paths that exist nowhere are named back to homework."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    asked = ' '.join(str(x) for x in gathered.get('done_when') or []) + ' ' + str(gathered.get('request') or '')
+    out = []
+    for n, step in enumerate(plan, 1):
+        s = str(step)
+        if _VAGUE_STEP.search(s):
+            out.append(f'plan step {n} is vague: "{s[:80]}" - say the one action and where')
+        for p in _PATH.findall(s):
+            if p not in known and p not in asked and not (root / p).exists():
+                out.append(f'plan step {n} names {p}, which does not exist and is not asked for')
+    return out[:6]
 
 
 def latest(conn, task):
@@ -155,8 +180,14 @@ def write(conn, task, model=call_model):
     gathered = facts(conn, task)
     bg.step('homework', f"found {len(gathered['files'])} file(s) with HB's tools; asking {MODEL} for the card")
     started = time.time()
+    last = conn.execute("SELECT payload FROM hb_task_events WHERE task_id=? AND kind='spec_card' ORDER BY event_id DESC LIMIT 1",
+                        (task['task_id'],)).fetchone()
     try:
-        card = model(prompt(task, gathered))
+        rejected = (json.loads(last[0]).get('not_ready') or []) if last else []
+    except (TypeError, ValueError):
+        rejected = []
+    try:
+        card = model(prompt(task, gathered, rejected=rejected))   # Practice 282: told why its last card was rejected
     except Exception as exc:                             # the GPU model can still scope it the old way
         card = {'goal': '', 'check': '', 'plan': [], 'files': [], 'questions': [], 'doer': 'apex', 'importance': 3,
                 'why': f'homework model failed: {str(exc)[:160]}'}
