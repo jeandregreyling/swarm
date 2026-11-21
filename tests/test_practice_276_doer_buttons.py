@@ -33,8 +33,9 @@ def test_one_button_per_runnable_doer_and_the_current_one_is_lit():
 
 
 def test_unavailable_doers_are_not_offered():
-    html = _render({'step_id': 'S-1', 'doer': 'apex'}, [BOTH[0], {'id': 'fred', 'name': 'Fred', 'ok': False}])
-    assert 'Fred' not in html
+    html = _render({'step_id': 'S-1', 'doer': 'apex'}, [BOTH[0], {'id': 'fred', 'name': 'Fred', 'ok': False, 'why': 'Fred is switched Off in Live status'}])
+    assert 'data-v="fred"' not in html and '>Fred<' not in html
+    assert '· Fred is switched Off in Live status' in html            # Practice 277: says why, no button
     for name in ('codex', 'gemini', 'small', 'Codex', 'Gemini'):
         assert name not in html
 
