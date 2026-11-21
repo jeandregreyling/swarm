@@ -724,7 +724,7 @@ def resume_by_owner(conn,task):
         (task['task_id'],)).fetchone()
     if policy:
         inherited=json.loads(policy[1])
-        inherited={key:inherited[key] for key in ('allowed_tools','preferred_local_model','owner_authorized_provider_probe') if key in inherited}
+        inherited=inheritable(inherited)   # Practice 233: never Fred's model
         inherited['inherited_from_request_id']=policy[0]
         for rid in queued:event(conn,updated,'hummingbird','tool_scope',inherited,request_id=rid)
     event(conn,updated,'user','resume_queued',{'queued':queued,'budget_before':measured,'version':updated['version']})
@@ -737,6 +737,12 @@ def invitation_tools(conn,request_id):
     names=json.loads(row[0]).get('allowed_tools')
     if not isinstance(names,list) or not names or len(names)>24 or any(not isinstance(name,str) for name in names):raise ValueError('Invalid bounded invitation tool scope')
     return set(names)
+
+
+def inheritable(policy):
+    """Practice 233: what a follow-up turn copies from the turn before it. Fred's model is never copied - HB's task manager gives
+    Fred one turn per stall (Practice 215); a Continue, a handoff or a new round is APEX's turn again."""
+    return {key:policy[key] for key in ('allowed_tools','owner_authorized_provider_probe') if key in policy}
 
 
 def invitation_model(conn,request_id):

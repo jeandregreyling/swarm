@@ -280,7 +280,7 @@ def enqueue(conn, conversation_id: int, message_id: int, body: str, recipients, 
                 previous=conn.execute("SELECT payload FROM hb_task_events WHERE request_id=? AND kind='tool_scope' AND agent IN ('hummingbird','codex-instructor') ORDER BY event_id DESC LIMIT 1",(parent_request_id,)).fetchone()
                 if previous:
                     inherited=json.loads(previous[0])
-                    inherited={key:inherited[key] for key in ('allowed_tools','preferred_local_model','owner_authorized_provider_probe') if key in inherited}
+                    inherited=hb_tasks.inheritable(inherited)   # Practice 233: never Fred's model
                     inherited['inherited_from_request_id']=parent_request_id
                     scoped=hb_tasks.for_request(conn,cur.lastrowid)
                     hb_tasks.event(conn,scoped,'hummingbird','tool_scope',inherited,request_id=cur.lastrowid)

@@ -241,7 +241,7 @@ def decide(conn, conversation_id, request_id, message_id, value):
             if inherited is not None:
                 source_policy=conn.execute("SELECT payload FROM hb_task_events WHERE task_id=? AND request_id=? AND kind='tool_scope' AND agent IN ('codex-instructor','copilot-instructor','hummingbird') ORDER BY event_id DESC LIMIT 1",(task['task_id'],request_id)).fetchone()
                 source_policy=json.loads(source_policy[0]) if source_policy else {}
-                policy={key:source_policy[key] for key in ('preferred_local_model','owner_authorized_provider_probe') if key in source_policy}
+                policy={key:source_policy[key] for key in ('owner_authorized_provider_probe',) if key in source_policy}   # Practice 233: never Fred's model
                 policy.update(allowed_tools=sorted(inherited),inherited_from_request_id=request_id)
                 for next_request in queued:hb_tasks.event(conn,task,'hummingbird','tool_scope',policy,request_id=next_request)
             return {'action':'continue','queued':queued,'cycle':state['cycle']+1,'reason':reason}
