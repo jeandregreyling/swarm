@@ -114,7 +114,7 @@ def _lit(conn, key):
         from core import hb_lights
         request = int(key[2:]) if key.startswith('P-') and key[2:].isdigit() else None
         lights = hb_lights.turn(conn, request_id=request, run_id=key if key.startswith('R-P') else None)
-        if not lights.get('request_id') or all(l['state'] == 'off' for l in lights['does']):
+        if not lights.get('request_id') or all(l['state'] == 'off' for l in lights['turn']):
             return ''
         why = hb_lights.why_line(lights)
         return '\n' + hb_lights.chat_line(lights) + (f' ({why})' if why else '')

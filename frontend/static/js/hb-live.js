@@ -233,14 +233,16 @@
 
   // Practice 272 (JD 22 Nov: "I want those three icons you just lit up built into HB ... 'queue started' 'Inference and Continuity' ...
   // so I can see the system actually using DREAM to do its work"): DOES and DREAM lights, lit only from the turn's own records
-  // (core/hb_lights.py). Green = happened, pulsing = happening now, amber = HB had to step in or only part done, red = failed,
+  // (core/hb_lights.py; Practice 274: every DOES/DREAM icon carries the meaning every agent's prompt gives it). Green = happened, pulsing = happening now, amber = HB had to step in or only part done, red = failed,
   // dim = not used this turn. Hover a light for its evidence.
-  function renderLights(lights, label) {
-    if (!lights || !lights.does || !lights.dream) return '';
-    const one = (l, word) => `<span class="hbl-light hbl-l-${esc(l.state)}" title="${esc(l.word + ': ' + l.why)}">${esc(l.icon)}` +
-      (word ? ` <small>${esc(l.word)}</small>` : '') + '</span>';      // Practice 273: 'Do · queue started' - the DOES letter is named
-    return `<div class="hbl-lights">${label ? `<span class="hbl-dim">${esc(label)}</span>` : ''}<span class="hbl-lg">DOES</span>` +
-      lights.does.map((l) => one(l, true)).join('') + '<span class="hbl-lg">DREAM</span>' + lights.dream.map((l) => one(l, false)).join('') + '</div>';
+  function renderLights(lights, label) {      // Practice 274: TURN (Claude Code's three), DOES and DREAM, each with its meaning on hover
+    if (!lights || !lights.turn || !lights.does || !lights.dream) return '';
+    const tip = (l) => (l.law || l.word) + ' · now: ' + l.why;
+    const one = (l, text) => `<span class="hbl-light hbl-l-${esc(l.state)}" title="${esc(tip(l))}">${esc(text)}</span>`;
+    return `<div class="hbl-lights">${label ? `<span class="hbl-dim">${esc(label)}</span>` : ''}` +
+      lights.turn.map((l) => one(l, l.icon + ' ' + l.word)).join('') +
+      '<span class="hbl-lg">DOES</span>' + lights.does.map((l) => one(l, l.word)).join('') +
+      '<span class="hbl-lg">DREAM</span>' + lights.dream.map((l) => one(l, l.letter)).join('') + '</div>';
   }
 
   // Practice 200: the APEX meter - always on top of main chat (owner: "let me see the actual token count and what APEX is doing")

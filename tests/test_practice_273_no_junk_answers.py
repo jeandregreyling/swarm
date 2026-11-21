@@ -57,11 +57,13 @@ def test_the_gate_is_wired_into_apexs_turn():
 
 
 def test_the_does_icons_name_their_letter():
+    """Practice 274 replaced 273's labels: DOES icons show their LAW word (Do, Operate, Execute, Sustain)."""
     node = shutil.which('node')
     if not node:
         pytest.skip('node is not installed')
-    lights = {'does': [{'icon': '▶', 'word': 'Do · queue started', 'state': 'on', 'why': 'x'}], 'dream': [{'icon': 'D', 'word': 'Distinguish', 'state': 'on', 'why': 'y'}]}
+    light = lambda key, word, icon: {'key': key, 'letter': word[0], 'word': word, 'icon': icon, 'law': 'x', 'state': 'on', 'why': 'y'}
+    lights = {'turn': [light('queue', 'queue started', '▶')], 'does': [light('do', 'Do', 'Do')], 'dream': [light('d', 'Distinguish', 'D')]}
     js = ROOT / 'frontend/static/js/hb-live.js'
     out = subprocess.run([node, '-e', f"const R=require({json.dumps(str(js))}); process.stdout.write(R.renderLights({json.dumps(lights)}))"],
                          capture_output=True, text=True, timeout=20)
-    assert '▶ <small>Do · queue started</small>' in out.stdout and 'DREAM' in out.stdout
+    assert '>Do</span>' in out.stdout and '▶ queue started' in out.stdout and 'DREAM' in out.stdout

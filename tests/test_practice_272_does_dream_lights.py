@@ -55,18 +55,19 @@ SAVED = _progress('Agent answer saved and read back in main chat')
 
 
 def _states(lights):
-    return [l['state'] for l in lights['does']], {l['letter']: l['state'] for l in lights['dream']}
+    return [l['state'] for l in lights['turn']], {l['letter']: l['state'] for l in lights['dream']}
 
 
-def test_a_reading_only_turn_lights_does_but_shows_E_amber_and_A_dark():
+def test_a_reading_only_turn_shows_DOES_execute_amber_and_A_dark():
     c = _db()
     _turn(c, 7, 'completed', START + [('tool_result', GREP), SAVED])
     lights = hb_lights.turn(c, request_id=7)
     does, dream = _states(lights)
-    assert does == ['on', 'on', 'on', 'on']
-    assert dream == {'D': 'on', 'R': 'on', 'E': 'warn', 'A': 'off', 'M': 'on'}
-    assert hb_lights.chat_line(lights) == 'DOES ▶✓ ✦✓ ⚙✓ ∞✓ · DREAM D✓ R✓ E! A· M✓'
-    assert 'Only read so far' in hb_lights.why_line(lights) and 'KC and memory not used' in hb_lights.why_line(lights)
+    assert does == ['on', 'on', 'on']
+    assert dream == {'D': 'on', 'R': 'on', 'E': 'on', 'A': 'off', 'M': 'on'}
+    assert [l['state'] for l in lights['does']] == ['on', 'on', 'warn', 'on']
+    assert hb_lights.chat_line(lights) == '▶✓ ✦✓ ∞✓ · DOES D✓ O✓ E! S✓ · DREAM D✓ R✓ E✓ A· M✓'
+    assert 'only reads' in hb_lights.why_line(lights) and 'KC and memory not used' in hb_lights.why_line(lights)
     assert 'Done when (task): the API lists every control' == lights['dream'][0]['why']
 
 
@@ -78,13 +79,13 @@ def test_a_running_turn_pulses_inference_while_the_model_call_is_open():
     lights = hb_lights.turn(c, run_id='R-P8-ABC123')
     does, dream = _states(lights)
     assert lights['request_id'] == 8 and lights['task_id'] == 'T-1'
-    assert does[0] == 'on' and does[1] == 'live' and does[3] == 'live' and dream['M'] == 'live'
+    assert does == ['on', 'live', 'live'] and dream['M'] == 'live'
 
 
 def test_queued_but_not_picked_up_waits_on_do():
     c = _db()
     _turn(c, 9, 'running', [('dispatch', {'recipient': 'apex'})])
-    assert hb_lights.turn(c, request_id=9)['does'][0]['state'] == 'wait'
+    assert hb_lights.turn(c, request_id=9)['turn'][0]['state'] == 'wait'
 
 
 def test_repeats_and_sent_back_answers_show_amber_or_red():
@@ -111,7 +112,7 @@ def test_a_failed_turn_is_red_on_sustain_and_motivation():
     c = _db()
     _turn(c, 13, 'failed', START)
     does, dream = _states(hb_lights.turn(c, request_id=13))
-    assert does[3] == 'bad' and dream['M'] == 'bad'
+    assert does[2] == 'bad' and dream['M'] == 'bad'
 
 
 def test_live_snapshot_puts_lights_on_apex_cards_and_the_meter_only():
@@ -128,7 +129,7 @@ def test_the_finished_line_carries_the_lights_and_what_was_not_lit():
     c = _db()
     _turn(c, 15, 'completed', START + [('tool_result', GREP), SAVED])
     line = hb_announce._lit(c, 'P-15')
-    assert line.startswith('\nDOES ▶✓ ✦✓ ⚙✓ ∞✓ · DREAM D✓ R✓ E! A· M✓') and 'Only read so far' in line
+    assert line.startswith('\n▶✓ ✦✓ ∞✓ · DOES D✓ O✓ E! S✓ · DREAM D✓ R✓ E✓ A· M✓') and 'only reads' in line
     assert hb_announce._lit(c, 'P-999') == '' and hb_announce._lit(c, 'R-OLDSTYLE') == ''
 
 
@@ -174,5 +175,5 @@ def test_the_page_shows_the_lights_on_the_meter_and_the_apex_card():
     for word in ('last turn', 'DOES', 'queue started', 'inference', 'continuity', 'DREAM', 'hbl-l-warn', 'hbl-l-off', 'hbl-l-on'):
         assert word in meter, word
     assert html.count('class="hbl-lights"') == 2            # the meter and the APEX card
-    assert 'Only read so far' in _node('R.renderLights(snap.apex_lights)', snap)
+    assert 'only reads' in _node('R.renderLights(snap.apex_lights)', snap)
     assert _node('R.renderLights(null)', snap) == ''
