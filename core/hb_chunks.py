@@ -61,18 +61,35 @@ def ensure(conn, task):
     return conn.execute('SELECT n, text, state FROM hb_chunks WHERE task_id=? ORDER BY n', (task['task_id'],)).fetchall()
 
 
+# Practice 231: an inspection chunk ('run the test and read which file fails') is done when it ran something - a failing test is its
+# answer; a chunk that changes things still needs a change, a note or a passing test.
+LOOKS = re.compile(r'^\s*(?:then\s+)?(run|read|check|find|show|inspect|look|list|search|grep|open|review)\b', re.I)
+CHANGES = re.compile(r'\b(replace|fix|change|apply|write|add|remove|edit|create|update|patch|rename|move|implement|build)\b', re.I)
+RAN = "kind IN ('mutation','studio_note','studio_task','test_result','tool_result')"
+
+
+def inspection(text):
+    return bool(LOOKS.search(str(text or ''))) and not CHANGES.search(str(text or ''))
+
+
 def advance(conn, task):
     """Mark the current chunk done when progress was recorded after it started; start the next. Returns the chunk number done, or None."""
     table(conn)
-    cur = conn.execute("SELECT n, started_event FROM hb_chunks WHERE task_id=? AND state='doing' ORDER BY n LIMIT 1", (task['task_id'],)).fetchone()
+    cur = conn.execute("SELECT n, started_event, text FROM hb_chunks WHERE task_id=? AND state='doing' ORDER BY n LIMIT 1", (task['task_id'],)).fetchone()
     if not cur:
         return None
-    now = _progress(conn, task['task_id'])
+    now = (conn.execute(f'SELECT COALESCE(MAX(event_id),0) FROM hb_task_events WHERE task_id=? AND {RAN}', (task['task_id'],)).fetchone()[0]
+           if inspection(cur[2]) else _progress(conn, task['task_id']))
     if now <= (cur[1] or 0):
         return None
     conn.execute("UPDATE hb_chunks SET state='done', updated_at=? WHERE task_id=? AND n=?", (time.time(), task['task_id'], cur[0]))
     conn.execute("UPDATE hb_chunks SET state='doing', started_event=?, updated_at=? WHERE task_id=? AND n=(SELECT MIN(n) FROM hb_chunks "
                  "WHERE task_id=? AND state='todo')", (now, time.time(), task['task_id'], task['task_id']))
+    try:   # Practice 231: a finished chunk is progress - APEX's attempts and Fred's turn count from it
+        from core import hb_tasks
+        hb_tasks.event(conn, task, 'hummingbird', 'chunk_done', {'chunk': cur[0], 'text': str(cur[2] or '')[:200]})
+    except Exception:
+        pass
     return cur[0]
 
 

@@ -164,7 +164,7 @@ def local_help(conn,task,*,selected=False):
         return 'unavailable: Fred is switched Off in Live status'
     hb_local_jobs.ensure_schema(conn)
     # Practice 226: a newly prepared change set is new information - APEX's four attempts and Fred's turn count again from it
-    progress=conn.execute("SELECT COALESCE(MAX(created_at),0) FROM hb_task_events WHERE task_id=? AND (kind IN ('mutation','change_set_prepared') OR "
+    progress=conn.execute("SELECT COALESCE(MAX(created_at),0) FROM hb_task_events WHERE task_id=? AND (kind IN ('mutation','change_set_prepared','chunk_done') OR "
                           "(kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]
     # Owner 15 Nov: a chat line with no Studio step ("share the open tasks") went to Fred, who held the queue for ten minutes.
     if not task.get('step_id'):
@@ -448,7 +448,7 @@ def tick(conn,*,now=None,memory=None):
         ready=bool(cases and all(c[0]=='passed' for c in cases) and passed and passed>=max(last_mutation or 0,last_instruction or 0,plan_time[0] if plan_time else 0))
         # 14 Nov: a recorded deliverable (studio_note/studio_task) is progress too - research steps produce notes, not
         # mutations, and without this they ratcheted recovery_count into an endless review loop (DAW/potato farm, 14 Nov).
-        progress=conn.execute("SELECT COALESCE(MAX(event_id),0) FROM hb_task_events WHERE task_id=? AND (kind IN ('mutation','studio_note','studio_task') OR (kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]
+        progress=conn.execute("SELECT COALESCE(MAX(event_id),0) FROM hb_task_events WHERE task_id=? AND (kind IN ('mutation','studio_note','studio_task','chunk_done') OR (kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]   # Practice 231
         stagnant=0 if progress>row['progress_event_id'] or row['phase']=='review' else row['recovery_count']+1
         previous=conn.execute('SELECT recipient FROM peer_messages WHERE id=?',(row['request_id'],)).fetchone()
         from core.agent_identity import INSTRUCTORS
