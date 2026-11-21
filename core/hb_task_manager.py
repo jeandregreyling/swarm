@@ -4,9 +4,10 @@ import re
 import time
 from core import hb_tasks
 
-EXECUTION_TOOLS=['read_file','grep_repo','get_diff','git_status','propose_patch','propose_write_file',
-    'run_tests','task_context','task_evidence','studio_note','studio_status','task_plan','alm_step_get',
-    'memory_search','memory_save','knowledge_search','knowledge_read','runtime_status','backlog_list','reference_lookup']
+EXECUTION_TOOLS=['read_file','list_files','grep_repo','get_diff','git_status','propose_patch','propose_write_file',
+    'run_tests','terminal_run','task_context','task_evidence','studio_note','studio_status','task_plan','alm_step_get',
+    'memory_search','memory_save','knowledge_search','knowledge_read','runtime_status','backlog_list','reference_lookup',
+    'local_review','local_job_status']
 REVIEW_TOOLS=['task_context','task_evidence','read_file','grep_repo','get_diff','git_status',
     'studio_accept','task_plan','runtime_reload','knowledge_read','memory_save','memory_search','backlog_list']
 
@@ -52,7 +53,7 @@ def register(conn,task,*,request_id=None,next_action=None,dependencies=()):
 
 def can_continue(conn,task):
     from core.hb_chat_controls import continuation,held_requests
-    from core.hb_owner_sessions import for_task
+    from core.hb_owner_sessions import for_task,tools_for_task
     from core.hb_provider_conditions import pending
     if task and pending(conn,task,agent='apex'):return False
     if task and for_task(conn,task['task_id']) and not for_task(conn,task['task_id'],active=True):return False
@@ -322,8 +323,14 @@ def _queue(conn,task,row,phase,reason,model=None,selected=False):
         tools=REVIEW_TOOLS
     else:
         recipient='apex';tools=EXECUTION_TOOLS
+        from core.hb_owner_sessions import for_task,tools_for_task
+        owner_grant=for_task(conn,task['task_id'],active=True)
         policy=conn.execute("SELECT e.payload FROM hb_task_events e LEFT JOIN peer_messages p ON p.id=e.request_id WHERE e.task_id=? AND e.kind='tool_scope' AND e.agent IN ('hummingbird','codex-instructor','copilot-instructor') AND (p.recipient='apex' OR e.request_id IS NULL) AND COALESCE(json_extract(e.payload,'$.phase'),'')<>'plan' ORDER BY e.event_id DESC LIMIT 1",(task['task_id'],)).fetchone()  # the read-only scoping limit never carries into work turns
-        if policy:
+        if owner_grant:
+            from core.apex_tools import _known_tool
+            owner_tools=tools_for_task(conn,task['task_id'],owner_grant)
+            if owner_tools is not None:tools=[tool for tool in owner_tools if _known_tool(tool)]
+        elif policy:
             allowed=json.loads(policy[0]).get('allowed_tools',[])
             if 'studio_task' in allowed:allowed=[*allowed,'task_plan']  # Existing task-metadata capability, fewer side effects.
             tools=[tool for tool in EXECUTION_TOOLS if tool in allowed]
@@ -465,6 +472,11 @@ def tick(conn,*,now=None,memory=None):
                             "AND COALESCE(json_extract(payload,'$.verdict'),'') NOT LIKE '%deselected%'",(task['task_id'],)).fetchone()[0]   # Practice 195
         plan_time=conn.execute("SELECT created_at FROM hb_task_events WHERE event_id=?",(row['plan_event_id'],)).fetchone()
         ready=bool(cases and all(c[0]=='passed' for c in cases) and passed and passed>=max(last_mutation or 0,last_instruction or 0,plan_time[0] if plan_time else 0))
+        if ready:   # Practice 236: a 'Done when' test that cannot fail proves nothing - no approval, no flower
+            from core.hb_chunks import weak_done,_refuse
+            weak=weak_done(task)
+            if weak:
+                ready=False;_refuse(conn,task,0,weak,label='the step')
         # 14 Nov: a recorded deliverable (studio_note/studio_task) is progress too - research steps produce notes, not
         # mutations, and without this they ratcheted recovery_count into an endless review loop (DAW/potato farm, 14 Nov).
         progress=conn.execute("SELECT COALESCE(MAX(event_id),0) FROM hb_task_events WHERE task_id=? AND (kind IN ('mutation','studio_note','studio_task','chunk_done') OR (kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]   # Practice 231

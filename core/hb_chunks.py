@@ -3,7 +3,8 @@ handled as a whole instead of homework and HB breaking it down into more managea
 
 Practice 232 (JD 21 Nov: "just get the chunking to work ... make it work the way you think it should with my intent"):
   plan(text)          the step's own "Do:" sequence, split only at real step boundaries (", then", "; ", "->" - never inside brackets),
-                      else its numbered/bulleted lines; descriptions are never chunks. No such list: homework's plan, else one piece.
+                      else an action-only numbered/bulleted list; descriptions and constraints are never chunks.
+                      No such list: homework's plan, else one piece.
   ensure(conn, task)  the task's chunks; rebuilt when the step's spec changed and no chunk is done yet
   advance(conn, task) what was recorded is matched to the chunks IN ORDER - a look (run, read, check, show) is finished by a test run or
                       tool result, a change by a change / note / passing check, a report by the reply - so one turn can finish several
@@ -18,6 +19,7 @@ import time
 
 DO = re.compile(r'\bDo:\s*(.+)$', re.M | re.I)   # Practice 217: prepared steps say '... change set. Do: ...' mid-line
 ITEM = re.compile(r'^\s*(?:\d+[.)]|[-*•])\s+(.+)$', re.M)
+ACTION = re.compile(r'^(?:read|inspect|check|find|search|review|show|run|write|create|add|edit|update|change|fix|implement|build|remove|replace|apply|test|verify|report|answer|summari[sz]e|collect|extract|compare|identify|prepare|define|split|send)\b', re.I)
 SKIP = re.compile(r'^\s*(?:Done when|HB extra tools|HB restart after|PREPARED|Owner\b|JD\b)', re.I)
 SEQ = re.compile(r',\s*then\s+|;\s*then\s+|\s+then\s+|;\s+|\s+->\s+', re.I)
 COMMA = re.compile(r',\s+')
@@ -74,15 +76,22 @@ def _short_list(piece):
 
 
 def plan(text, most=8):
-    """2-8 chunks from a step's instructions, or [] when it is one piece."""
+    """Split explicit instructions without mistaking a specification for a plan."""
     text = str(text or '')
     m = DO.search(text)
     if m:
         parts = [b for p in _split_top(m.group(1), SEQ) for b in _short_list(p)]
     else:
-        parts = [p.strip() for p in ITEM.findall(text)]
-    parts = [p[:500] for p in parts if p and not SKIP.match(p)]
-    return parts[:most] if len(parts) >= 2 else []
+        # Only a standalone list of actions is a plan. Requirements, safety
+        # constraints, and nested lists inside a larger directive are context.
+        lines = [line for line in text.splitlines() if line.strip()]
+        matches = [ITEM.fullmatch(line) for line in lines]
+        parts = [m.group(1).strip() for m in matches] if lines and all(matches) else []
+        if not all(ACTION.match(p) for p in parts):
+            parts = []
+    parts = [p for p in parts if p and not SKIP.match(p)]
+    # Falling back to the whole instruction is safer than losing later steps.
+    return parts if 2 <= len(parts) <= most and all(len(p) <= 500 for p in parts) else []
 
 
 def kinds_for(text):
@@ -125,10 +134,18 @@ def _parts(conn, task, source):
     parts = plan(source)
     if parts:
         return parts
+    # An explicit but unsplittable Do sequence must remain intact. An inferred
+    # plan must not silently replace its later or oversized instructions.
+    if DO.search(str(source)):
+        return []
+    # A named immediate step in an owner directive takes precedence over an
+    # inferred homework plan, which may omit its required answer or stop point.
+    if re.search(r'^\s*#{1,6}\s*(?:\d+[.)]?\s*)?immediate\b', str(source), re.I | re.M):
+        return []
     try:   # no Do: list or numbered lines in the spec: homework's plan, if it made one
         from core.hb_homework import latest
-        steps = [str(s).strip()[:500] for s in ((latest(conn, task) or {}).get('plan') or []) if str(s).strip()]
-        return steps[:8] if len(steps) >= 2 else []
+        steps = [str(s).strip() for s in ((latest(conn, task) or {}).get('plan') or []) if str(s).strip()]
+        return steps if 2 <= len(steps) <= 8 and all(len(s) <= 500 for s in steps) else []
     except Exception:
         return []
 
@@ -187,6 +204,54 @@ def _record(conn, task, finished):
         pass
 
 
+ROOT = __import__('pathlib').Path(__file__).resolve().parents[1]
+TEST_FIRST = re.compile(r'\bwrite\s+(tests/[\w/.-]+\.py)\b[^,;]*?\bfirst\b', re.I)
+REAL_ASSERT = re.compile(r'^\s*assert\s+(?!(?:True|1|not\s+False)\s*(?:#.*)?$)\S|pytest\.raises\(', re.M)
+
+
+def weak_test(text):
+    """Practice 236: why a 'write tests/x.py first' chunk is not done yet, or None. A test-first test checks behaviour (a real assert
+    or pytest.raises), so it can fail before the code exists; `assert True`, an import-only file or a skip cannot."""
+    m = TEST_FIRST.search(str(text or ''))
+    if not m:
+        return None
+    path = ROOT / m.group(1)
+    if not path.is_file():
+        return f'{m.group(1)} does not exist yet'
+    body = path.read_text(errors='replace')
+    if not REAL_ASSERT.search(body):
+        return (f'{m.group(1)} has no real check (assert True or import only). A test asserts the behaviour the spec describes and '
+                'FAILS before the code exists - write those asserts, run it, report the failure')
+    if re.search(r'^\s*(?:@pytest\.mark\.skip\b|pytest\.skip\()', body, re.M):
+        return f'{m.group(1)} skips itself - a skipped test proves nothing; remove the skip and make it check the behaviour'
+    return None
+
+
+def weak_done(task):
+    """Practice 236: why the step's own 'Done when' test cannot prove it is done, or None. HB does not approve - or give a flower -
+    on a test that cannot fail."""
+    for line in re.findall(r'Done when:[^\n]*', str(task.get('objective') or ''), re.I):
+        for path in re.findall(r'tests/[\w/.-]+\.py', line):
+            why = weak_test(f'write {path} first')
+            if why:
+                return why
+    return None
+
+
+def _refuse(conn, task, n, why, label=None):
+    """One line per chunk and reason (not every tick): the work stays open and APEX sees why in main chat and in his events."""
+    tid = task['task_id']
+    seen = conn.execute("SELECT 1 FROM hb_task_events WHERE task_id=? AND kind='chunk_refused' AND json_extract(payload,'$.chunk')=? "
+                        "AND json_extract(payload,'$.why')=?", (tid, n, why)).fetchone()
+    if seen:
+        return
+    from core import hb_tasks
+    hb_tasks.event(conn, task, 'hummingbird', 'chunk_refused', {'chunk': n, 'why': why})
+    what = label or f'chunk {n}'
+    conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','apex',?,'response',0)",
+                 (task.get('conversation_id') or 2845, f"▸ {str(task.get('title') or tid)[:70]}: {what} is NOT done - {why}."))
+
+
 def advance(conn, task):
     """Match what was recorded to the chunks in order; finish every chunk whose work is there. Returns the last chunk finished, or None."""
     table(conn)
@@ -199,6 +264,10 @@ def advance(conn, task):
         ev = conn.execute(f'SELECT MIN(event_id) FROM hb_task_events WHERE task_id=? AND event_id>? AND ({kinds_for(cur[2])})',
                           (tid, cur[1] or 0)).fetchone()[0]
         if not ev:
+            break
+        why = weak_test(cur[2])
+        if why:                                  # Practice 236: a placeholder test is not a finished test-first chunk
+            _refuse(conn, task, cur[0], why)
             break
         _finish(conn, tid, cur[0], ev)
         finished.append(cur)
