@@ -15,7 +15,9 @@ import ast
 import difflib
 import hashlib
 import json
+import os
 import re
+import tempfile
 import shutil
 import subprocess
 import sys
@@ -185,7 +187,8 @@ def call(args, step_id, root=ROOT):
     cs = load(step_id, root)
     if not cs:
         return {'state': 'none', 'note': 'No prepared change set for this step; do the step with your other tools.'}
-    return {'step_id': step_id, 'why': cs.get('why', ''), 'files': sorted({e['path'] for e in cs.get('edits') or []} | set(cs.get('new_files') or {})),
+    return {'step_id': step_id, 'status': 'PREVIEW ONLY — no files written yet; call change_set(action="apply") next',
+            'why': cs.get('why', ''), 'files': sorted({e['path'] for e in cs.get('edits') or []} | set(cs.get('new_files') or {})),
             'diff': diff_text(root, cs), 'test': cs.get('test'), 'prepared_by': cs.get('prepared_by'), 'verified': cs.get('verified'),
             'next': 'Read the diff. Then change_set apply, then run the test.'}
 
@@ -272,6 +275,19 @@ def record(step_id, root=ROOT):
     return {'step_id': step_id, 'files': files(cs), 'state': status(step_id, root)['state'], 'commit': read('commit.json'), 'reverted': read('reverted.json')}
 
 
+def _sandboxed_check(command, root):
+    """Run proposed tests with host files read-only and an isolated scratch HOME."""
+    with tempfile.TemporaryDirectory(prefix='hb-proposal-tests-') as scratch:
+        env = {'PATH': os.environ.get('PATH', '/usr/bin:/bin'), 'HOME': scratch,
+               'LANG': 'C.UTF-8', 'PYTHONPATH': str(root), 'PYTHONDONTWRITEBYTECODE': '1',
+               'SWARM_DB': str(Path(scratch) / 'swarm.sqlite'), 'TMPDIR': scratch}
+        sandbox = ['/usr/bin/bwrap', '--die-with-parent', '--unshare-net',
+                   '--ro-bind', '/', '/', '--dev', '/dev', '--proc', '/proc',
+                   '--tmpfs', '/tmp', '--tmpfs', '/run', '--ro-bind', str(root), str(root),
+                   '--bind', scratch, scratch, '--chdir', str(root), '--', *command]
+        return subprocess.run(sandbox, cwd=root, env=env, capture_output=True, text=True, timeout=900)
+
+
 # ------------------------------------------------------------------ preparing (Claude Code / a capable model)
 def prepare(step_id, *, why, edits=(), new_files=None, test, prepared_by='claude-code', root=ROOT, run=None):
     """Save a change set and PROVE it: apply to the real files, run its test, put the files back. Returns the saved set.
@@ -289,7 +305,7 @@ def prepare(step_id, *, why, edits=(), new_files=None, test, prepared_by='claude
             _target(root, rel).write_text(after)
         cmd = [sys.executable, '-m', 'pytest', '-q', '-o', 'addopts=', '-p', 'no:cacheprovider', *test['tests']] + (
             ['-k', test['keyword']] if test.get('keyword') else [])
-        out = (run or (lambda c: subprocess.run(c, cwd=root, capture_output=True, text=True, timeout=900)))(cmd)
+        out = run(cmd) if run else _sandboxed_check(cmd, root)
         passed = out.returncode == 0
         summary = (out.stdout.strip().splitlines() or [''])[-1]
     finally:

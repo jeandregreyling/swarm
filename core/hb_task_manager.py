@@ -552,6 +552,8 @@ def tick(conn,*,now=None,memory=None):
             chunks_advance(conn,task)
         except Exception:
             pass
+        if row['state']=='needs_owner' and hb_tasks.requires_owner_review(conn,task) and not hb_tasks.owner_review_blocker(conn,task['step_id']):
+            continue
         stuck=stuck_reason(conn,task['task_id'])
         if stuck:
             # Owner 14 Nov: going round in circles is exactly when Fred should take over (with tools) before JD is asked.
