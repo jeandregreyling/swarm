@@ -37,9 +37,10 @@ def test_read_step_returns_apex_assignment_with_cases(alm):
     assert [case["case_id"] for case in result["test_cases"]] == [alm["case"]]
 
 
-def test_read_step_hides_steps_not_assigned_to_apex(alm):
+def test_read_step_exposes_non_apex_steps_as_read_only(alm):
     result = apex_alm.read_step(alm["other"])
-    assert result["status"] == "not_assigned" and "title" not in result
+    assert result["status"] == "found" and result["assigned_to_apex"] is False and result["read_only"] is True
+    assert "title" in result and "Read-only view" in result["checklist_note"]
     assert apex_alm.read_step("S-0000000000")["status"] == "not_found"
 
 

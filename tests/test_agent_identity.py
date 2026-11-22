@@ -467,7 +467,8 @@ def test_peer_api_reads_assigned_studio_step_and_records_audit(api, enrolled, mo
     assert any(e['action_id'] == result['action_id'] and e['status'] == 'succeeded' and e['tool'] == 'alm_step_get' for e in events)
     payload['arguments'] = {'step_id': other}
     response = client.post('/api/agent/v1/tools', headers=headers('apex'), json=payload)
-    assert json.loads(response.get_json()['output'])['status'] == 'not_assigned'
+    other_out = json.loads(response.get_json()['output'])
+    assert other_out['status'] == 'found' and other_out['assigned_to_apex'] is False and other_out['read_only'] is True
     payload['arguments'] = {'step_id': step, 'unexpected': True}
     response = client.post('/api/agent/v1/tools', headers=headers('apex'), json=payload)
     assert response.status_code == 400 and 'only step_id' in response.get_json()['error']
@@ -500,3 +501,12 @@ def test_deliberate_lessons_outrank_transport_and_old_copies_are_bounded(enrolle
     with closing(runtime._memory('apex')) as conn:
         assert len(conn.execute('SELECT content FROM memories WHERE legacy_id=109').fetchone()[0])>10000
     assert not runtime.read_memory('ten','Verified lesson')
+
+
+def test_memory_search_finds_task_ticket_without_task_id_in_text(tmp_path, monkeypatch):
+    from core import agent_identity as identity
+    monkeypatch.setattr(identity, 'STATE', tmp_path)
+    identity.save_memory('apex', 'Previous finding', 'The useful lesson', ticket_ref='T-EXAMPLE')
+    rows = identity.read_memory('apex', 'T-EXAMPLE')
+    assert len(rows) == 1 and rows[0]['content'] == 'The useful lesson'
+    assert identity.read_memory('apex', 'T-OTHER') == []

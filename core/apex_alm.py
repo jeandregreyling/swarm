@@ -21,17 +21,22 @@ def read_step(step_id: object) -> dict:
     step = projects.get_step(step_id)
     if not step:
         return {"status": "not_found", "step_id": step_id}
-    if not _assigned(step):
-        return {"status": "not_assigned", "step_id": step_id,
-                "detail": "This step is not assigned to APEX; its content is not available."}
+    assigned = _assigned(step)
+    owner_label = str(step.get("owner") or "unassigned")
     result = {
         "status": "found", "step_id": step_id, "project_id": step.get("project_id"),
         "title": step.get("title"), "step_status": step.get("status"),
         "owner": step.get("owner"),
+        "assigned_to_apex": assigned,
+        "read_only": not assigned,
         # Numbered items keep a small model on every part of a multi-sentence step.
         "checklist": [f"{index}. {sentence}" for index, sentence in enumerate(
             _SENTENCE.split(str(step.get("description") or "")[:2500].strip()), 1) if sentence],
-        "checklist_note": "Do every item, using the exact paths and words it names; report each result.",
+        "checklist_note": (
+            "Do every item, using the exact paths and words it names; report each result."
+            if assigned else
+            f"Read-only view: this step is owned by {owner_label}, not APEX. Use this to explain or answer JD's question; do not modify files or execute it unless JD assigns it to APEX."
+        ),
         "test_cases": [{key: case.get(key) for key in ("case_id", "title", "status")}
                        for case in step.get("test_cases", [])[:15]],
         "earlier_runs_note": ("history from previous turns, not results of this turn; "

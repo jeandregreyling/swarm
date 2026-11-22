@@ -998,6 +998,7 @@ DOER_CLOSING_NOTICE = (
 DOER_ACTIONS = {'propose_patch', 'propose_write_file', 'run_tests', 'change_set', 'hb_tasks', 'studio_note', 'studio_task',
                 'terminal_run', 'task_plan', 'memory_save', 'apex_dispatch', 'ask_instructor', 'studio_status',
                 'hb_restart', 'hb_service', 'gpu_profile', 'hb_media_download', 'hb_custom_tool'}
+DOER_PLANNING_ONLY = {'studio_task', 'task_plan', 'studio_status', 'memory_save'}
 DOER_NOTICE = ("HB ACTION CHECK: the answer was not delivered because it offered work instead of doing it. "
                "Use the available tools to make relevant progress on the actual request. For open work, inspect "
                "hb_tasks and continue an actionable task; respect pending approvals. Report the specific result "
@@ -1023,7 +1024,9 @@ def doer_ok(answer, receipts):
             return False
     if not DOER_OFFER.search(text):
         return True
-    return acted
+    return any(r.get('tool') in (DOER_ACTIONS - DOER_PLANNING_ONLY) and r.get('status') == 'succeeded'
+               and not (r.get('tool') == 'hb_tasks' and (r.get('arguments') or {}).get('action', 'list') == 'list')
+               for r in receipts or [])
 
 
 # Practice 272 (JD 22 Nov 09:0x about APEX's 09:01 reply on S-4BD96DF6D4 - "The grep_repo tool found the API endpoints in the hb-live.js

@@ -128,7 +128,17 @@ def facts(conn, task, max_files=6):
                                  'excerpt': str(item.get('excerpt') or '')[:220]})
     except Exception:
         pass
-    return {'files': file_entries, 'kc_notes': kc_notes, 'done_when': criteria, 'done_source': source}
+    studio_steps = []
+    try:
+        for sid in list(dict.fromkeys(re.findall(r'\bS-[0-9A-F]{10}\b', text.upper())))[:6]:
+            row = conn.execute('SELECT step_id, project_id, title, owner, status, description FROM project_steps WHERE step_id=?', (sid,)).fetchone()
+            if row:
+                studio_steps.append({'step_id': row[0], 'project_id': row[1], 'title': str(row[2] or '')[:140],
+                                     'owner': str(row[3] or ''), 'status': str(row[4] or ''),
+                                     'description': str(row[5] or '')[:300]})
+    except Exception:
+        pass
+    return {'files': file_entries, 'kc_notes': kc_notes, 'studio_steps': studio_steps, 'done_when': criteria, 'done_source': source}
 
 
 # ------------------------------------------------------------------ 2 card (CPU model)
@@ -159,7 +169,7 @@ def prompt(task, gathered, rejected=None):
               'work really touches. questions = only real blockers that need JD; usually none. doer: hb if an HB command or tool does it '
               'without a model, small for text-only work, apex for code changes, fred only for a hard review. importance 1-5 (5 = blocks '
               'other work or JD is waiting). why = one line on the doer and importance. Answer JSON only.'
-              ' Plan rules (Practice 282 - HB turns each plan step into one chunk for APEX, a 12B model that reads 100 lines at a time): each step is ONE action on ONE named file or test from the facts or the request, starting with a verb (run, read, write, add, fix, change, remove); say where (file, line range within total_lines, and the function or section) so APEX reads the exact section ONCE instead of hunting. Leverage facts.kc_notes from the Knowledge Centre when relevant. never invent a path that is not in the facts or the request. No vague steps: never ensure, verify that, make sure, update the necessary, improve, enhance. If the request names test files in its Done when line, use one step per test file: make tests/x.py pass: run it, read the first failure, read those exact lines, patch only them, run it again; the last step runs them all. GOOD plan: ["run tests/test_hb_phone_flow.py and read the first failure", "in core/hb_channels.py fix _reply_target so a follow-up keeps its question", "run tests/test_hb_phone_flow.py again until it passes"]. BAD plan (HB rejects it): ["Update hb-live.js to include the necessary API endpoints", "Ensure that the tests pass", "Add tests in tests/test_new_thing.py" (a file that does not exist and is not asked for)]. If your_last_card_was_rejected_because is given, fix exactly those points.')
+              ' Plan rules (Practice 282 - HB turns each plan step into one chunk for APEX, a 12B model that reads 100 lines at a time): each step is ONE action on ONE named file or test from the facts or the request, starting with a verb (run, read, write, add, fix, change, remove); say where (file, line range within total_lines, and the function or section) so APEX reads the exact section ONCE instead of hunting. Leverage facts.kc_notes from the Knowledge Centre and facts.studio_steps (existing Studio steps referenced in the request, with their real title/owner/status) when relevant — never invent a new build spec for a pasted owner-owned roadmap item when JD is just asking about it. never invent a path that is not in the facts or the request. No vague steps: never ensure, verify that, make sure, update the necessary, improve, enhance. If the request names test files in its Done when line, use one step per test file: make tests/x.py pass: run it, read the first failure, read those exact lines, patch only them, run it again; the last step runs them all. GOOD plan: ["run tests/test_hb_phone_flow.py and read the first failure", "in core/hb_channels.py fix _reply_target so a follow-up keeps its question", "run tests/test_hb_phone_flow.py again until it passes"]. BAD plan (HB rejects it): ["Update hb-live.js to include the necessary API endpoints", "Ensure that the tests pass", "Add tests in tests/test_new_thing.py" (a file that does not exist and is not asked for)]. If your_last_card_was_rejected_because is given, fix exactly those points.')
     ask = {'task': str(task.get('title') or '')[:200], 'request': str(task.get('objective') or '')[:2500], 'facts': gathered}
     if rejected:      # Practice 282: corrected, not left to repeat itself
         ask['your_last_card_was_rejected_because'] = list(rejected)[:6]
