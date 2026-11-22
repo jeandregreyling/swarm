@@ -42,7 +42,7 @@ def candidates():
             out.setdefault(e.path, {'name': e.name, 'path': e.path, 'template': (e.options or {}).get('chat_template_file')})
     for name, path in EXTRA.items():
         if os.path.isfile(path):
-            out.setdefault(path, {'name': name, 'path': path, 'template': None})
+            out[path] = {'name': name, 'path': path, 'template': None}
     rows = []
     for c in out.values():
         size = os.path.getsize(c['path']) / 1e9
@@ -73,6 +73,9 @@ def render(text, cand):
     else:
         new = re.sub(r'\s*--chat-template-file\s+\S+', '', new, count=1)
     new = re.sub(r'(Description=APEX )[^\n]*?( (?:Vulkan|ROCm) llama-server)', lambda m: m.group(1) + cand['name'] + m.group(2), new, count=1)
+    # The service alias follows the model actually selected, never a prior model.
+    new = re.sub(r'^Environment=LLAMA_ARG_ALIAS=.*$',
+                 lambda _m: 'Environment=LLAMA_ARG_ALIAS=APEX,' + cand['name'], new, flags=re.M)
     for flag, value in server_args(cand['name']).items():     # Practice 159
         if re.search(r'(?<=\s)' + re.escape(flag) + r'\s+\S+', new):
             new = re.sub(r'((?<=\s)' + re.escape(flag) + r'\s+)\S+', lambda m: m.group(1) + value, new, count=1)
@@ -95,7 +98,7 @@ def render(text, cand):
 # ("comp_1.x ring reset ... device wedged"). It is a dense 27B model; with -b 2048 -ub 1024 one GPU job runs long enough for the kernel's
 # compute-ring timeout. gpt-oss:20b is a mixture-of-experts model (~3.6B active per token) and never came close. Each model now gets its
 # own batch sizes at a swap; the defaults come back when another model plays APEX.
-DEFAULT_ARGS = {'-b': '2048', '-ub': '1024'}
+DEFAULT_ARGS = {'-b': '2048', '-ub': '1024', '-ctk': 'q8_0', '-ctv': 'q8_0'}   # Practice 286: 8-bit KV cache for every APEX model (about twice the window)
 ARGS_BY_MODEL = {'swift-qwen3.8-27b': {'-b': '512', '-ub': '256', '-ctk': 'q8_0', '-ctv': 'q8_0'},   # Practice 192: 8-bit KV 'qwen2.5:14b-instruct': {'-b': '1024', '-ub': '512'},
                  'fred-cpu:24b': {'-b': '512', '-ub': '256'}}
 
@@ -355,7 +358,7 @@ def command(conn, args, actor='owner'):
 # announced in main chat); HB never swaps back by itself, so models do not ping-pong; and each model has its own turn time.
 DEFAULT_PREFS = {'research': 'swift-qwen3.8-27b'}
 TURN_BY_MODEL = {'swift-qwen3.8-27b': 600, 'qwen2.5-32b-instruct': 900}
-ROUNDS_BY_MODEL = {'swift-qwen3.8-27b': 9}   # Practice 154
+ROUNDS_BY_MODEL = {'swift-qwen3.8-27b': 20}   # Practice 154; 266: Swift plays APEX now - same 20 rounds as 243
 _playing_cache = {'key': None, 'name': None}
 
 

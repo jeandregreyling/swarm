@@ -19,7 +19,7 @@ def test_render_floors_the_margin_and_quantizes_the_27b_kv_cache():
     higher = s.render(DROPIN.replace('-fitt 2048', '-fitt 4096'), {'name': 'swift-qwen3.8-27b', 'path': '/m/swift.gguf', 'template': None})
     assert '-fitt 4096' in higher
     other = s.render(DROPIN, {'name': 'gpt-oss:20b', 'path': '/m/oss.gguf', 'template': None})
-    assert '-ctk' not in other and '-fitt 3584' in other
+    assert '-ctk q8_0' in other and '-fitt 3584' in other   # Practice 286: every APEX model gets the 8-bit KV cache
 
 
 def _calls():
