@@ -1059,6 +1059,7 @@ function applyTimeTheme(time, explicitValue = null) {
   if (savedNamed && savedNamed !== 'auto' && NAMED_THEMES.includes(savedNamed)) {
     _clearInlineAtmosphereVars(document.documentElement);
   } else {
+    if (document.body) _clearNamedSliderOverrides(document.body);
     Object.entries(colors).forEach(([key, value]) => {
       document.documentElement.style.setProperty(key, value);
     });
@@ -2057,6 +2058,41 @@ function _clearInlineAtmosphereVars(el) {
   ATMOSPHERE_CSS_VARS.forEach((key) => el.style.removeProperty(key));
 }
 
+function _clearNamedSliderOverrides(el) {
+  if (!el || !el.style) return;
+  ['--accent', '--accent-hover', '--edge-glow', '--edge-glow-hover', '--hb-aura-a', '--hb-aura-b', '--hb-aura-c', '--border'].forEach((k) => el.style.removeProperty(k));
+}
+
+function _applyNamedThemeSliders(activeNamed) {
+  if (!document.body) return;
+  if (!activeNamed) {
+    _clearNamedSliderOverrides(document.body);
+    return;
+  }
+  const accentVal = _currentAccentValue();
+  const hueVal = _currentHueValue();
+  const contrastVal = _currentContrastValue();
+  const glowVal = _currentGlowValue();
+  const accentBase = _interpolateAccent(accentVal);
+  const hueShift = (hueVal - 50) * 0.8;
+  const contrastDelta = (contrastVal - 50) * 0.25;
+  const tunedAccent = _tuneHex(accentBase.color, { hueShift, saturation: 12, contrast: contrastDelta });
+  const tunedHover = _tuneHex(accentBase.hover, { hueShift, saturation: 10, contrast: contrastDelta * 0.8, lightness: 4 });
+  const glowAlpha = Math.max(0.06, Math.min(0.45, 0.08 + (glowVal * 0.0032)));
+  const borderAlpha = Math.max(0.08, Math.min(0.42, 0.10 + (contrastVal * 0.003)));
+  document.body.style.setProperty('--accent', tunedAccent);
+  document.body.style.setProperty('--accent-hover', tunedHover);
+  document.body.style.setProperty('--edge-glow', `0 0 ${6 + (glowVal * 0.22)}px ${_hexWithAlpha(tunedAccent, glowAlpha)}`);
+  document.body.style.setProperty('--edge-glow-hover', `0 0 ${12 + (glowVal * 0.30)}px ${_hexWithAlpha(tunedAccent, Math.min(0.65, glowAlpha * 1.45))}`);
+  document.body.style.setProperty('--border', `rgba(255, 255, 255, ${borderAlpha.toFixed(3)})`);
+  if (activeNamed === 'hummingbird') {
+    const auraStrength = Math.max(0.06, Math.min(0.32, 0.08 + (glowVal * 0.0022)));
+    document.body.style.setProperty('--hb-aura-a', _hexWithAlpha(tunedAccent, auraStrength));
+    document.body.style.setProperty('--hb-aura-b', _hexWithAlpha(_tuneHex('#f472b6', { hueShift }), auraStrength * 0.82));
+    document.body.style.setProperty('--hb-aura-c', _hexWithAlpha(_tuneHex('#ffb84d', { hueShift: hueShift * 0.5 }), auraStrength * 0.72));
+  }
+}
+
 function _getSavedNamedTheme() {
   try { return localStorage.getItem(FRIDAYS_NAMED_THEME_KEY) || ''; } catch (_) { return ''; }
 }
@@ -2096,6 +2132,7 @@ function _applyNamedTheme(name) {
   if (activeNamed === 'hummingbird' && typeof applyHummingbirdWeatherMood === 'function') {
     applyHummingbirdWeatherMood();
   }
+  _applyNamedThemeSliders(activeNamed);
   refreshAutoWindowThemes();
 }
 
