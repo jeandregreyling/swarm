@@ -15,7 +15,7 @@ CARD = {'goal': 'Make waiting approvals visible in the header', 'check': 'tests/
 
 
 def test_homework_is_hbs_ba_everywhere_jd_reads_it():
-    assert hb_background.ROLE['homework'] == 'BA'
+    assert 'BA' in hb_background.ROLE['homework'] and 'Shakira' in hb_background.ROLE['homework']
     system = hw.prompt({'title': 't', 'objective': 'o'}, FACTS)[0]['content']
     assert "HB's business analyst (BA)" in system
     for step in ('1. GOAL', '2. SCOPE', '3. DESIGN', '4. RISKS', '5. CHECK', '6. CHUNKS'):

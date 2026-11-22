@@ -147,7 +147,8 @@ SCHEMA = {'type': 'object', 'additionalProperties': False,
                          'why': {'type': 'string', 'maxLength': 300}}}
 
 
-BA_METHOD = "You are HB's business analyst (BA). You never change anything. Like a good BA you interrogate one task before anyone builds it, in this order: 1. GOAL - what JD really wants, in one sentence (goal). 2. SCOPE - what is in (scope_in) and what is explicitly out (scope_out), so APEX does not wander. 3. DESIGN - which files and functions from the facts change and how, one line each (design). 4. RISKS - what could break or is unknown (risks); a real blocker that only JD can answer goes in questions, usually none. 5. CHECK - ONE concrete check that proves it is done (check). 6. CHUNKS - the plan APEX works one chunk at a time (plan). Then write the spec card so the GPU model can start with the reading and thinking done. Rules: "   # Practice 284
+BA_NAME = 'Shakira'
+BA_METHOD = "You are Shakira, HB's business analyst (BA) — a sharp, sassy Lola diva who never settles for vague specs or invented files. You never change code yourself. Like a world-class BA you interrogate one task before anyone builds it, in this order: 1. GOAL - what JD really wants, in one sentence (goal). 2. SCOPE - what is in (scope_in) and what is explicitly out (scope_out), so APEX does not wander. 3. DESIGN - which files and functions from the facts change and how, one line each (design). 4. RISKS - what could break or is unknown (risks); a real blocker that only JD can answer goes in questions, usually none. 5. CHECK - ONE concrete check that proves it is done (check). 6. CHUNKS - the plan APEX works one chunk at a time (plan). Keep the JSON crisp and grounded, with confident diva precision. Rules: "   # Practice 284 + JD Shakira rename
 
 
 def prompt(task, gathered, rejected=None):
@@ -312,7 +313,7 @@ def backlog(conn, limit=2):
             chat = owner_chat(conn)
             mid = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
                                "VALUES (?,'hummingbird','user',?,'response',0)",
-                               (chat, message(f'📐 BA: HB\'s business analyst specs "{str(title)[:120]}" (scope, design, check, chunks) so APEX can work on it.',
+                               (chat, message(f'💃 Shakira (BA): darling, let me spec "{str(title)[:120]}" properly (scope, design, check, chunks) before APEX touches a keyboard.',
                                               details=[f'Studio step {step_id}']))).lastrowid
             # Practice 115 (owner 16 Nov 2026): bind() links only APEX's own steps to Studio ("Selected Studio step is not assigned to
             # APEX"), and the line above was already posted - so every 6 s HB posted it again and failed again (30 lines in 3 minutes).
@@ -358,14 +359,15 @@ def handoff(conn, task, card):
             + f"Done when: {card.get('check')}\nHB restart after: ui\n")
     conn.execute("UPDATE project_steps SET owner='apex', description=?, updated_at=? WHERE step_id=?", ((row[2] or '') + spec, time.time(), step_id))
     conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
-                 (owner_chat(conn), message(f'📐 Spec ready for "{str(row[1])[:120]}": APEX takes it.', f"Done when: {card.get('check')}",
+                 (owner_chat(conn), message(f'💃 Shakira (BA) — Spec ready for "{str(row[1])[:120]}": runway-ready, APEX takes it!', f"Done when: {card.get('check')}",
                                             details=[f'Studio step {step_id}', f"goal: {str(card.get('goal'))[:200]}"])))
     return True
 
 
 def spec_post(task, card):
-    """Practice 293: the BA's whole spec as one main-chat message."""
+    """Practice 293: Shakira (BA)'s whole spec as one main-chat message."""
     lines = [f"📝 BA spec: {str(task.get('title') or '')[:110]} - " + ('READY for APEX' if card.get('ready') else 'NOT ready')]
+    lines.append('💃 Shakira (BA): ' + ('Honey, this spec is runway-ready — APEX can build it cleanly.' if card.get('ready') else 'Not runway-ready yet, darling — tighten the gaps below first.'))
     lines.append(f"Main question: {card.get('goal') or '-'}")
     for key, word in (('scope_in', 'In scope'), ('scope_out', 'Out of scope'), ('design', 'Design'), ('risks', 'Risks')):
         if card.get(key):

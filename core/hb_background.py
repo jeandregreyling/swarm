@@ -9,7 +9,7 @@ import time
 
 _LOCK = threading.Lock()
 RUNNING = {}
-ROLE = {'homework': 'BA',   # Practice 284: homework is HB's business analyst
+ROLE = {'homework': 'Shakira (BA)',   # Practice 284 + JD: Shakira, sassy Lola diva BA
          'counsel': 'Counsel', 'proposal': 'HB check'}
 
 
