@@ -89,8 +89,8 @@ def _pwm_paths() -> list:
     out = []
     for hwmon in sorted(glob.glob('/sys/class/hwmon/hwmon*')):
         for pwm in sorted(glob.glob(os.path.join(hwmon, 'pwm[0-9]'))):
-            # Skip pwm[0-9]_* metadata files.
-            if os.path.basename(pwm) not in ('pwm1', 'pwm2', 'pwm3', 'pwm4'):
+            # Skip pwm[0-9]_* metadata files (include pwm5 for Gigabyte B550M IT8689E headers).
+            if os.path.basename(pwm) not in ('pwm1', 'pwm2', 'pwm3', 'pwm4', 'pwm5'):
                 continue
             # Must be writable at all (dell_smm exposes pwm1 as 0666).
             if not os.access(pwm, os.W_OK):
@@ -157,6 +157,18 @@ def _set_turbo(enabled: bool) -> bool:
         return False
 
 
+def _needs_dell_cpu_throttle() -> bool:
+    """Return True ONLY when running on Dell OptiPlex firmware lacking writable pwmN_enable gates."""
+    pwms = _pwm_paths()
+    if any(enable is not None for _, enable in pwms):
+        return False
+    return any(
+        os.path.exists(os.path.join(os.path.dirname(p), 'name'))
+        and open(os.path.join(os.path.dirname(p), 'name')).read().strip().lower() == 'dell_smm'
+        for p, _ in pwms
+    )
+
+
 def _readback_pwm() -> list:
     out = []
     for pwm, _ in _pwm_paths():
@@ -205,9 +217,8 @@ def _watchdog_loop():
                     _BOOST_BELOW_SINCE = None
             else:
                 _BOOST_BELOW_SINCE = None
-                # Adaptive cap: if temp has been above target for
-                # TIGHTEN_AFTER_S, ratchet the cap down one step.
-                if cpu_c is not None:
+                # Adaptive CPU throttle ONLY on legacy Dell OptiPlex firmware without real PWM enable gates.
+                if cpu_c is not None and _needs_dell_cpu_throttle():
                     if _BOOST_HOT_SINCE is None:
                         _BOOST_HOT_SINCE = now
                     elif now - _BOOST_HOT_SINCE >= TIGHTEN_AFTER_S:
@@ -292,14 +303,13 @@ def _apply_mode(mode: str) -> dict:
         readback = _push_pwm_max()
         for r in readback:
             applied.append(f"{r['path']}=255 (readback={r['value']})")
-        # Thermal cap — the deterministic lever to actually reach ~50°C
-        # when the BIOS owns the fan curve. Cuts CPU max performance to
-        # BOOST_PERF_CAP% (default 60%) and disables Intel turbo.
-        if _write_perf_cap(BOOST_PERF_CAP):
-            applied.append(f'max_perf_pct={BOOST_PERF_CAP}')
-            _CURRENT_PERF_CAP = BOOST_PERF_CAP
-        if _set_turbo(False):
-            applied.append('turbo=off')
+        # Only throttle CPU on legacy Dell firmware that ignores pwm_enable; desktop IT8689E/amdgpu rigs cool with full-speed fans!
+        if _needs_dell_cpu_throttle():
+            if _write_perf_cap(BOOST_PERF_CAP):
+                applied.append(f'max_perf_pct={BOOST_PERF_CAP}')
+                _CURRENT_PERF_CAP = BOOST_PERF_CAP
+            if _set_turbo(False):
+                applied.append('turbo=off')
         STATE['mode'] = 'boost'
         _start_watchdog()
     else:
