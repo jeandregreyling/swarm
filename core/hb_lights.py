@@ -144,9 +144,14 @@ def turn(conn, task_id=None, request_id=None, run_id=None):
     state = peer[0] if peer else None
     run_open = bool(rows) and not any(kind in ('finish', 'error') and rid == rows[0][0] for rid, _, kind, _, _ in rows)
     running = state in ('running', 'queued', 'pending') or (state is None and run_open)
-    failed = state in ('failed', 'cancelled', 'needs_review') or any(kind == 'error' and parent is None for _, parent, kind, _, _ in rows)
+    accepted = bool(state == 'cancelled' and task_id and conn.execute(
+        "SELECT 1 FROM hb_tasks t WHERE t.task_id=? AND t.state='completed' AND EXISTS "
+        "(SELECT 1 FROM hb_task_events e WHERE e.task_id=t.task_id AND e.kind='owner_accepted')",
+        (task_id,)).fetchone())
+    failed = not accepted and (state in ('failed', 'cancelled', 'needs_review') or any(
+        kind == 'error' and parent is None for _, parent, kind, _, _ in rows))
     why_failed = str(peer[1] if peer else '') or 'the turn ended with an error'
-    interrupted = failed and 'restart' in why_failed.lower()
+    interrupted = failed and (state == 'cancelled' or 'restart' in why_failed.lower())
     saved = any(s.startswith('Agent answer saved') for s, _ in stages)
     sent_back = [c for c in checks if any(w in c for w in CHECKS_BACK)]
     ok = [p for k, p in receipts if k in ('mutation', 'test_result') or (k == 'tool_result' and p.get('status') == 'succeeded')]
@@ -190,7 +195,9 @@ def turn(conn, task_id=None, request_id=None, run_id=None):
         except Exception:
             pass
     carried = 'DREAM card and task history carried in' if task_id and dispatched else 'chat history carried in'
-    if failed:
+    if accepted:
+        cont = ('on', f'{carried}; owner accepted the work; remaining turn stopped')
+    elif failed:
         cont = ('warn' if interrupted else 'bad', f'{carried}; {why_failed[:120]}')
     elif saved:
         cont = ('on', f'{carried}; answer saved and read back' + ('; next turn queued' if nxt else ''))
@@ -220,7 +227,9 @@ def turn(conn, task_id=None, request_id=None, run_id=None):
         execute = ('warn', f'No action yet, only reads ({len(ok)})')
     else:
         execute = ('live' if busy else 'off', 'No action yet')
-    if failed:
+    if accepted:
+        sustain = ('on', 'Owner acceptance recorded; remaining turn stopped')
+    elif failed:
         sustain = ('warn' if interrupted else 'bad', why_failed[:160])
     elif saved:
         sustain = ('on', 'Result recorded and read back' + ('; the task carries on next turn' if nxt else ''))
@@ -249,8 +258,10 @@ def turn(conn, task_id=None, request_id=None, run_id=None):
     e = operate if operate[0] != 'on' else ('on', f'{len(ok)} real tool call(s) with receipts')
     looked = sorted({str(p.get('tool')) for _, p in receipts if p.get('tool') in LOOKUPS})
     a = ('on', 'Looked first in: ' + ', '.join(looked)) if looked else ('off', 'KC and memory not used this turn')
-    if failed:
-        m = ('bad', 'The turn did not finish')
+    if accepted:
+        m = ('on', 'Owner accepted the work; remaining turn stopped')
+    elif failed:
+        m = ('warn' if interrupted else 'bad', why_failed[:160] if interrupted else 'The turn did not finish')
     elif saved:
         m = ('warn', f'Finished after HB sent the answer back: {sent_back[-1][:120]}') if sent_back else ('on', 'Finished and reported')
     elif sent_back:

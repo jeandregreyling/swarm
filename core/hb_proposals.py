@@ -108,7 +108,9 @@ def check(conn, sid, root=None, run=None):
         line = (f"HB extra tools: change_set\nPREPARED (proposed by {p['agent']}, checked by HB {time.strftime('%d %b %H:%M')}):\nDo: change_set show, then "
                 f"change_set apply, then run_tests with {json.dumps(p['test'])}, then report in 2-4 lines.\nDone when: python -m pytest "
                 f"{' '.join(p['test']['tests'])}{' -k ' + repr(p['test']['keyword']) if p['test'].get('keyword') else ''} passes\n")
-        conn.execute("UPDATE project_steps SET owner='apex', description=?||description, updated_at=? WHERE step_id=?", (line, time.time(), sid))
+        conn.execute("UPDATE project_steps SET owner='apex', description=?||description, "
+                     "residual_risk=CASE WHEN residual_risk LIKE 'HB check:%' THEN '' ELSE residual_risk END, "
+                     "updated_at=? WHERE step_id=?", (line, time.time(), sid))
         from core import hb_tasks
         title = conn.execute('SELECT title, description FROM project_steps WHERE step_id=?', (sid,)).fetchone()
         mid = _post(conn, f"✅ HB checked {p['agent']}'s proposal {name(p['title'])}: its test passes. APEX will apply it through HB.", [f'Studio step {sid}', result['why']])

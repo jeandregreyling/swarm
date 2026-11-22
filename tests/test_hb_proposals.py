@@ -90,7 +90,9 @@ def test_a_proposal_is_checked_by_hb_and_becomes_apex_work(plan, tmp_path, monke
     draft = next(s for s in hb_plan_workflow.steps(conn, P) if s['step_id'] == 'S-0000000P01')
     assert draft['skip'] == 'not APEX work (owner hummingbird)'
     assert draft['task_id'] is None
+    conn.execute("UPDATE project_steps SET residual_risk='HB check: earlier failure' WHERE step_id='S-0000000P01'")
     result = hp.check(conn, 'S-0000000P01', root=root)
+    assert conn.execute("SELECT residual_risk FROM project_steps WHERE step_id='S-0000000P01'").fetchone()[0] == ''
     assert result['verified'] and (root / 'pkg/mod.py').read_text().endswith('return 1\n')                   # proven, put back
     step = conn.execute("SELECT owner, description FROM project_steps WHERE step_id='S-0000000P01'").fetchone()
     assert step[0] == 'apex' and step[1].startswith('HB extra tools: change_set\nPREPARED (proposed by gemini-advisor')

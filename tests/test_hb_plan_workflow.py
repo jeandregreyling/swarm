@@ -278,3 +278,19 @@ def test_no_ready_message_names_blockers_in_main_text(plan):
     assert 'Learning L1: harvest verified examples (held by you (Continue off))' in text
     assert 'Agent identities (held by you (Continue off))' in text
     assert 'Nothing in the plan is ready' not in text
+
+
+
+def test_failed_hb_check_blocks_a_continue_on_waiting_plan(plan):
+    from core import hb_dream_method
+
+    conn, _, tasks = plan
+    task = hb_tasks.get(conn, tasks['S-00000000A1'])
+    hb_dream_method.set_done(conn, task, ['tests/test_hb_plan_workflow.py passes'], 'fixture owner')
+    hb_tasks.event(conn, task, 'user', 'continuation_control', {'mode': 'on', 'actor': 'fixture owner'})
+    tm.register(conn, task)
+    conn.execute("UPDATE hb_task_manager SET enabled=1,state='waiting_plan',phase='plan' WHERE task_id=?", (task['task_id'],))
+    conn.execute("UPDATE project_steps SET residual_risk='HB check: no tests ran' WHERE step_id=?", (task['step_id'],))
+    row = next(s for s in wf.steps(conn, P) if s['task_id'] == task['task_id'])
+    assert row['skip'] == 'HB check failed: no tests ran'
+    assert wf.next_ready(conn, P)['task_id'] != task['task_id']

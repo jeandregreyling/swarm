@@ -1777,6 +1777,21 @@ STALL_NOTICE = ("HB STALL CHECK: three rounds in a row produced no change, no ch
 NOT_PROGRESS = {'studio_status', 'task_plan', 'memory_save', 'studio_note', 'ask_instructor'}
 
 
+def actual_source_change(receipt):
+    if receipt.get('tool') != 'change_set':
+        return receipt.get('tool') in CHANGE_TOOLS
+    if (receipt.get('arguments') or {}).get('action') != 'apply':
+        return False
+    result = receipt.get('output')
+    if isinstance(result, str):
+        try:
+            result = json.loads(result)
+        except json.JSONDecodeError:
+            LOG.warning('Change-set receipt lacks structured mutation evidence; not counted as a source change')
+            return False
+    return isinstance(result, dict) and result.get('state') == 'applied' and isinstance(result.get('files'), list) and bool(result['files'])
+
+
 def made_progress(receipt, seen):
     """Practice 292: a succeeded change or check, or a read with arguments not seen before this turn; status flips and plans are not."""
     if receipt.get('status') != 'succeeded' or receipt.get('tool') in NOT_PROGRESS:
@@ -1784,14 +1799,14 @@ def made_progress(receipt, seen):
     sig = (receipt.get('tool'), json.dumps(receipt.get('arguments') or {}, sort_keys=True))
     new = sig not in seen
     seen.add(sig)
-    return receipt.get('tool') in CHANGE_TOOLS or receipt.get('tool') == 'run_tests' or new
+    return actual_source_change(receipt) or receipt.get('tool') == 'run_tests' or new
 
 
 def round_line(n, receipts, final=False):
     """Practice 291 (JD 22 Nov: "'APEX thinking' what the actual fuck does that even mean? thinking without DOING is fucking wild"): each
     model round is announced with the tally of what APEX has actually done this turn."""
     ok = [r for r in receipts or [] if r.get('status') == 'succeeded']
-    changes = sum(1 for r in ok if r.get('tool') in CHANGE_TOOLS)
+    changes = sum(1 for r in ok if actual_source_change(r))
     checks = sum(1 for r in ok if r.get('tool') == 'run_tests')
     reads = len(ok) - changes - checks
     tally = f'{changes} change{"" if changes == 1 else "s"}, {checks} check{"" if checks == 1 else "s"}, {reads} read{"" if reads == 1 else "s"} so far'

@@ -145,8 +145,8 @@ def steps(conn, project_id=DEFAULT_PROJECT):
     deps = _has(conn, 'project_step_deps')
     managed = _has(conn, 'hb_task_manager')
     out = []
-    for step_id, title, status, owner, waiting in conn.execute(
-            f"SELECT step_id, title, status, COALESCE(owner,''), ({ACCEPTANCE_SQL}) FROM project_steps "
+    for step_id, title, status, owner, waiting, review_note in conn.execute(
+            f"SELECT step_id, title, status, COALESCE(owner,''), ({ACCEPTANCE_SQL}), COALESCE(residual_risk,'') FROM project_steps "
             "WHERE project_id=? AND status NOT IN ('done','skipped') ORDER BY order_idx, created_at", (project_id,)).fetchall():
         task = conn.execute("SELECT task_id, state FROM hb_tasks WHERE step_id=? AND state NOT IN ('completed','cancelled') "
                             "ORDER BY created_at DESC LIMIT 1", (step_id,)).fetchone()
@@ -162,6 +162,8 @@ def steps(conn, project_id=DEFAULT_PROJECT):
             why = 'no HB task in main chat'
         elif task[1] == 'paused' or _owner_mode(conn, task[0]) == 'off':
             why = _parked_why(conn, task[0]) or 'held by you (Continue off)'      # Practice 180
+        elif review_note.startswith('HB check: '):
+            why = 'HB check failed: ' + review_note[len('HB check: '):]
         elif managed and (manager := conn.execute("SELECT state FROM hb_task_manager WHERE task_id=? AND enabled=1 AND state IN "
                                       "('queued','running','needs_owner','waiting_provider','waiting_resources','waiting_dependencies')",
                                       (task[0],)).fetchone()):

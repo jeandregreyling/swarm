@@ -177,3 +177,36 @@ def test_the_page_shows_the_lights_on_the_meter_and_the_apex_card():
     assert html.count('class="hbl-lights"') == 2            # the meter and the APEX card
     assert 'only reads' in _node('R.renderLights(snap.apex_lights)', snap)
     assert _node('R.renderLights(null)', snap) == ''
+
+
+
+def test_owner_accepted_work_is_not_a_failed_cancelled_tail():
+    c = _db()
+    _turn(c, 21, 'cancelled', START + [('test_result', {'alm_run_status': 'pass'})])
+    c.execute("UPDATE hb_tasks SET state='completed' WHERE task_id='T-1'")
+    hb_tasks.event(c, hb_tasks.get(c, 'T-1'), 'user', 'owner_accepted', {'step_id': 'S-1'})
+    lights = hb_lights.turn(c, request_id=21)
+    assert lights['turn'][2]['state'] == 'on'
+    assert lights['does'][3]['state'] == 'on'
+    assert lights['dream'][4]['state'] == 'on'
+    assert 'accepted' in lights['turn'][2]['why']
+    assert 'answer saved' not in lights['turn'][2]['why']
+
+
+def test_cancellation_without_acceptance_is_stopped_not_success():
+    c = _db()
+    _turn(c, 22, 'cancelled', START)
+    lights = hb_lights.turn(c, request_id=22)
+    assert lights['turn'][2]['state'] == 'warn'
+    assert lights['does'][3]['state'] == 'warn'
+    assert lights['dream'][4]['state'] == 'warn'
+
+
+def test_genuine_failure_remains_red_even_after_owner_acceptance():
+    c = _db()
+    _turn(c, 23, 'failed', START)
+    c.execute("UPDATE hb_tasks SET state='completed' WHERE task_id='T-1'")
+    hb_tasks.event(c, hb_tasks.get(c, 'T-1'), 'user', 'owner_accepted', {'step_id': 'S-1'})
+    lights = hb_lights.turn(c, request_id=23)
+    assert lights['turn'][2]['state'] == 'bad'
+    assert lights['does'][3]['state'] == 'bad'
