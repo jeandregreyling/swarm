@@ -635,12 +635,12 @@ def hb_nectar_wallet(current_user=None):
     from contextlib import closing
     from core import hb_nectar
     with closing(get_connection()) as conn:
-        hb_nectar.backfill_from_merits(conn, 'APEX')
-        audit = hb_nectar.reconcile_shadow(conn, 'APEX')
-        g = hb_nectar.garden(conn, 'APEX')
-        summary = hb_nectar.summary_text(conn, 'APEX')
+        hb_nectar.backfill_from_merits(conn, None)
+        wallets = hb_nectar.all_wallets(conn)
+        top = wallets[0] if wallets else {'agent': 'APEX', 'nectar': 0, 'flowers': {}, 'costs': dict(hb_nectar.NECTAR_COSTS), 'audit': {'clean': True}}
+        summary = hb_nectar.summary_text(conn, None)
         conn.commit()
-    return jsonify(ok=True, wallet=g, audit=audit, summary=summary)
+    return jsonify(ok=True, wallet=top, wallets=wallets, audit=top.get('audit', {'clean': True}), summary=summary)
 
 
 @peer_bridge_bp.route('/api/peer/v1/hb/live',methods=['GET'])

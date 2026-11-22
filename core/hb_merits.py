@@ -107,8 +107,9 @@ def on_accept(conn, step_id, task_ids, title):
             try:
                 from core import hb_nectar
                 mut_count = conn.execute("SELECT COUNT(*) FROM hb_task_events WHERE task_id=? AND kind='mutation'", (tid,)).fetchone()[0] or 1
-                earned = hb_nectar.earn_flower(conn, people[0][0], step_id, files_count=int(mut_count), title=title)
-                nectar_tail = f" · 🍯 +{earned['nectar']} Nectar ({earned['emoji']} {earned['label']}; wallet {earned['balance']})"
+                wallet_owner = _real_model(people[0][1]) if people[0][1] else people[0][0]
+                earned = hb_nectar.earn_flower(conn, wallet_owner, step_id, files_count=int(mut_count), title=title)
+                nectar_tail = f" · 🍯 +{earned['nectar']} Nectar ({earned['emoji']} {earned['label']}; {wallet_owner} wallet {earned['balance']})"
             except Exception:
                 pass
             lines.append(f"🌺 HB gives {who} a flower: {name(title)} is done and its check passed. (+{POINTS['success']} {cat}){nectar_tail}")

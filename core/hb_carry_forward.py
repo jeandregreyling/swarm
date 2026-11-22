@@ -80,15 +80,16 @@ def card(conn, conversation_id: int, limit: int = 4) -> str:
     return '\n'.join(lines)
 
 
-def _live_nectar_line() -> str:
+def _live_nectar_line(model_name: str = 'APEX') -> str:
     try:
         from contextlib import closing
         from utils.db._connection import get_connection
         from core import hb_nectar
+        who = str(model_name or 'APEX').strip()
         with closing(get_connection()) as conn:
-            hb_nectar.backfill_from_merits(conn, 'APEX')
+            hb_nectar.backfill_from_merits(conn, who)
             conn.commit()
-            return hb_nectar.summary_text(conn, 'APEX')
+            return hb_nectar.summary_text(conn, who)
     except Exception:
         return ''
 
@@ -112,7 +113,7 @@ def lean_chat_prompt(model_name: str, carry_text: str = '', tools: list[str] | N
         f"- Focused tools ready on demand this turn: {tool_list}.",
         'Return JSON matching the schema: {"thought":"...","tool_calls":[],"answer":"..."} for direct replies, or populate tool_calls with answer="".',
     ]
-    wallet = _live_nectar_line() if nectar_line is None else nectar_line
+    wallet = _live_nectar_line(model_name) if nectar_line is None else nectar_line
     if wallet:
         parts.append(f'LIVE NECTAR WALLET (verified truth — never guess 0): {wallet}')
     base = '\n'.join(parts)

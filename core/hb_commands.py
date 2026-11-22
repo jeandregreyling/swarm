@@ -1047,7 +1047,8 @@ def run(conn, conversation_id, command, args, actor, after=None):
         return hb_merits.status_text(conn)
     if command == 'nectar':
         from core import hb_nectar
-        return hb_nectar.summary_text(conn, 'APEX')
+        target = args[0] if args else None
+        return hb_nectar.summary_text(conn, target)
     if command == 'audit':
         from core import hb_file_audit
         return hb_file_audit.command(conn, args)

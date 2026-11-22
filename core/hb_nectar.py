@@ -210,32 +210,70 @@ def reconcile_shadow(conn, agent: str = 'APEX') -> dict:
     }
 
 
-def backfill_from_merits(conn, agent: str = 'APEX', limit: int = 20) -> int:
-    """Idempotently credit verified APEX flowers from hb_merits into both hb_nectar_ledger and hb_nectar_shadow."""
+def all_wallets(conn) -> list[dict]:
+    """Return individual per-model Nectar wallets (each model owns only what it earned; never a shared pit)."""
+    ensure_schema(conn)
+    agents = [r[0] for r in conn.execute("SELECT DISTINCT agent FROM hb_nectar_ledger ORDER BY agent").fetchall()]
+    out = []
+    for ag in agents:
+        audit = reconcile_shadow(conn, ag)
+        g = garden(conn, ag)
+        out.append({**g, 'audit': audit})
+    out.sort(key=lambda item: (-int(item.get('nectar', 0)), str(item.get('agent', ''))))
+    return out
+
+
+def backfill_from_merits(conn, agent: str | None = None, limit: int = 20) -> int:
+    """Idempotently credit verified flowers from hb_merits to each individual model's own wallet."""
     ensure_schema(conn)
     has_merits = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='hb_merits'").fetchone()
     if not has_merits:
         return 0
-    rows = conn.execute(
-        "SELECT id, COALESCE(step_id,''), COALESCE(note,'') FROM hb_merits "
-        "WHERE lower(role)=lower(?) AND kind='success' ORDER BY id DESC LIMIT ?",
-        (agent, int(limit)),
-    ).fetchall()
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(hb_merits)')}
+    model_col = "COALESCE(model,'')" if 'model' in cols else "''"
+    if agent:
+        rows = conn.execute(
+            f"SELECT id, COALESCE(step_id,''), COALESCE(note,''), {model_col} FROM hb_merits "
+            "WHERE (lower(role)=lower(?) OR lower(" + (model_col if 'model' in cols else "role") + ")=lower(?)) "
+            "AND kind='success' ORDER BY id DESC LIMIT ?",
+            (agent, agent, int(limit)),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            f"SELECT id, COALESCE(step_id,''), COALESCE(note,''), {model_col} FROM hb_merits "
+            "WHERE kind='success' ORDER BY id DESC LIMIT ?",
+            (int(limit),),
+        ).fetchall()
     added = 0
-    for mid, sid, note in rows:
+    for mid, sid, note, model in rows:
+        owner = str(model or agent or 'APEX').strip()
         ref = sid or f'M-{mid}'
-        res = earn_flower(conn, agent, ref, files_count=2, title=note or f'Verified practice {ref}')
+        res = earn_flower(conn, owner, ref, files_count=2, title=note or f'Verified practice {ref}')
         if res.get('awarded'):
             added += 1
     return added
 
 
-def summary_text(conn, agent: str = 'APEX') -> str:
-    """Compact one-line Nectar wallet summary for /nectar and agent context (reconciles shadow ledger first)."""
+def summary_text(conn, agent: str | None = 'APEX') -> str:
+    """Compact Nectar wallet summary for one model or all individual model wallets (reconciles shadow ledger first)."""
+    emoji_of = {k: e for k, e, _, _ in FLOWER_TIERS}
+    if agent is None:
+        wallets = all_wallets(conn)
+        if not wallets:
+            return summary_text(conn, 'APEX')
+        lines = ['🍯 Individual Model Nectar Wallets (each model spends only what it earned):']
+        for w in wallets:
+            parts = [f"{emoji_of[k]}×{w['flowers'][k]}" for k, _, _, _ in FLOWER_TIERS if w['flowers'].get(k)]
+            bouquet = ' '.join(parts) if parts else 'no flowers yet'
+            alert = (w['audit']['alert'] + ' · ') if not w['audit'].get('clean') else ''
+            lines.append(f"• {w['agent']}: {w['nectar']} Nectar ({bouquet}) {alert}".strip())
+        lines.append(
+            f"Menu: QA review {NECTAR_COSTS['qa_review']} · online assist {NECTAR_COSTS['online_assist']} · commission tool {NECTAR_COSTS['commission_tool']}"
+        )
+        return '\n'.join(lines)
     audit = reconcile_shadow(conn, agent)
     g = garden(conn, agent)
     prefix = (audit['alert'] + '\n') if not audit.get('clean') else ''
-    emoji_of = {k: e for k, e, _, _ in FLOWER_TIERS}
     parts = [f"{emoji_of[k]}×{g['flowers'][k]}" for k, _, _, _ in FLOWER_TIERS if g['flowers'].get(k)]
     bouquet = ' '.join(parts) if parts else 'no flowers yet'
     return prefix + (

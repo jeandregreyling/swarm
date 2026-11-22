@@ -1063,13 +1063,17 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     document.body.appendChild(pop);
     fetch('/api/peer/v1/hb/nectar', { credentials: 'same-origin' }).then((r) => r.json()).then((d) => {
       if (!d || !d.ok) { pop.lastElementChild.textContent = 'Could not load Nectar wallet.'; return; }
-      const w = d.wallet || {}, f = w.flowers || {}, c = w.costs || {};
-      const tiers = [['sunburst', '🌻 Sunburst'], ['hibiscus', '🌺 Hibiscus'], ['blossom', '🌸 Blossom'], ['daisy', '🌼 Daisy']];
-      const bouquet = tiers.filter(([k]) => f[k]).map(([k, lbl]) => `${lbl} ×${f[k]}`).join(' · ') || 'No flowers yet';
-      const badge = d.audit && d.audit.clean ? '<span style="color:#10e8a4;">✓ Shadow ledger verified</span>' : '<span style="color:#ff6b6b;">🍌 Banana audit triggered!</span>';
+      const wallets = Array.isArray(d.wallets) && d.wallets.length ? d.wallets : [d.wallet || {}];
+      const w = wallets[0] || {}, c = w.costs || {};
+      const tiers = [['sunburst', '🌻'], ['hibiscus', '🌺'], ['blossom', '🌸'], ['daisy', '🌼']];
+      const rowsHtml = wallets.map((item) => {
+        const fl = item.flowers || {};
+        const bq = tiers.filter(([k]) => fl[k]).map(([k, ic]) => `${ic}×${fl[k]}`).join(' ') || 'no flowers yet';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border,rgba(255,255,255,.1));"><div><b style="color:var(--text);">${R.esc(item.agent || 'Model')}</b><div style="font-size:10.5px;color:var(--text-dim);">${bq}</div></div><b style="color:#ffb84d;font-size:14px;">${Number(item.nectar || 0)} 🍯</b></div>`;
+      }).join('');
+      const badge = wallets.every((x) => !x.audit || x.audit.clean) ? '<span style="color:#10e8a4;">✓ All shadow ledgers verified</span>' : '<span style="color:#ff6b6b;">🍌 Banana audit triggered!</span>';
       pop.lastElementChild.outerHTML =
-        `<div style="font-size:22px;font-weight:800;color:#ffb84d;margin:4px 0;">${Number(w.nectar || 0)} Nectar</div>` +
-        `<div style="margin-bottom:8px;color:var(--text-dim);">${bouquet}</div>` +
+        `<div style="margin-bottom:8px;">${rowsHtml}</div>` +
         `<div style="padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(255,255,255,.12));margin-bottom:8px;line-height:1.6;">` +
         `<div><b>Spend Menu:</b></div>` +
         `<div>• Independent QA review: <b>${c.qa_review || 2} Nectar</b></div>` +
