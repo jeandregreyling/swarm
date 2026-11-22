@@ -514,6 +514,49 @@ def _work_task(job):
     return None
 
 
+def _ensure_phone_progress_table(conn):
+    conn.execute(
+        'CREATE TABLE IF NOT EXISTS hb_phone_progress('
+        'message_id INTEGER PRIMARY KEY, '
+        'channel TEXT NOT NULL, '
+        'sender_key TEXT NOT NULL, '
+        'stage TEXT NOT NULL, '
+        'detail TEXT NOT NULL, '
+        'updated_at REAL NOT NULL)'
+    )
+
+
+def record_phone_stage(conn, message_id, stage, detail='', *, channel='telegram', sender_key=''):
+    """Record one truthful observed phone-question stage (deduplicated; never guesses ETAs or queue positions)."""
+    if not message_id:
+        return False
+    _ensure_phone_progress_table(conn)
+    stage = str(stage or '').strip().lower()
+    detail = str(detail or '').strip()[:240]
+    prev = conn.execute('SELECT stage, detail FROM hb_phone_progress WHERE message_id=?', (int(message_id),)).fetchone()
+    if prev and prev[0] == stage and prev[1] == detail:
+        return False
+    conn.execute(
+        'INSERT INTO hb_phone_progress(message_id, channel, sender_key, stage, detail, updated_at) VALUES (?,?,?,?,?,?) '
+        'ON CONFLICT(message_id) DO UPDATE SET stage=excluded.stage, detail=excluded.detail, updated_at=excluded.updated_at',
+        (int(message_id), str(channel or 'telegram'), str(sender_key or ''), stage, detail, time.time()),
+    )
+    return True
+
+
+def recent_phone_progress(conn, limit=6):
+    """Return recent observed phone progress entries for HB activity & diagnostics."""
+    _ensure_phone_progress_table(conn)
+    rows = conn.execute(
+        'SELECT message_id, channel, sender_key, stage, detail, updated_at FROM hb_phone_progress ORDER BY updated_at DESC LIMIT ?',
+        (int(limit),),
+    ).fetchall()
+    return [
+        {'message_id': r[0], 'channel': r[1], 'sender_key': r[2], 'stage': r[3], 'detail': r[4], 'updated_at': r[5]}
+        for r in rows
+    ]
+
+
 def work_one(job, connect=_connect, answer=answer_only, mail=None):
     """Answer one queued question: post it in main chat as APEX (the mirror sends it on); email it back when it came by email."""
     conn = connect()
@@ -521,6 +564,9 @@ def work_one(job, connect=_connect, answer=answer_only, mail=None):
         who = role(conn, job['key'])
         if who not in ('owner', 'user'):
             return ''  # enrollment was revoked while this answer waited in the queue
+        record_phone_stage(conn, job.get('message_id'), 'preparing', 'Building Carry Forward & task context',
+                           channel=job.get('channel', 'telegram'), sender_key=job.get('key', ''))
+        conn.commit()
         history = _history(conn, exclude_id=job['message_id']) if who == 'owner' else []
         if who == 'owner':
             try:
@@ -538,11 +584,33 @@ def work_one(job, connect=_connect, answer=answer_only, mail=None):
     from core import hb_guest
     guest = hb_guest.GUEST_TURN.set(who != 'owner')   # Practice 213: a guest gets APEX's opinion, not the notes
     try:
+        c2 = connect()
+        try:
+            record_phone_stage(c2, job.get('message_id'), 'running', 'APEX is working on this phone request',
+                               channel=job.get('channel', 'telegram'), sender_key=job.get('key', ''))
+            c2.commit()
+        finally:
+            c2.close()
+    except Exception:
+        pass
+    stage_end = 'answer_posted'
+    try:
         work = _work_task(job) if who == 'owner' else None   # Practice 257 (JD 23:57: 'Build it Apex' got 'I don't have permission')
         text = (f"▶ On it: {work['task_id']} runs as an HB task with APEX's full tools (read, write, tests). Progress posts here."
                 if work else answer(job['question'], history))
     except Exception as exc:
+        stage_end = 'failed'
         text = f'APEX could not answer this one ({type(exc).__name__}: {str(exc)[:160]}). It is in main chat; ask again or at the screen.'
+    try:
+        c3 = connect()
+        try:
+            record_phone_stage(c3, job.get('message_id'), stage_end, text[:180],
+                               channel=job.get('channel', 'telegram'), sender_key=job.get('key', ''))
+            c3.commit()
+        finally:
+            c3.close()
+    except Exception:
+        pass
     finally:
         hb_guest.GUEST_TURN.reset(guest)
     conn = connect()
