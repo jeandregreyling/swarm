@@ -56,6 +56,25 @@ def _git_grep(word, limit=4):
     return rows
 
 
+ANY_PATH = re.compile(r'\b[\w-]+(?:/[\w.-]+)+\.(?:py|js|html|css|json|md|sh)\b')   # Practice 294
+
+
+def test_files(text, root=None):
+    """Practice 294 (JD 22 Nov: the BA's spec 'just doesn't look right'): it invented ui/status_drawer.py because it was never shown the real
+    files. The step's Done-when test names them (ROOT / 'frontend/static/js/hb-live.js'): the test and every real file it references."""
+    root = root or ROOT
+    out = {}
+    for t in re.findall(r'tests/[\w/.-]+\.py', str(text or '')):
+        p = root / t
+        if not p.is_file() or t in out:
+            continue
+        out[t] = []
+        for ref in ANY_PATH.findall(p.read_text(errors='replace')):
+            if ref not in out and not ref.startswith('tests/') and (root / ref).is_file():
+                out[ref] = []
+    return out
+
+
 def facts(conn, task, max_files=6):
     text = f"{task.get('title') or ''}\n{task.get('objective') or ''}"
     files = {}
@@ -79,6 +98,7 @@ def facts(conn, task, max_files=6):
                 files[path].append((number, line))
     from core.hb_dream_method import done_when
     source, criteria = done_when(conn, task)
+    files = {**test_files(text + '\n' + '\n'.join(str(c) for c in criteria or [])), **files}   # Practice 294: the test's own files first
     return {'files': [{'path': p, 'lines': [{'n': n, 'text': t} for n, t in lines]} for p, lines in list(files.items())[:max_files]],
             'done_when': criteria, 'done_source': source}
 
@@ -145,7 +165,7 @@ def judge(card, gathered):
         reasons.append('no real file found for the work')
     if card.get('questions'):
         reasons.append('open question for JD: ' + '; '.join(card['questions'])[:200])
-    reasons += plan_problems(card.get('plan') or [], known, gathered)   # Practice 282: HB judges the plan too
+    reasons += plan_problems(card.get('plan') or [], known, gathered, card)   # Practice 282/294: HB judges the plan, scope and design
     if not [s for s in card.get('scope_in') or [] if str(s).strip()]:   # Practice 284: a BA spec says what is in scope
         reasons.append('no scope: say what is in (scope_in) and what is out (scope_out)')
     elif card.get('doer') != 'hb' and not any(p in str(d) or p.rsplit('/', 1)[-1] in str(d) for d in card.get('design') or [] for p in known):
@@ -157,17 +177,22 @@ _VAGUE_STEP = re.compile(r'\b(ensure|verify that|make sure|the necessary|improve
 _PATH = re.compile(r'\b(?:core|tests|frontend|scripts|utils|agents|fridays|runtime|docs)/[\w/-]+(?:\.[\w-]+)*\.(?:py|js|html|css|json|md|sh|txt)\b')   # Practice 283: files, not module.function
 
 
-def plan_problems(plan, known, gathered):
+def plan_problems(plan, known, gathered, card_extra=None):
     """Practice 282: a plan step must be one concrete action; vague steps and paths that exist nowhere are named back to homework."""
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     asked = ' '.join(str(x) for x in gathered.get('done_when') or []) + ' ' + str(gathered.get('request') or '')
     out = []
+    for key, items in (('scope', (card_extra or {}).get('scope_in') or []), ('design', (card_extra or {}).get('design') or [])):   # Practice 294
+        for item in items:
+            for p in ANY_PATH.findall(str(item)):
+                if p not in known and p not in asked and not (root / p).exists():
+                    out.append(f'the {key} names {p}, which does not exist - use the real files from the facts')
     for n, step in enumerate(plan, 1):
         s = str(step)
         if _VAGUE_STEP.search(s):
             out.append(f'plan step {n} is vague: "{s[:80]}" - say the one action and where')
-        for p in _PATH.findall(s):
+        for p in set(_PATH.findall(s)) | set(ANY_PATH.findall(s)):
             if p not in known and p not in asked and not (root / p).exists():
                 out.append(f'plan step {n} names {p}, which does not exist and is not asked for')
     return out[:6]
