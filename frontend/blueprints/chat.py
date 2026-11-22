@@ -2983,6 +2983,7 @@ def api_chat():
                 continuing_recovery = False
         from core import llm
 
+        chat_allowed_tools = None
         from core.apex_tools import TURN_SECONDS
         from core.hb_apex_swap import turn_seconds as _turn_seconds   # Practice 153
         TURN_SECONDS = _turn_seconds(TURN_SECONDS)
@@ -3007,7 +3008,7 @@ def api_chat():
                 model, messages, temperature=0.2, idle_timeout_s=min(60, remaining), absolute_timeout_s=remaining,
                 queue_timeout_s=min(240, max(1, remaining // 2)),   # Practice 201: wait for the model instead of failing after 1 s
                 options=options,
-                response_format=response_format_for_turn(require_thought=True) if apex_lane and not (fault or continuing_recovery) else None,
+                response_format=response_format_for_turn(require_thought=True, allowed_tools=chat_allowed_tools) if apex_lane and not (fault or continuing_recovery) else None,
             )
 
         def _offline_response(exc, conversation_id=None, *, recovery=False):
@@ -3312,9 +3313,24 @@ def api_chat():
             operator = _tool_operator()
             from core.apex_permissions import autonomous_writes_allowed
             autonomous_writes = bool(operator and autonomous_writes_allowed(operator[0]))
-            messages = [{'role': 'system', 'content': apex_system_prompt(
-                apex_row, recovery=False, proposals=operator is not None, web=operator is not None,
-                autonomous_writes=autonomous_writes)}]
+            from core import hb_carry_forward as _cf
+            from core.hb_owner_intent import is_chat_task as _is_chat_task
+            _carry_card = ''
+            try:
+                with __import__('contextlib').closing(get_connection()) as _cf_conn:
+                    _carry_card = _cf.card(_cf_conn, conv_id)
+            except Exception:
+                _carry_card = ''
+            _use_lean_chat = bool(not bound_task or _is_chat_task(bound_task))
+            chat_allowed_tools = _cf.select_chat_tools(message) if _use_lean_chat else None
+            _sys_content = (
+                _cf.lean_chat_prompt(selected_model, _carry_card, chat_allowed_tools)
+                if _use_lean_chat
+                else apex_system_prompt(apex_row, recovery=False, proposals=operator is not None,
+                                        web=operator is not None, autonomous_writes=autonomous_writes)
+                + ('\n\n' + _carry_card if _carry_card else '')
+            )
+            messages = [{'role': 'system', 'content': _sys_content}]
 
             def apex_turn_context(turn_history):
                 carry_over = '' if bound_task else apex_carry_over_block(conv_id)
@@ -3657,6 +3673,11 @@ def api_chat():
                             'completed_with_tool_failures' if any(r.get('status')=='failed' for r in tool_receipts) else 'completed',
                             measured_started,measured_memory,tokens_used,tool_receipts)
                         _sse_chat(conv_id,'apex','measurement',model=selected_model,measurement=run_measurement)
+                        try:
+                            with __import__('contextlib').closing(get_connection()) as _cf_w, _cf_w:
+                                _cf.record(_cf_w, conv_id, message, response_text, tool_receipts)
+                        except Exception:
+                            pass
                         if agent_run:
                             from core.agent_identity import save_memory
                             save_memory(APEX_AGENT['name'], message[:200], response_text,

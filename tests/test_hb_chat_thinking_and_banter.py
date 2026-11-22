@@ -12,7 +12,7 @@ def test_inline_chat_requires_thought_while_default_stays_compatible():
     for branch in fmt['json_schema']['schema']['oneOf']:
         assert 'thought' in branch['required']
     chat_src = (ROOT / 'frontend/blueprints/chat.py').read_text(encoding='utf-8')
-    assert 'response_format_for_turn(require_thought=True)' in chat_src
+    assert 'response_format_for_turn(require_thought=True' in chat_src
 
 
 def test_casual_banter_card_tells_apex_not_to_search_kc():
