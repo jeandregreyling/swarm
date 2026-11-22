@@ -210,6 +210,26 @@ def reconcile_shadow(conn, agent: str = 'APEX') -> dict:
     }
 
 
+def backfill_from_merits(conn, agent: str = 'APEX', limit: int = 20) -> int:
+    """Idempotently credit verified APEX flowers from hb_merits into both hb_nectar_ledger and hb_nectar_shadow."""
+    ensure_schema(conn)
+    has_merits = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='hb_merits'").fetchone()
+    if not has_merits:
+        return 0
+    rows = conn.execute(
+        "SELECT id, COALESCE(step_id,''), COALESCE(note,'') FROM hb_merits "
+        "WHERE lower(role)=lower(?) AND kind='success' ORDER BY id DESC LIMIT ?",
+        (agent, int(limit)),
+    ).fetchall()
+    added = 0
+    for mid, sid, note in rows:
+        ref = sid or f'M-{mid}'
+        res = earn_flower(conn, agent, ref, files_count=2, title=note or f'Verified practice {ref}')
+        if res.get('awarded'):
+            added += 1
+    return added
+
+
 def summary_text(conn, agent: str = 'APEX') -> str:
     """Compact one-line Nectar wallet summary for /nectar and agent context (reconciles shadow ledger first)."""
     audit = reconcile_shadow(conn, agent)

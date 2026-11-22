@@ -996,9 +996,40 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const s = e.target.closest && e.target.closest('#hb-live-pane select[data-q], #hb-live-pop select[data-q], #hb-live-drawer select[data-q]');
     if (s) send({ [s.dataset.q]: [s.dataset.a, s.dataset.id, s.value] }, e.target.closest('#hb-live-pane') || e.target.closest('#hb-live-drawer'));
   });
-  // Capture phase so Escape closes an open Tasks/Status drawer BEFORE core/init.js stops propagation.
+  // Right-sundial 🍯 Flower & Nectar Wallet popover (fetches live /api/peer/v1/hb/nectar)
+  window.hbToggleNectarWallet = function () {
+    const existing = document.getElementById('hb-nectar-pop');
+    if (existing) { existing.remove(); return; }
+    const pop = document.createElement('div');
+    pop.id = 'hb-nectar-pop';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', 'APEX Nectar Wallet');
+    pop.style.cssText = 'position:fixed;top:64px;right:18px;z-index:9600;width:320px;max-width:calc(100vw - 24px);padding:14px 16px;border-radius:14px;border:1px solid rgba(255,184,77,.45);background:color-mix(in srgb,var(--card,#10181e) 90%,transparent);backdrop-filter:blur(20px) saturate(170%);color:var(--text,#edf7f3);box-shadow:0 16px 44px rgba(0,0,0,.5);font-size:12px;';
+    pop.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="color:#ffb84d;">🍯 APEX Nectar Wallet</b><button type="button" onclick="this.closest(\'#hb-nectar-pop\').remove()" style="background:none;border:0;color:var(--text-dim);cursor:pointer;font-size:14px;">✕</button></div><div class="hbl-dim">Loading live wallet…</div>';
+    document.body.appendChild(pop);
+    fetch('/api/peer/v1/hb/nectar', { credentials: 'same-origin' }).then((r) => r.json()).then((d) => {
+      if (!d || !d.ok) { pop.lastElementChild.textContent = 'Could not load Nectar wallet.'; return; }
+      const w = d.wallet || {}, f = w.flowers || {}, c = w.costs || {};
+      const tiers = [['sunburst', '🌻 Sunburst'], ['hibiscus', '🌺 Hibiscus'], ['blossom', '🌸 Blossom'], ['daisy', '🌼 Daisy']];
+      const bouquet = tiers.filter(([k]) => f[k]).map(([k, lbl]) => `${lbl} ×${f[k]}`).join(' · ') || 'No flowers yet';
+      const badge = d.audit && d.audit.clean ? '<span style="color:#10e8a4;">✓ Shadow ledger verified</span>' : '<span style="color:#ff6b6b;">🍌 Banana audit triggered!</span>';
+      pop.lastElementChild.outerHTML =
+        `<div style="font-size:22px;font-weight:800;color:#ffb84d;margin:4px 0;">${Number(w.nectar || 0)} Nectar</div>` +
+        `<div style="margin-bottom:8px;color:var(--text-dim);">${bouquet}</div>` +
+        `<div style="padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border,rgba(255,255,255,.12));margin-bottom:8px;line-height:1.6;">` +
+        `<div><b>Spend Menu:</b></div>` +
+        `<div>• Independent QA review: <b>${c.qa_review || 2} Nectar</b></div>` +
+        `<div>• Online specialist assist: <b>${c.online_assist || 5} Nectar</b></div>` +
+        `<div>• Commission new tool: <b>${c.commission_tool || 10} Nectar</b></div></div>` +
+        `<div style="font-size:11px;">${badge}</div>`;
+    }).catch(() => { if (pop.lastElementChild) pop.lastElementChild.textContent = 'Nectar wallet unavailable.'; });
+  };
+
+  // Capture phase so Escape closes an open Tasks/Status drawer or Nectar popover BEFORE core/init.js stops propagation.
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    const np = document.getElementById('hb-nectar-pop');
+    if (np) { np.remove(); e.preventDefault(); return; }
     const mode = ls('hbLive.drawer');
     if (mode && mode !== '0') {
       if (e.preventDefault) e.preventDefault();

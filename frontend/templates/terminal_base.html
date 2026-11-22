@@ -742,6 +742,9 @@
       <button id="home-settings-btn" data-dial-label="themes" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); background: var(--card); color: var(--text-dim); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;" title="Settings &amp; Themes"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
       <button id="dial-needs-you" type="button" data-dial-label="needs you" data-count="0" onclick="hbNeedsFocusBar()"
         title="Nothing is waiting for you"><span id="dial-needs-count">0</span></button>
+      <button id="dial-nectar-btn" type="button" data-dial-label="nectar" onclick="window.hbToggleNectarWallet && window.hbToggleNectarWallet()"
+        title="APEX Flower &amp; Nectar Wallet" aria-label="APEX Nectar Wallet"
+        style="width:28px;height:28px;border-radius:50%;border:1px solid color-mix(in srgb,#ffb84d 55%,var(--border));background:color-mix(in srgb,#ffb84d 12%,var(--card));color:#ffb84d;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;">🍯</button>
       <!-- Services dropdown (swapped to end — S7) -->
       <div id="services-dropdown-wrap" style="position:relative;">
         <button id="services-dropdown-btn" data-dial-label="services" onclick="toggleServicesDropdown()"

@@ -444,6 +444,7 @@
   #services-dropdown-wrap { left: 75px;  top: 133px; }
   #home-settings-btn      { left: 25px;  top: 104px; }
   #home-help-btn          { left: 25px;  top: 46px; font-size: 14px !important; }
+  #dial-nectar-btn        { left: 118px; top: 18px; font-size: 13px !important; }
   #auth-user-pill { left: 75px; top: 75px; width: 60px !important; height: 60px !important; border-radius: 50% !important;
     flex-direction: column !important; padding: 4px !important; gap: 2px !important; font-size: 10px !important; font-weight: 600; }
   #auth-user-pill-label { max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

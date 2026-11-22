@@ -41,7 +41,8 @@ def _tracked_tests(root: Path, tests: object) -> list[str]:
         if (isinstance(value, str) and re.fullmatch(r"tests/(?:[\w-]+/)*test_[\w-]+\.py", value)
                 and value not in tracked and not (root / value).exists()):
             # Practice 244 (21 Nov): APEX read "not tracked" as a dead end and stopped; the file simply did not exist yet.
-            raise PermissionError(f"{value} does not exist yet. Create it now with propose_write_file (real asserts on the "
+            raise PermissionError(f"{value} does not exist yet. If this step has a prepared change_set, call change_set with "
+                                  '{"action": "apply"} first to create it! Otherwise create it with propose_write_file (real asserts on the '
                                   "behaviour the step describes), then call run_tests again with the same arguments.")
         if (not isinstance(value, str) or not re.fullmatch(r"tests/(?:[\w-]+/)*test_[\w-]+\.py", value)
                 or value not in tracked):

@@ -628,6 +628,21 @@ def hb_translator_view(current_user=None):
 _HB_LIVE_CACHE = {'at': 0.0, 'data': None}
 
 
+@peer_bridge_bp.route('/api/peer/v1/hb/nectar',methods=['GET'])
+@require_owner
+def hb_nectar_wallet(current_user=None):
+    """Live Nectar wallet & tiered flower bouquet for the right sundial."""
+    from contextlib import closing
+    from core import hb_nectar
+    with closing(get_connection()) as conn:
+        hb_nectar.backfill_from_merits(conn, 'APEX')
+        audit = hb_nectar.reconcile_shadow(conn, 'APEX')
+        g = hb_nectar.garden(conn, 'APEX')
+        summary = hb_nectar.summary_text(conn, 'APEX')
+        conn.commit()
+    return jsonify(ok=True, wallet=g, audit=audit, summary=summary)
+
+
 @peer_bridge_bp.route('/api/peer/v1/hb/live',methods=['GET'])
 @require_owner
 def hb_live_view(current_user=None):
