@@ -627,7 +627,10 @@ def _needs_entries(conn, seen):
         if i.get('task_id'):
             replies += [f"/continue {i['task_id']}", f"/cancel {i['task_id']}"]
         replies += [a['command'] for a in i.get('actions') or [] if a.get('command')]
-        out.append((i.get('key'), f"⚑ Needs you: {i.get('label', '')}\n{str(i.get('why') or i.get('title') or '')[:300]}" +
+        title = str(i.get('title') or '').strip()
+        why = str(i.get('why') or '').strip()
+        detail = f"{title} — {why}" if (title and why and title.lower() not in why.lower()) else (title or why)
+        out.append((i.get('key'), f"⚑ Needs you: {i.get('label', '')}\n{detail[:320]}" +
                     (f"\nReply: {' · '.join(dict.fromkeys(replies))}" if replies else '')))
     return out, sorted(k for k in keys if k)
 
@@ -800,7 +803,7 @@ def _mirror_loop(every=3):
             try:
                 owners = [k.split(':', 1)[1] for k in owner_keys(conn, 'telegram')]
                 if owners:
-                    mirror_once(conn, lambda text: all(telegram_send(o, text) for o in owners))
+                    mirror_once(conn, lambda text: any([telegram_send(o, text) for o in owners]))
                 conn.commit()
             finally:
                 conn.close()
