@@ -427,9 +427,17 @@ def _answer_only(question, history=()):
     return link_phone_receipts(ground_answer(answer, receipts), receipts)   # Practice 254
 
 
-def _history(conn, before_id, limit=8):
-    rows = conn.execute("SELECT from_agent, content FROM messages WHERE conversation_id=? AND id<? ORDER BY id DESC LIMIT ?",
-                        (_chat(conn), before_id, limit)).fetchall()
+def _history(conn, before_id=None, limit=8, *, exclude_id=None):
+    if exclude_id is not None:
+        rows = conn.execute(
+            "SELECT from_agent, content FROM messages WHERE conversation_id=? AND id<>? ORDER BY id DESC LIMIT ?",
+            (_chat(conn), exclude_id, limit),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT from_agent, content FROM messages WHERE conversation_id=? AND id<? ORDER BY id DESC LIMIT ?",
+            (_chat(conn), before_id, limit),
+        ).fetchall()
     return [{'role': 'user' if f in ('user', 'ghost') else 'assistant', 'content': str(c)[:1500]} for f, c in reversed(rows)]
 
 
@@ -513,7 +521,15 @@ def work_one(job, connect=_connect, answer=answer_only, mail=None):
         who = role(conn, job['key'])
         if who not in ('owner', 'user'):
             return ''  # enrollment was revoked while this answer waited in the queue
-        history = _history(conn, job['message_id']) if who == 'owner' else []
+        history = _history(conn, exclude_id=job['message_id']) if who == 'owner' else []
+        if who == 'owner':
+            try:
+                from core import hb_carry_forward as _cf
+                cf_card = _cf.card(conn, _chat(conn))
+                if cf_card:
+                    history.append({'role': 'system', 'content': PHONE_STATE_PREFIX + cf_card})
+            except Exception:
+                pass
         state = _owner_task_state(conn, job) if who == 'owner' else ''
         if state:
             history.append({'role':'system', 'content':state})
@@ -536,6 +552,12 @@ def work_one(job, connect=_connect, answer=answer_only, mail=None):
         mid = _post(conn, 'apex', text)
         direct = job['channel'] == 'telegram' and who != 'owner'
         _log(conn, job['channel'], 'out', 'apex', mid, text)
+        if who == 'owner':
+            try:
+                from core import hb_carry_forward as _cf
+                _cf.record(conn, _chat(conn), job['question'], text, [])
+            except Exception:
+                pass
         conn.commit()
     finally:
         conn.close()
@@ -690,19 +712,56 @@ def _telegram(method, payload=None, timeout=35):
         return json.loads(r.read())
 
 
-def telegram_send(chat_id, text, call=_telegram):
+def telegram_buttons(text):
+    """Build native Telegram inline keyboard buttons bound to exact step/task IDs found in text."""
+    body = str(text or '')
+    steps = list(dict.fromkeys(m.upper() for m in re.findall(r'/accept\s+(S-[0-9A-F]{10})\b', body, re.I)))
+    pauses = list(dict.fromkeys(m.upper() for m in re.findall(r'/pause\s+(T-[0-9A-F]{12})\b', body, re.I)))
+    rows = []
+    for idx, sid in enumerate(steps[:3]):
+        row = [{'text': f'🌺 Approve {sid}', 'callback_data': f'/accept {sid}'}]
+        if idx < len(pauses):
+            row.append({'text': '⏸ Hold', 'callback_data': f'/pause {pauses[idx]}'})
+        rows.append(row)
+    return {'inline_keyboard': rows} if rows else None
+
+
+def telegram_send(chat_id, text, call=_telegram, buttons=None):
     try:
-        return bool(call('sendMessage', {'chat_id': chat_id, 'text': text, 'disable_web_page_preview': 'true'}, 20).get('ok'))
+        payload = {'chat_id': chat_id, 'text': text, 'disable_web_page_preview': 'true'}
+        markup = buttons if buttons is not None else telegram_buttons(text)
+        if markup:
+            payload['reply_markup'] = json.dumps(markup)
+        return bool(call('sendMessage', payload, 20).get('ok'))
     except Exception:
         return False
 
 
 def telegram_poll_once(conn, call=_telegram, handle=inbound):
-    """One long-poll of Telegram: each text message goes through inbound; the immediate answer goes back to that chat."""
+    """One long-poll of Telegram: handles both text messages and native inline button callback_query taps."""
     offset = int(cursor(conn, 'telegram_offset', 0) or 0)
-    got = call('getUpdates', {'offset': offset, 'timeout': 25, 'allowed_updates': json.dumps(['message'])}, 35)
+    got = call('getUpdates', {'offset': offset, 'timeout': 25, 'allowed_updates': json.dumps(['message', 'callback_query'])}, 35)
     for upd in got.get('result', []):
         set_cursor(conn, 'telegram_offset', upd['update_id'] + 1)
+        cb = upd.get('callback_query') or {}
+        if cb:
+            cb_id = cb.get('id')
+            msg = cb.get('message') or {}
+            chat_id = (msg.get('chat') or {}).get('id')
+            data = str(cb.get('data') or '').strip()
+            frm = cb.get('from') or {}
+            name = frm.get('username') or frm.get('first_name') or str(chat_id)
+            if cb_id:
+                try:
+                    call('answerCallbackQuery', {'callback_query_id': cb_id, 'text': f'Running {data[:40]}...'}, 10)
+                except Exception:
+                    pass
+            if chat_id is not None and data:
+                said = handle(conn, 'telegram', f'telegram:{chat_id}', name, data)
+                conn.commit()
+                if said:
+                    telegram_send(chat_id, said, call)
+            continue
         msg = upd.get('message') or {}
         chat_id, text = (msg.get('chat') or {}).get('id'), msg.get('text') or msg.get('caption') or ''
         if chat_id is None:
@@ -788,8 +847,8 @@ def from_email(conn, msg, sender, subject, body, message_id, handle=inbound, has
     text = request_text(subject, body)
     if not text:
         return None
-    if has_files and not str(body or '').strip() and not (text.startswith('/') or '?' in text or re.match(r'^\s*hb\b', text, re.I)):
-        return None                                    # an attachment with no body instruction is data (kept in KC)
+    if has_files and len(str(body or '').split()) < 5 and not (text.startswith('/') or '?' in text or re.match(r'^\s*hb\b', text, re.I)):
+        return None                                    # a file with a brief cover note ('here you go') is data (kept in KC)
     if not verified(msg):
         if not via_trusted_only:
             _post(conn, 'hummingbird', f'📧 The email from {sender} ("{str(subject)[:80]}") did not pass Gmail\'s sender check (DKIM/SPF), so HB '
