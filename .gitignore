@@ -163,3 +163,16 @@ node_modules/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# Phase 2 Portability & Secret Hardening (NEVER push local secrets or per-machine runtime state)
+runtime/.hb_nectar_key
+utils/telegram_config.py
+runtime/change_sets/
+runtime/claude_helpers/
+runtime/learning/
+runtime/question_suites/
+runtime/*.json
+runtime/*.jsonl
+*.key
+*.pem
+*.p12
