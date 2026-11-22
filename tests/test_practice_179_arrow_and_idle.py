@@ -25,3 +25,15 @@ def test_idle_line_names_what_ran_last():
     assert s['running'] is False and s['last'] == {'agent': 'apex', 'title': 'Practice 178 (owner): answers do not talk about drafts', 'at': 200}
     js = (ROOT / 'frontend/static/js/hb-live-activity.js').read_text()
     assert "'idle since '" in js and "last=live.get('last')" in (ROOT / 'frontend/blueprints/peer_bridge.py').read_text()
+
+
+def test_terminal_icon_urls_do_not_swallow_jump_arrow_rules():
+    import re
+
+    css = (ROOT / 'frontend/static/css/home-chat.css').read_text()
+    declarations = [line.strip() for line in css.splitlines()
+                    if 'mask: url("data:image/svg+xml,' in line]
+    assert len(declarations) == 2
+    for declaration in declarations:
+        assert re.fullmatch(r"""(?:-webkit-)?mask: url\((["'])(.*?)\1\) no-repeat center;""",
+                            declaration), declaration
