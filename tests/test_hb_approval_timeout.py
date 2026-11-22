@@ -1,4 +1,4 @@
-"""The rendered Approve control and live snapshot recover from bounded, uncertain network requests."""
+"""Saved approvals reconcile independently of a missing dashboard or deferred dropdown redraw."""
 import shutil
 import subprocess
 from pathlib import Path
@@ -22,24 +22,30 @@ def test_timed_out_approval_reads_saved_state_without_reposting():
     run_node('accepted', 'success')
 
 
-def run_node(action_stall, live_stall):
+@pytest.mark.parametrize('action_stall', ['success', 'accepted'])
+@pytest.mark.parametrize('render_block', ['missing', 'select'])
+def test_saved_approval_closes_card_without_dashboard_redraw(action_stall, render_block):
+    run_node(action_stall, 'success', render_block)
+
+
+def run_node(action_stall, live_stall, render_block='none'):
     node = shutil.which('node')
     if not node:
         pytest.skip('node is not installed')
     code = r"""
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
-const [js, actionStall, liveStall] = process.argv.slice(1);
+const [js, actionStall, liveStall, renderBlock] = process.argv.slice(1);
 const listeners = {}, storage = new Map(), timers = new Map(), calls = [];
 let now = 0, nextTimer = 0, removed = false, liveMode = liveStall;
 let lateAction, lateLive;
 const note = {textContent: ''}, box = {querySelector: () => note, remove: () => {removed = true;}};
-const pane = {scrollTop: 0, querySelectorAll: () => []};
+const pane = {scrollTop: 0, querySelectorAll: () => [], contains: () => true};
 const item = {key: 'accept:S-0123456789', kind: 'accept', step_id: 'S-0123456789', label: 'Approve this completed check'};
 const pendingSnap = {ok: true, at: 1, lanes: [], needs_you: [item], master: {items: []}};
 const emptySnap = {...pendingSnap, at: 2, needs_you: []};
 const document = {hidden: true, readyState: 'loading', body: {classList: {add: () => {}}},
   addEventListener: (kind, fn) => {listeners[kind] = fn;}, querySelectorAll: () => [],
-  getElementById: id => id === 'hb-live-pop' && !removed ? box : id === 'hb-live-pane' ? pane : id === 'hb-live-style' ? {} : null};
+  getElementById: id => id === 'hb-live-pop' && !removed ? box : id === 'hb-live-pane' && renderBlock !== 'missing' ? pane : id === 'hb-live-style' ? {} : null};
 function pending(signal, live, body) {
   // Deliberately ignore abort: the timeout must settle even when a transport does not cooperate.
   return new Promise(resolve => {
@@ -81,6 +87,7 @@ async function advance(ms) {
 }
 (async () => {
   if (actionStall === 'success' || actionStall === 'accepted') {document.hidden = false; liveMode = 'success';}
+  if (renderBlock === 'select') document.activeElement = {tagName: 'SELECT'};
   listeners.click({target}); listeners.click({target});
   assert.equal(calls.filter(c => c.url === '/api/peer/v1/hb/queue').length, 1);
   assert.deepEqual(JSON.parse(calls[0].options.body), {task: ['accept', 'S-0123456789']});
@@ -131,5 +138,5 @@ async function advance(ms) {
   assert.equal(removed, true); assert.equal(timers.size, 0);
 })().catch(error => {console.error(error); process.exitCode = 1;});
 """
-    result = subprocess.run([node, '-e', code, str(JS), action_stall, live_stall], capture_output=True, text=True, timeout=20)
+    result = subprocess.run([node, '-e', code, str(JS), action_stall, live_stall, render_block], capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr[-2200:]

@@ -840,6 +840,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       S.rate = a.busy && p.busy && a.task === p.task && dt > 0 ? (a.generated > p.generated ? (a.generated - p.generated) / dt
         : (a.prompt_done > p.prompt_done ? (a.prompt_done - p.prompt_done) / dt : S.rate)) : 0;
       S.snap = d;
+      popup();
       render();
     }).catch(() => {}).finally(() => { S.busy = false; });
   }
