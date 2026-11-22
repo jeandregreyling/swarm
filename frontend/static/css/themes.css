@@ -4,6 +4,87 @@
    Inspired by: Linear, Vercel, Raycast, Arc, Apple dark, Stripe, Obsidian
    ───────────────────────────────────────────────────────────────────────── */
 
+/* ── HUMMINGBIRD — Iridescent Liquid-Glass (emerald-teal, nectar gold, blossom rose) ── */
+body.theme-hummingbird {
+  --bg:            #090e12;
+  --card:          rgba(16, 24, 30, 0.72);
+  --card-hover:    rgba(24, 36, 44, 0.82);
+  --hover:         rgba(16, 232, 164, 0.10);
+  --bg-input:      rgba(10, 16, 20, 0.78);
+  --border:        rgba(255, 255, 255, 0.14);
+  --text:          #edf7f3;
+  --text-dim:      #8fb3a8;
+  --text-faint:    #4c6b62;
+  --accent:        #10e8a4;
+  --accent-hover:  #4df7c0;
+  --hb-nectar:     #ffb84d;
+  --hb-blossom:    #f472b6;
+  --window-bg:     rgba(14, 21, 27, 0.78);
+  --window-header: rgba(10, 16, 21, 0.84);
+  --shadow:        inset 0 1px 0 rgba(255,255,255,0.14), 0 22px 54px rgba(0,0,0,0.55), 0 0 42px rgba(16,232,164,0.08);
+  --radius:        14px;
+}
+body.theme-hummingbird .window,
+body.theme-hummingbird #settings-box,
+body.theme-hummingbird #theme-picker-menu {
+  background: linear-gradient(145deg, rgba(16,232,164,0.09), rgba(255,184,77,0.05) 52%, rgba(244,114,182,0.06)), color-mix(in srgb, #0e151b calc(var(--glass-opacity, 0.86) * 100%), transparent) !important;
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 24px 60px rgba(0,0,0,0.55) !important;
+}
+/* Iridescent ambient backdrop + true Liquid-Glass refraction for Hummingbird theme */
+body.theme-hummingbird {
+  background-image:
+    radial-gradient(circle at 14% 18%, rgba(16, 232, 164, 0.16), transparent 42%),
+    radial-gradient(circle at 86% 14%, rgba(244, 114, 182, 0.13), transparent 38%),
+    radial-gradient(circle at 52% 88%, rgba(255, 184, 77, 0.11), transparent 46%) !important;
+  background-attachment: fixed !important;
+}
+body.theme-hummingbird #home-chat-view,
+body.theme-hummingbird .hc-composer,
+body.theme-hummingbird #hb-live-pane,
+body.theme-hummingbird #bottom-dock,
+body.theme-hummingbird .bottom-bar {
+  background: color-mix(in srgb, rgba(14, 22, 28, 0.78) calc(var(--glass-opacity, 0.84) * 100%), transparent) !important;
+  backdrop-filter: blur(22px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(185%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 14px 36px rgba(0, 0, 0, 0.36);
+}
+/* Speaker colour-coding in main chat (instant visual scan across all themes) */
+#home-chat-messages .hc-bubble[data-hb-speaker="apex"] {
+  border-left: 3px solid #10e8a4 !important;
+  background: linear-gradient(135deg, rgba(16, 232, 164, 0.11), rgba(16, 24, 30, 0.58)) !important;
+  backdrop-filter: blur(14px) saturate(160%);
+  border-radius: 14px;
+}
+#home-chat-messages .hc-bubble[data-hb-speaker="hummingbird"] {
+  border-left: 3px solid #ffb84d !important;
+  background: linear-gradient(135deg, rgba(255, 184, 77, 0.10), rgba(24, 20, 14, 0.58)) !important;
+  backdrop-filter: blur(14px) saturate(160%);
+  border-radius: 14px;
+}
+#home-chat-messages .hc-bubble[data-hb-speaker="copilot"] {
+  border-left: 3px solid #c084fc !important;
+  background: linear-gradient(135deg, rgba(192, 132, 252, 0.12), rgba(22, 16, 32, 0.60)) !important;
+  backdrop-filter: blur(14px) saturate(160%);
+  border-radius: 14px;
+}
+#home-chat-messages .hc-bubble[data-hb-speaker="user"] {
+  border-right: 3px solid #38bdf8 !important;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.13), rgba(12, 22, 34, 0.64)) !important;
+  backdrop-filter: blur(14px) saturate(160%);
+  border-radius: 14px;
+}
+/* Unite ALL tile windows & settings panels under the active theme + Transparency slider (--glass-opacity). */
+.window, #settings-box, #theme-picker-menu {
+  background: color-mix(in srgb, var(--window-bg, var(--card)) calc(var(--glass-opacity, 0.92) * 100%), transparent);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-color: var(--border) !important;
+}
+
 /* ── OBSIDIAN  — Linear.app — near-black, surgical precision, indigo accent ── */
 body.theme-obsidian {
   --bg:           #0A0A0B;

@@ -257,7 +257,7 @@
       if (folded) return;
       html += '<ul class="hbl-list">' + rows.map((i) =>
         `<li data-step="${esc(i.step_id)}" data-task="${esc(i.task_id || '')}" title="${esc(i.note || i.why || '')}">` +
-        `<span class="hbl-row-title">${esc(i.title)}${esc(chunkRowCount(i.chunks))}</span><span class="hbl-tag">${esc(i.doer || 'apex')}</span>` +
+        `${i.step_id ? `<code class="hbl-step-code" title="Studio step ID">${esc(i.step_id)}</code> ` : ''}<span class="hbl-row-title">${esc(i.title)}${esc(chunkRowCount(i.chunks))}</span><span class="hbl-tag">${esc(i.doer || 'apex')}</span>` +
         (chunkLine(i.chunks) ? `<div class="hbl-live-line">${esc(chunkLine(i.chunks))}</div>` : '') +
         (i.live ? `<div class="hbl-live-line">● ${esc(SHORT[i.live.lane] || i.live.lane)}: ${esc(i.live.last_step || 'working')}</div>` : '') +
         (i.note && key === 'spec' ? `<div class="hbl-dim">${esc(i.note)}</div>` : '') +
@@ -312,7 +312,7 @@
           ? '<div class="hbl-thought-list">' + a.thoughts.map((t) => `<div>· ${esc(t)}</div>`).join('') + '</div>'
           : '') + '</details>'
       : '';
-    return `<div class="hbl-meter${a.busy ? ' hbl-meter-busy' : ''}">${who} · ${what}${ctx}${lit || ''}${thoughtHtml}</div>`;
+    return `<div class="hbl-meter${a.busy ? ' hbl-meter-busy' : ''}"><div class="hbl-meter-row">${who} · ${what}${ctx}${lit ? `<span class="hbl-meter-lights-inline">${lit}</span>` : ''}</div>${thoughtHtml}</div>`;
   }
 
   function renderBoard(snap, opts) {
@@ -482,6 +482,7 @@
 .hbl-list{list-style:none;margin:0;padding:0}.hbl-list li{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:4px 2px;border-bottom:1px solid var(--border,#262626)}
 .hbl-row-title{flex:1 1 260px;min-width:0}.hbl-row-ctl{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .hbl-tag{padding:0 6px;border:1px solid var(--border,#444);border-radius:8px;font-size:10.5px;color:var(--text-dim,#aaa)}
+.hbl-step-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;padding:1px 6px;border-radius:6px;background:rgba(16,232,164,.10);border:1px solid rgba(16,232,164,.28);color:var(--accent,#10e8a4);user-select:all}
 .hbl-needs .hbl-row-title{color:#ffb300}.hbl-live-line{flex-basis:100%;color:#2ecc71;font-size:11.5px}
 .hbl-chunk-row{display:inline-flex;gap:3px;align-items:center;margin-left:6px;vertical-align:middle}
 .hb-chunk-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#555}
@@ -511,7 +512,15 @@
 .hbl-l-wait{opacity:1;color:#ffb300;border-color:#ffb300;animation:hblPulse 1.4s infinite}
 .hbl-l-warn{opacity:1;color:#ffb300;border-color:rgba(255,179,0,.8);background:rgba(255,179,0,.12)}
 .hbl-l-bad{opacity:1;color:#ff5252;border-color:#ff5252;background:rgba(255,82,82,.12)}
-.hbl-meter .hbl-lights{margin:3px 0 0}
+.hbl-meter .hbl-lights{display:inline-flex;margin:0;vertical-align:middle}
+.hbl-meter-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}
+.hbl-meter-lights-inline{display:inline-flex;align-items:center;margin-left:auto}
+.hbl-chat-pills{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;margin:4px 0 0;vertical-align:middle}
+.hbl-cpill{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:600;border:1px solid rgba(255,255,255,.14);background:rgba(16,24,30,.55);color:var(--text-dim,#9fb3ad)}
+.hbl-cpill i{width:6px;height:6px;border-radius:50%;display:inline-block;background:#667}
+.hbl-cpill.on{color:#10e8a4;border-color:rgba(16,232,164,.45);background:rgba(16,232,164,.10)}.hbl-cpill.on i{background:#10e8a4;box-shadow:0 0 6px rgba(16,232,164,.6)}
+.hbl-cpill.warn{color:#ffb84d;border-color:rgba(255,184,77,.5);background:rgba(255,184,77,.10)}.hbl-cpill.warn i{background:#ffb84d}
+.hbl-cpill.bad{color:#fb7185;border-color:rgba(251,113,133,.5);background:rgba(251,113,133,.10)}.hbl-cpill.bad i{background:#fb7185}
 .hbl-armed{background:#c62828 !important;border-color:#ff5252 !important;color:#fff !important;font-weight:700;animation:hblPulse 1.4s infinite}
 #hb-scroll-bottom{position:fixed;z-index:9100;width:44px;height:44px;border-radius:50%;border:1px solid var(--border,#444);cursor:pointer;
   background:var(--card,#1b1b1b);color:var(--text,#ddd);font-size:20px;line-height:1;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:.92}
@@ -519,18 +528,26 @@
 #hb-scroll-bottom.hb-follow{border-color:#2ecc71;color:#2ecc71;animation:hblPulse 1.4s infinite}
 #hb-scroll-bottom[hidden]{display:none}
 #hb-live-drawer .hb-models{max-height:none;overflow:visible;resize:none}
-.hbl-drawer-grip{position:sticky;float:left;top:0;margin:-6px 0 0 -12px;width:6px;height:100%;min-height:100vh;cursor:ew-resize;border-radius:3px}
-.hbl-drawer-grip:hover{background:rgba(46,204,113,.35)}
-#hb-live-drawer{scrollbar-width:thin;scrollbar-color:rgba(16,232,164,.35) transparent}
-#hb-live-drawer{position:fixed;right:14px;top:70px;bottom:96px;width:min(470px,94vw);overflow:auto;z-index:9000;padding:10px 16px 14px;
-  background:linear-gradient(145deg,rgba(16,232,164,.09),rgba(255,184,77,.05) 52%,rgba(244,114,182,.06)),rgba(16,20,24,.78);
+.hbl-drawer-grip{position:absolute;left:0;top:14px;bottom:14px;width:8px;z-index:8;cursor:ew-resize;border-radius:16px 0 0 16px}
+.hbl-drawer-grip::after{content:'';position:absolute;left:2px;top:50%;transform:translateY(-50%);width:3px;height:40px;border-radius:3px;background:rgba(255,255,255,.18);transition:background .15s}
+.hbl-drawer-grip:hover::after{background:var(--accent,#10e8a4)}
+.hbl-drawer-grip-b{position:absolute;left:16px;right:16px;bottom:0;height:8px;z-index:8;cursor:ns-resize;display:flex;justify-content:center;align-items:center}
+.hbl-drawer-grip-b::after{content:'';width:44px;height:3px;border-radius:3px;background:rgba(255,255,255,.18);transition:background .15s}
+.hbl-drawer-grip-b:hover::after{background:var(--accent,#10e8a4)}
+#hb-live-drawer[hidden]{display:none!important}
+#hb-live-drawer{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--accent,#10e8a4) 40%,transparent) transparent}
+#hb-live-drawer{position:fixed;right:14px;top:70px;bottom:auto;height:auto;max-height:calc(100vh - 166px);min-height:140px;width:min(470px,94vw);
+  display:flex;flex-direction:column;overflow:hidden;z-index:9000;padding:0;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--accent,#10e8a4) 10%,transparent),rgba(255,184,77,.04) 55%,rgba(244,114,182,.05)),color-mix(in srgb,var(--window-bg,var(--card,#161616)) calc(var(--glass-opacity,.86) * 100%),transparent);
   backdrop-filter:blur(18px) saturate(165%);-webkit-backdrop-filter:blur(18px) saturate(165%);
-  color:var(--text,#e8f0ec);border:1px solid rgba(255,255,255,.15);border-radius:16px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 52px rgba(0,0,0,.52);font-size:12.5px;
-  transition:opacity .18s cubic-bezier(.22,1,.36,1),transform .18s cubic-bezier(.22,1,.36,1)}
-.hbl-drawer-head{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-10px;z-index:1;margin:-10px -16px 8px;padding:10px 16px;
-  background:rgba(16,20,24,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border-bottom:1px solid rgba(255,255,255,.10);border-radius:16px 16px 0 0}
+  color:var(--text,#e8f0ec);border:1px solid var(--border,rgba(255,255,255,.15));border-radius:var(--radius,16px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 52px rgba(0,0,0,.52);font-size:12.5px}
+.hbl-drawer-scroll{flex:1 1 auto;overflow:auto;padding:8px 16px 16px;min-height:0}
+.hbl-drawer-head{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-8px;z-index:2;margin:-8px -16px 8px;padding:10px 16px;cursor:grab;user-select:none;
+  background:color-mix(in srgb,var(--window-header,var(--card,#161616)) calc(var(--glass-opacity,.90) * 100%),transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border,rgba(255,255,255,.10));border-radius:var(--radius,16px) var(--radius,16px) 0 0}
+.hbl-drawer-head:active{cursor:grabbing}
 .hbl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:2px 0 4px}
 .hbl-tasks-chip{font-size:12px;padding:3px 12px;border-radius:14px;border:1px solid var(--accent,#00e08a);background:transparent;color:var(--accent,#00e08a);cursor:pointer;font-weight:600}
 .hbl-tasks-needs{border-color:#ffb300;color:#ffb300}
@@ -552,13 +569,29 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     try { d = document.createElement('aside'); d.id = 'hb-live-drawer'; d.hidden = true; d.setAttribute('aria-label', 'HB task list'); document.body.appendChild(d); return d; }
     catch (e) { return { hidden: true, innerHTML: '', scrollTop: 0, contains: () => false, querySelector: () => null, querySelectorAll: () => [] }; }
   }
-  // Practice 290 (JD 22 Nov: "the new settings window is not resizable"): drag the drawer's left edge, like the main chat's grip
+  // Practice 290 + Liquid-Glass Phase 3: drag left edge for width, bottom border for height, OR header to move like any HB window
   if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('mousedown', (e) => {
-    const grip = e.target && e.target.closest && e.target.closest('.hbl-drawer-grip');
-    if (!grip) return;
+    const gripW = e.target && e.target.closest && e.target.closest('.hbl-drawer-grip');
+    const gripH = !gripW && e.target && e.target.closest && e.target.closest('.hbl-drawer-grip-b');
+    const dragH = !gripW && !gripH && e.target && e.target.closest && e.target.closest('.hbl-drawer-head') && !e.target.closest('button,input,select,a');
+    if (!gripW && !gripH && !dragH) return;
     e.preventDefault();
-    const dr = drawerEl(), startX = e.clientX, startW = dr.getBoundingClientRect().width;
-    const move = (m) => { const w = Math.max(300, Math.min((root.innerWidth || 1600) - 40, startW + (startX - m.clientX))); dr.style.width = w + 'px'; ls('hbLive.drawerW', String(Math.round(w))); };
+    const dr = drawerEl(), rect = dr.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY, startW = rect.width, startH = rect.height, startL = rect.left, startT = rect.top;
+    const move = (m) => {
+      if (gripW) {
+        const w = Math.max(320, Math.min((root.innerWidth || 1600) - 40, startW + (startX - m.clientX)));
+        dr.style.width = w + 'px'; ls('hbLive.drawerW', String(Math.round(w)));
+      } else if (gripH) {
+        const h = Math.max(180, Math.min((root.innerHeight || 900) - 110, startH + (m.clientY - startY)));
+        dr.style.height = h + 'px'; dr.style.maxHeight = 'none'; ls('hbLive.drawerH', String(Math.round(h)));
+      } else if (dragH) {
+        const l = Math.max(8, Math.min((root.innerWidth || 1600) - 120, startL + (m.clientX - startX)));
+        const t = Math.max(40, Math.min((root.innerHeight || 900) - 80, startT + (m.clientY - startY)));
+        dr.style.left = l + 'px'; dr.style.top = t + 'px'; dr.style.right = 'auto';
+        ls('hbLive.drawerX', String(Math.round(l))); ls('hbLive.drawerY', String(Math.round(t)));
+      }
+    };
     const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
     document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
   });
@@ -645,12 +678,22 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (mode === 'status' && (!S.modelsAt || Date.now() - S.modelsAt > 20000) && typeof root.hbModelsLoad === 'function') {
       S.modelsAt = Date.now(); setTimeout(() => root.hbModelsLoad(dr), 0);
     }
-    dr.innerHTML = dr.hidden ? '' : '<div class="hbl-drawer-grip" title="Drag to resize"></div>' +
-      (mode === 'status' ? R.renderStatus(S.snap, root.hbModelsHtml) : R.renderDrawer(S.snap, opts));   // Practice 290: resizable
-    const w = Number(ls('hbLive.drawerW'));
-    if (dr.style && w >= 300) dr.style.width = Math.min(w, (root.innerWidth || 1600) - 40) + 'px';
+    const prevScroll = (dr.querySelector && dr.querySelector('.hbl-drawer-scroll')) ? dr.querySelector('.hbl-drawer-scroll').scrollTop : dtop;
+    dr.innerHTML = dr.hidden ? '' :
+      '<div class="hbl-drawer-grip" title="Drag left border to resize width"></div>' +
+      '<div class="hbl-drawer-scroll">' +
+      (mode === 'status' ? R.renderStatus(S.snap, root.hbModelsHtml) : R.renderDrawer(S.snap, opts)) +
+      '</div><div class="hbl-drawer-grip-b" title="Drag bottom border to resize height"></div>';
+    const w = Number(ls('hbLive.drawerW')), h = Number(ls('hbLive.drawerH'));
+    const dx = Number(ls('hbLive.drawerX')), dy = Number(ls('hbLive.drawerY'));
+    if (dr.style && w >= 320) dr.style.width = Math.min(w, (root.innerWidth || 1600) - 40) + 'px';
+    if (dr.style && h >= 180) { dr.style.height = Math.min(h, (root.innerHeight || 900) - 110) + 'px'; dr.style.maxHeight = 'none'; }
+    else if (dr.style) { dr.style.height = 'auto'; dr.style.maxHeight = 'calc(100vh - 166px)'; }
+    if (dr.style && dx > 0 && dy > 0) { dr.style.left = Math.min(dx, (root.innerWidth || 1600) - 120) + 'px'; dr.style.top = Math.min(dy, (root.innerHeight || 900) - 80) + 'px'; dr.style.right = 'auto'; }
     open.forEach((id) => { const sel = '[data-more-box="' + CSS.escape(id) + '"]'; const b = (el.querySelector && el.querySelector(sel)) || (dr.querySelector && dr.querySelector(sel)); if (b) b.hidden = false; });
-    el.scrollTop = top; dr.scrollTop = dtop;
+    el.scrollTop = top;
+    const sc = dr.querySelector && dr.querySelector('.hbl-drawer-scroll');
+    if (sc) sc.scrollTop = prevScroll; else dr.scrollTop = dtop;
     popup();
     decorate();
     showArmed();                                         // Practice 275: an armed Cancel survives the redraw
@@ -679,11 +722,36 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     popup();
   }
 
-  // In chat: /commands in HB's and APEX's messages are one-click buttons; HB's raw JSON hand-offs read as one line
+  // In chat: /commands in HB's and APEX's messages are one-click buttons; HB's raw JSON hand-offs read as one line;
+  // raw Unicode DOES/DREAM tick tails are upgraded into sleek Liquid-Glass pill badges.
   const CMD = /(^|[\s(])(\/(?:accept|reject|continue|pause|cancel|plan|workflow|drive|done|board|status|tasks|approvals|clip|yes|no|today|channels|restart|grant|deny)\b(?: [A-Z]-[0-9A-F]{6,12}| (?:on|off|next|status|auto|ui|all)\b| S-[0-9A-F]{10})*)/g;
+  const LIGHT_TAIL = /(?:▶|✓)\s*[✓✗!…·]?\s*✦[✓✗!…·]\s*∞[✓✗!…·]\s*·\s*DOES\s+D([✓✗!…·])\s+O([✓✗!…·])\s+E([✓✗!…·])\s+S([✓✗!…·])\s*·\s*DREAM\s+D([✓✗!…·])\s+R([✓✗!…·])\s+E([✓✗!…·])\s+A([✓✗!…·])\s+M([✓✗!…·])/;
+  function _pillCls(mark) { return mark === '✓' ? 'on' : mark === '!' ? 'warn' : mark === '✗' ? 'bad' : 'off'; }
+  function upgradeLightTicks(container) {
+    if (!container || !container.innerHTML || !LIGHT_TAIL.test(container.textContent || '')) return;
+    const m = LIGHT_TAIL.exec(container.innerHTML);
+    if (!m) return;
+    const does = [['Do', m[1]], ['Operate', m[2]], ['Execute', m[3]], ['Sustain', m[4]]];
+    const dream = [['D', m[5]], ['R', m[6]], ['E', m[7]], ['A', m[8]], ['M', m[9]]];
+    const html = '<span class="hbl-chat-pills">' +
+      does.map(([lbl, mk]) => `<span class="hbl-cpill ${_pillCls(mk)}" title="DOES: ${lbl}"><i></i>${lbl}</span>`).join('') +
+      '<span class="hbl-lg">DREAM</span>' +
+      dream.map(([lbl, mk]) => `<span class="hbl-cpill ${_pillCls(mk)}" title="DREAM: ${lbl}"><i></i>${lbl}</span>`).join('') +
+      '</span>';
+    container.innerHTML = container.innerHTML.replace(LIGHT_TAIL, html);
+  }
+  function speakerKey(b) {
+    const raw = String((b._chatMessage || {}).from_agent || (b._chatMessage || {}).sender || b.dataset.sender || '').toLowerCase();
+    if (!raw || raw === 'user' || raw === 'jd' || raw === 'ghost' || b.classList.contains('hc-user')) return 'user';
+    if (raw === 'apex') return 'apex';
+    if (raw === 'hummingbird' || raw === 'hb') return 'hummingbird';
+    if (raw.includes('copilot') || raw.includes('claude') || raw.includes('codex') || raw.includes('gemini')) return 'copilot';
+    return 'other';
+  }
   function decorate() {
     document.querySelectorAll('#home-chat-messages .hc-bubble:not([data-hbl-done])').forEach((b) => {
       b.dataset.hblDone = '1';
+      b.dataset.hbSpeaker = speakerKey(b);
       const body = b.querySelector('.hc-bubble-body') || b;
       const text = (body.textContent || '').trim();
       if (text.startsWith('{"task_type"')) {
@@ -694,6 +762,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       }
       const sender = String((b._chatMessage || {}).from_agent || (b._chatMessage || {}).sender || '').toLowerCase();
       if (!['hummingbird', 'apex', 'hb'].includes(sender)) return;
+      upgradeLightTicks(body);
       const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
       const nodes = [];
       while (walker.nextNode()) if (CMD.test(walker.currentNode.nodeValue)) nodes.push(walker.currentNode);
@@ -915,11 +984,17 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const s = e.target.closest && e.target.closest('#hb-live-pane select[data-q], #hb-live-pop select[data-q], #hb-live-drawer select[data-q]');
     if (s) send({ [s.dataset.q]: [s.dataset.a, s.dataset.id, s.value] }, e.target.closest('#hb-live-pane') || e.target.closest('#hb-live-drawer'));
   });
+  // Capture phase so Escape closes an open Tasks/Status drawer BEFORE core/init.js stops propagation.
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     const mode = ls('hbLive.drawer');
-    if (mode && mode !== '0') { ls('hbLive.drawer', '0'); render(); }
-  });
+    if (mode && mode !== '0') {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      ls('hbLive.drawer', '0');
+      render();
+    }
+  }, true);
 
   let pending = null, refreshQueued = false;
   function refresh() {
