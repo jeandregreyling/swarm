@@ -208,6 +208,8 @@ def parse(body):
     if cmd in ('accept', 'reject'):
         m = STEP_RE.search(body)
         if not m:
+            if cmd == 'accept' and len(words) == 1:
+                return ('accept', [])
             return None
         reason = body[m.end():].strip(' :-')          # reject: the reason; accept: an optional owner comment
         if cmd == 'reject' and not reason:
@@ -792,6 +794,11 @@ def accept_step(conn, step_id, actor, comment=''):
         hb_merits.on_accept(conn, step_id, tasks, str(row[1]))
     except Exception:
         pass
+    # Release the SQLite write lock BEFORE running git commit + TimeWizard hooks (prevents 30s self-deadlock & 15s UI timeout).
+    try:
+        conn.commit()
+    except Exception:
+        pass
     committed = ''
     try:   # owner 13 Nov: change control - an approved change set is committed locally by HB (core/hb_change_sets.commit)
         from core import hb_change_sets
@@ -1064,6 +1071,14 @@ def run(conn, conversation_id, command, args, actor, after=None):
         return (f"{args[0]}: change set reverted ({len(r['restored'])} file(s) restored, {len(r['removed'])} removed). The step is open again. "
                 'Restart HB if the files were live code.')
     if command == 'accept':
+        if not args:
+            pending = [i for i in waiting_items(conn, conversation_id) if i.get('kind') == 'accept' and i.get('step_id')]
+            if not pending:
+                return 'Nothing is waiting for /accept right now.'
+            if len(pending) == 1:
+                return accept_step(conn, pending[0]['step_id'], actor)
+            lines = [f"- /accept {i['step_id']} — {str(i.get('title') or i.get('label') or '')[:80]}" for i in pending[:8]]
+            return 'Multiple steps are waiting for approval — pick one:\n' + '\n'.join(lines)
         return accept_step(conn, args[0], actor, args[1] if len(args) > 1 else '')
     if command == 'reject':
         return reject_step(conn, args[0], args[1], actor)
