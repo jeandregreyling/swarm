@@ -982,13 +982,16 @@ def pasted_output(answer, receipts, request=''):
 # action is not an answer. APEX is sent back once; if he still does nothing, JD gets one honest HB line instead of the junk.
 HB_WORK_TURN = re.compile(r'"task_type":\s*"hb_(?!managed_plan)')
 NO_WORK_NOTICE = ("HB DOES CHECK: the answer was not delivered. This is HB's work turn on a task: JD asked nothing and is not waiting "
-                  "for a plan, a promise, a checklist or a tool's error. No action ran this turn. Do the next action now: if a patch "
+                  "for a plan, a promise, a checklist or a tool's error. No action ran this turn (a new task_plan is not progress). Do the next action now: if a patch "
                   "did not fit, read_file the exact lines fresh and propose_patch again with that exact text; if the next step is a "
                   "test, run_tests. Then report what you did and what it showed. If a tool truly stops you, answer 'blocked because "
                   "...' in one sentence naming the tool and its error.")
 PARROT_NOTICE = ("HB DOES CHECK: the answer was not delivered. It hands a tool's error to JD, but that error was an instruction to you. "
                  "Do what it says with your tools (for 'matched 0 locations': read_file the target lines fresh, then propose_patch with "
                  "that exact text), then report the result in your own words.")
+
+
+WORK_ACTIONS = DOER_ACTIONS - {'task_plan', 'memory_save', 'studio_status', 'studio_note', 'ask_instructor'}   # Practice 289
 
 
 def _acted(receipts):
@@ -1001,7 +1004,10 @@ def no_work(answer, receipts, request=''):
     does not say 'blocked because ...'."""
     if not HB_WORK_TURN.search(str(request or '')) or re.match(r'\s*blocked because\b', str(answer or ''), re.I):
         return False
-    return not _acted(receipts)
+    # Practice 289 (JD 22 Nov: 15 open tasks, "doesn't look like APEX is having any success"): in two hours APEX saved 16 plans and tried
+    # one patch - task_plan counted as an action, so a turn of reading and re-planning passed. On a work turn only real work counts.
+    return not any(r.get('tool') in WORK_ACTIONS and r.get('status') == 'succeeded'
+                   and not (r.get('tool') == 'hb_tasks' and (r.get('arguments') or {}).get('action', 'list') == 'list') for r in receipts or [])
 
 
 def parroted_error(answer, receipts):
