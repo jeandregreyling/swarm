@@ -25,6 +25,11 @@ from core.media_center.audio_engine import (
     list_media_assets,
     save_media_asset,
 )
+from core.media_center.dsp_video import (
+    mix_two_decks,
+    process_audio_dsp,
+    render_youtube_visualizer,
+)
 from core.media_center.storage import MEDIA_STORAGE_ROOT
 
 media_center_bp = Blueprint("media_center", __name__)
@@ -228,6 +233,53 @@ def media_center_library_upload():
         return jsonify({"ok": False, "error": f"unsupported media file type: {filename}"}), 400
     asset = save_media_asset(filename, data, source="upload", metadata={"title": title, "artist": artist})
     return jsonify({"ok": True, "asset": asset})
+
+
+@media_center_bp.route("/api/media-center/library/<asset_id>/dsp", methods=["POST"])
+def media_center_library_dsp(asset_id: str):
+    opts = request.get_json(silent=True) or {}
+    try:
+        asset = process_audio_dsp(asset_id, opts)
+        return jsonify({"ok": True, "asset": asset})
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@media_center_bp.route("/api/media-center/library/<asset_id>/render-video", methods=["POST"])
+def media_center_library_render_video(asset_id: str):
+    opts = request.get_json(silent=True) or {}
+    try:
+        asset = render_youtube_visualizer(asset_id, opts)
+        return jsonify({"ok": True, "asset": asset})
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@media_center_bp.route("/api/media-center/decks/mix", methods=["POST"])
+def media_center_decks_mix():
+    body = request.get_json(silent=True) or {}
+    deck_a = str(body.get("deck_a_id") or "").strip()
+    deck_b = str(body.get("deck_b_id") or "").strip()
+    if not deck_a or not deck_b:
+        return jsonify({"ok": False, "error": "deck_a_id and deck_b_id are required"}), 400
+    try:
+        asset = mix_two_decks(
+            deck_a,
+            deck_b,
+            crossfade_sec=float(body.get("crossfade_sec", 3.0)),
+            gain_a_db=float(body.get("gain_a_db", 0.0)),
+            gain_b_db=float(body.get("gain_b_db", 0.0)),
+            mode=str(body.get("mode") or "crossfade"),
+        )
+        return jsonify({"ok": True, "asset": asset})
+    except FileNotFoundError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
 
 @media_center_bp.route("/api/media-center/artifacts/<path:artifact_path>", methods=["GET"])
