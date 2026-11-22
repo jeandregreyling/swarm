@@ -224,6 +224,62 @@ def get_summary():
 
 # Y.58 — IBank research-propositions stub. Captures intent to research a list
 # of public propositions/acquisitions. Real implementation pulls from feeds.
+@business_bp.route('/api/business/payroll/calculate', methods=['POST'])
+def payroll_calculate():
+    from core.payroll_consultant import calculate_pay_run
+    body = request.get_json(silent=True) or {}
+    try:
+        slip = calculate_pay_run(body)
+        return jsonify({'ok': True, 'payslip': slip})
+    except (TypeError, ValueError) as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+
+@business_bp.route('/api/business/payroll/commit', methods=['POST'])
+def payroll_commit():
+    from core.payroll_consultant import calculate_pay_run
+    body = request.get_json(silent=True) or {}
+    try:
+        slip = calculate_pay_run(body)
+    except (TypeError, ValueError) as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    ts = now_ts()
+    pay_id = gen_id('PAY')
+    sup_id = gen_id('SUP')
+    with connect() as conn:
+        _init(conn)
+        conn.execute(
+            f"INSERT INTO {TABLE} (entry_id, ts, kind, amount, currency, counterparty, category, notes, status, created_at, updated_at) "
+            f"VALUES (?, ?, 'payroll', ?, ?, ?, 'wages', ?, 'posted', ?, ?)",
+            (
+                pay_id, ts, -abs(slip['gross_pay']), slip['currency'], slip['employee'],
+                f"Payroll ({slip['frequency']}): Net {slip['net_pay']}, PAYG+Med {slip['total_tax_withheld']}",
+                ts, ts,
+            ),
+        )
+        conn.execute(
+            f"INSERT INTO {TABLE} (entry_id, ts, kind, amount, currency, counterparty, category, notes, status, created_at, updated_at) "
+            f"VALUES (?, ?, 'payroll', ?, ?, ?, 'superannuation', ?, 'posted', ?, ?)",
+            (
+                sup_id, ts, -abs(slip['superannuation_sg']), slip['currency'], slip['employee'],
+                f"SG Super ({slip['super_rate']*100:.1f}% on OTE {slip['ote']})",
+                ts, ts,
+            ),
+        )
+        conn.commit()
+    return jsonify({'ok': True, 'payslip': slip, 'ledger_entry_ids': [pay_id, sup_id]}), 201
+
+
+@business_bp.route('/api/business/payroll/audit', methods=['POST'])
+def payroll_audit():
+    from core.payroll_consultant import audit_pay_run
+    body = request.get_json(silent=True) or {}
+    payslips = body.get('payslips') or []
+    prior = body.get('prior_total_gross')
+    report = audit_pay_run(payslips, prior_total_gross=float(prior) if prior is not None else None)
+    return jsonify({'ok': True, 'audit': report})
+
+
 @business_bp.route('/api/business/research-propositions', methods=['POST'])
 def research_propositions():
     return jsonify({'ok': True, 'queued': True, 'note': 'IBank research request captured; awaiting markets-watch + feed wiring.'})
