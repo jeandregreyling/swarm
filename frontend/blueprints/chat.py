@@ -3597,7 +3597,7 @@ def api_chat():
                 # Practice 176: APEX's own step lines go to the thinking bubble as they are
                 stage = str(event.get('text') or '') or (str(event.get('stage') or 'running').replace('_', ' ') + ': ' + selected_model)
                 if event.get('text'):
-                    turn_steps.append({'t': round(time.monotonic() - turn_started, 1), 'text': stage[:200]})
+                    turn_steps.append({'t': round(time.monotonic() - turn_started, 1), 'text': stage[:600]})
                 _sse_chat(conv_id, APEX_AGENT['name'], 'running', model=selected_model, stage=stage)
 
             queued_turn = []

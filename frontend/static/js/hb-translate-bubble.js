@@ -173,7 +173,8 @@ zh ::= [^\n]+`;
       .replace(/```[\s\S]*?(```|$)/g, ' ')
       .replace(/`[^`\n]*`/g, ' ')
       .replace(/https?:\/\/\S+/g, ' ')
-      .replace(/[\w.-]*[\/\\][\w.\/\\-]+/g, ' ');
+      .replace(/[\w.-]*[\/\\][\w.\/\\-]+/g, ' ')
+      .replace(/\b[A-Za-z]-[0-9A-Fa-f]{6,16}\b/g, ' ');
   }
 
   function detectLanguage(text) {
@@ -187,7 +188,7 @@ zh ::= [^\n]+`;
     }
     // One Chinese or Japanese character carries about as much as three Latin letters.
     const dense = (counts.zh + counts.ja + counts.ko) * 3 + counts.ru + counts.ar + counts.hi + counts.th;
-    if (other >= 4 && dense >= latin * 0.6) {
+    if (other >= 2 && dense >= latin * 0.6) {
       if (counts.ja >= 3 && counts.ja * 6 >= counts.zh) return 'ja';
       let best = 'zh';
       for (const code of ['ko', 'zh', 'ru', 'ar', 'hi', 'th']) if (counts[code] > counts[best]) best = code;
@@ -523,6 +524,7 @@ zh ::= [^\n]+`;
   function setEnabled(on) {
     try { localStorage.setItem(KEY_ON, on ? '1' : '0'); } catch (e) {}
     refreshToggle();
+    syncServer(isEnabled() || repliesEnabled());
     if (on) schedule(); else close();
   }
 
@@ -533,6 +535,7 @@ zh ::= [^\n]+`;
   function setRepliesEnabled(on) {
     try { localStorage.setItem(KEY_IN, on ? '1' : '0'); } catch (e) {}
     refreshToggle();
+    syncServer(isEnabled() || repliesEnabled());
     resetReplies();
   }
 
@@ -559,7 +562,6 @@ zh ::= [^\n]+`;
   function refreshToggle() {
     if (!toggleBtn) return;
     const any = isEnabled() || repliesEnabled();
-    if (serverOn !== null || any) syncServer(any);
     toggleBtn.classList.toggle('hb-tr-off', !any);
     toggleBtn.title = 'Translation settings (typing: ' + (isEnabled() ? 'on' : 'off') + ', replies: ' + (repliesEnabled() ? 'on' : 'off') + ')';
   }
@@ -862,7 +864,12 @@ zh ::= [^\n]+`;
           writeCache(key, whole);
           continue;
         }
-        // No OPUS-MT model for this pair: the small LLM worker does it instead (slower).
+        // No OPUS-MT model for this pair: start the small translator on demand.
+        const started = await fetch('/api/peer/v1/hb/translator', {
+          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ auto: true }), signal: mine.signal
+        });
+        if (!started.ok) throw new Error('Translator could not start');
         let done = '';
         let weak = false;
         for (const part of parts) {
@@ -978,7 +985,7 @@ zh ::= [^\n]+`;
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
 
-    toggleBtn = document.createElement('button');
+    toggleBtn = document.getElementById('hb-tr-toggle') || document.createElement('button');
     toggleBtn.id = 'hb-tr-toggle';
     toggleBtn.type = 'button';
     toggleBtn.className = 'voice-mic-btn';
@@ -986,8 +993,17 @@ zh ::= [^\n]+`;
     toggleBtn.setAttribute('aria-label', 'Mandarin translation bubble');
     toggleBtn.addEventListener('click', () => togglePanel());
     const sendBtn = document.getElementById('home-chat-send-btn');
-    if (sendBtn && sendBtn.parentElement === compose) compose.insertBefore(toggleBtn, sendBtn);
-    else compose.appendChild(toggleBtn);
+    if (!toggleBtn.parentElement) {
+      if (sendBtn && sendBtn.parentElement === compose) compose.insertBefore(toggleBtn, sendBtn);
+      else compose.appendChild(toggleBtn);
+    }
+    // Enable automatic replies once for existing browsers; later user choices are respected.
+    try {
+      if (localStorage.getItem('hbTranslate.replyAutoV2') !== '1') {
+        localStorage.setItem(KEY_IN, '1');
+        localStorage.setItem('hbTranslate.replyAutoV2', '1');
+      }
+    } catch (e) {}
     refreshToggle();
 
     panel = document.createElement('div');

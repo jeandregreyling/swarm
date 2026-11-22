@@ -382,7 +382,7 @@ def progress():
         if ((set(data)-{'conversation_id','status','stage','request_id','activity_id'} or not {'conversation_id','status','stage'}<=set(data))
                 or type(data['conversation_id']) is not int
                 or data['status'] not in {'queued','running','completed','failed'}
-                or not isinstance(data['stage'],str) or len(data['stage'])>200):
+                or not isinstance(data['stage'],str) or len(data['stage'])>600):
             raise ValueError('Progress requires conversation_id, status and a brief public stage')
         with closing(get_connection()) as conn:
             conn.execute('BEGIN IMMEDIATE')

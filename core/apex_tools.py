@@ -262,7 +262,7 @@ TURN_FORMAT["json_schema"]["schema"] = {
         {
             "type": "object",
             "properties": {
-                "thought": {"type": "string", "maxLength": 400},
+                "thought": {"type": "string", "maxLength": 600},
                 "tool_calls": {
                     "type": "array", "minItems": 1, "maxItems": maximum,
                     "items": {"oneOf": [_call_schema(name) for name in names]},
@@ -278,7 +278,7 @@ TURN_FORMAT["json_schema"]["schema"] = {
         )
     ] + [{
         "type": "object",
-        "properties": {"thought": {"type": "string", "maxLength": 400},
+        "properties": {"thought": {"type": "string", "maxLength": 600},
                        "tool_calls": {"type": "array", "maxItems": 0},
                        "answer": {"type": "string", "minLength": 1}},
         "required": ["tool_calls", "answer"], "additionalProperties": False,
@@ -1899,7 +1899,7 @@ def say_step(text):
         return
     try:
         from core.apex_routing import report_model_progress
-        report_model_progress({'stage': 'step', 'text': str(text)[:200]})
+        report_model_progress({'stage': 'step', 'text': str(text)[:600]})
     except Exception:
         pass
     try:                                          # HB Live L1: the same line in the turn's run in hb_activity_log
@@ -2546,7 +2546,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             raise RuntimeError("Invalid APEX answer schema")
         thought = str(payload.get("thought") or "").strip()
         if thought:
-            say_step("💭 " + thought[:195])
+            say_step("💭 " + thought[:580])
         if set(payload) <= {"thought", "tool_calls", "answer"} and "answer" in payload and calls == [] and payload["answer"].strip():
             answer = grounded(payload["answer"], can_retry, round_index <= MAX_ROUNDS)
             if answer is None:

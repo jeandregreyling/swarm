@@ -21,7 +21,7 @@ from core import agent_identity
 
 def progress(api,request,status,stage):
     return api.call('/api/agent/v1/progress',{'conversation_id':request['conversation_id'],
-        'request_id':request['id'],'status':status,'stage':stage[:200]})
+        'request_id':request['id'],'status':status,'stage':stage[:600]})
 
 
 HB_DOWN=(urllib.error.URLError,ConnectionError,TimeoutError)   # AgentAPI turns HTTP errors into ValueError: these mean HB did not answer
@@ -195,7 +195,7 @@ def local_turn(api,request,context,tools,gate=None):
     if dream_card:   # DREAM: HB's clipboard (goal, done criteria, current step, last failure, related work, method)
         messages.insert(1,{'role':'user','content':str(dream_card)})   # owner 15 Nov 2026: no fixed cut; the card's builder bounds it and prepare_context budgets the prompt
     def model_progress(event):
-        progress(api,request,'running',str(event.get('text') or event.get('stage') or 'Working')[:200])
+        progress(api,request,'running',str(event.get('text') or event.get('stage') or 'Working')[:600])
     def cooperate():
         if gate is not None:
             from core.hb_process_lock import yield_to_foreground
