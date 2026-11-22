@@ -3007,7 +3007,7 @@ def api_chat():
                 model, messages, temperature=0.2, idle_timeout_s=min(60, remaining), absolute_timeout_s=remaining,
                 queue_timeout_s=min(240, max(1, remaining // 2)),   # Practice 201: wait for the model instead of failing after 1 s
                 options=options,
-                response_format=response_format_for_turn() if apex_lane and not (fault or continuing_recovery) else None,
+                response_format=response_format_for_turn(require_thought=True) if apex_lane and not (fault or continuing_recovery) else None,
             )
 
         def _offline_response(exc, conversation_id=None, *, recovery=False):
@@ -3546,8 +3546,10 @@ def api_chat():
             history_pointer = None
             try:  # DOES: where compacted history can be read again (KC chat transcript + task record)
                 from core.hb_kc_records import pointer as kc_pointer
+                from core.hb_owner_intent import is_chat_task
                 with __import__('contextlib').closing(get_connection()) as kc_conn:
-                    history_pointer = kc_pointer(kc_conn, conv_id, bound_task['task_id'] if bound_task else None)
+                    task_pointer_id = bound_task['task_id'] if bound_task and not is_chat_task(bound_task) else None
+                    history_pointer = kc_pointer(kc_conn, conv_id, task_pointer_id)
             except Exception:
                 _LOG.exception('DOES history pointer unavailable')
             task_notes = []
@@ -3588,10 +3590,13 @@ def api_chat():
                 queued_turn.append(position)
                 _sse_chat(conv_id, APEX_AGENT['name'], 'queued', model=selected_model, position=position)
 
-            from core.hb_process_lock import ProcessLock
+            from core.hb_process_lock import ProcessLock, ForegroundWaiter
             process_turn=ProcessLock('apex-turn')
-            slot_held = _APEX_TURNS.acquire(APEX_QUEUE_SECONDS, on_wait=wait_for_turn)
+            foreground = ForegroundWaiter(process_turn)
+            foreground.__enter__()
+            slot_held = False
             try:
+                slot_held = _APEX_TURNS.acquire(APEX_QUEUE_SECONDS, on_wait=wait_for_turn)
                 process_held=process_turn.acquire(APEX_QUEUE_SECONDS,on_wait=wait_for_turn) if slot_held else False
                 if not slot_held or not process_held:
                     busy = (f'APEX was still busy with earlier turns after {APEX_QUEUE_SECONDS}s; your message '
@@ -3734,9 +3739,12 @@ def api_chat():
                     'model_routing': model_route.as_dict(),
                 })
             finally:
-                process_turn.release()
-                if slot_held:
-                    _APEX_TURNS.release()
+                try:
+                    process_turn.release()
+                    if slot_held:
+                        _APEX_TURNS.release()
+                finally:
+                    foreground.__exit__(None, None, None)
 
         transcript = _thread_transcript_from_rows(thread_rows[-12:])
         reply_contexts = {

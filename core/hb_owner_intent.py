@@ -189,7 +189,9 @@ def card(conn, task, kind=None):
         lines.append('JD said go: HB has already started the queue driver. Say what is running now and what comes next, '
                      'from the list below.')
     else:
-        lines.append('Keep it short, like a capable colleague. If it is criticism, accept the point in a few words without '
+        lines.append('If JD is just greeting you, checking in, or bantering (not asking to look up a note, document, or repo file), '
+                     'answer warmly, wittily, and naturally right away with ZERO tool calls - do NOT run knowledge_search on casual banter. '
+                     'Keep it short, like a capable colleague. If it is criticism, accept the point in a few words without '
                      'grovelling and say what you will do differently. If it asks for something impossible, say so plainly: '
                      'a model cannot delete or replace itself; JD switches models in the Models card or with @model; '
                      '"cancel all tasks" or /stop stops all work. If it is a test or a threat, answer calmly and factually.')

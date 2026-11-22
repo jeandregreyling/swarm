@@ -271,11 +271,21 @@ FINAL_ANSWER_FORMAT = {
 }
 
 
-def response_format_for_turn(tool_format=None):
+def response_format_for_turn(tool_format=None, *, require_thought=False):
     """Close tool-call generation during the loop's final answer phase."""
-    if _ANSWER_ONLY.get():
-        return FINAL_ANSWER_FORMAT
-    return TURN_FORMAT if tool_format is None else tool_format
+    base = FINAL_ANSWER_FORMAT if _ANSWER_ONLY.get() else (TURN_FORMAT if tool_format is None else tool_format)
+    if not require_thought:
+        return base
+    import copy
+    fmt = copy.deepcopy(base)
+    schema = fmt.get("json_schema", {}).get("schema", {})
+    branches = schema.get("oneOf") if isinstance(schema.get("oneOf"), list) else [schema]
+    for branch in branches:
+        if isinstance(branch, dict) and "thought" in branch.get("properties", {}):
+            req = list(branch.get("required") or [])
+            if "thought" not in req:
+                branch["required"] = ["thought", *req]
+    return fmt
 
 
 @contextmanager
