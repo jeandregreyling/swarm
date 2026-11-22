@@ -40,7 +40,7 @@ def test_turn_reports_rounds_tools_and_checks(tmp_path, monkeypatch):
         return search if name == 'knowledge_search' else {'status': 'found', 'title': 'SAP Note 3713786', 'content': 'payday super text'}
     run_apex_tools(lambda _n, _m: (turns.pop(0), 1), [{'role': 'user', 'content': 'What do our SAP notes say about the MCB cap?'}],
                    lambda: True, lambda _r: None, ReadOnlyRepository(tmp_path), studio_handler=studio)
-    assert steps[0].startswith('APEX') and 'starts' in steps[0] and steps[1] == 'APEX thinking - round 1'
+    assert steps[0].startswith('APEX') and 'starts' in steps[0] and steps[1] == 'APEX round 1: 0 changes, 0 checks, 0 reads so far'   # Practice 291
     assert 'searching our notes: "MCB cap"' in steps and f'reading KC document {L + 7004}' in steps
     assert any(s.startswith('HB read check sent the answer back') for s in steps)
 

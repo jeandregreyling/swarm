@@ -173,7 +173,7 @@ def turn(conn, task_id=None, request_id=None, run_id=None):
     started = {rid for rid, kind, _ in calls if kind == 'start'}
     ended = {rid for rid, kind, _ in calls if kind in ('finish', 'error')}
     tokens = sum(int(m.group(1)) for _, kind, text in calls if kind == 'finish' for m in [re.match(r'(\d+) tokens', str(text or ''))] if m)
-    rounds = len([s for s, _ in stages if s.startswith('APEX thinking - round')])
+    rounds = len([s for s, _ in stages if s.startswith(('APEX thinking - round', 'APEX round '))])   # Practice 291
     if started - ended and running:
         inf = ('live', f'The model is reading or writing now (call {len(started)})')
     elif started or rounds:

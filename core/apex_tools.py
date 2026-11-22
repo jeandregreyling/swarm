@@ -1729,6 +1729,20 @@ def check_line(text) -> str:
     return f'HB {m.group(1).lower()} sent the answer back' + (f': {why}' if why else '')
 
 
+CHANGE_TOOLS = {'propose_patch', 'propose_write_file', 'change_set'}
+
+
+def round_line(n, receipts, final=False):
+    """Practice 291 (JD 22 Nov: "'APEX thinking' what the actual fuck does that even mean? thinking without DOING is fucking wild"): each
+    model round is announced with the tally of what APEX has actually done this turn."""
+    ok = [r for r in receipts or [] if r.get('status') == 'succeeded']
+    changes = sum(1 for r in ok if r.get('tool') in CHANGE_TOOLS)
+    checks = sum(1 for r in ok if r.get('tool') == 'run_tests')
+    reads = len(ok) - changes - checks
+    tally = f'{changes} change{"" if changes == 1 else "s"}, {checks} check{"" if checks == 1 else "s"}, {reads} read{"" if reads == 1 else "s"} so far'
+    return f'APEX round {n}: ' + ('writing the answer - ' if final else '') + tally
+
+
 def say_step(text):
     """Report one step to the chat (no-op outside a chat turn)."""
     if not text:
@@ -2317,7 +2331,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                 from core.apex_routing import active_model
                 if not round_index:                       # Practice 176
                     say_step('APEX' + (f' ({_playing_name()})' if _playing_name() else '') + ' starts: reading the question')
-                say_step(f'APEX thinking - round {round_index + 1}' + (' (writing the answer)' if final_answer else ''))
+                say_step(round_line(round_index + 1, receipts, final_answer))   # Practice 291: what he has DONE, not 'thinking'
                 text, used = call_apex(call_model, active_model(), working)
         except RuntimeError as exc:
             if capacity_error(exc):
