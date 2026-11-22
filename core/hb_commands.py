@@ -24,6 +24,8 @@ COMMANDS = [
     ('tasks', '/tasks', 'Open tasks in this chat and whether Continue is on', False),
     ('stuck', '/stuck', 'Tasks that keep failing or looping, with the exact error', False),
     ('approvals', '/approvals', 'Everything waiting for your decision', False),
+    ('grant', '/grant A-xxxx', 'Grant an access request from APEX/HB (one tool, one task)', False),   # Practice 270
+    ('deny', '/deny A-xxxx', 'Refuse an access request from APEX/HB', False),
     ('queue', '/queue', 'Queued and running agent requests', False),
     ('pause', '/pause [T-xxxx]', 'Hold the running task, or a named task (same as its Off control)', False),
     ('continue', '/continue T-xxxx', 'Resume a task (same as its On control)', False),
@@ -70,7 +72,7 @@ COMMANDS = [
     ('yes', '/yes', 'Confirm what HB just asked', False),
     ('no', '/no', 'Decline what HB just asked', False),
 ]
-NAMES = [c[0] for c in COMMANDS]
+NAMES = [c[0] for c in COMMANDS] + ['permissions']   # Practice 270: '/permissions granted to request A-xxxx'
 TASK_RE = re.compile(r'\bT-[0-9A-F]{12}\b', re.I)
 STEP_RE = re.compile(r'\bS-[0-9A-F]{10}\b', re.I)
 ACCEPTANCE_SQL = "status='partial' AND (residual_risk LIKE '%acceptance pending%' OR residual_risk LIKE '%awaiting owner acceptance%')"
@@ -117,6 +119,8 @@ def parse(body):
         return None
     if cmd in ('pause', 'continue', 'cancel'):
         m = TASK_RE.search(body)
+        if cmd == 'continue' and not m and (len(words) == 1 or words[1].lower().strip('.!') == 'all'):
+            return ('continue', ['ALL'])   # Practice 246 (JD 21 Nov, Telegram: '/continue' twice got the help text)
         if cmd == 'pause' and len(words) == 1:
             return ('pause', [])
         return (cmd, [m.group(0).upper()]) if m else None
@@ -124,6 +128,10 @@ def parse(body):
         m = TASK_RE.search(body)
         criteria = [c.strip(' .') for c in re.split(r'[;\n]+', body[m.end():]) if c.strip(' .')] if m else []
         return ('done', [m.group(0).upper()] + criteria) if m and criteria else None
+    if cmd in ('grant', 'deny') or (cmd == 'permissions' and 'grant' in body.lower()):   # Practice 270
+        from core.hb_access import RID
+        m = RID.search(body)
+        return (('deny' if cmd == 'deny' or 'deny' in body.lower() or 'refuse' in body.lower() else 'grant'), [m.group(0).upper()]) if m else None
     if cmd == 'clipboard':
         m = TASK_RE.search(body)
         return ('clipboard', [m.group(0).upper()]) if m else None
@@ -464,19 +472,43 @@ def waiting_items(conn, conversation_id=None, *, now=None):
     if {'hb_peer_work', 'hb_task_requests', 'peer_messages', 'hb_tasks'} <= tables:
         pm = _columns(conn, 'peer_messages')
         pick = lambda name, sql=None: (sql or f'p.{name}') if name in pm else 'NULL'
+        reviews = 0
         for rid, task_id, stage, updated, recipient, sender, mid, conv, body in conn.execute(
                 "SELECT w.request_id, r.task_id, COALESCE(w.stage,''), w.updated_at, p.recipient, p.sender, "
                 f"{pick('message_id')}, {pick('conversation_id')}, {pick('body', 'substr(p.body,1,1200)')} "
                 "FROM hb_peer_work w JOIN hb_task_requests r ON r.request_id=w.request_id "
                 "JOIN hb_tasks t ON t.task_id=r.task_id JOIN peer_messages p ON p.id=w.request_id "
-                "WHERE w.state='needs_review' AND t.state NOT IN ('completed','cancelled') ORDER BY w.request_id DESC LIMIT 10").fetchall():
+                "WHERE w.state='needs_review' AND t.state NOT IN ('completed','cancelled') ORDER BY w.request_id DESC"):
             t = task(task_id)
+            from core.hb_calm import interrupted
+            if interrupted(stage):
+                # Practice 249 (JD 21 Nov 22:38: 'why am I seeing the golden ticket window?'): a restart is routine. While the task is
+                # on, HB queues the next turn by itself - the card used to show in the seconds before that replacement existed.
+                from core import hb_tasks as _ht, hb_chat_controls as _hc
+                continue   # Practice 251 (JD 22:50 'the golden ticket is still there'): never a decision for JD - HB resumes or the
+                           # task's own blocker (e.g. a review) shows on its own; a restart-cut turn is not JD's to judge
+            if interrupted(stage) and 'hb_task_events' in tables:
+                replacement = conn.execute(
+                    "SELECT 1 FROM hb_task_requests r JOIN peer_messages p ON p.id=r.request_id "
+                    "JOIN hb_peer_work w ON w.request_id=p.id "
+                    "WHERE r.task_id=? AND p.recipient=? AND p.id>? "
+                    "AND (w.state IN ('queued','running') AND p.delivered_at IS NULL "
+                    "OR w.state='completed') LIMIT 1",
+                    (task_id, recipient, rid)).fetchone()
+                if replacement:
+                    from core import hb_tasks, hb_chat_controls
+                    current = hb_tasks.get(conn, task_id)
+                    if current and hb_chat_controls.continuation(conn, current)['effective'] == 'on':
+                        continue
             items.append({'key': f'review:{rid}', 'kind': 'review', 'label': f'Request #{rid} to {recipient}', 'request_id': rid,
                           'title': f'{sender} → {recipient} · {task_id} {t[3] if t else ""}'.strip(), 'why': stage, 'detail': body or '',
                           'task_id': task_id, 'step_id': t[5] if t else None, 'project_id': t[4] if t else None,
                           'conversation_id': conv, 'message_ids': [mid] if mid else [],
                           'open': {'type': 'message', 'id': mid, 'conversation_id': conv} if mid else None,
                           'actions': [], 'since': updated})
+            reviews += 1
+            if reviews == 10:
+                break
 
     if 'project_steps' in tables:
         ps = _columns(conn, 'project_steps')
@@ -487,6 +519,9 @@ def waiting_items(conn, conversation_id=None, *, now=None):
                 f"COALESCE(residual_risk,''), {col('updated_at', '0')} FROM project_steps WHERE {ACCEPTANCE_SQL} ORDER BY {order}").fetchall():
             t = conn.execute("SELECT task_id, conversation_id, root_message_id FROM hb_tasks WHERE step_id=? ORDER BY created_at DESC LIMIT 1",
                              (step_id,)).fetchone() if 'hb_tasks' in tables else None
+            from core.hb_tasks import owner_review_blocker
+            if t and owner_review_blocker(conn, step_id):
+                continue
             items.append({'key': f'accept:{step_id}', 'kind': 'accept', 'label': _short(title), 'title': str(title), 'why': note,
                           'detail': description[:2400] + ('…' if len(description) > 2400 else ''), 'step_id': step_id,
                           'project_id': project_id, 'task_id': t[0] if t else None, 'conversation_id': t[1] if t else None,
@@ -528,9 +563,14 @@ def _finished_items(conn, items, conversation_id):
             "MAX(CASE WHEN kind='mutation' THEN created_at END) FROM hb_task_events WHERE task_id=?", (task_id,)).fetchone()
         if not passed or not changed or passed < changed:
             continue
+        from core import hb_tasks
+        if hb_tasks.owner_review_blocker(conn, step_id):
+            continue
         listed.add(f'accept:{step_id}')
         found.append({'key': f'accept:{step_id}', 'kind': 'accept', 'label': _short(title), 'title': str(title),
-                      'why': 'Finished: its checks pass after its last change', 'detail': description[:2400],
+                      'why': ('Independent QA confirmed; checks pass after the last change'
+                              if hb_tasks.requires_owner_review(conn, hb_tasks.get(conn, task_id))
+                              else 'Finished: its checks pass after its last change'), 'detail': description[:2400],
                       'step_id': step_id, 'project_id': project_id, 'task_id': task_id, 'conversation_id': conv,
                       'message_ids': [root], 'open': {'type': 'step', 'id': step_id},
                       'actions': [{'label': 'Approve', 'decision': 'accept'}, {'label': 'Send back…', 'decision': 'reject'}],
@@ -639,6 +679,29 @@ def _set_mode(conn, task_id, mode, actor):
     return f"{task_id} is now {'On' if mode == 'on' else 'Off'} ({r['state']}).{extra}"
 
 
+def _continue_all(conn, conversation_id, actor):
+    """Practice 246: /continue or /continue all - Continue On for every open, held task in this chat that is real work (a Studio step).
+    Chat lines and commands are not work and stay as they are."""
+    from core import hb_tasks
+    from core.hb_chat_controls import continuation
+    resumed, skipped = [], 0
+    for (tid,) in conn.execute("SELECT task_id FROM hb_tasks WHERE conversation_id=? AND state NOT IN ('completed','cancelled') "
+                               "AND COALESCE(step_id,'')<>'' AND COALESCE((SELECT owner FROM project_steps s WHERE s.step_id=hb_tasks.step_id),'') "
+                               "NOT IN ('jd','hummingbird') ORDER BY created_at", (conversation_id,)).fetchall():   # 248b: JD's own steps stay his
+        t = hb_tasks.get(conn, tid)
+        if not t or continuation(conn, t)['mode'] == 'on':
+            continue
+        try:
+            _set_mode(conn, tid, 'on', actor + ' via /continue all')
+            resumed.append(tid)
+        except Exception:
+            skipped += 1
+    if not resumed:
+        return 'Every open work task is already On.' + (f' ({skipped} could not be resumed.)' if skipped else '')
+    return (f'Continue On for {len(resumed)} task(s): ' + ', '.join(resumed) + '.'
+            + (f' {skipped} could not be resumed.' if skipped else ''))
+
+
 def cancel_task(conn, task_id, actor, after=None):
     """Owner cancels a task: Off, state cancelled, queued requests cancelled, its Studio step closed."""
     from core import hb_tasks
@@ -694,6 +757,10 @@ def accept_step(conn, step_id, actor, comment=''):
         return f'No Studio step {step_id}.'
     if row[0] == 'done':
         return f'{step_id} is already accepted.'
+    from core.hb_tasks import owner_review_blocker
+    blocker = owner_review_blocker(conn, step_id)
+    if blocker:
+        return f'Cannot approve {step_id}: {blocker}.'
     now = time.time()
     comment = ' '.join(str(comment or '').split())[:1000]
     auto = str(actor).startswith('HB auto-approve')
@@ -794,9 +861,14 @@ def run(conn, conversation_id, command, args, actor, after=None):
         total = conn.execute("SELECT COUNT(*) FROM hb_tasks WHERE conversation_id=? AND state NOT IN ('completed','cancelled')", (conversation_id,)).fetchone()[0]
         head = f'Open tasks ({total}' + (f', newest {len(tasks)} shown' if total > len(tasks) else '') + '):\n'
         return head + '\n'.join(f"- {t['task_id']} [{t['state']}, Continue {t['mode']}, {t['status']}] {t['title'][:90]}" for t in tasks)
+    if command in ('grant', 'deny'):   # Practice 270: an owner decides an access request
+        from core import hb_access
+        return hb_access.decide(conn, args[0], command == 'grant', actor)
     if command == 'stuck':
         from core.hb_dream_cycle import build_report
         return build_report(conn)['text']
+    if command == 'continue' and args == ['ALL']:
+        return _continue_all(conn, conversation_id, actor)
     if command in ('pause', 'continue'):
         if command == 'pause' and not args:
             running = _running_tasks(conn, conversation_id)

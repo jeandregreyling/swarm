@@ -577,6 +577,61 @@ def needs_verification(conn,task):
     return bool(mutations or cases)
 
 
+def requires_owner_review(conn, task):
+    from core.hb_plan_workflow import DEFAULT_PROJECT
+    return bool(task and task.get('project_id') == DEFAULT_PROJECT and needs_verification(conn, task))
+
+
+def verified_check(conn, task):
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if not {'project_test_cases', 'test_runs'} <= tables:
+        raise ValueError('QA requires defined cases and recorded guarded runs')
+    cases = conn.execute('SELECT status FROM project_test_cases WHERE project_id=? AND step_id=?',
+                         (task['project_id'], task['step_id'])).fetchall()
+    if not cases or any(case[0] != 'passed' for case in cases):
+        raise ValueError('All defined task cases need recorded passing runs before QA')
+    floor = conn.execute("SELECT MAX(created_at) FROM hb_task_events WHERE task_id=? "
+                         "AND kind IN ('mutation','instruction','task_plan')", (task['task_id'],)).fetchone()[0] or 0
+    changed = conn.execute("SELECT MAX(e.created_at) FROM hb_task_events e JOIN hb_tasks t ON t.task_id=e.task_id "
+                           "WHERE t.step_id=? AND e.kind='mutation'", (task['step_id'],)).fetchone()[0] or 0
+    row = conn.execute("SELECT e.event_id,e.created_at,r.run_id,r.started_at,r.status,r.project_id,r.step_id,"
+                       "json_extract(e.payload,'$.alm_run_status'),COALESCE(json_extract(e.payload,'$.verdict'),'') "
+                       "FROM hb_task_events e LEFT JOIN test_runs r ON r.run_id=json_extract(e.payload,'$.alm_run_id') "
+                       "WHERE e.task_id=? AND e.kind='test_result' ORDER BY e.event_id DESC LIMIT 1",
+                       (task['task_id'],)).fetchone()
+    if not row or not row[2] or row[4] != 'pass' or row[5:7] != (task['project_id'], task['step_id']) or row[7] != 'pass':
+        raise ValueError('QA requires the latest actual guarded passing test receipt for this task')
+    if 'deselected' in row[8].lower():
+        raise ValueError('QA requires the full defined check, not a deselected subset')
+    if not row[3] or row[3] < max(floor, changed) or row[1] < max(floor, changed):
+        raise ValueError('Task changed after verification; run checks again before QA')
+    return {'test_event_id': row[0], 'alm_run_id': row[2], 'checked_at': row[1]}
+
+
+def owner_review_blocker(conn, step_id):
+    from core.agent_identity import INSTRUCTORS
+    tasks = [get(conn, r[0]) for r in conn.execute('SELECT task_id FROM hb_tasks WHERE step_id=?', (step_id,))]
+    if not any(requires_owner_review(conn, task) for task in tasks):
+        return ''
+    reviewers = tuple(sorted(INSTRUCTORS))
+    marks = ','.join('?' for _ in reviewers)
+    review = conn.execute("SELECT e.task_id,e.payload,e.created_at FROM hb_task_events e "
+                          "JOIN hb_tasks t ON t.task_id=e.task_id WHERE t.step_id=? AND e.kind='reviewed' "
+                          f"AND e.agent IN ({marks}) ORDER BY e.event_id DESC LIMIT 1", (step_id, *reviewers)).fetchone()
+    if not review:
+        return 'Independent QA has not confirmed this code step; no approval saved'
+    task = get(conn, review[0])
+    try:
+        receipt = verified_check(conn, task)
+        saved = json.loads(review[1])
+    except ValueError as exc:
+        return f'Independent QA is not current: {exc}'
+    if (not isinstance(saved, dict) or saved.get('test_event_id') != receipt['test_event_id']
+            or saved.get('alm_run_id') != receipt['alm_run_id'] or review[2] < receipt['checked_at']):
+        return 'Independent QA is older than the latest check; review it again before approval'
+    return ''
+
+
 def call(tool, args):
     from core import agent_identity
     from core.knowledge import projects
@@ -660,6 +715,14 @@ def call(tool, args):
                 if not conn.execute("SELECT 1 FROM hb_task_messages tm JOIN hb_peer_replies r ON r.message_id=tm.message_id JOIN messages m ON m.id=tm.message_id WHERE tm.task_id=? AND tm.message_id=? AND r.outcome='answer' AND m.from_agent='apex'",(task['task_id'],mid)).fetchone():
                     raise PermissionError('Acceptance evidence must be an actual successful reply in this task')
             if not task['step_id']:raise PermissionError('Acceptance requires a Studio task step')
+            if requires_owner_review(conn,task):
+                receipt=verified_check(conn,task)
+                eid=event(conn,task,actor['principal'],'reviewed',{'evidence_message_ids':evidence,**receipt},
+                          request_id=actor.get('peer_request_id'))
+                conn.commit()
+                return {'task_id':task['task_id'],'step_id':task['step_id'],'state':'awaiting_owner',
+                        'review_event_id':eid,**receipt,
+                        'notice':'Independent QA passed. Only the owner can approve this living-plan code step; it is not done yet.'}
             cases=projects.list_test_cases(task['project_id'],step_id=task['step_id'])
             if not cases or any(case['status']!='passed' for case in cases):
                 raise ValueError('All defined task cases need recorded passing runs before acceptance')
@@ -759,7 +822,7 @@ def _resume_body(conn,task):
     return body
 
 
-def resume_by_owner(conn,task):
+def resume_by_owner(conn,task,*,defer_auto_approval=False):
     """Owner-authenticated handler only: renew headroom and enqueue one scoped attempt."""
     from core import peer_bridge,peer_turns
     if task['state']=='completed':raise ValueError('Accepted tasks cannot be resumed')
@@ -792,7 +855,8 @@ def resume_by_owner(conn,task):
     mid=conn.execute('''INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used)
         VALUES (?,'hummingbird','apex',?,'handoff',0)''',(task['conversation_id'],body)).lastrowid
     bind(conn,task['conversation_id'],mid,task_id=task['task_id'],kind='checkpoint')
-    queued=peer_bridge.enqueue(conn,task['conversation_id'],mid,body,['apex'],sender='hummingbird')
+    queued=peer_bridge.enqueue(conn,task['conversation_id'],mid,body,['apex'],sender='hummingbird',
+                               auto_approve=not defer_auto_approval)
     policy=conn.execute("SELECT request_id,payload FROM hb_task_events WHERE task_id=? AND kind='tool_scope' AND agent IN ('codex-instructor','copilot-instructor','hummingbird') ORDER BY event_id DESC LIMIT 1",
         (task['task_id'],)).fetchone()
     if policy:

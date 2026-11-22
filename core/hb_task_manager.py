@@ -345,9 +345,9 @@ def _queue(conn,task,row,phase,reason,model=None,selected=False):
         recipient=review_recipient(conn)
         action=('Independently verify this assigned Studio component from its actual source and test receipts. '
             'Use task_context/task_evidence and bounded source reads. If ALL defined cases pass and the owner goal for this component is actually met, '
-            'call studio_accept with the actual successful APEX reply message IDs supplied below. Otherwise explain the precise remaining action. '
+            'call studio_accept with the actual successful APEX reply message IDs supplied below. For living-plan code this records QA only, returns awaiting_owner and leaves the step open until the owner approves. Otherwise explain the precise remaining action. '
             'Do not dispatch another agent or wait for a child; return this review so HB can schedule the next step. Do not accept the whole project from one component.')
-        action+=' If incomplete, you MUST call task_plan with one executable next action: a narrow source range, one exact patch or small new function, and the actual check to run. Six local tool rounds are a checkpoint, so split large features into small implementation actions. Do not merely repeat the whole wishlist. If accepted backend changes need activation, call runtime_reload after studio_accept; it queues only the approved fixed HB service.'
+        action+=' If incomplete, you MUST call task_plan with one executable next action: a narrow source range, one exact patch or small new function, and the actual check to run. Six local tool rounds are a checkpoint, so split large features into small implementation actions. Do not merely repeat the whole wishlist. Only if studio_accept returns completed and an existing fixed-runtime grant permits it may you call runtime_reload. An awaiting_owner QA result is not completion or runtime permission.'
         action+=' KC272 is the actual operating/storage index; KC273 has programme status; KC269 preserves the visible conversation as reference, not new permission. Read them with knowledge_read when context is needed.'
         tools=REVIEW_TOOLS
     else:
@@ -548,6 +548,13 @@ def tick(conn,*,now=None,memory=None):
             weak=weak_done(task)
             if weak:
                 ready=False;_refuse(conn,task,0,weak,label='the step')
+        if ready and hb_tasks.requires_owner_review(conn,task) and not hb_tasks.owner_review_blocker(conn,task['step_id']):
+            conn.execute("UPDATE hb_task_manager SET phase='review' WHERE task_id=?",(task['task_id'],))
+            if row['state']!='needs_owner':
+                ask_owner(conn,task,f"Independent QA confirmed {_plain_name(conn,task)}. {proof(conn,task)} Approve it?",
+                          f"/accept {task['step_id']} approves it; /pause {task['task_id']} keeps it held.")
+            _set(conn,task['task_id'],'needs_owner','Independent QA passed; waiting for owner acceptance')
+            continue
         # 14 Nov: a recorded deliverable (studio_note/studio_task) is progress too - research steps produce notes, not
         # mutations, and without this they ratcheted recovery_count into an endless review loop (DAW/potato farm, 14 Nov).
         progress=conn.execute("SELECT COALESCE(MAX(event_id),0) FROM hb_task_events WHERE task_id=? AND (kind IN ('mutation','studio_note','studio_task','chunk_done') OR (kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))",(task['task_id'],)).fetchone()[0]   # Practice 231

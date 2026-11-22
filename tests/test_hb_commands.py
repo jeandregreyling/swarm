@@ -193,3 +193,19 @@ def test_done_and_clipboard_commands(conn):
     assert card.startswith('DREAM CLIPBOARD for ' + tid) and 'Done when (owner): VRAM matches sysfs' in card
     names = [c['name'] for c in hc.catalogue()]
     assert 'done' in names and 'clipboard' in names
+
+
+
+def test_living_plan_code_cannot_be_accepted_without_qa(conn, monkeypatch):
+    from core import hb_plan_workflow as wf, hb_change_sets, hb_merits
+    tid = _task(conn)
+    step = 'S-ABCDEF0123'
+    conn.execute("ALTER TABLE project_steps ADD COLUMN title TEXT")
+    conn.execute("INSERT INTO project_steps VALUES(?,'doing','',0,'Needs code QA')", (step,))
+    conn.execute('UPDATE hb_tasks SET project_id=?,step_id=? WHERE task_id=?', (wf.DEFAULT_PROJECT, step, tid))
+    hb_tasks.event(conn, hb_tasks.get(conn, tid), 'apex', 'mutation', {'tool': 'propose_patch'})
+    monkeypatch.setattr(hb_change_sets, 'commit', lambda *_: pytest.fail('No commit before QA'))
+    monkeypatch.setattr(hb_merits, 'on_accept', lambda *_: pytest.fail('No flower before QA'))
+    assert 'QA' in hc.accept_step(conn, step, 'fixture owner')
+    assert conn.execute('SELECT status FROM project_steps WHERE step_id=?', (step,)).fetchone()[0] == 'doing'
+    assert hb_tasks.get(conn, tid)['state'] == 'active'
