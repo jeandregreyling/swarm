@@ -295,6 +295,44 @@ def _copilot_linked(conn):
         return False
 
 
+_EXTRA = {'at': 0.0, 'data': None}
+
+
+def status_extra(now=None, net=None, hf=None, jobs=None):
+    """Practice 290 (JD 22 Nov: "downloads and background activity ... sometimes we execute a download and I can't see what's happening" and
+    "the network settings should also be in there showing which wifi/LAN is in use"): read every 10 s, not every 2 s."""
+    now = now or time.time()
+    if net is None and hf is None and jobs is None and _EXTRA['data'] is not None and now - _EXTRA['at'] < 10:
+        return _EXTRA['data']
+    out = {'network': [], 'downloads': [], 'background': []}
+    try:
+        links = net if net is not None else __import__('core.hb_network', fromlist=['inventory']).inventory()
+        used = next((l['name'] for l in links if l.get('default') and l.get('up')), None)
+        out['network'] = [{'name': l.get('label') or l.get('network') or l['name'], 'device': l['name'], 'kind': l.get('kind'),
+                           'in_use': l['name'] == used, 'backup': bool(l.get('default')) and l['name'] != used, 'mobile': bool(l.get('mobile'))}
+                          for l in links if l.get('up')]
+    except Exception:
+        pass
+    try:
+        s = hf if hf is not None else __import__('core.hf_library', fromlist=['archive_status']).archive_status()
+        hub = s.get('full_public_hub') or {}
+        t = hub.get('active_transfer') or {}
+        if t or hub.get('state') in ('in_progress', 'paused'):
+            out['downloads'].append({'what': 'Hugging Face mirror', 'state': 'paused' if hub.get('downloads_paused') else hub.get('state') or '',
+                                     'now': (f"{t.get('repo')} / {t.get('path')}" if t else ''), 'error': str(hub.get('last_error') or '')[:160]})
+    except Exception:
+        pass
+    try:
+        js = jobs if jobs is not None else __import__('core.hb_background', fromlist=['snapshot']).snapshot()
+        out['background'] = [{'who': j.get('role'), 'model': j.get('model'), 'task': str(j.get('task') or '')[:90],
+                              'now': (j.get('steps') or [{}])[-1].get('what', '')} for j in js]
+    except Exception:
+        pass
+    if net is None and hf is None and jobs is None:
+        _EXTRA.update(at=now, data=out)
+    return out
+
+
 def _doers(conn):
     """Practice 276 (JD 22 Nov: the task list showed "actors that aren't even available"): who HB can really give a step to from the list.
     APEX always; Fred unless his switch is Off. Other names are not wired into HB's workflow (core/hb_plan_workflow._dispatch_doer)."""
@@ -457,5 +495,6 @@ def snapshot(conn, now=None, tele=None, items=None):
     except Exception:
         pass
     out['doers'] = _doers(conn)                                # Practice 276: the task list offers only these
+    out['status_extra'] = status_extra()                       # Practice 290: network, downloads, background jobs
     out['apex_lights'] = _apex_lights(conn)                    # Practice 272: always on the meter, live or the last turn
     return out

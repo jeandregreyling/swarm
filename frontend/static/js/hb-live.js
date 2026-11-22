@@ -292,6 +292,20 @@
   }
   // Practice 287 (JD 22 Nov: "the live status dropdown is hideously designed and completely unusable ... the context of that section is also
   // quite fucked"): a clean Status drawer - APEX, its window, GPU/CPU mode and the model switches (chat.js handles [data-hb-models] clicks).
+  // Practice 290 (JD 22 Nov): downloads and background work, and which network is in use, in the Status drawer
+  function renderExtra(x) {
+    const e = x || {}, net = e.network || [], dl = e.downloads || [], bg = e.background || [];
+    let html = '<div class="hbl-sub">Downloads &amp; background</div>';
+    if (!dl.length && !bg.length) html += '<div class="hbl-note hbl-dim">Nothing downloading or running in the background.</div>';
+    dl.forEach((d) => { html += `<div class="hbl-note">⇩ <b>${esc(d.what)}</b> · ${esc(d.state)}${d.now ? '<div class="hbl-dim">' + esc(d.now) + '</div>' : ''}` +
+      (d.error ? `<div class="hbl-warn">${esc(d.error)}</div>` : '') + '</div>'; });
+    bg.forEach((b) => { html += `<div class="hbl-note">⚙ <b>${esc(b.who)}</b>${b.model ? ' · ' + esc(b.model) : ''} · ${esc(b.task)}${b.now ? '<div class="hbl-dim">' + esc(b.now) + '</div>' : ''}</div>`; });
+    html += '<div class="hbl-sub">Network</div>';
+    if (!net.length) html += '<div class="hbl-note hbl-dim">No connection is up.</div>';
+    net.forEach((n) => { html += `<div class="hbl-note">${n.in_use ? '<b style="color:#2ecc71">● in use</b>' : n.backup ? '<span class="hbl-dim">○ backup</span>' : '<span class="hbl-dim">○</span>'} ` +
+      `<b>${esc(n.name)}</b> <span class="hbl-dim">· ${esc(n.kind || '')}${n.mobile ? ' · mobile data' : ''} · ${esc(n.device)}</span></div>`; });
+    return html;
+  }
   function renderStatus(snap, modelsHtml) {
     const a = snap.apex_live || {}, c = (snap.telemetry || {}).cpu || {};
     const n = (x) => Number(x || 0).toLocaleString('en-AU');
@@ -300,6 +314,7 @@
       `<div class="hbl-note">${a.up ? '' : '⚠ model server not answering · '}<b>${esc(a.model || 'unknown model')}</b>${a.device ? ' · ' + esc(a.device) : ''}` +
       `${a.ctx ? ' · window ' + n(a.ctx) + ' tokens' : ''}${a.busy ? ' · working' : ' · idle'}</div>` +
       '<div class="hbl-sub">Power</div>' + `<div class="hbl-note">${renderPower(snap)}${c.governor ? ' <span class="hbl-dim">CPU ' + esc(cpuMode(c)) + '</span>' : ''}</div>` +
+      renderExtra(snap.status_extra) +
       '<div class="hbl-sub">Models (Auto = HB decides · On = preferred · Off = never)</div>' +
       `<div class="chat-live-stack hb-models" data-hb-models>${modelsHtml || '<small>Loading the models…</small>'}</div>`;
   }
@@ -367,7 +382,7 @@
   }
 
   const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
-    primaryFor, systemLine, renderPower, renderDrawer, renderStatus, renderTalk, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
+    primaryFor, systemLine, renderPower, renderDrawer, renderStatus, renderExtra, renderTalk, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -442,6 +457,8 @@
 #hb-scroll-bottom.hb-follow{border-color:#2ecc71;color:#2ecc71;animation:hblPulse 1.4s infinite}
 #hb-scroll-bottom[hidden]{display:none}
 #hb-live-drawer .hb-models{max-height:none;overflow:visible;resize:none}
+.hbl-drawer-grip{position:sticky;float:left;top:0;margin:-6px 0 0 -12px;width:6px;height:100%;min-height:100vh;cursor:ew-resize;border-radius:3px}
+.hbl-drawer-grip:hover{background:rgba(46,204,113,.35)}
 #hb-live-drawer{scrollbar-width:thin;scrollbar-color:var(--border,#444) transparent}
 #hb-live-drawer{position:fixed;right:14px;top:70px;bottom:96px;width:min(460px,94vw);overflow:auto;z-index:9000;padding:6px 12px 10px;
   background:var(--card,#161616);color:var(--text,#ddd);border:1px solid var(--border,#333);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);font-size:12.5px}
@@ -467,6 +484,16 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     try { d = document.createElement('aside'); d.id = 'hb-live-drawer'; d.hidden = true; d.setAttribute('aria-label', 'HB task list'); document.body.appendChild(d); return d; }
     catch (e) { return { hidden: true, innerHTML: '', scrollTop: 0, contains: () => false, querySelector: () => null, querySelectorAll: () => [] }; }
   }
+  // Practice 290 (JD 22 Nov: "the new settings window is not resizable"): drag the drawer's left edge, like the main chat's grip
+  if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('mousedown', (e) => {
+    const grip = e.target && e.target.closest && e.target.closest('.hbl-drawer-grip');
+    if (!grip) return;
+    e.preventDefault();
+    const dr = drawerEl(), startX = e.clientX, startW = dr.getBoundingClientRect().width;
+    const move = (m) => { const w = Math.max(300, Math.min((root.innerWidth || 1600) - 40, startW + (startX - m.clientX))); dr.style.width = w + 'px'; ls('hbLive.drawerW', String(Math.round(w))); };
+    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+  });
   function insertAt(at) {        // Practice 285: talk-to buttons start the message with @name
     const input = document.getElementById('home-chat-input');
     if (!input) return;
@@ -549,7 +576,10 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (mode === 'status' && (!S.modelsAt || Date.now() - S.modelsAt > 20000) && typeof root.hbModelsLoad === 'function') {
       S.modelsAt = Date.now(); setTimeout(() => root.hbModelsLoad(dr), 0);
     }
-    dr.innerHTML = dr.hidden ? '' : mode === 'status' ? R.renderStatus(S.snap, root.hbModelsHtml) : R.renderDrawer(S.snap, opts);
+    dr.innerHTML = dr.hidden ? '' : '<div class="hbl-drawer-grip" title="Drag to resize"></div>' +
+      (mode === 'status' ? R.renderStatus(S.snap, root.hbModelsHtml) : R.renderDrawer(S.snap, opts));   // Practice 290: resizable
+    const w = Number(ls('hbLive.drawerW'));
+    if (dr.style && w >= 300) dr.style.width = Math.min(w, (root.innerWidth || 1600) - 40) + 'px';
     open.forEach((id) => { const sel = '[data-more-box="' + CSS.escape(id) + '"]'; const b = (el.querySelector && el.querySelector(sel)) || (dr.querySelector && dr.querySelector(sel)); if (b) b.hidden = false; });
     el.scrollTop = top; dr.scrollTop = dtop;
     popup();
@@ -774,6 +804,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const fold = t.closest('[data-fold]');
     if (fold) { S.open[fold.dataset.fold] = !S.open[fold.dataset.fold]; render(); return; }
     const drw = t.closest('[data-drawer]');   // Practice 285/287: one drawer, Tasks or Status
+    if (t.closest('.hbl-drawer-grip')) return;   // Practice 290: the grip drags, it does not close
     if (drw) { const want = drw.dataset.drawer === 'status' ? 'status' : 'tasks', now = ls('hbLive.drawer') === '1' ? 'tasks' : ls('hbLive.drawer');
       ls('hbLive.drawer', now === want ? '0' : want); render(); return; }
     const at = t.closest('[data-at]');
