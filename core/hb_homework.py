@@ -69,7 +69,13 @@ def test_files(text, root=None):
         if not p.is_file() or t in out:
             continue
         out[t] = []
-        for ref in ANY_PATH.findall(p.read_text(errors='replace')):
+        body = p.read_text(errors='replace')
+        mods = re.findall(r'^\s*from ((?:core|utils|frontend|scripts)(?:\.\w+)*) import ([\w ,()]+)', body, re.M)   # Practice 295: imports
+        refs = list(ANY_PATH.findall(body))
+        for pkg, names in mods:
+            refs.append(pkg.replace('.', '/') + '.py')
+            refs += [pkg.replace('.', '/') + '/' + n.strip() + '.py' for n in re.split(r'[,()\s]+', names) if n.strip() and ' as ' not in n]
+        for ref in refs:
             if ref not in out and not ref.startswith('tests/') and (root / ref).is_file():
                 out[ref] = []
     return out
@@ -190,7 +196,7 @@ def plan_problems(plan, known, gathered, card_extra=None):
                     out.append(f'the {key} names {p}, which does not exist - use the real files from the facts')
     for n, step in enumerate(plan, 1):
         s = str(step)
-        if _VAGUE_STEP.search(s):
+        if _VAGUE_STEP.search(s) and not (ANY_PATH.search(s) and re.search(r'\b\w+\(|\b_?\w+_\w+\b', s)):   # Practice 295: a step naming file and function is concrete
             out.append(f'plan step {n} is vague: "{s[:80]}" - say the one action and where')
         for p in set(_PATH.findall(s)) | set(ANY_PATH.findall(s)):
             if p not in known and p not in asked and not (root / p).exists():
