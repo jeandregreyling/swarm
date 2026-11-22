@@ -2291,7 +2291,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             return None
         if unread:
             answer += ("\n[Backend step check: ALM step " + ", ".join(unread)
-                       + " was never read with alm_step_get this turn; this answer is not based on it]")
+                       + " was never read with alm_step_get this turn — quick tip: read it with alm_step_get first so we stay aligned on the exact checklist]")
         step_ids = (list(dict.fromkeys(_STEP_ID.findall(latest_user.translate(_HYPHENS).upper())))
                     if studio_handler is not None and not no_tools else [])
         blocked = any(receipt.get("status") in {"failed", "denied"}
@@ -2318,7 +2318,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             correct(SKIPPED_SEARCH_ERROR.format(steps=", ".join(step_ids), items="; ".join(skipped)))
             return None
         if skipped:
-            answer += "\n[Backend step check: " + "; ".join(skipped) + ", and this turn made no such search]"
+            answer += "\n[Backend step check: " + "; ".join(skipped) + " — let's run that search next to double-check before finishing]"
         omitted = omitted_recorded_runs(answer, receipts) if step_ids and not unread else []
         if omitted and (can_retry or can_fix) and not run_report_retry_used:
             run_report_retry_used = True
