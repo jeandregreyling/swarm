@@ -3652,7 +3652,7 @@ def api_chat():
                     model_progress({'stage': 'running'})
                     with use_model(model_route, progress=model_progress), execution(APEX_AGENT['name'], model=selected_model,
                                    requested_by=operator[0] if operator else '', conversation_id=conv_id) as agent_run:
-                        if agent_run and bound_task:
+                        if agent_run and bound_task and not _use_lean_chat and bound_task.get('state') not in {'completed', 'cancelled', 'paused'}:
                             from core.hb_chat_controls import continuation as _continuation
                             from core import hb_tasks as _hb_tasks
                             with __import__('contextlib').closing(get_connection()) as _rev_conn:
