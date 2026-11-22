@@ -8,7 +8,7 @@ Stage 1 (this file): a role register. model_for(role) returns the model that pla
 Nothing else decides here: no loading, no benchmarking. Later stages assign from the benchmark and cover connections, disks and ports."""
 import time
 
-DEFAULTS = {'apex': 'qwen2.5:14b-instruct', 'deep': 'fred-cpu:24b', 'counsel': 'fred-cpu:24b', 'review': 'fred-cpu:24b', 'homework': 'homework-cpu:7b'}
+DEFAULTS = {'apex': 'gpt-oss:20b', 'deep': 'fred-cpu:24b', 'counsel': 'fred-cpu:24b', 'review': 'fred-cpu:24b', 'homework': 'homework-cpu:7b'}
 STAND_INS = {'apex': ('qwen2.5:7b-instruct', 'apex-direct:7b'), 'deep': ('qwen2.5-32b-instruct', 'mistral-small:24b', 'qwen2.5:14b-instruct'),
              'counsel': ('mistral-small:24b', 'qwen2.5:14b-instruct', 'homework-cpu:7b'), 'review': ('mistral-small:24b', 'qwen2.5:14b-instruct'),
              'homework': ('qwen2.5:7b-instruct', 'apex-direct:7b', 'llama3.2:latest')}

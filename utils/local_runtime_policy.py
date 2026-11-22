@@ -200,7 +200,12 @@ def compact_local_chat_prompt(message: Any) -> str:
 
 def is_explicitly_no_tools_request(user_message: Any) -> bool:
     """Return whether the operator explicitly prohibited tools for this turn."""
-    return bool(_NO_TOOL_REQUEST_RE.search(str(user_message or "")))
+    text = str(user_message or "")
+    # Practice 246 (21 Nov): an HB task envelope quotes specs (e.g. "a plain question ... (no task and no tool work)"); that is a
+    # description, never the owner forbidding tools - it made 9 work turns answer-only in 12 hours.
+    if text.lstrip().startswith('{"task_type"'):
+        return False
+    return bool(_NO_TOOL_REQUEST_RE.search(text))
 
 
 def is_read_only_agent(agent_name: Any) -> bool:

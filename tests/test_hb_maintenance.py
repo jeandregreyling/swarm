@@ -74,3 +74,18 @@ def test_a_draft_is_never_lost_after_an_update():
               "}).then(() => { if (reloaded) throw new Error('reloaded over a draft'); if (!els['hb-maint-updated']) throw new Error('no reload bar');"
               " if (els['hb-maintenance'].style.display !== 'none') throw new Error('overlay hides the draft'); console.log('ok'); });")
     assert _node(script).endswith('ok')
+
+
+def test_waiting_restart_does_not_cover_running_ui(monkeypatch):
+    from scripts import hb_restart
+    notices = []
+    class Busy:
+        def __init__(self, *_args, **_kwargs): pass
+        def __enter__(self): raise RuntimeError('HB execution gate is busy')
+        def __exit__(self, *_args): pass
+    monkeypatch.setattr(hb_restart, 'ProcessLock', Busy)
+    monkeypatch.setattr(hb_restart, 'announce', lambda *args, **kwargs: notices.append(args))
+    import pytest
+    with pytest.raises(RuntimeError, match='gate is busy'):
+        hb_restart.restart('all', 'Loading an update')
+    assert notices == []

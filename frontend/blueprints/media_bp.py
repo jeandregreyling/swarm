@@ -154,12 +154,7 @@ def _seed_knowledge(conn) -> None:
     )
     now = _now_iso()
     row = conn.execute("SELECT id FROM project_docs WHERE doc_name=?", (doc_name,)).fetchone()
-    if row:
-        conn.execute(
-            "UPDATE project_docs SET content=?, tags=?, updated_at=? WHERE id=?",
-            (content, 'media,studio,knowledge', now, row['id']),
-        )
-    else:
+    if not row:
         conn.execute(
             "INSERT INTO project_docs (doc_name, content, tags, updated_at) VALUES (?, ?, ?, ?)",
             (doc_name, content, 'media,studio,knowledge', now),

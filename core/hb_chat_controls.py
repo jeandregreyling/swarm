@@ -207,7 +207,7 @@ def set_continuation(conn, task, data, actor):
             conn.execute("UPDATE hb_tasks SET state='active',updated_at=? WHERE task_id=? AND state='paused'",(time.time(),task['task_id']))
             result = {'queued': [], 'follows_global': True, 'global_on': hb_queue.global_on(conn)}
         else:
-            result = hb_tasks.resume_by_owner(conn, task)
+            result = hb_tasks.resume_by_owner(conn, task, defer_auto_approval=True)
     task = hb_tasks.get(conn, task['task_id'])
     result.update(task_id=task['task_id'], version=task['version'], state=task['state'])
     from core.hb_task_manager import register
@@ -223,4 +223,9 @@ def set_continuation(conn, task, data, actor):
     eid = hb_tasks.event(conn, task, 'user', 'continuation_control',
         {'mode': data['mode'], 'actor': actor, 'command_id': data['command_id'], 'request': data, 'result': result},
         message_id=data['message_id'])
+    if data['mode'] in ('on','auto'):
+        # Native Auto must see the newly saved Continue, not the previous Off.
+        from core.hb_owner_sessions import approve_if_auto
+        for request_id in result.get('queued',[]):
+            approve_if_auto(conn,task,request_id)
     return {**result, 'receipt_id': eid, 'replayed': False}

@@ -78,13 +78,26 @@
     });
     S.sig = sig;
     dial(items);
-    if (!S.current || S.pinned) return;
+    if (!S.current) return;
+    const latest = S.byKey.get(S.current.key);
+    if (!latest) {
+      const el = cardEl();
+      const comment = el.querySelector('.hb-needs-comment');
+      if (comment && comment.value) {
+        el.querySelectorAll('[data-act="action"]').forEach(button => { button.disabled = true; });
+        feedback('This decision is no longer pending. Your comment is kept here; copy it before closing.');
+        el.classList.add('hb-needs-stale');
+      } else {
+        hide(false);
+      }
+      return;
+    }
+    if (S.pinned) return;
     // An open card stays with its tag across re-renders, and shows the latest details.
     if (S.anchor && !S.anchor.isConnected && S.anchor.classList && S.anchor.classList.contains('hb-needs-chip')) {
       const again = [...document.querySelectorAll('.hb-needs-chip')].find(c => c.dataset.needsKey === S.current.key && c.getClientRects().length);
       if (again) { S.anchor = again; again.setAttribute('aria-expanded', 'true'); }
     }
-    const latest = S.byKey.get(S.current.key);
     if (latest && JSON.stringify(latest) !== JSON.stringify(S.current) && !cardEl().querySelector('.hb-needs-feedback:not(:empty)') && !(cardEl().querySelector('.hb-needs-comment') || {}).value) {
       S.current = latest; unlight(); light(latest); fillCard(latest);
       if (S.anchor && S.anchor.isConnected) place(cardEl(), S.anchor);

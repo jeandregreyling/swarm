@@ -45,8 +45,9 @@ def contained(root: Path, relative: str) -> Path:
 
 
 def validate_destination(vault: Path, mount: Path = VAULT_MOUNT) -> Path:
-    if not mount.is_mount() or mount.resolve() == Path("/"):
-        raise ValueError(f"Expected archive volume is not mounted: {mount}")
+    from core.hb_archive import trusted
+    if mount.resolve() == Path("/") or not trusted(mount):
+        raise ValueError(f"Expected trusted archive volume is not mounted or marked: {mount}")
     resolved = vault.resolve()
     if resolved == mount.resolve() or not resolved.is_relative_to(mount.resolve()):
         raise ValueError(f"Archive must be a subdirectory of {mount}")

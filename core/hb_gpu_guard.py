@@ -32,9 +32,12 @@ def _answers():
         except Exception:
             time.sleep(2)
     try:
-        body = json.dumps({'prompt': 'Say OK.', 'n_predict': 4}).encode()
-        with urllib.request.urlopen(urllib.request.Request(URL + '/completion', body, {'Content-Type': 'application/json'}), timeout=60) as r:
-            return bool(json.loads(r.read()).get('content'))
+        body = json.dumps({'messages': [{'role': 'user', 'content': 'Reply with the word ready.'}],
+                           'max_tokens': 64, 'temperature': 0}).encode()
+        req = urllib.request.Request(URL + '/v1/chat/completions', body, {'Content-Type': 'application/json'})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            choices = json.loads(r.read()).get('choices') or []
+            return bool(choices and str((choices[0].get('message') or {}).get('content') or '').strip())
     except Exception:
         return False
 

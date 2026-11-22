@@ -77,7 +77,9 @@ Each fix this week joined one record to one widget. Work on any other path stays
      now:   {run_id, actor, model, task_id, step_id, title, since, last_step},
      trail: [last 12 events of the current run]}
   ],
-  telemetry: {gpu: {busy_pct, vram_used_gb, vram_total_gb, temp_c}, cpu: {load1, cores}, ram: {used_gb, total_gb}},
+  telemetry: {gpu: {busy_pct, vram_used_gb, vram_total_gb, temp_c, junction_temp_c,
+                    clock_mhz, clock_limit_mhz, fan_rpm, power_w, power_cap_w, performance_mode},
+              cpu: {load1, cores, temp_c, clock_mhz, max_clock_mhz, governor}, ram: {used_gb, total_gb}},
   needs_you: [... core/hb_commands.waiting_items (same as /approvals)],
   master: [
     clipboard rows: {step_id, task_id, title, state, doer, lane, importance, ready, check,
@@ -105,6 +107,14 @@ Each fix this week joined one record to one widget. Work on any other path stays
 
 **The top strip (always visible, one line).** One chip per lane: an icon, the lane name, and a state dot (idle grey, busy green pulse, waiting amber, error red). Each chip also shows the current activity in a few words, plus the Needs-you count and the master-list count. The strip replaces the "HB now" line, the HB Driving header and the Needs-you bar.
 
+A routine restart-interruption warning is not an owner action when the same task
+and recipient already have a newer queued, running or completed attempt and Continue is
+effectively On. Keep the interrupted receipt in history, but omit its stale
+Needs-you entry. Genuine owner holds and unresolved reviews remain visible.
+An open Needs-you card closes when its item disappears, unless a decision is
+being saved or an unsaved approval comment is present. Preserve that comment,
+explain that the decision is no longer pending, and disable its obsolete actions.
+
 **Windows.** These are floating cards over the chat, like a console overlay:
 - Clicking a chip opens that lane's **live window**: who and what, the model and device, the elapsed time, and the step trail updating as it happens. Finished runs appear below it with their steps.
 - **The master window** holds the clipboard as one list:
@@ -113,6 +123,11 @@ Each fix this week joined one record to one widget. Work on any other path stays
   - Each row shows its doer and its live step.
   - The controls are: pause, continue, cancel, approve, up/down/top, importance, and the doer (including codex, gemini and claude).
 - **The system window** shows GPU, CPU and RAM with temperatures, and any unexplained activity.
+  It also shows actual GPU clocks and the applied clock limit, hotspot, fan RPM,
+  power/cap and mode, plus CPU0 clock/governor. These are live sysfs readings,
+  not a prediction of task progress. The status line includes clocks, limit and governor.
+  The agent `runtime_status` tool exposes the same canonical `telemetry` object.
+  Missing readings remain absent; telemetry does not raise clocks or voltages.
 
 **Window behaviour:**
 - Windows can be dragged.

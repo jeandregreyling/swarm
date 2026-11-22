@@ -51,10 +51,11 @@ def test_cloud_embeddings_missing_models_and_wrong_endpoint_alias_are_excluded()
                            exists=lambda path:path!='/missing')
 
 
-def test_ram_pressure_chooses_smaller_local_model_without_cloud_fallback():
-    assert choose('analyse this design',available_gb=8).model == 'apex-direct:7b'
+def test_ram_pressure_keeps_verified_resident_model_and_admits_cold_models():
+    assert choose('analyse this design',available_gb=8).model == 'qwen2.5:14b-instruct'
+    assert select_local_model('analyse this design', catalogue(), {}, exists=lambda _: True, available_gb=8).model == 'apex-direct:7b'
     with pytest.raises(RuntimeError):
-        choose('hello',available_gb=2)
+        select_local_model('hello', catalogue(), {}, exists=lambda _: True, available_gb=2)
 
 
 def test_unavailable_endpoint_can_use_a_managed_local_model():

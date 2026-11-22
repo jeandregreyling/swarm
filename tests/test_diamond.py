@@ -328,3 +328,14 @@ class TestHelpers:
         # Just verify it runs without error — actual values depend on system
         v = _get_system_vitals()
         assert isinstance(v, dict)
+
+
+def test_diamond_pulse_exposes_last_apex_run_without_claiming_service_health(client, db_conn):
+    db_conn.execute('CREATE TABLE hb_model_runs (agent TEXT, status TEXT, model TEXT, created_at REAL)')
+    db_conn.executemany('INSERT INTO hb_model_runs VALUES (?,?,?,?)', [
+        ('apex', 'failed', 'old-model', 10), ('other', 'success', 'other-model', 30),
+        ('apex', 'success', 'current-model', 20)])
+    db_conn.commit()
+    data = client.get('/api/diamond/pulse').get_json()
+    assert data['apex_last_run'] == {'status': 'success', 'model': 'current-model', 'recorded_at': 20}
+    assert 'live_telemetry' in data['system']

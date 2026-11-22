@@ -53,3 +53,21 @@ def test_page_defaults_off_and_syncs_the_service():
     assert "localStorage.getItem(KEY_ON) === '1'" in js and "localStorage.getItem(KEY_IN) === '1'" in js
     assert "/api/peer/v1/hb/translator" in js and 'syncServer(any)' in js
     assert '_translator_watch(from_agent, content)' in (ROOT / 'utils/db/chat.py').read_text()
+
+
+def test_auto_start_preserves_manual_mode_and_detects_short_chinese():
+    c, ctl = sqlite3.connect(':memory:'), Ctl()
+    assert t.on_reply(c, 'apex', '你好', run=ctl, now=100) == 'started'
+    assert t.mode(c)[0] == 'auto'
+    t.switch(c, True, run=ctl, now=101)
+    assert t.start_auto(c, run=ctl, now=102)
+    assert t.mode(c)[0] == 'manual'
+
+
+def test_translation_button_and_automatic_reply_path_are_in_main_chat():
+    template = (ROOT / 'frontend/templates/terminal_base.html').read_text()
+    js = (ROOT / 'frontend/static/js/hb-translate-bubble.js').read_text()
+    assert 'id="hb-tr-toggle"' in template
+    assert "localStorage.setItem('hbTranslate.replyAutoV2', '1')" in js
+    assert 'body: JSON.stringify({ auto: true })' in js
+    assert "document.getElementById('hb-tr-toggle') || document.createElement('button')" in js

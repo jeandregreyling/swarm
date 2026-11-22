@@ -49,6 +49,20 @@ _pulse_cache = {'ts': 0.0, 'payload': None}
 
 # ── Pulse ─────────────────────────────────────────────────────────────────────
 
+def _latest_apex_run():
+    """Last recorded APEX turn, not a live service or inference health check."""
+    try:
+        from utils.db._connection import get_connection
+        conn = get_connection()
+        try:
+            row = conn.execute("SELECT status, model, created_at FROM hb_model_runs WHERE agent=? ORDER BY created_at DESC LIMIT 1", ('apex',)).fetchone()
+            return {'status': row[0], 'model': row[1], 'recorded_at': row[2]} if row else None
+        finally:
+            conn.close()
+    except Exception:
+        return None
+
+
 @diamond_bp.route('/api/diamond/pulse', methods=['GET'])
 def api_diamond_pulse():
     """
@@ -101,6 +115,7 @@ def api_diamond_pulse():
             'proposals': proposals,
             'agents': agents,
             'governance': governance,
+            'apex_last_run': _latest_apex_run(),
         }
         _pulse_cache['payload'] = payload
         _pulse_cache['ts'] = now
@@ -282,13 +297,15 @@ def _get_system_vitals():
             except Exception:
                 continue
         # GPU: amdgpu sysfs first (this machine is AMD), nvidia-smi fallback (core/hb_hardware.py).
-        from core.hb_hardware import gpu_stats
+        from core.hb_hardware import gpu_stats, gpu_tuning_status
         gpu = gpu_stats()
         gpu_vram_percent = gpu['vram_percent']
         gpu_vram_used_gb = gpu['vram_used_gb']
         gpu_vram_total_gb = gpu['vram_total_gb']
 
         agent_residency = _get_agent_residency()
+        from core.hb_live import telemetry
+        live = telemetry()
 
         return {
             'cpu_percent': round(cpu, 1),
@@ -304,6 +321,8 @@ def _get_system_vitals():
             'gpu_vram_total_gb': gpu_vram_total_gb,
             'gpu_busy_percent': gpu['busy_percent'],
             'gpu_source': gpu['source'],
+            'gpu_tuning': gpu_tuning_status(),
+            'live_telemetry': live,
             'agent_residency': agent_residency,
             'disks': disks,
         }
@@ -348,7 +367,7 @@ def _get_agent_residency():
                     labels.setdefault(alias, f'{number} · {label}' if number is not None else label)
         residency = {'ram': [], 'swap': [], 'gpu': []}
         for proc in model_processes():
-            label = labels.get(proc['model'].lower()) or ('APEX (Qwen2.5-14B service)' if proc['unit'] == 'apex-server' else proc['model'])
+            label = labels.get(proc['model'].lower()) or ('APEX model service' if proc['unit'] == 'apex-server' else proc['model'])
             residency['gpu' if proc['placement'] == 'gpu' else 'ram'].append({
                 'agent': proc['model'], 'label': label, 'model': proc['model'], 'pid': proc['pid'], 'port': proc['port'],
                 'size_vram_gb': proc['vram_gb'], 'size_gb': proc['ram_gb'], 'kind': proc['kind'], 'unit': proc['unit'],

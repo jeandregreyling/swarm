@@ -1,6 +1,3 @@
-# Moved into Studio (sweep 2026-05-01)
+# Documentation
 
-This file is now tracked in Studio as project_docs row
-`doc_name = docs/README.md` (Knowledge Center → search 'README.md').
-Original snapshot: `Archives/ingested_md_20260501/docs/README.md`.
-Edits should happen in Studio, not on disk.
+This directory holds project documentation.

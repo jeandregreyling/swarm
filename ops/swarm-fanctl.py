@@ -395,7 +395,7 @@ def main():
     # (unprivileged) swarm-terminal process can talk to us without extra setup.
     # Order of preference: $SWARM_FANCTL_GROUP env → 'swarm' → 'seven'.
     import grp
-    for gname in filter(None, (os.environ.get('SWARM_FANCTL_GROUP'), 'swarm', 'seven')):
+    for gname in filter(None, (os.environ.get('SWARM_FANCTL_GROUP'), 'jd', 'swarm', 'seven')):
         try:
             gid = grp.getgrnam(gname).gr_gid
             os.chown(SOCK_PATH, 0, gid)

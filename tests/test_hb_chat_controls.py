@@ -411,3 +411,27 @@ def test_real_browser_step_window_shows_hbs_question_with_the_same_buttons(contr
         import re
         assert 'data-result="pass"' in run.stdout,(re.findall(r'<body[^>]*>',run.stdout) or [run.stdout[-1500:]])[0]
     finally:server.shutdown();thread.join(timeout=5)
+
+
+def test_on_releases_paused_task_when_native_auto_approves_fresh_request(control_app, monkeypatch):
+    from core import hb_owner_sessions
+
+    client, task, rid, path, _, principals = control_app
+    url = "/api/peer/v1/tasks/" + task["task_id"] + "/control"
+    assert client.post(url, json=command(client, task, "off")).status_code == 200
+    with sqlite3.connect(path) as conn:
+        conn.execute("UPDATE hb_peer_work SET state='completed' WHERE request_id=?", (rid,))
+        peers.acknowledge(conn, principals["codex-instructor"], [rid])
+    monkeypatch.setattr(hb_owner_sessions, "for_task", lambda *args, **kwargs: {
+        "session_id": "fixture-native-auto",
+        "root_message_id": task["root_message_id"],
+        "allowed_tools": None,
+    })
+    response = client.post(url, json=command(client, task, "on"))
+    assert response.status_code == 200, response.get_json()
+    result = response.get_json()
+    assert result["queued"]
+    assert result["task"]["continuation"]["mode"] == "on"
+    assert result["task"]["state"] == "active", result
+    with sqlite3.connect(path) as conn:
+        assert [row["id"] for row in peers.inbox(conn, principals["apex"], pending_only=True)] == result["queued"]

@@ -94,3 +94,37 @@ def test_should_be_added_is_a_promise_too(repository):
         [{'role':'user','content':'Implement the approved source change.'}],lambda:True,lambda _:None,repository,
         proposal_handler=lambda *a:{'status':'succeeded','output':'Applied'},studio_handler=lambda *_:{})
     assert 'Backend action check' in answer or 'BACKEND EXECUTION CHECK' in answer
+
+
+def test_gpu_status_reuses_read_but_not_after_apply_or_reset():
+    from core.apex_tools import repeated_read
+    call = {'name': 'gpu_profile', 'arguments': {'action': 'status'}}
+    read = {'tool': 'gpu_profile', 'arguments': {'action': 'status'}, 'status': 'succeeded'}
+    assert repeated_read(call, [read]) is read
+    for action in ('apply', 'reset'):
+        mutation = {'tool': 'gpu_profile', 'arguments': {'action': action}, 'status': 'succeeded'}
+        assert repeated_read(call, [read, mutation]) is None
+        assert repeated_read({'name': 'gpu_profile', 'arguments': {'action': action}}, [mutation]) is None
+
+
+def test_task_list_repeat_is_detected_but_task_change_invalidates_it():
+    from core.apex_tools import repeated_read
+    call = {"name": "hb_tasks", "arguments": {"action": "list"}}
+    listed = {"tool": "hb_tasks", "arguments": {"action": "list"}, "status": "succeeded", "output": "tasks"}
+    assert repeated_read(call, [listed]) is listed
+    for action in ("continue", "pause", "cancel"):
+        changed = {"tool": "hb_tasks", "arguments": {"action": action, "task_id": "T-123"}, "status": "succeeded"}
+        assert repeated_read(call, [listed, changed]) is None
+    changed["status"] = "failed"
+    assert repeated_read(call, [listed, changed]) is listed
+
+
+def test_stale_instruction_rejection_allows_retry_only_after_context_refresh():
+    from core.apex_tools import repeated_rejection
+    call = {'name': 'request_access', 'arguments': {'tool': 'run_tests'}}
+    failure = {'tool': 'request_access', 'arguments': call['arguments'], 'status': 'failed', 'output': 'Task instructions changed; call task_context ONCE'}
+    refresh = {'tool': 'task_context', 'arguments': {}, 'status': 'succeeded'}
+    assert repeated_rejection(call, [failure]) is failure
+    assert repeated_rejection(call, [failure, refresh]) is None
+    other = dict(failure, output='Permission denied')
+    assert repeated_rejection(call, [other, refresh]) is other

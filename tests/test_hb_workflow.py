@@ -90,3 +90,23 @@ def test_terminal_diagnostics_use_existing_grants_without_shell_composition(monk
         with pytest.raises(PermissionError):workflow.call_control('terminal_run',{'command':'free -h'})
         assert len(calls)==1
     finally:agent_identity.CURRENT.reset(token)
+
+
+@pytest.mark.parametrize('principal', ['apex', 'gemini-advisor'])
+def test_owner_terminal_rejects_arbitrary_commands(database,monkeypatch,principal):
+    from core import agent_identity,hb_tasks,hb_owner_sessions
+    import database as permissions
+    from fridays import shell_agent
+    monkeypatch.setattr(permissions,'can_user_invoke_skill',lambda *_a,**_k:True)
+    monkeypatch.setattr(hb_tasks,'for_request',lambda *_a:{'task_id':'T-OWNED'})
+    monkeypatch.setattr(hb_owner_sessions,'for_task',lambda *_a,**_k:{'allowed_tools':['terminal_run']})
+    calls=[]
+    monkeypatch.setattr(shell_agent,'run',lambda command,**kwargs:(calls.append((command,kwargs)) or (True,'Python version')))
+    token=agent_identity.CURRENT.set({'principal':principal,'peer_request_id':7})
+    try:
+        with pytest.raises(ValueError):
+            workflow.call_control('terminal_run',{'command':'.venv/bin/python --version'})
+        with pytest.raises(ValueError):
+            workflow.call_control('terminal_run',{'command':'sudo -A userdel -r servicebot'})
+        assert calls == []
+    finally:agent_identity.CURRENT.reset(token)

@@ -17,7 +17,9 @@ import re
 STOP = set('''this that with from have will would should could into about there their they them then than when what which while
 your yours been were also only just more most some such very much many make made does done doing task tasks please thanks apex codex
 gemini owner need needs using used use file files code check checks work working build built fix fixed main chat hummingbird'''.split())
-CRITERIA_RE = re.compile(r'(?im)^\s*(?:done when|definition of done|acceptance(?: criteria)?|finished when)\s*[:\-]\s*(.+)$')
+# Practice 256 (JD 23:55: Needs-you asked him to define done for POC-01 although his directive says '- Success Metric: ...'):
+# success metric/criteria count, and a criterion may be written as a bullet.
+CRITERIA_RE = re.compile(r'(?im)^\s*(?:[-*\u2022]\s*)?(?:done when|definition of done|acceptance(?: criteria)?|finished when|success (?:metric|criteria))\s*[:\-]\s*(.+)$')
 
 
 def _tables(conn):

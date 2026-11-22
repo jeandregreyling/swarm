@@ -330,6 +330,59 @@ def test_custom_tools_plugin_loader_and_design_bible(tmp_path):
     assert 'Hummingbird' in hb_system_atlas.HUMMINGBIRD_DESIGN_BIBLE and 'Liquid-Glass' in hb_system_atlas.HUMMINGBIRD_DESIGN_BIBLE
 
 
+def test_accept_step_commits_db_before_git_commit_to_prevent_deadlock(tmp_path, monkeypatch):
+    from core import hb_change_sets, hb_commands as hc, hb_tasks
+    db_path = tmp_path / 'hb.sqlite'
+    conn = sqlite3.connect(db_path, timeout=0.5)
+    hb_tasks.ensure_schema(conn)
+    conn.execute('CREATE TABLE project_steps(step_id TEXT PRIMARY KEY, project_id TEXT, title TEXT, description TEXT, status TEXT, owner TEXT, residual_risk TEXT, updated_at REAL)')
+    conn.execute("INSERT INTO project_steps VALUES ('S-DEADLOCK01','P-1','Test step','desc','partial','apex','',0)")
+    conn.commit()
+    monkeypatch.setattr(hb_tasks, 'owner_review_blocker', lambda c, sid: None)
+
+    hook_wrote = []
+    def fake_git_commit(step_id, title=''):
+        # Simulate TimeWizard post-commit hook opening a SECOND connection and writing to SQLite!
+        other = sqlite3.connect(db_path, timeout=0.5)
+        try:
+            assert other.execute("SELECT status FROM project_steps WHERE step_id=?", (step_id,)).fetchone()[0] == 'done'
+            other.execute("CREATE TABLE IF NOT EXISTS hook_log(x TEXT)")
+            other.execute("INSERT INTO hook_log VALUES ('ok')")
+            other.commit()
+            hook_wrote.append(True)
+        finally:
+            other.close()
+        return {'state': 'committed', 'commit': 'abc1234', 'files': ['a.py']}
+
+    monkeypatch.setattr(hb_change_sets, 'commit', fake_git_commit)
+    out = hc.accept_step(conn, 'S-DEADLOCK01', 'ghost')
+    conn.close()
+    assert hook_wrote == [True] and 'Committed locally: abc1234' in out
+
+
+def test_hummingbird_theme_and_chat_pill_upgrade_present():
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    assert 'body.theme-hummingbird' in (root / 'frontend/static/css/themes.css').read_text(encoding='utf-8')
+    assert "'hummingbird'" in (root / 'frontend/static/js/core/theme.js').read_text(encoding='utf-8')
+    assert "setNamedTheme('hummingbird')" in (root / 'frontend/templates/terminal_base.html').read_text(encoding='utf-8')
+    js = (root / 'frontend/static/js/hb-live.js').read_text(encoding='utf-8')
+    assert 'upgradeLightTicks' in js and 'hbl-chat-pills' in js and 'hbl-drawer-grip-b' in js
+
+
+def test_manual_pick_never_hijacks_apex_gpu_with_fred_cpu(monkeypatch):
+    from core import hb_apex_swap
+    monkeypatch.setattr(hb_apex_swap, 'playing', lambda: 'mistral-nemo-12b-abliterated')
+    modes = {'fred-cpu:24b': 'on', 'mistral-nemo-12b-abliterated': 'on'}
+    picked, _ = hb_apex_swap.manual_pick('Hello apex hows your new attitude feeling?', modes=modes)
+    assert picked != 'fred-cpu:24b'
+    # Explicit @fred mention still works if ever requested
+    explicit, _ = hb_apex_swap.manual_pick('@fred-cpu:24b review this', modes=modes)
+    assert explicit == 'fred-cpu:24b' or explicit is None
+
+
+
+
 
 
 

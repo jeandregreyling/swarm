@@ -50,7 +50,9 @@ def plain(kind, p):
     tool, a = p.get('tool'), p.get('arguments') or {}
     if kind == 'test_result':
         verdict = str(p.get('verdict') or '')
-        return ('✔ Checks pass: ' if p.get('alm_run_status') == 'pass' else '✘ Checks fail: ') + verdict.split(';')[0].replace('PASS: ', '').replace('FAIL: ', '')[:70]
+        # Practice 260 (22 Nov 00:05: '✘ Checks fail: 2 passed'): a focused run that passed is a pass - go by the run's own result
+        passed = p.get('alm_run_status') == 'pass' or (p.get('status') == 'passed' and p.get('exit_code') == 0) or str(verdict).startswith('PASS')
+        return ('✔ Checks pass: ' if passed else '✘ Checks fail: ') + verdict.split(';')[0].replace('PASS: ', '').replace('FAIL: ', '')[:70]
     if kind == 'mutation':
         out = str(p.get('output') or '')
         if 'patch completed:' in out:

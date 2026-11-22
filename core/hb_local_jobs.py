@@ -70,6 +70,9 @@ def call(tool,args):
             if not row:raise PermissionError('Job does not belong to this task')
             return public(_row(row))
         if tool=='local_review':
+            from core.hb_task_manager import jd_asked_for_fred
+            if not jd_asked_for_fred(conn,task):   # Practice 264
+                raise PermissionError('Only JD can ask Fred. Do the work yourself with your tools.')
             if set(args)-{'question','evidence'} or not isinstance(args.get('question'),str) or not 1<=len(args['question'])<=1500 or not isinstance(args.get('evidence',''),str) or len(args.get('evidence',''))>1800:
                 raise ValueError('local_review requires question (1500 chars) and optional evidence (1800 chars)')
             return submit(conn,task,'review',{'question':args['question'],'evidence':args.get('evidence','')},actor.get('peer_request_id'))

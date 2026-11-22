@@ -78,9 +78,14 @@ def test_startup_failure_is_bounded_and_request_gets_public_failure(db):
         supervisor.tick(db)
     assert len(launches) == 3
     assert coordination.status(db)[0]['state'] == 'unavailable'
-    assert db.execute('SELECT state FROM hb_peer_work WHERE request_id=?', (request,)).fetchone()[0] == 'failed'
+    # Practice 247: the queued request is kept (not failed) and HB says so once
+    assert db.execute('SELECT state FROM hb_peer_work WHERE request_id=?', (request,)).fetchone()[0] == 'queued'
     messages=db.execute("SELECT content FROM messages WHERE from_agent='hummingbird'").fetchall()
-    assert len(messages)==1 and str(request) in messages[0][0]
+    assert len(messages)==1 and '1 request(s) wait in the queue - nothing is lost' in messages[0][0]
+    for when in [130, 140, 150]:
+        clock[0] = when
+        supervisor.tick(db)
+    assert len(db.execute("SELECT content FROM messages WHERE from_agent='hummingbird'").fetchall()) == 1   # never one per tick
 
 
 def test_supervisor_tries_again_after_cool_down(db):

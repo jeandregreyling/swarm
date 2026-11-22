@@ -45,7 +45,8 @@ def test_remarks_join_one_chat_task_without_a_studio_step_and_apex_gets_a_dream_
     assert a['task_id'] == b['task_id'] and a['title'] == CHAT_TITLE and not a['step_id'] and is_chat_task(a)
     assert conn.execute("SELECT COUNT(*) FROM project_steps WHERE title LIKE '%answer%' OR title LIKE '%delete%'").fetchone()[0] == 0
     text = card(conn, a)
-    assert text.startswith('DREAM CLIPBOARD for ' + a['task_id'])
+    assert text.startswith('DREAM CLIPBOARD for this conversation')
+    assert a['task_id'] not in text
     assert 'do NOT ask JD for criteria' in text and 'a model cannot delete or replace itself' in text
     assert 'Queue (HB drives it' in text and 'next: Learning L1' in text      # APEX knows what it should be doing instead
     assert done_when(conn, a) == (None, [])                                    # the chat task is never "scoped"
@@ -230,3 +231,19 @@ def test_main_chat_says_when_apex_asks_fred(plan):
     hb_local_jobs.submit(conn, task, 'review', {'question': 'Why does run_tests say rename_3 still fails?', 'evidence': 'x'})
     text = conn.execute("SELECT content FROM messages WHERE from_agent='hummingbird' ORDER BY id DESC LIMIT 1").fetchone()[0]
     assert text.startswith('🤔 APEX is asking Fred for help with') and 'rename_3 still fails' in text and 'APEX waits for it' in text
+
+
+def test_chat_card_quotes_the_latest_message_for_apex_and_names_the_real_tasks(plan):
+    """Owner 15 Nov 2026 ("make the local model work"): the card said "not new work ... say what you are doing next" over
+    a queue line with no task names, so APEX never used a tool and invented work. It must quote the latest message
+    addressed to APEX (from JD or an agent), tell it to do the work with its tools now, and list the open tasks by name."""
+    conn, _, _ = plan
+    a = chat_task(conn, 1, _owner_line(conn, 'not an answer'))
+    agent = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type) "
+                         "VALUES(1,'claude-code','user',?,'response')", ('@apex please run the email check and report the receipt',)).lastrowid
+    hb_tasks.bind(conn, 1, agent, task_id=a['task_id'], kind='relay')
+    text = card(conn, hb_tasks.get(conn, a['task_id']))
+    assert f'from claude-code (message {agent}): "@apex please run the email check' in text
+    assert 'do it now, in this turn, with your tools' in text and 'unless a tool receipt from this turn shows it' in text
+    assert 'say what you are doing next from the queue below' not in text and 'not new work' not in text
+    assert '\n- ' in text and 'Learning L1' in text.split('Queue (HB drives it', 1)[1].split('\n', 1)[1]   # tasks by name

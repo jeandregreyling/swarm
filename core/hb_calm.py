@@ -13,6 +13,19 @@ def interrupted(stage):
     return str(stage or '').startswith(INTERRUPTED_PREFIXES)
 
 
+def restart_queued(conn, now=None):
+    """Practice 242 (21 Nov): a restart in hb_restart_queue past its quiet minute. HB used to start the next APEX turn within seconds,
+    so restart_tick (which waits for no running turn) almost never found its gap and fixes sat unloaded. Now no new turn starts
+    while such a restart waits: the running turn finishes, HB restarts, work resumes."""
+    import time
+    try:
+        from core.hb_plan_workflow import RESTART_QUIET_S
+        oldest = conn.execute('SELECT MAX(at) FROM hb_restart_queue').fetchone()[0]
+    except Exception:
+        return False
+    return bool(oldest) and (time.time() if now is None else now) - oldest >= RESTART_QUIET_S
+
+
 def restart_pending():
     try:
         from core.hb_maintenance import state

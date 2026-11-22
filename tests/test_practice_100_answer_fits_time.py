@@ -18,6 +18,7 @@ def test_practice_100_time_budget():
 
 def test_practice_100_every_apex_call_uses_it():
     worker = (ROOT / 'scripts' / 'hummingbird_peer_worker.py').read_text()
-    assert "'num_predict':min(generation_budget(current),time_budget(900 if assigned else 180))" in worker
+    assert "'num_predict':min(generation_budget(current),time_budget(900 if long_turn else 180))" in worker
+    assert "long_turn=bool(assigned) or 'propose_patch' in tools or 'propose_write_file' in tools" in worker   # Practice 241
     chat = (ROOT / 'frontend' / 'blueprints' / 'chat.py').read_text()
     assert 'output_tokens = min(output_tokens, time_budget(remaining))' in chat

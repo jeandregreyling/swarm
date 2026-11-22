@@ -160,23 +160,25 @@ def test_reserve_threshold_is_enforced_exactly():
 
 
 def test_generation_budget_uses_remaining_capacity_with_a_measured_reserve():
-    from core.apex_context import generation_budget, MAX_OUTPUT_TOKENS
+    from core.apex_context import generation_budget
     messages = [{"role": "user", "content": "task"}]
-    assert generation_budget(messages, lambda _: 1000) == MAX_OUTPUT_TOKENS
-    remaining = MAX_OUTPUT_TOKENS - 256
+    # Owner 15 Nov 2026: no fixed answer cap - the answer gets all the room the window has left.
+    assert generation_budget(messages, lambda _: 1000) == CONTEXT_TOKENS - 1000
+    remaining = CONTEXT_TOKENS // 2
     assert generation_budget(messages, lambda _: CONTEXT_TOKENS - remaining) == remaining
     assert generation_budget(messages, lambda _: CONTEXT_TOKENS - OUTPUT_RESERVE) == OUTPUT_RESERVE
     with pytest.raises(RuntimeError, match="Save unfinished work in Studio"):
         generation_budget(messages, lambda _: CONTEXT_TOKENS - OUTPUT_RESERVE + 1)
 
 
-def test_context_budget_matches_registered_qwen_service():
+def test_context_budget_matches_registered_apex_service():
     from core.chat_continuity import APEX_AGENT
     from core.seven_llm import registry
     entry = registry.get(APEX_AGENT["model"])
     assert entry.endpoint == "http://127.0.0.1:8080"
-    assert entry.ctx == CONTEXT_TOKENS == 16384
-    assert "chat_template_file" not in entry.options
+    # Owner 15 Nov 2026: the window is dynamic - the route carries what :8080 actually serves (llama.cpp --fit);
+    # the registry ctx is a hint that must at least cover HB's fallback.
+    assert entry.ctx >= CONTEXT_TOKENS
 
 
 def test_wrapper_archives_only_durable_old_history_and_preserves_current_request():

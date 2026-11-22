@@ -22,6 +22,44 @@ def test_amdgpu_sysfs_is_read_and_the_largest_card_wins(tmp_path):
     assert g == {'vram_used_gb': 12.0, 'vram_total_gb': 16.0, 'vram_percent': 75.0, 'busy_percent': 37, 'source': 'amdgpu sysfs'}
 
 
+def test_gpu_tuning_reports_configured_limits_and_driver_ranges(tmp_path):
+    device = tmp_path / 'card1/device'
+    write(str(device / 'vendor'), '0x1002')
+    write(str(device / 'mem_info_vram_total'), str(16 * 2**30))
+    write(str(device / 'pp_od_clk_voltage'), '''
+OD_SCLK:
+0: 500Mhz
+1: 2600Mhz
+OD_MCLK:
+0: 97Mhz
+1: 1075MHz
+OD_RANGE:
+SCLK: 500Mhz 2600Mhz
+MCLK: 674Mhz 1075Mhz
+OD_VDDGFX_OFFSET:
+0mV
+''')
+    result = hw.gpu_tuning_status(str(tmp_path))
+    assert result['available'] is True
+    assert result['card'] == 'card1'
+    assert result['core_max_mhz'] == 2600
+    assert result['memory_max_mhz'] == 1075
+    assert result['core_range_mhz'] == [500, 2600]
+    assert result['memory_range_mhz'] == [674, 1075]
+    assert result['voltage_offset_mv'] == 0
+
+
+def test_gpu_tuning_reports_unsupported_and_incomplete_driver_data(tmp_path):
+    assert hw.gpu_tuning_status(str(tmp_path))['available'] is False
+    device = tmp_path / 'card0/device'
+    write(str(device / 'vendor'), '0x1002')
+    write(str(device / 'mem_info_vram_total'), '1024')
+    write(str(device / 'pp_od_clk_voltage'), 'OD_SCLK:\n1: not-a-clock\n')
+    result = hw.gpu_tuning_status(str(tmp_path))
+    assert result['available'] is False
+    assert result['error']
+
+
 def _proc(root, pid, argv, rss_kb, fds):
     write(str(root / str(pid) / 'cmdline'), '\0'.join(argv) + '\0')
     write(str(root / str(pid) / 'status'), f'Name:\tllama-server\nVmRSS:\t{rss_kb} kB\n')

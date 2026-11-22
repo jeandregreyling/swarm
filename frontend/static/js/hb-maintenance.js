@@ -21,7 +21,7 @@
       + '<div data-hb-maint-reason style="font-size:13px;opacity:.85;margin-bottom:10px"></div>'
       + '<div style="font-size:12px;opacity:.7">HB is being updated. You stay signed in and your draft is kept; this page comes back by itself.</div>'
       + '<div data-hb-maint-reload style="display:none;margin-top:14px"><button type="button" style="padding:7px 14px;border-radius:8px;'
-      + 'border:1px solid var(--accent,#4a8);background:var(--accent,#4a8);color:#000;font-weight:700;cursor:pointer">Reload to load the update</button></div>'
+      + 'border:1px solid var(--accent,#4a8);background:var(--accent,#4a8);color:var(--text,#000);font-weight:700;cursor:pointer">Reload to load the update</button></div>'
       + '</div>';
     el.querySelector('[data-hb-maint-reload] button').addEventListener('click', () => location.reload());
     (document.body || document.documentElement).appendChild(el);

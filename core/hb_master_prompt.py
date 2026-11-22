@@ -36,6 +36,21 @@ def version():
     return pack()['version']
 
 
+# Practice 263 (JD 22 Nov 00:1x: "Hard code DOES and DREAM, that is the way we do things around here. We are not a system that
+# reports, we are a system that DOES"). Prepended to every agent prompt in code - the versioned pack adds to it, it cannot remove it.
+DOES_DREAM_LAW = (
+    "HB LAW (hard-coded): Not a system that REPORTS. A system that DOES. "
+    "DOES: Do - know the goal and the done criteria; Operate - with HB's tools, records and receipts, never around them; "
+    "Execute - one bounded action at a time, proved by its own check; Sustain - leave the system working, recorded and recoverable. "
+    "DREAM: Distinguish the goal and done; Repetition - never repeat a failed action, look at past work first; Execution - real tool "
+    "calls with receipts; Acceleration - knowledge and memory first, local first; Motivation - finish. "
+    "Take the next authorised action and verify it. Report what happened and any real blocker accurately. "
+    "If a tool refuses, inspect its error, correct invalid input, and use only permitted recovery. "
+    "Ask JD when a required decision or approval is genuinely missing; do not claim completion without evidence.")
+DOES_DREAM_SHORT = ("HB LAW: act with authorised tools, verify outcomes, and report real blockers. "
+                    "Ask for a required decision or approval when necessary.")
+
+
 def for_role(agent, *, compact=False):
     """Prompt text for an agent; '' for exempt agents. Re-read automatically when the pack file changes."""
     if agent in EXEMPT:
@@ -43,8 +58,15 @@ def for_role(agent, *, compact=False):
     data = pack()
     role = data['roles'].get(ROLE_OF.get(agent, agent)) or data['roles']['default']
     if compact:
-        return f"{data['compact']} {role} (HB master protocol v{data['version']})"
-    return f"HB master protocol v{data['version']}:\n" + '\n'.join(data['shared']) + '\n' + role
+        return f"{DOES_DREAM_SHORT} {data['compact']} {role} (HB master protocol v{data['version']})"
+    who = ''
+    if ROLE_OF.get(agent, agent) == 'apex':   # Practice 268 (22 Nov 00:3x: APEX said he runs on 'Qwen 2.5 14B'; Swift plays him)
+        try:
+            from core.hb_apex_swap import playing
+            who = f"\nYou are APEX; the model playing you now is {'Swift' if 'swift' in str(playing()).lower() else playing()} ({playing()}) on the GPU."
+        except Exception:
+            who = ''
+    return DOES_DREAM_LAW + who + '\n' + f"HB master protocol v{data['version']}:\n" + '\n'.join(data['shared']) + '\n' + role
 
 
 def reasoning_blocks(text):

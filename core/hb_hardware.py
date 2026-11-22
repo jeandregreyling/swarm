@@ -24,6 +24,64 @@ def _read(path, default=None):
         return default
 
 
+def gpu_tuning_status(root='/sys/class/drm'):
+    """Read configured AMD overdrive limits, not the current operating clocks."""
+    try:
+        cards = []
+        for card in os.listdir(root):
+            if not re.fullmatch(r'card\d+', card):
+                continue
+            device = os.path.join(root, card, 'device')
+            if _read(os.path.join(device, 'vendor')) != '0x1002':
+                continue
+            total = _read(os.path.join(device, 'mem_info_vram_total'))
+            if total and total.isdigit():
+                cards.append((int(total), card, device))
+        if not cards:
+            return {'available': False, 'error': 'No AMD GPU with readable VRAM information found.'}
+        _, card, device = max(cards)
+        path = os.path.join(device, 'pp_od_clk_voltage')
+        with open(path) as fh:
+            text = fh.read()
+    except OSError as exc:
+        return {'available': False, 'error': f'Cannot read GPU tuning information: {exc}'}
+
+    sections = {}
+    section = None
+    for line in text.splitlines():
+        line = line.strip()
+        if re.fullmatch(r'OD_[A-Z0-9_]+:', line):
+            section = line[:-1]
+            sections[section] = []
+        elif section:
+            sections[section].append(line)
+
+    def clock(section_name):
+        for line in sections.get(section_name, []):
+            match = re.fullmatch(r'1:\s*(\d+)\s*MHz', line, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+        return None
+
+    def clock_range(name):
+        for line in sections.get('OD_RANGE', []):
+            match = re.fullmatch(rf'{name}:\s*(\d+)\s*MHz\s+(\d+)\s*MHz', line, re.IGNORECASE)
+            if match:
+                return [int(match.group(1)), int(match.group(2))]
+        return None
+
+    core, memory = clock('OD_SCLK'), clock('OD_MCLK')
+    if core is None or memory is None:
+        return {'available': False, 'card': card, 'error': 'GPU driver did not report both configured maximum clocks.'}
+    offset = re.fullmatch(r'([+-]?\d+)\s*mV', ' '.join(sections.get('OD_VDDGFX_OFFSET', [])), re.IGNORECASE)
+    return {
+        'available': True, 'card': card, 'device': os.path.realpath(device),
+        'core_max_mhz': core, 'memory_max_mhz': memory,
+        'core_range_mhz': clock_range('SCLK'), 'memory_range_mhz': clock_range('MCLK'),
+        'voltage_offset_mv': int(offset.group(1)) if offset else None,
+    }
+
+
 def gpu_stats(root='/sys/class/drm'):
     """{'vram_used_gb','vram_total_gb','vram_percent','busy_percent','source'} or all None."""
     best = None

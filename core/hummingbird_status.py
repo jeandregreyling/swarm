@@ -11,7 +11,7 @@ ARCHIVE_ROOT = Path("/mnt/archive/hf_archive")
 ARCHIVE_MOUNT = Path("/mnt/archive")
 ARCHIVE_PLAN = ARCHIVE_ROOT / ".hummingbird-archive-plan.json"
 APEX_API = "http://127.0.0.1:8080/v1/models"
-APEX_MODEL = "qwen2.5:14b-instruct"
+APEX_MODEL = "APEX"   # stable service alias; the model playing this role can change
 
 
 def _download_process() -> int | None:
@@ -126,7 +126,7 @@ def _apex_status() -> dict:
             return {
                 "state": "online", "model": match["id"],
                 "context_tokens": metadata.get("n_ctx"),
-                "backend": "llama.cpp / Vulkan",
+                "backend": "llama.cpp",
             }
         return {"state": "identity_mismatch", "expected_model": APEX_MODEL}
     except (OSError, ValueError, TypeError):

@@ -52,6 +52,32 @@ def test_checkpoint_carries_real_source_paths_and_current_plan(flow):
     assert 'core/other_owner_task.py' not in hb_tasks.recent_source_paths(conn,task)
 
 
+@pytest.mark.parametrize('authorized', [True, False])
+def test_continuation_preserves_owner_terminal_scope(flow, authorized):
+    conn,p=flow;rid=owner(conn,'apex');task=hb_tasks.for_request(conn,rid)
+    manager.register(conn,task,request_id=rid)
+    allowed=['read_file','terminal_run'] if authorized else ['read_file']
+    hb_tasks.event(conn,task,'hummingbird','tool_scope',{'allowed_tools':allowed},request_id=rid)
+    conn.execute("UPDATE hb_peer_work SET state='failed' WHERE request_id=?",(rid,))
+    queued=manager.tick(conn)
+    assert len(queued)==1
+    assert ('terminal_run' in hb_tasks.invitation_tools(conn,queued[0])) is authorized
+
+
+def test_continuation_restores_signed_grant_after_an_older_scope_dropped_tools(flow,monkeypatch):
+    from core import hb_owner_sessions,hb_chat_controls
+    conn,p=flow;rid=owner(conn,'apex');task=hb_tasks.for_request(conn,rid)
+    manager.register(conn,task,request_id=rid)
+    monkeypatch.setattr(hb_owner_sessions,'for_task',lambda *_a,**_k:
+                        {'allowed_tools':['read_file','terminal_run','list_files']})
+    monkeypatch.setattr(hb_owner_sessions,'approve_if_auto',lambda *_a:None)
+    monkeypatch.setattr(hb_chat_controls,'continuation',lambda *_a:{'mode':'on'})
+    hb_tasks.event(conn,task,'hummingbird','tool_scope',{'allowed_tools':['read_file']},request_id=rid)
+    conn.execute("UPDATE hb_peer_work SET state='failed' WHERE request_id=?",(rid,))
+    queued=manager.tick(conn)
+    assert hb_tasks.invitation_tools(conn,queued[0])=={'read_file','terminal_run','list_files'}
+
+
 def test_owner_hold_and_cancellation_stop_execution(flow):
     conn,p=flow;rid=owner(conn);task=hb_tasks.for_request(conn,rid)
     manager.register(conn,task,request_id=rid)
@@ -336,3 +362,17 @@ def test_a_crashed_fred_turn_gets_one_retry(flow,monkeypatch):
     second=conn.execute("SELECT request_id FROM hb_task_events WHERE kind='fred_turn' ORDER BY event_id DESC").fetchone()[0]
     conn.execute("UPDATE hb_peer_work SET state='failed' WHERE request_id=?",(second,))
     assert manager.local_help(conn,task)=='completed'                       # no third
+
+
+def test_finished_scoping_turn_does_not_remain_running(flow):
+    conn, p = flow
+    rid = owner(conn)
+    task = hb_tasks.for_request(conn, rid)
+    manager.register(conn, task, request_id=rid)
+    conn.execute("UPDATE hb_peer_work SET state='completed' WHERE request_id=?", (rid,))
+    conn.execute("UPDATE peer_messages SET delivered_at=1 WHERE id=?", (rid,))
+    conn.execute("UPDATE hb_task_manager SET phase='plan', state='running', next_due=0 WHERE task_id=?", (task['task_id'],))
+    manager.tick(conn)
+    state = conn.execute('SELECT state, detail FROM hb_task_manager WHERE task_id=?', (task['task_id'],)).fetchone()
+    assert state[0] == 'waiting_plan'
+    assert 'Scoping turn ended' in state[1]

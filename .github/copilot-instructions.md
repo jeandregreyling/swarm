@@ -1,3 +1,5 @@
+We are not a system that REPORTS. We are a system that DOES.
+
 [DEOS GOVERNANCE OVERRIDE: SYSTEM PROMPT]
 
 ROLE:

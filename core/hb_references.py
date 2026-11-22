@@ -21,8 +21,27 @@ def lookup(query, allow_online=False):
         for row in method(search=query,limit=3):
             items.append({'kind':kind,'repo':row.id,'revision':getattr(row,'sha',None)})
     items += github_repositories(query)      # 16 Nov: GitHub projects too, so HB reuses existing tools
-    return {'local':local,'online_queried':True,'repositories':items,
-            'notice':'Discovery metadata only. Select a full revision and text path for reference_import; remote code is not executed.'}
+    kc_id = None
+    if items:
+        try:
+            from core.apex_knowledge import mirror_to_kc
+            digest = hashlib.sha256(query.strip().lower().encode()).hexdigest()[:16]
+            lines = [f"Online reference discovery for: {query}"]
+            for it in items[:10]:
+                lines.append(f"- [{it.get('kind','repo')}] {it.get('repo') or it.get('name')} {it.get('url') or ''} rev={it.get('revision') or ''} {str(it.get('description') or '')[:160]}")
+            kc_id = mirror_to_kc(
+                f'Online reference (GitHub/HF): {query[:160]}',
+                '\n'.join(lines),
+                source_ref=f'online-ref://{digest}',
+                source_type='reference',
+                domain_tags='online,github,huggingface,reference',
+                subcategory='reference',
+                added_by='hb_references',
+            )
+        except Exception:
+            pass
+    return {'local':local,'online_queried':True,'repositories':items,'kc_source_id':kc_id,
+            'notice':'Discovery metadata saved to Knowledge Centre. Select a full revision and text path for reference_import; remote code is not executed.'}
 
 
 def ingest(kind, repo, revision, path):

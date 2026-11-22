@@ -496,3 +496,34 @@ def test_instructor_help_reuses_pending_request_across_operator_turns(db):
     third = peers.request_help(conn, 1, 'codex', 'Different issue after the reply', 'New evidence.')
     assert 'deduplicated' not in third
     assert third['request_ids'] != first['request_ids']
+
+
+def test_requests_that_cannot_run_never_jam_the_inbox(db, monkeypatch):
+    """Owner 15 Nov 2026 ("fix HB"): 52 stale requests of paused/held/off tasks filled every 20-row batch before the
+    readiness check, so ready work queued behind them (2263, 2266) never reached APEX."""
+    import time
+    from core import peer_turns
+    conn = _conn(db)
+    instructor = peers.authenticate(conn, peers.issue_token(conn, 'copilot-instructor'))
+    ids = [conn.execute('INSERT INTO peer_messages(conversation_id,message_id,sender,recipient,body,created_at) VALUES (1,?,?,?,?,?)',
+                        (n, 'ghost', 'copilot-instructor', f'request {n}', time.time())).lastrowid
+           for n in range(1, 3 * peers.MAX_BATCH + 3)]
+    stale, fresh = set(ids[:-2]), ids[-2:]
+    monkeypatch.setattr(peer_turns, 'ready', lambda conn, request_id: request_id not in stale)
+    assert [m['id'] for m in peers.inbox(conn, instructor, pending_only=True)] == fresh
+    assert [m['id'] for m in peers.inbox(conn, instructor, limit=1, pending_only=True)] == fresh[:1]
+
+
+def test_peer_reply_is_forwarded_to_translator_detection(client, monkeypatch):
+    from utils.db import chat as chat_db
+    http, token, bridge, _ = client
+    app = Flask(__name__)
+    monkeypatch.setattr(bridge, 'get_current_user', lambda: {'username': 'ghost', 'role': 'owner'})
+    with app.test_request_context():
+        bridge.dispatch_operator_message({'conversation_id': 1}, '@instructor ping', ['copilot-instructor'])
+    seen = []
+    monkeypatch.setattr(chat_db, '_translator_watch', lambda sender, text: seen.append((sender, text)))
+    response = http.post('/api/peer/v1/messages', json={'conversation_id': 1, 'text': '你好'},
+                         headers={'Authorization': f'Bearer {token}'}, environ_base={'REMOTE_ADDR': '127.0.0.1'})
+    assert response.status_code == 201
+    assert seen == [('copilot-instructor', '你好')]

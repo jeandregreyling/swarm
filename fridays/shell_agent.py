@@ -10,6 +10,7 @@ Trust levels:
 
 Rules:
   - Only whitelisted commands run. Everything else is rejected.
+  - An authenticated signed owner task can authorize plain workspace commands without the diagnostic whitelist.
   - No destructive commands (rm, dd, mkfs, kill -9, etc.) on the whitelist.
   - Every execution logged to ghost_circle.
   - Output capped at 4000 chars.
@@ -345,7 +346,43 @@ def kill_command(cmd_id):
     return False
 
 
-def run(command, agent='shell', notify_ghost=True):
+def _owner_terminal_argv(command, agent, task_id):
+    from contextlib import closing
+    from core import agent_identity, hb_tasks, hb_owner_sessions, hb_chat_controls
+    from utils.db._connection import get_connection
+    from database import can_user_invoke_skill
+    actor = agent_identity.CURRENT.get()
+    if not actor or actor.get('principal') != agent or not actor.get('peer_request_id'):
+        raise PermissionError('Owner terminal execution requires this authenticated agent invitation')
+    with closing(get_connection()) as conn:
+        task = hb_tasks.for_request(conn, actor['peer_request_id'])
+        if not task or task['task_id'] != task_id or task['state'] in {'paused', 'cancelled', 'completed'}:
+            raise PermissionError('Owner terminal execution requires the active assigned task')
+        grant = hb_owner_sessions.for_task(conn, task_id, active=True)
+        owner_tools = hb_owner_sessions.tools_for_task(conn, task_id, grant) if grant else None
+        tools = hb_tasks.invitation_tools(conn, actor['peer_request_id'])
+        if (not grant or owner_tools is not None and 'terminal_run' not in owner_tools
+                or tools is not None and 'terminal_run' not in tools
+                or not can_user_invoke_skill(agent, 'shell', default_allow=False)):
+            raise PermissionError('Terminal execution is outside the active owner and invitation grants')
+        if hb_chat_controls.continuation(conn, task)['mode'] == 'off' or hb_chat_controls.held_requests(conn, task):
+            raise PermissionError('Owner held this terminal task')
+        row = conn.execute('SELECT message_id FROM peer_messages WHERE id=?', (actor['peer_request_id'],)).fetchone()
+        approval = hb_chat_controls.request_snapshot(conn, row[0]) if row else None
+        if not approval or approval['decision'] not in {'approved', 'try_again'}:
+            raise PermissionError('Terminal execution requires the recorded owner request approval')
+    if (not isinstance(command, str) or not 1 <= len(command) <= 1000
+            or re.search(r'[\x00-\x1f;|&`$<>\\]', command)):
+        raise ValueError('Owner terminal requires one plain command without shell composition')
+    argv = shlex.split(command)
+    if not argv:
+        raise ValueError('Owner terminal requires a command')
+    if os.path.basename(argv[0]) == 'sudo' and (len(argv) < 2 or argv[1] != '-A'):
+        raise ValueError('Sudo requires -A and the owner secure prompt')
+    return argv
+
+
+def run(command, agent='shell', notify_ghost=True, *, owner_task_id=None):
     """
     Run a whitelisted shell command. Returns (success, output).
 
@@ -356,9 +393,11 @@ def run(command, agent='shell', notify_ghost=True):
     - Hard timeout: TIMEOUT_SEC seconds; entire process group killed on expiry.
     - grep exit code 1 (no matches) is treated as success with a note added.
     - Running commands are tracked in _AGENT_CMDS for terminal tile visibility.
+    - Signed owner-task commands execute as argv, never through a shell.
     """
     command = command.strip()
-    match = _match_whitelist(command)
+    argv = _owner_terminal_argv(command, agent, owner_task_id) if owner_task_id is not None else None
+    match = (2, 'signed owner task terminal') if argv is not None else _match_whitelist(command)
 
     if match is None:
         reason = f'Command not on whitelist: {command[:100]}'
@@ -395,8 +434,8 @@ def run(command, agent='shell', notify_ghost=True):
     try:
         # Use Popen + process group so the entire group dies on timeout
         proc = subprocess.Popen(
-            command,
-            shell=True,
+            argv if argv is not None else command,
+            shell=argv is None,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

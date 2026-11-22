@@ -136,3 +136,13 @@ def test_ignored_tests_are_not_executable_through_runner(repo):
     (repo/'.gitignore').write_text('tests/test_ignored.py\n')
     (repo/'tests/test_ignored.py').write_text('def test_x(): pass\n')
     with pytest.raises(PermissionError):apex_test_runner.validate_test_args({'tests':['tests/test_ignored.py']},root=repo)
+
+
+def test_tests_cannot_delete_repository_files(repo):
+    canary = repo / 'tests' / 'do_not_delete.txt'
+    canary.write_text('keep')
+    test_file = repo / 'tests' / 'test_no_delete.py'
+    test_file.write_text("from pathlib import Path\nimport pytest\ndef test_no_delete():\n    p=Path(__file__).with_name('do_not_delete.txt')\n    with pytest.raises(OSError):\n        p.unlink()\n    assert p.read_text() == 'keep'\n")
+    result = apex_test_runner.run_tests({'tests': ['tests/test_no_delete.py']}, root=repo)
+    assert result['status'] == 'passed', result
+    assert canary.read_text() == 'keep'

@@ -112,9 +112,11 @@ class TestOnboardingStatus:
             assert 'TAVILY_API_KEY' in env_vars
 
     def test_cloud_agents_count(self, app):
+        from frontend.blueprints.onboarding import _CLOUD_AGENTS
         with app.test_client() as c:
             data = c.get('/api/onboarding/status').get_json()
-            assert data['cloud_agents_total'] == 6  # 6 known cloud agents
+            # The count follows the registry (which grew past 6), not a hardcoded number.
+            assert data['cloud_agents_total'] == len(_CLOUD_AGENTS) == len(data['cloud_agents'])
 
     def test_cloud_agents_key_set_reflects_env(self, app, monkeypatch):
         monkeypatch.setenv('GROQ_API_KEY', 'test-key-value')

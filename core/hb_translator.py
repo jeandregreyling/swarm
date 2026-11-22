@@ -59,9 +59,23 @@ def switch(conn, on, run=subprocess.run, now=None):
     return ok, running(run)
 
 
+def start_auto(conn, run=subprocess.run, now=None):
+    """Start the translator on demand without turning an automatic start into manual mode."""
+    now = time.time() if now is None else now
+    current, _ = mode(conn)
+    if running(run):
+        if current != 'manual':
+            _set(conn, 'auto', now)
+        return True
+    ok = _ctl('start', run).returncode == 0
+    if ok:
+        _set(conn, 'auto', now)
+    return ok
+
+
 def cjk_share(text):
     letters = [c for c in str(text or '') if c.isalpha()]
-    return sum(1 for c in letters if _CJK.match(c)) / len(letters) if len(letters) >= 20 else 0.0
+    return sum(1 for c in letters if _CJK.match(c)) / len(letters) if len(letters) >= 2 else 0.0
 
 
 def language_of(text):

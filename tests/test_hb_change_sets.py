@@ -62,3 +62,17 @@ def test_drift_and_breakage_are_refused_without_changing_anything(tmp_path):
     with pytest.raises(ValueError, match='only action'):
         cs.call({'action': 'apply', 'path': 'x'}, 'S-0000000001', root)
     assert cs.call({'action': 'show'}, 'S-0000000002', root)['state'] == 'none'
+
+
+def test_proposal_tests_cannot_delete_repository_files(tmp_path):
+    root = _repo(tmp_path)
+    canary = root / 'pkg' / 'keep.txt'
+    canary.write_text('keep')
+    (root / 'tests' / 'test_mod.py').write_text(
+        "from pathlib import Path\nimport pytest\n"
+        "def test_no_delete():\n"
+        "    p = Path(__file__).parents[1] / 'pkg' / 'keep.txt'\n"
+        "    with pytest.raises(OSError):\n        p.unlink()\n"
+        "    assert p.read_text() == 'keep'\n")
+    _prepare(root)
+    assert canary.read_text() == 'keep'

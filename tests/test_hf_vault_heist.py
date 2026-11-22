@@ -53,6 +53,19 @@ def test_requires_real_mount(monkeypatch, tmp_path):
         vault.validate_destination(tmp_path / "vault", tmp_path)
 
 
+def test_owner_marked_archive_symlink_is_trusted_without_allowing_escape(tmp_path):
+    real = tmp_path / 'archive'
+    real.mkdir()
+    (real / '.hb-archive-here').write_text('archive')
+    link = tmp_path / 'old-mount'
+    link.symlink_to(real, target_is_directory=True)
+    assert vault.validate_destination(link / 'vault', link) == real / 'vault'
+    with pytest.raises(ValueError, match='subdirectory'):
+        vault.validate_destination(link / '..' / 'outside', link)
+    with pytest.raises(ValueError):
+        vault.validate_destination(Path('/tmp'), Path('/'))
+
+
 def test_rejects_unreviewed_licenses(tmp_path):
     kwargs = dict(accept_llama=False, max_bytes=1000, reserve_bytes=1)
     with pytest.raises(ValueError, match="separate review"):

@@ -63,7 +63,7 @@
     });
     el.querySelector('.hb-pop-show').onclick = () => {
       const pane = document.getElementById && document.getElementById('hb-live-pane');
-      if (pane) { pane.scrollIntoView({ behavior: 'smooth', block: 'start' }); pane.style.outline = '2px solid #ffb300'; setTimeout(() => { pane.style.outline = ''; }, 2500); }
+      if (pane) { pane.scrollIntoView({ behavior: 'smooth', block: 'start' }); pane.style.outline = '2px solid var(--accent,#ffb300)'; setTimeout(() => { pane.style.outline = ''; }, 2500); }
       else if (typeof window.hbNeedsFocusBar === 'function') window.hbNeedsFocusBar();
     };
     el.querySelector('.hb-pop-later').onclick = () => { fresh.forEach(i => S.later.add(i.key)); S.sig = null; check(); };

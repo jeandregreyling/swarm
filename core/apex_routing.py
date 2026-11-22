@@ -119,7 +119,9 @@ def select_local_model(message, entries, endpoint_models=None, *, exists=None, a
             continue
         # The pool performs authoritative admission when loading. This prefilter
         # avoids choosing a known oversized model when a smaller local one fits.
-        if available_gb is not None and float(entry.ram_gb or 0) + 2 > available_gb:
+        # The endpoint was verified above and its model is already resident.
+        # The pool still enforces admission when loading a managed model.
+        if not entry.endpoint and available_gb is not None and float(entry.ram_gb or 0) + 2 > available_gb:
             continue
         # Practice 198 (emergency 20 Nov): in Auto the fixed preference lists (written before the 27B) never named APEX's own server,
         # so every turn went to a 7B stand-in. The model served on APEX's port (8080) now ranks first unless it is switched Off.

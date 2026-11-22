@@ -220,7 +220,7 @@ def remember(conn, principal_id: str, kind: str, content: str, receipt: str) -> 
 
 
 def enqueue(conn, conversation_id: int, message_id: int, body: str, recipients, sender: str = "user",
-            not_before: float | None = None, *, parent_request_id=None) -> list[int]:
+            not_before: float | None = None, *, parent_request_id=None, auto_approve=True) -> list[int]:
     from core import peer_turns, agent_identity, hb_tasks
     body = _clean_text(body)
     actor = agent_identity.CURRENT.get()
@@ -288,16 +288,44 @@ def enqueue(conn, conversation_id: int, message_id: int, body: str, recipients, 
                 from core.hb_owner_sessions import approve_if_auto
                 from core import hb_tasks
                 assigned=hb_tasks.for_request(conn,cur.lastrowid)
-                if assigned:approve_if_auto(conn,assigned,cur.lastrowid)
+                if assigned and auto_approve:approve_if_auto(conn,assigned,cur.lastrowid)
         remember(conn, routed_recipient, "inbound", routed_body, f"peer_message:{cur.lastrowid}")
     return ids
+
+
+def focus_task(conn):
+    """Practice 248: the task APEX worked on last that is still open and on - HB keeps him on it until it is done or parked
+    (Practice 235), then the next. Before this every open task had a queued request and APEX took one turn on each in turn
+    (24 tasks, none finished)."""
+    try:
+        row = conn.execute("""SELECT r.task_id FROM hb_peer_work w JOIN hb_task_requests r ON r.request_id=w.request_id
+            JOIN hb_tasks t ON t.task_id=r.task_id WHERE w.principal='apex' AND w.state='completed'
+            AND t.state NOT IN ('completed','cancelled','paused') AND COALESCE(t.step_id,'')<>''   -- Practice 248b: chat threads are never the focus
+            AND COALESCE(t.title,'') NOT LIKE '📱%'   -- Practice 267: nor a phone line ('Build it Apex' was its own focus)
+            ORDER BY w.updated_at DESC LIMIT 1""").fetchone()
+    except Exception:
+        return None
+    return row[0] if row else None
+
+
+def focus_order(conn, items):
+    """Practice 248: JD's own questions and chat first (never wait), then the focus task, then the rest oldest first."""
+    focus = focus_task(conn)
+    def rank(item):
+        try:
+            row = conn.execute('SELECT task_id FROM hb_task_requests WHERE request_id=?', (item['id'],)).fetchone()
+        except Exception:
+            row = None
+        tid = row[0] if row else None
+        return (0 if tid is None else 1 if tid == focus else 2, item['id'])
+    return sorted(items, key=rank)
 
 
 def inbox(conn, principal: dict, after_id: int = 0, limit: int = MAX_BATCH, *, pending_only=False) -> list[dict]:
     require_scope(principal, "peer.read")
     if pending_only:
-        from core.hb_calm import restart_pending
-        if restart_pending():   # Practice 220: an announced restart is on its way - no new turn starts now, so none is cut off
+        from core.hb_calm import restart_pending, restart_queued
+        if restart_pending() or restart_queued(conn):   # Practice 242: a queued restart gets its gap   # Practice 220: an announced restart is on its way - no new turn starts now, so none is cut off
             return []
     recipients = readable_recipients(principal)
     marks = ",".join("?" * len(recipients))
@@ -358,7 +386,13 @@ def inbox(conn, principal: dict, after_id: int = 0, limit: int = MAX_BATCH, *, p
                     hb_tasks.event(conn,task,'hummingbird','context_blocked',{'reason':detail,'request_retained':True},request_id=row[0])
                     continue
                 routing['owner_objective']=task['objective']
-                scope=hb_tasks.invitation_tools(conn,row[0])
+                try:
+                    scope=hb_tasks.invitation_tools(conn,row[0])
+                except ValueError as exc:   # Practice 247: one bad request never takes down the worker's whole inbox (21 Nov 22:24)
+                    conn.execute("""INSERT INTO hb_peer_work VALUES(?,?,'needs_review',?,?)
+                        ON CONFLICT(request_id) DO UPDATE SET state='needs_review',stage=excluded.stage,updated_at=excluded.updated_at
+                        WHERE hb_peer_work.state='queued'""", (row[0],row[4],'Request set aside: '+str(exc)[:120],time.time()))
+                    continue
                 if scope is not None:routing['allowed_tools']=sorted(scope)
                 model=hb_tasks.invitation_model(conn,row[0])
                 if model:routing['local_model']=model
@@ -387,7 +421,7 @@ def inbox(conn, principal: dict, after_id: int = 0, limit: int = MAX_BATCH, *, p
                     pass
             item['routing']=routing
         ready.append(item)
-    return ready
+    return focus_order(conn, ready) if pending_only else ready   # Practice 248
 
 
 def acknowledge(conn, principal: dict, ids) -> int:

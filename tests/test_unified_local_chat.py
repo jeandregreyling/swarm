@@ -118,4 +118,4 @@ def test_local_only_chat_never_dispatches_cloud_and_routes_to_apex(monkeypatch, 
     data = response.get_json()
     assert data['agent'] == 'apex' and data['agents'] == ['apex']
     assert data['routed_from'] == ['ten']
-    assert models == ['qwen2.5:14b-instruct']
+    assert models == ['gpt-oss:20b']

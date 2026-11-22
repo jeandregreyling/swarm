@@ -66,6 +66,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.memory',         'memory_bp'),
     ('blueprints.nine',           'nine_bp'),
     ('blueprints.ollama',         'ollama_bp'),
+    ('blueprints.user_languages', 'user_languages_bp'),
     ('blueprints.email_bp',       'email_bp'),
     ('blueprints.downloads',      'downloads_bp'),
     ('blueprints.proposals',             'proposals_bp'),
@@ -78,6 +79,7 @@ _BLUEPRINT_REGISTRY = [
     ('blueprints.workspace',      'workspace_bp'),
     ('blueprints.library',        'library_bp'),
     ('blueprints.localai',        'localai_bp'),
+    ('blueprints.media_bp',       'media_bp'),
     ('blueprints.media_center',   'media_center_bp'),
     ('blueprints.node',           'node_bp'),
     ('blueprints.research',       'research_bp'),
@@ -164,8 +166,31 @@ def _compute_asset_version() -> str:
     return str(int(_t.time()))
 
 
+def _runtime_stage():
+    """Explicit STAGE wins; otherwise respect SWARM_ENV, defaulting to prod."""
+    return (os.environ.get('STAGE', '').strip() or os.environ.get('SWARM_ENV', '').strip() or 'prod').upper()
+
+
 def create_app():
     app = Flask(__name__)
+
+    @app.before_request
+    def protect_media_legacy_routes():
+        # These routes can write files and launch local runners.  Enforce the
+        # same owner session used by other sensitive Hummingbird operations.
+        from flask import request, jsonify
+        if request.blueprint != 'media_bp':
+            return None
+        from services.auth import get_current_user
+        user = get_current_user()
+        if not user or user.get('role') != 'owner':
+            return jsonify({'ok': False, 'error': 'Owner access required'}), 403
+        if request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            from urllib.parse import urlsplit
+            origin = request.headers.get('Origin')
+            if request.headers.get('Sec-Fetch-Site') == 'cross-site' or (origin and urlsplit(origin).netloc != request.host):
+                return jsonify({'ok': False, 'error': 'Cross-site request denied'}), 403
+        return None
 
     # R.1: Session-based UI authentication
     try:
@@ -234,18 +259,17 @@ def create_app():
     except Exception as exc:
         print(f'[Terminal] governor bootstrap warning: {exc}')
 
-    # Mark orphaned chat jobs from previous process.
-    try:
-        mark_orphaned_chat_jobs()
-    except Exception as exc:
-        print(f'[Terminal] chat job orphan cleanup warning: {exc}')
-
     # DEV / UAT are manual test targets — they must NOT run background daemons
     # that fight prod for DB locks, Ollama runners, or scheduled tasks.
-    _STAGE = os.environ.get('STAGE', '').upper()
-    _IS_PROD = _STAGE == 'PROD' or _STAGE == ''
+    _STAGE = _runtime_stage()
+    _IS_PROD = _STAGE == 'PROD'
 
     if _IS_PROD:
+        # Only the production runtime owns and can recover its orphaned jobs.
+        try:
+            mark_orphaned_chat_jobs()
+        except Exception as exc:
+            print(f'[Terminal] chat job orphan cleanup warning: {exc}')
         # HB owns peer delivery; models submit requests, never supervise workers.
         try:
             from core.peer_coordination import start as _start_peer_coordination

@@ -32,6 +32,7 @@ _SERVICE_REGISTRY = [
     {'id': 'swarm-vortex-backup.timer', 'label': 'Vortex Memory Backup (daily)', 'env': 'SHARED',
      'kind': 'maintenance', 'scope': 'user'},
     {'id': 'ollama.service', 'label': 'Ollama Runtime (unused)', 'env': 'RUNTIME', 'kind': 'runtime'},
+    {'id': 'apex-server.service', 'label': 'APEX model server', 'env': 'RUNTIME', 'kind': 'runtime', 'scope': 'user', 'port': 8080},
 ]
 
 # Units that run inside this process; restarting them must not block the request.
@@ -95,9 +96,19 @@ def _service_payload(svc):
     status = active_state if installed else 'not installed'
     if installed and props.get('SubState') and props['SubState'] not in {active_state, 'running', 'dead'}:
         status = f"{active_state} ({props['SubState']})"
+    try:   # owner 15 Nov: service truth - systemd state compared with who really holds the port (core/hb_service_truth.py)
+        from core import hb_service_truth
+        truth = hb_service_truth.verdict(svc['id'], installed and active_state == 'active', svc.get('port')) if installed else \
+            {'truth': 'not installed', 'port_owner': None}
+    except Exception:
+        truth = {'truth': 'unknown', 'port_owner': None}
+    if truth['truth'] not in ('ok', 'no port', 'not installed', 'unknown'):
+        status = f"{status} - {truth['truth']}"
     return {
         'scope': scope,
         **svc,
+        'truth': truth['truth'],
+        'port_owner': truth['port_owner'],
         'active': installed and active_state == 'active',
         'status': status,
         'enabled': props.get('UnitFileState') or ('not-found' if not installed else 'static'),

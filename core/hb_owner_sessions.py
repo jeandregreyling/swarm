@@ -1,7 +1,9 @@
 """Explicit, signed owner-host session grants for a bounded DOES override.
 
 Only native owner control or an owner-authenticated handler can create a grant.
-Peer text cannot create one. A grant approves requests in its recorded task;
+Peer text cannot create one. An existing-task grant also approves its pending
+APEX requests through native Auto controls, preserving explicit owner decisions.
+A grant approves requests in its recorded task;
 it never accepts completion, clears an owner hold, or authorizes other projects.
 """
 from dataclasses import dataclass
@@ -71,8 +73,18 @@ def for_task(conn,task_id,*,active=False):
     return value
 
 
+def tools_for_task(conn,task_id,grant=None):
+    grant=grant if grant is not None else for_task(conn,task_id,active=True)
+    if not grant:return None
+    if 'allowed_tools' in grant:return grant['allowed_tools']
+    row=conn.execute("""SELECT e.payload FROM hb_task_events e JOIN peer_messages p ON p.id=e.request_id
+        WHERE e.task_id=? AND e.kind='tool_scope' AND e.agent='hummingbird' AND p.message_id=?
+        ORDER BY e.event_id LIMIT 1""",(task_id,grant['root_message_id'])).fetchone()
+    return json.loads(row[0]).get('allowed_tools') if row else None
+
+
 def grant(conn,authority,*,conversation_id,project_id,objective,evidence_text,reason,
-          session_id=None,step_id=None,lifetime_seconds=None,allowed_tools=None,dependencies=(),source_prefixes=None):
+          session_id=None,step_id=None,task_id=None,lifetime_seconds=None,allowed_tools=None,dependencies=(),source_prefixes=None):
     from core import hb_tasks,peer_bridge
     if authority!=native_owner_authority():raise PermissionError('Native owner authorization required')
     if not isinstance(evidence_text,str) or not 20<=len(evidence_text)<=12000:
@@ -80,6 +92,15 @@ def grant(conn,authority,*,conversation_id,project_id,objective,evidence_text,re
     if not isinstance(objective,str) or not 1<=len(objective)<=3500:raise ValueError('A bounded objective of at most3500 characters is required')
     if lifetime_seconds is not None and (type(lifetime_seconds) is not int or not 60<=lifetime_seconds<=14400):raise ValueError('An optional explicit session lease must be between one minute and four hours')
     if not reason or len(reason)>1000:raise ValueError('A concrete instructor-override reason is required')
+    if allowed_tools and (len(allowed_tools)>20 or any(not isinstance(t,str) for t in allowed_tools)):
+        raise ValueError('Use at most twenty explicit tools')
+    if task_id is not None:
+        from core.hb_chat_controls import continuation,held_requests
+        existing_task=hb_tasks.get(conn,task_id)
+        if (not existing_task or existing_task['conversation_id']!=conversation_id
+                or existing_task['project_id']!=project_id or existing_task['state']!='active'
+                or continuation(conn,existing_task)['mode']=='off' or held_requests(conn,existing_task)):
+            raise PermissionError('An existing-task grant must preserve its project, active state and owner holds')
     ensure_schema(conn);hb_tasks.ensure_schema(conn)
     session_id=session_id or uuid.uuid4().hex
     existing=conn.execute('SELECT task_id,evidence_text FROM hb_owner_sessions WHERE session_id=?',(session_id,)).fetchone()
@@ -88,22 +109,28 @@ def grant(conn,authority,*,conversation_id,project_id,objective,evidence_text,re
         return {'session_id':session_id,'task_id':existing[0],'deduplicated':True}
     content='Owner-authorized HB session handover.\n'+objective+'\nAuthorization source: '+authority.source+'. Approval mode: Auto, within this recorded task and lease. Completion still requires verified tests and instructor acceptance.'
     mid=conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','apex',?,'owner_authorization',0)",(conversation_id,content)).lastrowid
-    task=hb_tasks.bind(conn,conversation_id,mid,objective=objective,title=objective.split('\n')[0][:140],project_id=project_id,step_id=step_id)
+    task=hb_tasks.bind(conn,conversation_id,mid,task_id=task_id,objective=objective,title=objective.split('\n')[0][:140],project_id=project_id,step_id=step_id)
     now=time.time()
     payload={'session_id':session_id,'task_id':task['task_id'],'conversation_id':conversation_id,
         'project_id':task['project_id'],'root_message_id':mid,'owner_uid':authority.uid,'source':authority.source,
         'mode':'auto','started_at':now,'expires_at':now+lifetime_seconds if lifetime_seconds is not None else None,'reason':reason,
-        'source_prefixes':list(source_prefixes or SOURCE_PREFIXES),'evidence_sha256':hashlib.sha256(evidence_text.encode()).hexdigest()}
+        'source_prefixes':list(source_prefixes or SOURCE_PREFIXES),'evidence_sha256':hashlib.sha256(evidence_text.encode()).hexdigest(),
+        'allowed_tools':list(allowed_tools) if allowed_tools else None}
     encoded=json.dumps(payload,sort_keys=True,separators=(',',':'))
     signature=hmac.new(_key(create=True),encoded.encode(),hashlib.sha256).hexdigest()
     conn.execute('INSERT INTO hb_owner_sessions VALUES (?,?,?,?,?,NULL)',(session_id,task['task_id'],encoded,signature,evidence_text))
     hb_tasks.event(conn,task,'owner-host','owner_session_granted',payload,message_id=mid)
     queued=peer_bridge.enqueue(conn,conversation_id,mid,objective,['apex'],sender='hummingbird') if not dependencies else []
     if allowed_tools:
-        if len(allowed_tools)>20 or any(not isinstance(t,str) for t in allowed_tools):raise ValueError('Use at most twenty explicit tools')
         for rid in queued:hb_tasks.event(conn,task,'hummingbird','tool_scope',{'allowed_tools':allowed_tools},request_id=rid)
     from core.hb_task_manager import register
     register(conn,task,request_id=queued[0] if queued else None,next_action=objective,dependencies=dependencies)
+    if task_id is not None:
+        pending=conn.execute("""SELECT r.request_id FROM hb_task_requests r
+            JOIN peer_messages p ON p.id=r.request_id JOIN hb_peer_work w ON w.request_id=r.request_id
+            WHERE r.task_id=? AND p.recipient='apex' AND p.delivered_at IS NULL
+            AND w.state IN ('queued','running')""",(task['task_id'],)).fetchall()
+        for (request_id,) in pending:approve_if_auto(conn,task,request_id)
     return {'session_id':session_id,'task_id':task['task_id'],'project_id':task['project_id'],
             'step_id':task['step_id'],'message_id':mid,'queued':queued,'expires_at':payload['expires_at'],'deduplicated':False}
 

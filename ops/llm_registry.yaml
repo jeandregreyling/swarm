@@ -122,6 +122,52 @@ models:
   # APEX on :8080 since 15 Nov 2026 (owner): gpt-oss:20B (systemd user apex-server, drop-in gpu-offload.conf). gpt-oss:20b below is the routed entry (switch On).
   # Endpoint failure is explicit: never spawn a second 13GB model copy.
   # api_model maps registry names to the service's case-sensitive API alias.
+  # Stable APEX service alias; the selected model is tracked by HB's role register.
+  - name: swift-qwen3.8-27b
+    driver: llamacpp
+    endpoint: http://127.0.0.1:8080
+    role: general
+    path: /srv/archive/models/gguf/swift-qwen3.8-27b/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_S-mtp.gguf
+    ctx: 16384
+    quant: IQ3_S
+    ram_gb: 14
+    ttl_seconds: 1800
+    options:
+      mode: server
+      api_model: APEX
+      slots: 1
+      raw_completion: false
+
+  - name: mistral-nemo-12b-abliterated
+    driver: llamacpp
+    endpoint: http://127.0.0.1:8080
+    role: general
+    path: /home/jd/models/hb-candidates/mistral-nemo-12b-abliterated/model.gguf
+    ctx: 16384
+    quant: Q5_K_M
+    ram_gb: 10
+    ttl_seconds: 1800
+    options:
+      mode: server
+      api_model: APEX
+      slots: 1
+      raw_completion: false
+
+  - name: apex-service:current
+    driver: llamacpp
+    endpoint: http://127.0.0.1:8080
+    role: general
+    path: /home/jd/models/hb-candidates/mistral-nemo-12b-abliterated/model.gguf
+    ctx: 16384
+    quant: IQ3_S
+    ram_gb: 14
+    ttl_seconds: 1800
+    options:
+      mode: server
+      api_model: APEX
+      slots: 1
+      raw_completion: false
+
   - name: apex-direct:20b
     driver: llamacpp
     endpoint: http://127.0.0.1:8080

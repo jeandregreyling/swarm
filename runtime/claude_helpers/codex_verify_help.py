@@ -1,5 +1,6 @@
 """Record Codex's targeted checks and full-suite comparison for HB's existing plan."""
 import json
+import os
 import re
 import subprocess
 import sys
@@ -9,11 +10,19 @@ from core import hb_change_sets as cs, hb_activity_log as live
 from core.knowledge import projects, test_runs
 
 ROOT = Path.cwd()
+if len(sys.argv) != 2:
+    raise SystemExit('Provide the disposable source snapshot path; live-tree suite execution is refused.')
+CHECK_ROOT = Path(sys.argv[1]).resolve()
+if CHECK_ROOT == ROOT.resolve() or not str(CHECK_ROOT).startswith('/tmp/hb-codex-'):
+    raise SystemExit('Verification requires a disposable /tmp/hb-codex-* source snapshot.')
+SNAPSHOT_INFO = json.loads((ROOT / 'runtime/claude_helpers/codex-help-snapshot.json').read_text())
+OFFLINE_PLUGIN = SNAPSHOT_INFO['offline_plugin']
+CHECK_ENV = {**os.environ, 'SWARM_ROOT': str(CHECK_ROOT), 'PYTHONPATH': str(CHECK_ROOT) + os.pathsep + OFFLINE_PLUGIN}
 PROJECT = 'P-2AB8250A87'
 STEPS = ['S-F4573D4DC7', 'S-A8CBDDC037', 'S-6E6EA42ED2', 'S-3A5DF6867A', 'S-08FE88DE3D']
 STORE = ROOT / 'runtime/claude_helpers/codex-help-verification'
 STORE.mkdir(exist_ok=True)
-results = {'targeted': [], 'full_suite': None}
+results = {'source_snapshot': str(CHECK_ROOT), 'targeted': [], 'full_suite': None}
 
 
 def save():
@@ -26,10 +35,10 @@ for sid in STEPS:
     tests = change['test']['tests']
     cases = projects.list_test_cases(PROJECT, step_id=sid)
     cid = cases[0]['case_id'] if cases else projects.add_test_case(PROJECT, 'python -m pytest ' + ' '.join(tests), step_id=sid, owner='apex')
-    cmd = [sys.executable, '-m', 'pytest', '-q', '-o', 'addopts=', '-p', 'no:cacheprovider', *tests]
+    cmd = [sys.executable, '-m', 'pytest', '-q', '-o', 'addopts=', '-p', 'no:cacheprovider', '-p', 'hb_verify_offline', *tests]
     rid = test_runs.start_run('codex:pytest', command=' '.join(cmd), triggered_by='codex-instructor', project_id=PROJECT, step_id=sid, case_id=cid)
     assert rid, sid
-    out = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    out = subprocess.run(cmd, cwd=CHECK_ROOT, env=CHECK_ENV, capture_output=True, text=True, timeout=900)
     log = STORE / (sid + '.log')
     log.write_text(out.stdout + out.stderr)
     summary = (out.stdout.strip().splitlines() or ['no output'])[-1]
@@ -41,13 +50,13 @@ for sid in STEPS:
 
 log = STORE / 'full-suite.log'
 xml = STORE / 'full-suite.xml'
-cmd = [sys.executable, '-m', 'pytest', '-q', '-o', 'addopts=', '-p', 'no:cacheprovider', 'tests/', '--maxfail=400', '--junitxml=' + str(xml)]
+cmd = [sys.executable, '-m', 'pytest', '-q', '-o', 'addopts=', '-p', 'no:cacheprovider', '-p', 'hb_verify_offline', 'tests/', '--maxfail=400', '--junitxml=' + str(xml)]
 rid = test_runs.start_run('codex:full-suite', command=' '.join(cmd), triggered_by='codex-instructor', project_id=PROJECT)
 assert rid
 print('FULL SUITE STARTED', rid, str(log), flush=True)
 with log.open('w') as f:
     try:
-        out = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=3000)
+        out = subprocess.run(cmd, cwd=CHECK_ROOT, env=CHECK_ENV, stdout=f, stderr=subprocess.STDOUT, timeout=3000)
     except BaseException as exc:
         test_runs.finish_run(rid, status='aborted', stdout_tail=str(exc))
         raise

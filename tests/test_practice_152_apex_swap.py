@@ -59,3 +59,10 @@ def test_practice_152_back_returns_to_the_saved_model(tmp_path, monkeypatch):
 def test_practice_152_command_is_wired():
     assert hb_commands.parse('apex models') == ('apex', ['models'])
     assert any(c[0] == 'apex' for c in hb_commands.COMMANDS)
+
+
+def test_swap_updates_service_alias_to_selected_model():
+    before = DROPIN.replace('[Service]\n', '[Service]\nEnvironment=LLAMA_ARG_ALIAS=APEX,old-model\n')
+    after = s.render(before, ROWS[1])
+    assert 'Environment=LLAMA_ARG_ALIAS=APEX,swift-qwen3.8-27b' in after
+    assert 'APEX,old-model' not in after

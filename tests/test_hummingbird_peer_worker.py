@@ -333,3 +333,17 @@ def test_checkpoint_evidence_schema_allows_only_actual_saved_reply_ids(monkeypat
     body=json.dumps({'current_round_reply_evidence':[{'message_id':100},{'message_id':99}],'pending_requested_work':[{'message_id':500}]})
     result=worker.decision_turn(API(),{'id':42,'conversation_id':2833,'body':body},[])
     assert result['decision']['evidence_message_ids']==[100]
+
+
+def test_apex_task_reference_includes_bounded_private_memories():
+    memory = {'id': 7, 'subject': 'Lesson', 'content': 'x' * 900, 'source': 'verified', 'ticket_ref': 'T-1'}
+    ref = worker.apex_task_reference({'task_id': 'T-1', 'recent_evidence': []}, [memory])
+    assert ref['private_task_memory'][0]['id'] == '7'
+    assert ref['private_task_memory'][0]['content'] == 'x' * 600
+    assert ref['private_task_memory'][0]['source'] == 'verified'
+
+
+def test_chat_task_reference_does_not_advertise_conversation_as_work():
+    packet = {'task_id': 'T-CONVERSATION', 'title': 'Chat with JD', 'step_id': None,
+              'objective': 'HB conversation: remarks and go-aheads from JD that are not new work.'}
+    assert worker.apex_task_reference(packet, [{'content': 'old chat'}]) == {}

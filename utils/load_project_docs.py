@@ -57,20 +57,18 @@ def load():
 
     conn = get_connection()
 
-    # Clear old project_docs entirely
-    conn.execute('DELETE FROM project_docs')
-    conn.commit()
-
     inserted = 0
     for name, content in sections:
         # Truncate very long sections to ~4000 chars to stay token-efficient
         if len(content) > 4000:
             content = content[:4000] + '\n… [truncated]'
-        conn.execute(
-            'INSERT INTO project_docs (doc_name, content) VALUES (?, ?)',
-            (name, content)
-        )
-        inserted += 1
+        # PROJECT.md sections share Studio with unrelated owner documents.
+        # Never clear or overwrite that collection; a repeat import adds only
+        # sections not already present under this file-specific namespace.
+        doc_name = 'PROJECT.md: ' + name
+        if not conn.execute('SELECT 1 FROM project_docs WHERE doc_name=?', (doc_name,)).fetchone():
+            conn.execute('INSERT INTO project_docs (doc_name, content) VALUES (?, ?)', (doc_name, content))
+            inserted += 1
 
     conn.commit()
     conn.close()

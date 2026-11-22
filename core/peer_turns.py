@@ -74,7 +74,8 @@ def plan(conn, conversation_id, message_id, recipient, parent_request_id, limit,
         ORDER BY p.id DESC LIMIT 1''',(conversation_id,message_id,state['owner_message_id'],state['cycle'])).fetchone()
     if prior:
         return state | {'turns':prior[0],'kind':'work','parent_request_id':parent_request_id}
-    if state['turns'] >= limit or state['state'] == 'awaiting_decision':
+    # The handoff window is now unbounded; the original 4‑handoff cap has been removed.
+    if limit is not None and state['turns'] >= limit or state['state'] == 'awaiting_decision':
         if continuing:
             conn.execute("UPDATE hb_peer_rounds SET state='active',cycle=cycle+1,turns=1,decision_request_id=NULL,updated_at=? WHERE conversation_id=? AND owner_message_id=?",(time.time(),conversation_id,state['owner_message_id']))
             hb_tasks.event(conn,task,'hummingbird','turn_checkpoint',{'handoffs':state['turns'],'previous_cycle':state['cycle'],'reason':'Handoff window checkpoint; task and approval remain active'})

@@ -53,6 +53,6 @@ def test_practice_28_counsel_finds_existing_studio_work_and_waits_for_the_queue(
     hb_counsel.review(conn, task, 'not scoped in Studio yet', model=lambda m: seen.append(m) or dict(CARD))
     assert 'not new' in seen[0][0]['content'] and 'what is left' in seen[0][0]['content']
     hb_queue.drive_on(conn, 'jd', 1)                                          # the queue has precise work running
-    assert not hb_counsel.can_run(conn)
+    assert hb_counsel.can_run(conn)      # practice 37: the counsel (CPU) no longer waits for APEX's GPU queue
     hb_queue.drive_off(conn, 'jd', 1)
     assert hb_counsel.can_run(conn)

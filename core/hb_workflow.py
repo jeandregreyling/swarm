@@ -91,13 +91,16 @@ def rig_status(run=None):
 
 def runtime_history():
     result={'memory':memory_snapshot(),'recent_runs':[],'comparisons':[]}
+    from core.hb_live import telemetry
+    result['telemetry']=telemetry()
     try:   # Practice 202: the whole rig, not only host RAM
         result['rig']=rig_status()
     except Exception as exc:
         result['rig_error']=type(exc).__name__
     try:  # B40: "why is it hot / slow" needs the GPU and what is actually loaded, not only host RAM
-        from core.hb_hardware import gpu_stats,model_processes,housekeeping_log
+        from core.hb_hardware import gpu_stats,gpu_tuning_status,model_processes,housekeeping_log
         result['gpu']=gpu_stats()
+        result['gpu_tuning']=gpu_tuning_status()
         result['loaded_models']=[{k:p[k] for k in ('model','kind','placement','vram_gb','ram_gb','port')} for p in model_processes()]
         with closing(get_connection()) as conn:
             result['recent_housekeeping']=housekeeping_log(conn,5)
@@ -261,8 +264,10 @@ def call_control(tool,args):
             raise PermissionError('This agent has no HB terminal grant')
         if (not isinstance(command,str) or not 1<=len(command)<=1000
                 or re.search(r'[\x00-\x1f;|&`$<>\\]',command)):
-            raise ValueError('Terminal diagnostics require a single command without shell composition')
+            raise ValueError('Terminal execution requires a single command without shell composition')
         parts=shlex.split(command)
+        # Owner-scoped shell execution permits arbitrary deletion. Keep agent terminal
+        # access diagnostic-only until file-specific owner approval is implemented.
         safe={'df','free','uptime','uname','lsblk','ps','ss','ip','hostname','whoami','date','systemctl','journalctl'}
         match=shell_agent._match_whitelist(command)
         if (not parts or parts[0] not in safe or match is None or match[0]>2

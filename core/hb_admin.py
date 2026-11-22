@@ -219,6 +219,23 @@ def _watch(rid, log, status, limit=4 * 3600, sleep=time.sleep, running=None):
     finish(rid, code, log.read_text(errors='replace') if log.exists() else '', get_connection)
 
 
+def resume_watchers(connect=None):
+    """HB restart: resume a watcher for every admin step whose state is 'running'.
+    If the status file already exists, finish it at once."""
+    import sqlite3
+    from contextlib import closing
+    connect = connect or (lambda: sqlite3.connect(str(ROOT / 'runtime' / 'hb.db')))
+    with closing(connect()) as conn:
+        ensure_schema(conn)
+        rows = conn.execute("SELECT id FROM hb_admin_requests WHERE state='running'").fetchall()
+    for (rid,) in rows:
+        log, status = LOG_DIR / f'{rid}.log', LOG_DIR / f'{rid}.status'
+        if status.exists():
+            finish(rid, int(status.read_text().strip() or 1), log.read_text(errors='replace') if log.exists() else '', connect)
+        else:
+            threading.Thread(target=_watch, args=(rid, log, status), name='hb-admin-resume-' + rid, daemon=True).start()
+
+
 def finish(rid, code, log_text, connect):
     from contextlib import closing
     state = 'done' if code == 0 else ('timed out' if code is None else 'window closed before it finished' if code == -1 else 'failed')

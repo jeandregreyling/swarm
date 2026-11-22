@@ -89,5 +89,5 @@ def test_apex_status_checks_the_served_model_identity(monkeypatch):
     monkeypatch.setattr(status, "urlopen", lambda *_, **__: Response())
     assert status._apex_status() == {
         "state": "online", "model": status.APEX_MODEL,
-        "context_tokens": 16384, "backend": "llama.cpp / Vulkan",
+        "context_tokens": 16384, "backend": "llama.cpp",
     }

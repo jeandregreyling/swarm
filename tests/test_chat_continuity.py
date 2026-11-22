@@ -43,7 +43,7 @@ def corrupt_connection():
 def test_apex_is_the_only_roster_entry_without_touching_the_database():
     for roster in (apex_roster(), recovery_roster()):
         assert [row["name"] for row in roster] == ["apex"]
-        assert roster[0]["model"] == APEX_AGENT["model"] == "qwen2.5:14b-instruct"
+        assert roster[0]["model"] == APEX_AGENT["model"] == "gpt-oss:20b"
         assert roster[0]["tier"] == "local"
     assert recovery_roster()[0]["storage_degraded"] is True
     assert apex_roster()[0]["storage_degraded"] is False
@@ -241,7 +241,7 @@ def test_actual_chat_route_automatically_recovers_and_readback_works(live_route)
     # The UI asked for Qwen; the backend owns routing and answers through APEX.
     assert data["agent"] == "apex"
     assert data["routed_from"] == ["qwen"]
-    assert data["responses"][0]["model"] == AGENTS[0]["model"] == "qwen2.5:14b-instruct"
+    assert data["responses"][0]["model"] == AGENTS[0]["model"] == "gpt-oss:20b"
     conversation_id = data["conversation_id"]
     readback = client.get(f"/api/conversations/{conversation_id}/messages")
     assert readback.status_code == 200
@@ -291,9 +291,9 @@ def test_recovery_route_reports_offline_when_apex_endpoint_is_unreachable(live_r
     assert body["ok"] is False
     assert body["state"] == STATE_OFFLINE
     assert body["storage_degraded"] is True
-    assert body["model"] == "qwen2.5:14b-instruct"
+    assert body["model"] == "gpt-oss:20b"
     assert "unavailable" in body["response"]
-    assert calls == ["qwen2.5:14b-instruct"]
+    assert calls == ["gpt-oss:20b"]
     thread = json.loads(next(store.root.glob("*.json")).read_text())
     assert thread["messages"][0]["content"] == "anyone there?"
     assert thread["last_error"]["state"] == STATE_OFFLINE
@@ -696,9 +696,9 @@ def test_healthy_storage_routes_every_local_request_to_apex_and_persists_primary
     assert data["storage_degraded"] is False
     assert data["agent"] == "apex" and data["agents"] == ["apex"]
     assert data["routed_from"] == ["gemma", "qwen"]
-    assert data["responses"][0]["model"] == "qwen2.5:14b-instruct"
+    assert data["responses"][0]["model"] == "gpt-oss:20b"
     assert data["pending_jobs"] == []
-    assert [model for model, _ in gateway_calls] == ["qwen2.5:14b-instruct"]
+    assert [model for model, _ in gateway_calls] == ["gpt-oss:20b"]
     assert gateway_calls[0][1][-1]["role"] == "user" and "hello apex" in gateway_calls[0][1][-1]["content"]
     with connect() as con:
         rows = con.execute("SELECT from_agent, to_agent, content FROM messages ORDER BY id").fetchall()
