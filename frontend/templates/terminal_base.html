@@ -205,8 +205,20 @@
     <button onclick="closeSettings()" style="position:absolute;right:14px;top:12px;background:transparent;border:none;color:var(--text);font-size:18px;cursor:pointer;line-height:1;">&#x2715;</button>
     <h2 style="margin:0 0 20px;font-size:15px;font-weight:700;letter-spacing:-0.02em;">&#x2699;&#xFE0F; Hummingbird Settings</h2>
 
-    <!-- PREMIUM THEMES -->
+    <!-- UNIFIED THEME ENGINE (single source of truth synced with taskbar Theme picker) -->
     <div class="settings-section">
+      <div class="settings-label" style="margin-bottom:8px;">Theme Preset</div>
+      <div id="settings-theme-presets" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+        <button type="button" onclick="setNamedTheme('hummingbird')" class="theme-picker-item" data-theme="hummingbird" style="padding:6px 11px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:linear-gradient(135deg,#10e8a4,#ffb84d 55%,#f472b6);"></span>Hummingbird</button>
+        <button type="button" onclick="setNamedTheme('auto')" class="theme-picker-item" data-theme="auto" style="padding:6px 11px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:linear-gradient(135deg,#ff8fbe,#bde9ff,#ffab63,#775ac0);"></span>Auto (Atmosphere)</button>
+        <button type="button" onclick="setNamedTheme('obsidian')" class="theme-picker-item" data-theme="obsidian" style="padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:#111113;"></span>Obsidian</button>
+        <button type="button" onclick="setNamedTheme('aurora')" class="theme-picker-item" data-theme="aurora" style="padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:#13141F;"></span>Aurora</button>
+        <button type="button" onclick="setNamedTheme('midnight')" class="theme-picker-item" data-theme="midnight" style="padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:linear-gradient(135deg,#7C3AED,#080810);"></span>Midnight</button>
+        <button type="button" onclick="setNamedTheme('neon')" class="theme-picker-item" data-theme="neon" style="padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:linear-gradient(135deg,#00FFAA,#050508);"></span>Neon</button>
+        <button type="button" onclick="setNamedTheme('apple')" class="theme-picker-item" data-theme="apple" style="padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:linear-gradient(135deg,#0071E3,#1C1C1C);"></span>Apple</button>
+        <button type="button" onclick="setNamedTheme('nature')" class="theme-picker-item" data-theme="nature" style="padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:linear-gradient(135deg,#10B981,#152620);"></span>Nature</button>
+        <button type="button" onclick="setNamedTheme('lumen')" class="theme-picker-item" data-theme="lumen" style="padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:11px;display:inline-flex;align-items:center;gap:6px;"><span class="theme-swatch" style="background:linear-gradient(135deg,#FFE74A,#FFFDF8);"></span>Lumen</button>
+      </div>
       <div class="settings-label" style="margin-bottom:10px;">Atmosphere</div>
       <div style="padding:14px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,color-mix(in srgb, var(--card) 88%, white 12%) 0%, var(--card) 100%);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -979,6 +991,7 @@
               <button id="home-chat-fav-btn" class="voice-mic-btn" title="Save current input as favourite shortcut" onclick="homeChatToggleFavourite()" aria-label="Favourites">
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M8 2.5l1.7 3.5 3.8.5-2.8 2.7.7 3.8L8 11.2 4.6 13l.7-3.8L2.5 6.5l3.8-.5L8 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
               </button>
+              <button id="hb-tr-toggle" type="button" class="voice-mic-btn" aria-label="Translation settings" title="Translation settings">译</button>
               <button id="home-chat-mic-btn" class="voice-mic-btn" title="Hold to talk" onclick="voiceRecordToggle(this, (t)=>{const i=document.getElementById('home-chat-input'); if(i){i.value=(i.value? i.value+' ':'')+t; i.focus();}})">
                 <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><rect x="6" y="2" width="4" height="8" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2M6 14h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
               </button>
@@ -1056,6 +1069,9 @@
     </button>
     <div id="theme-picker-menu" role="menu" aria-label="Themes">
       <div class="theme-picker-heading">Themes</div>
+      <button onclick="setNamedTheme('hummingbird')" class="theme-picker-item" data-theme="hummingbird">
+        <span class="theme-swatch" style="background:linear-gradient(135deg,#10e8a4,#ffb84d 55%,#f472b6);"></span>Hummingbird
+      </button>
       <button onclick="setNamedTheme('auto')" class="theme-picker-item" data-theme="auto">
         <span class="theme-swatch" style="background:linear-gradient(135deg,#ff8fbe,#bde9ff,#ffab63,#775ac0);"></span>Auto
       </button>
@@ -3353,7 +3369,7 @@
 <script src="/static/js/views/orientation_card.js?v={{ ASSET_VERSION }}"></script>
 
 <script src="/static/js/views/home-chat.js?v={{ ASSET_VERSION }}-hc-live-team10"></script>
-<script src="/static/js/hb-translate-bubble.js?v={{ ASSET_VERSION }}-tr1"></script>
+<script src="/static/js/hb-translate-bubble.js?v={{ ASSET_VERSION }}-tr2"></script>
 <script src="/static/js/views/hb-needs-you.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/hb-brand-icons.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/hb-activity.js?v={{ ASSET_VERSION }}"></script>

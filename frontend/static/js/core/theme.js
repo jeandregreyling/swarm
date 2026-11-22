@@ -951,6 +951,7 @@ function _syncAtmosphereControls(mode, value) {
 
 function setAtmosphereMode(mode) {
   const nextMode = _normalizeAtmosphereMode(mode);
+  try { localStorage.removeItem(FRIDAYS_NAMED_THEME_KEY); } catch (e) {}
   window._selectedThemeMode = nextMode;
   try { localStorage.setItem(FRIDAYS_THEME_MODE_KEY, nextMode); } catch (e) {}
   applyTimeTheme(nextMode);
@@ -958,6 +959,7 @@ function setAtmosphereMode(mode) {
 
 function onAtmosphereSliderInput(value) {
   const numeric = _clampAtmosphereValue(value);
+  try { localStorage.removeItem(FRIDAYS_NAMED_THEME_KEY); } catch (e) {}
   window._selectedThemeMode = 'manual';
   try { localStorage.setItem(FRIDAYS_THEME_MODE_KEY, 'manual'); } catch (e) {}
   try { localStorage.setItem(FRIDAYS_ATMOSPHERE_VALUE_KEY, String(Math.round(numeric))); } catch (e) {}
@@ -1053,11 +1055,16 @@ function applyTimeTheme(time, explicitValue = null) {
     colors['--mist'] = 'rgba(255,255,255,0.38)';
   }
 
-  Object.entries(colors).forEach(([key, value]) => {
-    document.documentElement.style.setProperty(key, value);
-  });
+  const savedNamed = _getSavedNamedTheme();
+  if (savedNamed && savedNamed !== 'auto' && NAMED_THEMES.includes(savedNamed)) {
+    _clearInlineAtmosphereVars(document.documentElement);
+  } else {
+    Object.entries(colors).forEach(([key, value]) => {
+      document.documentElement.style.setProperty(key, value);
+    });
+  }
 
-  _applyNamedTheme(_getSavedNamedTheme());
+  _applyNamedTheme(savedNamed);
   document.body.classList.toggle('mode-dark', resolvedFoundation === 'dark');
   document.body.classList.toggle('mode-light', resolvedFoundation !== 'dark');
   document.body.dataset.atmosphereSegment = mode.segment;
@@ -1079,6 +1086,16 @@ function applyTimeTheme(time, explicitValue = null) {
 
 function applyWindowThemeToWindow(win, mode) {
   if (!win || !win.el) return;
+  const savedNamed = _getSavedNamedTheme();
+  if ((mode || 'auto') === 'auto' && savedNamed && savedNamed !== 'auto' && NAMED_THEMES.includes(savedNamed)) {
+    _clearInlineAtmosphereVars(win.el);
+    win.el.classList.remove('window-light');
+    win.el.classList.add('window-dark');
+    const labelEl = win.el.querySelector('#win-theme-label-' + win.id);
+    if (labelEl) labelEl.textContent = savedNamed.charAt(0).toUpperCase() + savedNamed.slice(1);
+    win.windowTheme = mode || 'auto';
+    return;
+  }
   const resolvedMode = resolveWindowThemeMode(mode || 'auto');
   const colors = _buildAtmosphereColors(resolvedMode.value);
   const foundationIsDark = colors['--foundation-mode'] === 'dark';
@@ -1988,7 +2005,17 @@ function _sysmodCopyCmd(elId) {
 // ═════════════════════════════════════════════════════════════════════════
 
 const FRIDAYS_NAMED_THEME_KEY = 'fridays_named_theme';
-const NAMED_THEMES = ['galaxy','cyber','warm','ocean','minimal','obsidian','void','aurora','ember','graphite','rose','lumen','sky','solar','midnight','copper','neon','arctic','apple','nature','mint'];
+const NAMED_THEMES = ['hummingbird','galaxy','cyber','warm','ocean','minimal','obsidian','void','aurora','ember','graphite','rose','lumen','sky','solar','midnight','copper','neon','arctic','apple','nature','mint'];
+const ATMOSPHERE_CSS_VARS = [
+  '--bg','--card','--card-hover','--hover','--bg-input','--border','--text','--text-dim','--text-faint',
+  '--accent','--accent-hover','--text-on-accent','--window-bg','--window-header','--glow-a','--glow-b',
+  '--mist','--shadow','--radius','--edge-glow','--edge-glow-hover','--glow-animation','--glow-hover-animation','--foundation-mode'
+];
+
+function _clearInlineAtmosphereVars(el) {
+  if (!el || !el.style) return;
+  ATMOSPHERE_CSS_VARS.forEach((key) => el.style.removeProperty(key));
+}
 
 function _getSavedNamedTheme() {
   try { return localStorage.getItem(FRIDAYS_NAMED_THEME_KEY) || ''; } catch (_) { return ''; }
@@ -1997,24 +2024,36 @@ function _getSavedNamedTheme() {
 function _applyNamedTheme(name) {
   // Remove all known named theme classes
   NAMED_THEMES.forEach((t) => document.body.classList.remove('theme-' + t));
-  if (name && name !== 'auto') {
-    document.body.classList.add('theme-' + name);
+  const activeNamed = name && name !== 'auto' && NAMED_THEMES.includes(name) ? name : '';
+  if (activeNamed) {
+    _clearInlineAtmosphereVars(document.documentElement);
+    document.body.classList.add('theme-' + activeNamed);
   }
   // Update picker button label
   const btn = document.getElementById('theme-picker-btn');
   if (btn) {
-    btn.textContent = name && name !== 'auto' ? name.charAt(0).toUpperCase() + name.slice(1) : 'Theme';
-    btn.dataset.active = name && name !== 'auto' ? '1' : '0';
+    btn.textContent = activeNamed ? activeNamed.charAt(0).toUpperCase() + activeNamed.slice(1) : 'Theme';
+    btn.dataset.active = activeNamed ? '1' : '0';
   }
-  // Highlight active picker item
-  const activeKey = name && name !== 'auto' ? name : 'auto';
-  document.querySelectorAll('#theme-picker-menu .theme-picker-item[data-theme]').forEach((el) => {
-    if (el.getAttribute('data-theme') === activeKey) {
+  // Highlight active item across BOTH taskbar Theme picker AND Settings/Atmosphere window
+  const activeKey = activeNamed || 'auto';
+  document.querySelectorAll('#theme-picker-menu .theme-picker-item[data-theme], #settings-theme-presets .theme-picker-item[data-theme]').forEach((el) => {
+    const isActive = el.getAttribute('data-theme') === activeKey;
+    if (isActive) {
       el.setAttribute('data-active', '1');
+      if (el.closest('#settings-theme-presets')) {
+        el.style.borderColor = 'var(--accent)';
+        el.style.boxShadow = '0 0 0 1px var(--accent)';
+      }
     } else {
       el.removeAttribute('data-active');
+      if (el.closest('#settings-theme-presets')) {
+        el.style.borderColor = 'var(--border)';
+        el.style.boxShadow = 'none';
+      }
     }
   });
+  refreshAutoWindowThemes();
 }
 
 function setNamedTheme(name) {
