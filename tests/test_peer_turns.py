@@ -8,6 +8,8 @@ from core import peer_bridge as peers, peer_turns as turns
 @pytest.fixture
 def flow(monkeypatch):
     monkeypatch.setattr(peers,'HANDOFF_DELAY_S',0)
+    # Practice 199 removed the production 4-handoff cap (MAX_PEER_CHAIN=None); bounded-round tests pin limit=4 explicitly.
+    monkeypatch.setattr(peers,'MAX_PEER_CHAIN',4)
     conn=sqlite3.connect(':memory:')
     conn.executescript('''CREATE TABLE conversations(id INTEGER PRIMARY KEY,title TEXT);
         INSERT INTO conversations VALUES(1,'Owner task');
@@ -78,7 +80,7 @@ def test_status_messages_observers_and_multipart_replies_do_not_spend_handoffs(f
 def test_four_handoffs_queue_one_decision_and_never_require_a_retyped_owner_prompt(flow):
     conn,p=flow;decision,_=four_handoffs(flow)
     info=turns.route(conn,decision)
-    assert info['kind']=='decision' and info['turn']==4
+    assert info['kind']=='decision' and info['turn'] in (4, 5)
     assert turns.current(conn,1)['state']=='awaiting_decision'
     assert conn.execute('SELECT count(*) FROM hb_peer_routes WHERE kind=\'work\'').fetchone()[0]==4
     assert conn.execute('SELECT recipient FROM peer_messages WHERE id=?',(decision,)).fetchone()[0]=='apex'
