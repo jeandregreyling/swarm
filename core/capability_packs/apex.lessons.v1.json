@@ -10,6 +10,10 @@
     "Never make a check pass by adding a magic string or by running a filtered subset (-k). The step's whole check must pass.",
     "Report results, not plans: what you changed (files), what the check said, and the one next action.",
     "When a tool fails, say which tool and its error in one line, then try the next sensible tool. A failed tool is not the end of the turn.",
-    "Before a risky change (a model swap, a restart, many files at once) say it in one line in main chat first."
+    "Before a risky change (a model swap, a restart, many files at once) say it in one line in main chat first.",
+    "Work ONLY the chunk on your card and prove it with its own test, then stop; HB gives you the next chunk.",
+    "A patch that 'matched 0 locations': read_file the exact lines again and patch only those lines with their exact text. Never rewrite a whole file.",
+    "Never hand JD search hits or a tool's error: use them, do the next action, and say what you did in your own words.",
+    "Find the line first with grep_repo, then read_file a 100-line window around it. How Claude Code made today's changes: knowledge_search 'Claude Code working notes'."
   ]
 }
