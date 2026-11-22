@@ -704,9 +704,21 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
   function popup() {
     const needs = ((S.snap || {}).needs_you || []).filter((n) => n.kind !== 'status' && !n.info);
     const known = seen();
-    const fresh = needs.find((n) => n.key && !known.has(n.key));
+    // Unilateral two-way sync: if the currently shown golden card was approved/denied on Telegram or elsewhere, close it immediately
     let box = document.getElementById('hb-live-pop');
-    if (!fresh) { if (box && S.popup && !needs.some((n) => n.key === S.popup)) { box.remove(); S.popup = null; } return; }
+    if (box && S.popup && !needs.some((n) => n.key === S.popup)) {
+      box.remove();
+      S.popup = null;
+      box = null;
+    }
+    const legacyPop = document.getElementById('hb-approval-popup');
+    if (legacyPop && !needs.length) legacyPop.remove();
+    const dialCount = document.getElementById('dial-needs-count');
+    const dialBtn = document.getElementById('dial-needs-you');
+    if (dialCount) dialCount.textContent = String(needs.length);
+    if (dialBtn) dialBtn.dataset.count = String(needs.length);
+    const fresh = needs.find((n) => n.key && !known.has(n.key));
+    if (!fresh) return;
     if (S.popup === fresh.key && box) return;
     if (!box) { box = document.createElement('div'); box.id = 'hb-live-pop'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Needs you'); document.body.appendChild(box); }
     S.popup = fresh.key;

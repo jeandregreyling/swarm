@@ -812,6 +812,11 @@ def accept_step(conn, step_id, actor, comment=''):
             committed = f"\nNot committed: {done['state']}."
     except Exception:
         committed = ''
+    try:
+        from core import hb_channels
+        hb_channels.sync_decision(conn, step_id, 'approved', actor=actor)
+    except Exception:
+        pass
     return _accept_record(conn, step_id, str(row[1]), tasks, comment, auto) + committed
 
 
@@ -859,6 +864,11 @@ def reject_step(conn, step_id, reason, actor):
     from core import hb_tasks
     for (tid,) in conn.execute("SELECT task_id FROM hb_tasks WHERE step_id=? AND state NOT IN ('completed','cancelled')", (step_id,)).fetchall():
         hb_tasks.event(conn, hb_tasks.get(conn, tid), 'user', 'owner_rejected', {'step_id': step_id, 'reason': reason, 'actor': actor})
+    try:
+        from core import hb_channels
+        hb_channels.sync_decision(conn, step_id, 'rejected', actor=actor)
+    except Exception:
+        pass
     return f'Sent {step_id} back to todo with your reason: {reason}'
 
 

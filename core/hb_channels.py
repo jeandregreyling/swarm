@@ -729,13 +729,80 @@ def telegram_buttons(text):
     return {'inline_keyboard': rows} if rows else None
 
 
+def _ensure_approval_sync_table(conn):
+    conn.execute(
+        'CREATE TABLE IF NOT EXISTS hb_telegram_approval_msgs('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+        'step_id TEXT NOT NULL, '
+        'chat_id TEXT NOT NULL, '
+        'message_id INTEGER NOT NULL, '
+        'settled INTEGER NOT NULL DEFAULT 0, '
+        'at REAL NOT NULL)'
+    )
+
+
+def _record_approval_msg(step_id, chat_id, message_id):
+    if not step_id or not message_id:
+        return
+    try:
+        conn = _connect()
+        try:
+            _ensure_approval_sync_table(conn)
+            conn.execute(
+                'INSERT INTO hb_telegram_approval_msgs(step_id, chat_id, message_id, settled, at) VALUES (?,?,?,0,?)',
+                (str(step_id).upper(), str(chat_id), int(message_id), time.time()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+
+def sync_decision(conn, step_id, decision, actor='owner', call=_telegram):
+    """Two-way unilateral sync: clear inline Telegram buttons & notify Telegram when approved/rejected anywhere."""
+    sid = str(step_id or '').upper().strip()
+    if not sid:
+        return 0
+    _ensure_approval_sync_table(conn)
+    rows = conn.execute(
+        'SELECT id, chat_id, message_id FROM hb_telegram_approval_msgs WHERE step_id=? AND settled=0',
+        (sid,),
+    ).fetchall()
+    cleared = 0
+    for rid, chat_id, msg_id in rows:
+        try:
+            call('editMessageReplyMarkup', {'chat_id': chat_id, 'message_id': msg_id, 'reply_markup': json.dumps({'inline_keyboard': []})}, 10)
+            cleared += 1
+        except Exception:
+            pass
+        conn.execute('UPDATE hb_telegram_approval_msgs SET settled=1 WHERE id=?', (rid,))
+    if 'telegram' not in str(actor or '').lower():
+        try:
+            owners = [k.split(':', 1)[1] for k in owner_keys(conn, 'telegram')]
+            badge = '✅ Approved' if decision == 'approved' else '❌ Rejected'
+            note = f'{badge} {sid} in HB ({actor}). No action needed on Telegram.'
+            for o in owners:
+                telegram_send(o, note, call=call, buttons={})
+        except Exception:
+            pass
+    return cleared
+
+
 def telegram_send(chat_id, text, call=_telegram, buttons=None):
     try:
         payload = {'chat_id': chat_id, 'text': text, 'disable_web_page_preview': 'true'}
         markup = buttons if buttons is not None else telegram_buttons(text)
         if markup:
             payload['reply_markup'] = json.dumps(markup)
-        return bool(call('sendMessage', payload, 20).get('ok'))
+        res = call('sendMessage', payload, 20)
+        if not res.get('ok'):
+            return False
+        msg_id = (res.get('result') or {}).get('message_id')
+        if markup and msg_id:
+            for sid in dict.fromkeys(m.upper() for m in re.findall(r'/accept\s+(S-[0-9A-F]{10})\b', str(text or ''), re.I)):
+                _record_approval_msg(sid, chat_id, msg_id)
+        return True
     except Exception:
         return False
 
@@ -760,6 +827,12 @@ def telegram_poll_once(conn, call=_telegram, handle=inbound):
                 except Exception:
                     pass
             if chat_id is not None and data:
+                # Clear the tapped inline button immediately so it can never be double-approved
+                if msg.get('message_id'):
+                    try:
+                        call('editMessageReplyMarkup', {'chat_id': chat_id, 'message_id': msg['message_id'], 'reply_markup': json.dumps({'inline_keyboard': []})}, 10)
+                    except Exception:
+                        pass
                 said = handle(conn, 'telegram', f'telegram:{chat_id}', name, data)
                 conn.commit()
                 if said:

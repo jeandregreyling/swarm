@@ -218,8 +218,9 @@ def plan_problems(plan, known, gathered, card_extra=None):
                 if p not in known and p not in asked and not (root / p).exists():
                     out.append(f'the {key} names {p}, which does not exist - use the real files from the facts')
     for n, step in enumerate(plan, 1):
-        s = str(step)
-        if _VAGUE_STEP.search(s) and not (ANY_PATH.search(s) and re.search(r'\b\w+\(|\b_?\w+_\w+\b', s)):   # Practice 295: a step naming file and function is concrete
+        s = str(step).replace('\\.', '.')   # Qwen 7B occasionally escapes dots inside JSON strings
+        is_concrete_run = bool(re.search(r'\b(run|pytest|node)\b', s, re.I) and ANY_PATH.search(s))
+        if _VAGUE_STEP.search(s) and not is_concrete_run and not (ANY_PATH.search(s) and re.search(r'\b\w+\(|\b_?\w+_\w+\b', s)):
             out.append(f'plan step {n} is vague: "{s[:80]}" - say the one action and where')
         for p in set(_PATH.findall(s)) | set(ANY_PATH.findall(s)):
             if p not in known and p not in asked and not (root / p).exists():
