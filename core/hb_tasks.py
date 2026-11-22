@@ -86,11 +86,77 @@ def _hb_room_project(conversation_id):
     return 'P-' + hashlib.sha256(f'hb-room:{conversation_id}'.encode()).hexdigest()[:10].upper()
 
 
+
+def _channel_feedback(conn, message_id):
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if 'hb_channel_log' not in tables:
+        return False
+    row = conn.execute("SELECT m.content, l.channel FROM hb_channel_log l JOIN messages m ON m.id=l.message_id "
+                       "WHERE l.message_id=? AND l.direction='in' AND m.from_agent='user' LIMIT 1",
+                       (message_id,)).fetchone()
+    if not row:
+        return False
+    from core.hb_channels import TITLE
+    from core.hb_owner_intent import classify
+    prefix = f"📱 {TITLE.get(row[1], row[1])}: "
+    if not str(row[0]).startswith(prefix):
+        return False
+    body = str(row[0])[len(prefix):]
+    # Practice 261 (JD 22 Nov 00:08: every phone line became a task with homework - 23 open): go-aheads, short follow-ups
+    # ('Build it Apex', 'Test this') and 'what's your next task' are chat; the work in hand carries on.
+    from core.hb_task_manager import FOLLOW_UP
+    if classify(body) in {'remark', 'status', 'drive'} or (len(body.split()) <= 8 and FOLLOW_UP.match(body)):
+        return True
+    return bool(re.search(r"\b(?:what'?s|what is|which is|whats)\s+(?:your|the|his)\s+next\s+task\b|\bcan you do it\b", body, re.I))
+
+
+def reconcile_channel_feedback(conn):
+    """Reclassify unworked automatic channel-feedback cards without claiming completion."""
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    if not {'hb_channel_log', 'hb_tasks', 'project_steps'} <= tables:
+        return []
+    from core.hb_owner_intent import CHAT_MARK, CHAT_TITLE
+    changed = []
+    for (task_id,) in conn.execute("SELECT task_id FROM hb_tasks WHERE step_id IS NOT NULL "
+                                  "AND state NOT IN ('completed','cancelled','paused')").fetchall():
+        task = get(conn, task_id)
+        if task['project_id'] != _hb_room_project(task['conversation_id']) or not _channel_feedback(conn, task['root_message_id']):
+            continue
+        if conn.execute("SELECT 1 FROM hb_task_events WHERE task_id=? AND kind='mutation' LIMIT 1", (task_id,)).fetchone():
+            continue
+        if 'project_test_cases' in tables and conn.execute("SELECT 1 FROM project_test_cases WHERE step_id=? LIMIT 1", (task['step_id'],)).fetchone():
+            continue
+        if conn.execute("SELECT 1 FROM hb_task_messages m JOIN messages s ON s.id=m.message_id "
+                        "WHERE m.task_id=? AND m.message_id<>? AND m.kind='instruction' "
+                        "AND s.from_agent IN ('user','ghost') LIMIT 1", (task_id, task['root_message_id'])).fetchone():
+            continue
+        if 'hb_peer_work' in tables and 'hb_task_requests' in tables and conn.execute(
+                "SELECT 1 FROM hb_peer_work w JOIN hb_task_requests r ON r.request_id=w.request_id "
+                "WHERE r.task_id=? AND w.state='running' LIMIT 1", (task_id,)).fetchone():
+            continue
+        now = time.time()
+        conn.execute("UPDATE project_steps SET status='skipped', updated_at=? WHERE step_id=? "
+                     "AND status IN ('todo','doing','partial','blocked')", (now, task['step_id']))
+        event(conn, task, 'hummingbird', 'channel_feedback_reclassified',
+              {'previous_step_id': task['step_id'], 'reason': 'Channel feedback belongs in chat, not an execution task'})
+        conn.execute("UPDATE hb_tasks SET title=?,objective=?,project_id=NULL,step_id=NULL,state='active',updated_at=? WHERE task_id=?",
+                     (CHAT_TITLE, CHAT_MARK, now, task_id))
+        if 'hb_task_manager' in tables:
+            conn.execute("UPDATE hb_task_manager SET enabled=0,state='idle',detail='Channel feedback: replies only',updated_at=? WHERE task_id=?",
+                         (now, task_id))
+        if {'hb_peer_work', 'hb_task_requests'} <= tables:
+            conn.execute("UPDATE hb_peer_work SET state='cancelled',stage='Unscoped channel feedback reclassified as chat',updated_at=? "
+                         "WHERE state='queued' AND request_id IN (SELECT request_id FROM hb_task_requests WHERE task_id=?)", (now, task_id))
+        changed.append(task_id)
+    return changed
+
+
 def sync_studio_steps(conn):
     """Close the auto-created Studio step of every finished HB task (done / skipped). Returns steps closed.
 
     Only steps in the automatic "HB tasks - chat N" projects are closed here; steps in curated plans
     are accepted by the owner (Approve / /accept)."""
+    reconcile_channel_feedback(conn)
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     if not {'project_steps', 'hb_tasks'} <= tables:
         return 0
@@ -222,7 +288,11 @@ def prepare(conn, conversation_id, message_id, parent_request_id=None):
     root=conn.execute("SELECT MAX(id) FROM messages WHERE conversation_id=? AND from_agent='user'",(conversation_id,)).fetchone()[0]
     if not conn.execute('SELECT 1 FROM messages WHERE id=? AND conversation_id=?',(root or message_id,conversation_id)).fetchone():
         return None
-    task=bind(conn,conversation_id,root or message_id)
+    if root and _channel_feedback(conn, root):
+        from core.hb_owner_intent import chat_task
+        task = chat_task(conn, conversation_id, root)
+    else:
+        task=bind(conn,conversation_id,root or message_id)
     if (root or message_id)!=message_id:
         bind(conn,conversation_id,message_id,task_id=task['task_id'],kind='relay')
     return task
@@ -619,6 +689,9 @@ def call(tool, args):
         if tool == 'studio_status':
             if set(args)!={'status'} or args['status'] not in {'todo','doing','blocked','partial'}:
                 raise ValueError('studio_status accepts todo, doing, blocked or partial; completion requires independent acceptance')
+            done=conn.execute("SELECT 1 FROM project_steps WHERE step_id=? AND status IN ('done','skipped')",(task['step_id'],)).fetchone() if task['step_id'] else None
+            if done:   # Practice 292: APEX flipped an accepted step back to doing/blocked ten times in one turn
+                raise PermissionError('This step is already done (accepted); its status stays done. Do the step on your card or report.')
             if not task['step_id'] or not projects.update_step_status(task['step_id'],args['status']):
                 raise RuntimeError('Assigned Studio step status was not updated')
             state='needs_review' if args['status']=='partial' else args['status']
@@ -735,7 +808,7 @@ def invitation_tools(conn,request_id):
     row=conn.execute("SELECT payload FROM hb_task_events WHERE request_id=? AND kind='tool_scope' AND agent IN ('codex-instructor','hummingbird') ORDER BY event_id DESC LIMIT 1",(request_id,)).fetchone()
     if not row:return None
     names=json.loads(row[0]).get('allowed_tools')
-    if not isinstance(names,list) or not names or len(names)>24 or any(not isinstance(name,str) for name in names):raise ValueError('Invalid bounded invitation tool scope')
+    if not isinstance(names,list) or not names or len(names)>64 or any(not isinstance(name,str) for name in names):raise ValueError('Invalid bounded invitation tool scope')
     return set(names)
 
 

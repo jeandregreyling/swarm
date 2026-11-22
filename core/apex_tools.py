@@ -1730,6 +1730,24 @@ def check_line(text) -> str:
 
 
 CHANGE_TOOLS = {'propose_patch', 'propose_write_file', 'change_set'}
+# Practice 292 (JD 22 Nov: "Thinking round 1 through 10 without any results is quite a waste of time ... fucking nothing happening"): APEX
+# spent rounds 4-10 flipping a step's status doing/blocked and repeating a broken run_tests. Three rounds in a row with no change, no
+# check and nothing new read end the tool rounds; he gets one round to report and the turn ends.
+STALL_ROUNDS = 3
+STALL_NOTICE = ("HB STALL CHECK: three rounds in a row produced no change, no check and nothing new - no further tool runs this turn. "
+                "Answer now in two lines: what you actually changed or verified this turn (or 'nothing'), and the ONE concrete action "
+                "(file and lines, or test) that the next turn must do.")
+NOT_PROGRESS = {'studio_status', 'task_plan', 'memory_save', 'studio_note', 'ask_instructor'}
+
+
+def made_progress(receipt, seen):
+    """Practice 292: a succeeded change or check, or a read with arguments not seen before this turn; status flips and plans are not."""
+    if receipt.get('status') != 'succeeded' or receipt.get('tool') in NOT_PROGRESS:
+        return False
+    sig = (receipt.get('tool'), json.dumps(receipt.get('arguments') or {}, sort_keys=True))
+    new = sig not in seen
+    seen.add(sig)
+    return receipt.get('tool') in CHANGE_TOOLS or receipt.get('tool') == 'run_tests' or new
 
 
 def round_line(n, receipts, final=False):
@@ -2283,6 +2301,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
 
     final_reason = "its context window filled"
     round_started, longest_round = time.monotonic(), 0.0
+    stall_mark, stall_rounds, seen_sigs = 0, 0, set()   # Practice 292
     def check_owner_hold():
         from core.agent_identity import CURRENT
         from core.hb_executions import authorized
@@ -2303,6 +2322,14 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
         if round_index:
             longest_round = max(longest_round, now - round_started)
         round_started = now
+        if round_index and not final_answer and not no_tools:   # Practice 292: rounds without progress end the turn
+            fresh, stall_mark = receipts[stall_mark:], len(receipts)
+            stall_rounds = 0 if any([made_progress(r, seen_sigs) for r in fresh]) else stall_rounds + 1
+            if stall_rounds >= STALL_ROUNDS and receipts:
+                final_answer = final_notice_sent = True
+                final_reason = 'three rounds in a row without progress'
+                say_step('HB stopped the rounds: 3 in a row without a change, a check or anything new read')
+                working.append({"role": "user", "content": STALL_NOTICE})
         if round_index == MAX_ROUNDS + 1 and not run_report_retry_used:
             break
         if round_index == MAX_ROUNDS and not final_answer:
