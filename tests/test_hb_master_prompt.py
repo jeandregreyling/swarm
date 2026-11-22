@@ -57,4 +57,4 @@ def test_every_prompt_builder_uses_the_protocol():
 
 def test_pack_is_valid_json_with_a_version():
     data = json.loads((ROOT / 'core' / 'capability_packs' / 'hb.master.protocol.v1.json').read_text())
-    assert data['version'] in ('1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.5.0', '1.6.0', '1.7.0', '1.8.0', '1.9.0', '1.10.0') and set(data['roles']) >= {'apex', 'fred', 'nanny', 'codex-instructor', 'gemini-advisor', 'default'}
+    assert data['version'] in ('1.0.0', '1.1.0', '1.2.0', '1.3.0', '1.4.0', '1.5.0', '1.6.0', '1.7.0', '1.8.0', '1.9.0', '1.10.0', '1.11.0') and set(data['roles']) >= {'apex', 'fred', 'nanny', 'codex-instructor', 'gemini-advisor', 'default'}

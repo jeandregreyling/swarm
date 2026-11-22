@@ -7,7 +7,7 @@ from core import hb_tasks
 EXECUTION_TOOLS=['read_file','list_files','grep_repo','get_diff','git_status','propose_patch','propose_write_file',
     'run_tests','terminal_run','task_context','task_evidence','studio_note','studio_status','task_plan','alm_step_get',
     'memory_search','memory_save','knowledge_search','knowledge_read','runtime_status','backlog_list','reference_lookup',
-    'local_job_status','hb_tasks','request_access','gpu_profile',   # Practice 252; local_review removed - Practice 264: only JD calls Fred; 270
+    'local_job_status','hb_tasks','request_access','gpu_profile','hb_restart','hb_service','hb_media_download','hb_custom_tool',   # Practice 252; local_review removed - Practice 264: only JD calls Fred; 270
     # Practice 258 (JD 22 Nov 00:0x: 'give apex all the tools and skills and auths'): everything APEX has, except approving his
     # own work (studio_accept - independent acceptance) and switching online models (gemini_reload - JD's local-first rule).
     'ask_instructor','change_set','studio_task','task_memory','studio_evidence_get','studio_resume','web_search',
@@ -16,6 +16,20 @@ EXECUTION_TOOLS=['read_file','list_files','grep_repo','get_diff','git_status','p
     'reference_import','runtime_reload','apex_dispatch','studio_proposal']
 REVIEW_TOOLS=['task_context','task_evidence','read_file','grep_repo','get_diff','git_status',
     'studio_accept','task_plan','runtime_reload','knowledge_read','memory_save','memory_search','backlog_list']
+
+
+def recommend_tools(title, objective=''):
+    """Return a focused 8-12 tool subset so 12B APEX picks the right tool first instead of drowning in 50+ schemas."""
+    blob = f'{title or ""} {objective or ""}'.lower()
+    if any(w in blob for w in ('youtube', 'download', 'episode', 'video', 'mp3', 'audio', 'song', 'media')):
+        return ['hb_media_download', 'web_search', 'knowledge_search', 'memory_save', 'task_context']
+    if any(w in blob for w in ('restart', 'service', 'systemd', 'gpu', 'overclock', 'fridays', 'discord', 'ollama')):
+        return ['hb_service', 'hb_restart', 'gpu_profile', 'runtime_status', 'knowledge_search', 'task_context']
+    if any(w in blob for w in ('.py', '.js', '.css', '.html', 'tests/', 'patch', 'fix', 'build', 'implement', 'theme', 'pink', 'tile', 'change_set')):
+        return ['grep_repo', 'read_file', 'propose_patch', 'propose_write_file', 'run_tests', 'change_set',
+                'get_diff', 'alm_step_get', 'knowledge_search', 'reference_lookup', 'hb_service', 'hb_restart']
+    return ['knowledge_search', 'knowledge_read', 'web_search', 'reference_lookup', 'hb_media_download',
+            'memory_search', 'memory_save', 'hb_tasks', 'task_context']
 
 
 def ensure_schema(conn):
@@ -390,6 +404,43 @@ def _queue(conn,task,row,phase,reason,model=None,selected=False):
         'plan':{'tool':'task_evidence','arguments':{'evidence_id':row['plan_event_id'],'offset':0}},
         'recent_source_files':hb_tasks.recent_source_paths(conn,task),
         'evidence_ids':evidence,'successful_apex_reply_message_ids':replies}
+    if phase not in ('plan', 'review'):
+        # Pre-fetch exact file line counts + top KC doc IDs so APEX does not waste rounds hunting or reading past EOF.
+        try:
+            from pathlib import Path as _P
+            root = _P(__file__).resolve().parents[1]
+            known = list(payload['recent_source_files'])
+            for m in __import__('re').findall(r'\b(?:core|frontend|scripts|tests|utils|lib)/[\w/.-]+\.(?:py|js|html|css)\b', next_action):
+                if m not in known:
+                    known.append(m)
+            sized = []
+            for rel in known[:5]:
+                fp = root / rel
+                if fp.is_file():
+                    sized.append(f'{rel} ({sum(1 for _ in fp.open("rb"))} lines)')
+            kc_refs = []
+            try:
+                from core.apex_knowledge import search as _kc_search
+                q = str(task.get('title') or '').strip()[:100]
+                if len(q) >= 3:
+                    for item in _kc_search(q).get('items', [])[:2]:
+                        kc_refs.append(f"KC{item.get('document_id')}: {str(item.get('title') or '')[:80]}")
+            except Exception:
+                pass
+            if sized or kc_refs:
+                payload['prefetched_context'] = {
+                    'files_with_line_counts': sized,
+                    'kc_references': kc_refs,
+                    'recommended_tools': recommend_tools(task.get('title', ''), next_action),
+                    'rule': 'Use recommended_tools first; read only inside total line counts (raw:true), act once, and verify.',
+                }
+            else:
+                payload['prefetched_context'] = {
+                    'recommended_tools': recommend_tools(task.get('title', ''), next_action),
+                    'rule': 'Use recommended_tools first; solve locally with KC, web_search, reference_lookup or hb_media_download before escalating.',
+                }
+        except Exception:
+            pass
     if phase!='review' and len(next_action)>3000:
         payload['next_action_is_excerpt']=True
         payload['instruction']+=' The next_action field is an excerpt. Retrieve the complete saved plan before executing any source payload.'

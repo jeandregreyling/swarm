@@ -18,6 +18,9 @@ def did_you_mean(relative, tracked, n=3):
 
 
 def not_found(relative, tracked):
+    if str(relative).startswith('tests/test_') and str(relative).endswith('.py'):
+        return (f"Workspace source file not found: {relative}. This test file does not exist yet - "
+                "create it with propose_write_file instead of calling read_file again.")
     hint = did_you_mean(relative, tracked)
     if hint:
         return (f"Workspace source file not found: {relative}. Did you mean: {', '.join(hint)}? Read that path instead - "

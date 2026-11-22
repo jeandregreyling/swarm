@@ -6,7 +6,7 @@ The old bots (fridays/telegram_bot.py, fridays/discord_bot.py, core/pipeline/lis
 and their services pointed at the retired /home/seven/swarm; they have not run since April. This module puts the channels into HB:
 
   inbound(conn, channel, key, name, text, reply)  one message from Telegram / email / Discord, from a known identity:
-      /command    the safe list (SAFE_COMMANDS) runs through hb_commands like a main-chat command, as "JD via Telegram";
+      /command    the safe list (SAFE_COMMAND) runs through hb_commands like a main-chat command, as "JD via Telegram";
                   commands that change the machine, run sudo or spend money answer "needs the screen"
       question    an answer-only APEX turn with the research tools (answer_only) - never waits behind a workflow task
       request     from the owner: an APEX task, exactly like an owner's message in main chat (changes still need his approval)
@@ -261,14 +261,61 @@ def inbound(conn, channel, key, name, text, reply=None, commands=None, enqueue=N
 def answer_only(question, history=()):
     """Practice 201: one APEX at a time - a phone answer queues on main chat's own APEX turn lock ('apex-turn') instead of taking the model
     directly (at 22:33 three phone answers made JD's main-chat turn fail with "model busy: queue wait exceeded 1s")."""
-    from core.hb_process_lock import ProcessLock
+    from core.hb_process_lock import ProcessLock, ForegroundWaiter
     turn = ProcessLock('apex-turn')
-    if not turn.acquire(1260):
-        return 'APEX is finishing a main-chat turn; your message is next - ask again in a minute.'
+    with ForegroundWaiter(turn):
+        if not turn.acquire(1260):
+            return 'APEX was busy for too long; this message was not answered. Please send it again.'
+        try:
+            return _answer_only(question, history)
+        finally:
+            turn.release()
+
+
+def _guest_turn():
     try:
-        return _answer_only(question, history)
-    finally:
-        turn.release()
+        from core import hb_guest
+        return bool(hb_guest.GUEST_TURN.get())
+    except Exception:
+        return False
+
+
+_CLAIMS = re.compile(r'\b(?:cancel(?:l?ed)?|paused|resumed|continued|closed|removed|cleared|turned (?:on|off))\b', re.I)
+
+
+def link_phone_receipts(answer, receipts):
+    """Practice 254 (JD 21 Nov 23:5x: "build the tool for phone interactions, they should be linked"): a phone turn's task changes are
+    real only with a receipt. Each successful hb_tasks change is listed under the answer (the answer is mirrored to main chat), and an
+    answer that claims changes with no successful change behind it is replaced by what actually happened (23:47: APEX claimed five
+    cancels and made none)."""
+    import json as _json
+    changes, failures = [], []
+    for r in receipts or []:
+        if r.get('tool') != 'hb_tasks':
+            continue
+        args = r.get('arguments') or {}
+        if isinstance(args, str):
+            try:
+                args = _json.loads(args)
+            except ValueError:
+                args = {}
+        action = str(args.get('action') or 'list').lower()
+        if action == 'list':
+            continue
+        line = f"{action} {str(args.get('task_id') or '?').upper()}"
+        if r.get('status') == 'succeeded':
+            changes.append(line + ' - done')
+        else:
+            failures.append(line + ' - ' + str(r.get('output') or r.get('status'))[:140])
+    if _CLAIMS.search(str(answer or '')) and not changes:
+        text = 'No task was changed this turn (no successful hb_tasks change).'
+        if failures:
+            text += ' Tried: ' + '; '.join(failures)
+        return text
+    if not changes and not failures:
+        return answer
+    out = str(answer or '').rstrip() + '\n\nReceipts (hb_tasks): ' + '; '.join(changes + failures)
+    return out
 
 
 def _answer_only(question, history=()):
@@ -300,6 +347,42 @@ def _answer_only(question, history=()):
             return search(args['query'])
         if tool == 'knowledge_read':
             return read(args['document_id'], args.get('offset', 0), args.get('focus'))
+        if tool == 'hb_tasks' and not _guest_turn():   # Practice 253 (JD 23:38 from Telegram: 'now do your tasks Apex')
+            from core.hb_agent_tools import hb_tasks_tool
+            return hb_tasks_tool(args)
+        if tool == 'alm_step_get' and not _guest_turn():   # Practice 253b: HB's step check asks for it; JD's phone turns have it
+            from core.apex_alm import read_step
+            return read_step(args['step_id'])
+        if tool == 'gpu_profile' and not _guest_turn():   # Practice 271: JD's phone can have APEX apply his GPU profiles
+            from core.hb_agent_tools import gpu_profile_tool
+            return gpu_profile_tool(args)
+        if tool == 'hb_restart' and not _guest_turn():
+            from core.hb_agent_tools import hb_restart_tool
+            return hb_restart_tool(args)
+        if tool == 'hb_service' and not _guest_turn():
+            from core.hb_agent_tools import hb_service_tool
+            return hb_service_tool(args)
+        if tool == 'hb_media_download' and not _guest_turn():
+            from core.hb_agent_tools import hb_media_download_tool
+            return hb_media_download_tool(args)
+        if tool == 'hb_custom_tool' and not _guest_turn():
+            from core.hb_agent_tools import hb_custom_tool_handler
+            return hb_custom_tool_handler(args)
+        if tool == 'studio_proposal' and not _guest_turn():   # Practice 269: JD granted it explicitly (22 Nov 00:4x)
+            from core.hb_proposals import create as propose
+            from utils.db._connection import get_connection as _gc2
+            from contextlib import closing as _cl2
+            with _cl2(_gc2()) as conn, conn:
+                return propose(conn, 'apex', args, None)
+        if tool == 'ask_instructor' and not _guest_turn():   # Practice 255 (JD 23:51 phone: 'Ask Claude to fix it')
+            from core import peer_bridge
+            from utils.db._connection import get_connection as _gc
+            from contextlib import closing as _cl
+            with _cl(_gc()) as conn, conn:
+                return peer_bridge.request_help(conn, 2845, args.get('peer') or 'instructor', str(args.get('question') or ''), str(args.get('context') or ''))
+        if tool in ('backlog_list', 'runtime_status') and not _guest_turn():   # 253b: read-only status for JD's phone turns
+            from core.hb_workflow import call_control
+            return call_control(tool, args)
         raise PermissionError(f'{tool} is not attached to a question from a phone')
     row = {**APEX_AGENT, 'model': route.model}
     trusted = [h['content'] for h in history if h.get('role') == 'system' and str(h.get('content', '')).startswith(PHONE_STATE_PREFIX)]
@@ -309,6 +392,17 @@ def _answer_only(question, history=()):
                'A transport receipt does not prove the human has read a message.')
     if trusted:
         system += '\n' + '\n'.join(trusted)
+    if not _guest_turn():   # Practice 253: JD (or a partner) on the phone can have APEX run the task list
+        system += ('\nFrom JD\'s phone you also have the hb_tasks tool: {"action":"list"} shows open tasks; '
+                   '{"action":"continue"|"pause","task_id":"T-..."}; {"action":"cancel","task_id":"T-...","reason":"..."}. '
+                   'When JD asks you to work through or clear the task list, call it - do not say it is unavailable. '
+                   'You can also run_tests {"tests":["tests/test_x.py"]} and ask_instructor {"peer":"instructor","question":"...","context":"..."} '
+                   '(Claude Code or Codex answers in main chat). When JD says test it or ask Claude, do it. '
+                   'To change code from the phone, call studio_proposal with title, why, edits [{path, old, new}], new_files and tests - '
+                   'HB proves it with the test and JD approves it. '
+                   'To restart HB when JD asks, call hb_restart {"scope":"ui","reason":"..."} (or scope "all" for UI + APEX worker). '
+                   'To check or restart any HB service (fridays, discord, housekeeping, ollama, swarm-terminal), call hb_service {"action":"list"|"status"|"start"|"stop"|"restart","service":"..."}. '
+                   'To download a YouTube/media video or audio episode for JD, call hb_media_download {"query":"...","format":"video"|"audio"}.')
     try:   # Practice 213 (JD 21 Nov: "make it APEX opinion based on the notes without giving direct access to the notes")
         from core import hb_guest
         if hb_guest.GUEST_TURN.get():
@@ -324,11 +418,13 @@ def _answer_only(question, history=()):
     chat_history = [h for h in history if h.get('role') in ('user', 'assistant')]
     msgs += apex_request_history(chat_history, question)
     with use_model(route):
+        from core.apex_test_runner import run_tests as _run_tests   # Practice 255: JD's phone turns run tests; guests never
         answer, _tokens, receipts = run_apex_tools(model, msgs, lambda: True, lambda r: None, studio_handler=studio,
+                                                   test_handler=None if _guest_turn() else _run_tests,
                                                    web_handler=lambda a: search_provider(a['query'], a['provider']),
                                                    prepare_messages=lambda cur: prepare_context(cur),
                                                    prepare_receipts=lambda cur, b: budget_receipts(cur, b))
-    return ground_answer(answer, receipts)
+    return link_phone_receipts(ground_answer(answer, receipts), receipts)   # Practice 254
 
 
 def _history(conn, before_id, limit=8):
@@ -392,6 +488,24 @@ def _owner_task_state(conn, job):
     return PHONE_STATE_PREFIX + json.dumps({'at':time.time(),'tasks':records}, ensure_ascii=True) if records else ''
 
 
+def _work_task(job):
+    """Practice 257: the owner's phone message HB bound to a real work task (not a chat thread), or None. That task's turns have
+    the write and test tools; an answer-only phone turn does not, and used to reply 'I don't have permission' while the task ran."""
+    try:
+        from core import hb_tasks
+        from core.hb_owner_intent import is_chat_task
+        conn = _connect()
+        try:
+            task = hb_tasks.for_message(conn, job['message_id'])
+        finally:
+            conn.close()
+        if task and task.get('state') not in ('completed', 'cancelled') and not is_chat_task(task):
+            return task
+    except Exception:
+        pass
+    return None
+
+
 def work_one(job, connect=_connect, answer=answer_only, mail=None):
     """Answer one queued question: post it in main chat as APEX (the mirror sends it on); email it back when it came by email."""
     conn = connect()
@@ -408,7 +522,9 @@ def work_one(job, connect=_connect, answer=answer_only, mail=None):
     from core import hb_guest
     guest = hb_guest.GUEST_TURN.set(who != 'owner')   # Practice 213: a guest gets APEX's opinion, not the notes
     try:
-        text = answer(job['question'], history)
+        work = _work_task(job) if who == 'owner' else None   # Practice 257 (JD 23:57: 'Build it Apex' got 'I don't have permission')
+        text = (f"▶ On it: {work['task_id']} runs as an HB task with APEX's full tools (read, write, tests). Progress posts here."
+                if work else answer(job['question'], history))
     except Exception as exc:
         text = f'APEX could not answer this one ({type(exc).__name__}: {str(exc)[:160]}). It is in main chat; ask again or at the screen.'
     finally:
@@ -659,16 +775,25 @@ def request_text(subject, body):
 def from_email(conn, msg, sender, subject, body, message_id, handle=inbound, has_files=False, mail=None):
     sender = str(sender or '').lower()
     who = role(conn, 'email:' + sender)
+    via_trusted_only = False
+    if who is None:
+        try:
+            if conn.execute('SELECT 1 FROM hb_email_trusted WHERE lower(address)=?', (sender,)).fetchone():
+                who = 'owner'
+                via_trusted_only = True
+        except Exception:
+            pass
     if any(own in sender for own in HB_OWN) or who is None:
         return None
     text = request_text(subject, body)
     if not text:
         return None
-    if has_files and not (text.startswith('/') or '?' in text or re.match(r'^\s*hb\b', text, re.I)):
-        return None                                    # a file with a short note is data (the intake keeps it in the KC)
+    if has_files and not str(body or '').strip() and not (text.startswith('/') or '?' in text or re.match(r'^\s*hb\b', text, re.I)):
+        return None                                    # an attachment with no body instruction is data (kept in KC)
     if not verified(msg):
-        _post(conn, 'hummingbird', f'📧 The email from {sender} ("{str(subject)[:80]}") did not pass Gmail\'s sender check (DKIM/SPF), so HB '
-                                   'kept it as data only and ran nothing from it.')
+        if not via_trusted_only:
+            _post(conn, 'hummingbird', f'📧 The email from {sender} ("{str(subject)[:80]}") did not pass Gmail\'s sender check (DKIM/SPF), so HB '
+                                       'kept it as data only and ran nothing from it.')
         return 'unverified'
     kind = kind_of(text, who == 'owner')
     said = handle(conn, 'email', 'email:' + sender, sender, text, {'to': sender, 'subject': subject, 'message_id': message_id})

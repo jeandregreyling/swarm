@@ -170,12 +170,14 @@ def prune_backups(*, days: int = 30, now: datetime | None = None) -> int:
     removed = 0
     for created, path in backups[1:]:
         if created < cutoff:
-            # Do not follow directories or remove unexpected contents.
+            # Do not follow directories or remove unexpected contents; allow SQLite WAL/SHM sidecars.
             folder = path.parent
-            if {p.name for p in folder.iterdir()} != {'memory.sqlite', 'manifest.json'}:
+            names = {p.name for p in folder.iterdir()}
+            allowed = {'memory.sqlite', 'manifest.json', 'memory.sqlite-wal', 'memory.sqlite-shm'}
+            if not {'memory.sqlite', 'manifest.json'} <= names or not names <= allowed:
                 raise ValueError(f'unexpected contents in expired Vortex backup: {folder}')
-            (folder / 'memory.sqlite').unlink()
-            path.unlink()
+            for name in names:
+                (folder / name).unlink()
             folder.rmdir()
             removed += 1
     return removed

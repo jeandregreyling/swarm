@@ -19,7 +19,7 @@ import time
 
 from core import hb_tasks
 
-DOERS = ('hb', 'small', 'apex', 'fred', 'codex', 'gemini', 'claude', 'copilot')   # Practice 279: copilot (@git)   # HB Live L4a (owner 20 Nov): online models are doers too
+DOERS = ('hb', 'small', 'apex', 'fred', 'codex', 'gemini', 'claude', 'copilot', 'copilot-online')   # Practice 279: copilot (@git)   # HB Live L4a (owner 20 Nov): online models are doers too
 DOER_WORDS = {'hb': 'HB itself (no model)', 'small': 'small CPU model', 'apex': 'APEX (on the GPU)', 'fred': 'Fred (24B on the CPU)',
               'codex': 'Codex (online)', 'gemini': 'Gemini (online)', 'claude': 'Claude Code (online)',
               'copilot': 'Copilot (@git, VS Code)'}
@@ -159,8 +159,20 @@ def edit(conn, args, actor):
         conn.execute('UPDATE hb_clipboard SET importance=?, edited_by=?, updated_at=? WHERE step_id=?', (int(args[2]), actor, time.time(), step_id))
         said = f'importance {args[2]}'
     elif action == 'doer' and len(args) > 2 and args[2].lower() in DOERS:
-        conn.execute('UPDATE hb_clipboard SET doer=?, edited_by=?, updated_at=? WHERE step_id=?', (args[2].lower(), actor, time.time(), step_id))
-        said = f'doer: {DOER_WORDS[args[2].lower()]}' + hand_over(conn, step_id, args[2].lower(), actor)   # Practice 278
+        doer = args[2].lower()
+        conn.execute('UPDATE hb_clipboard SET doer=?, edited_by=?, updated_at=? WHERE step_id=?', (doer, actor, time.time(), step_id))
+        step_cols = {r[1] for r in conn.execute('PRAGMA table_info(project_steps)')}
+        if doer == 'apex':
+            sets = [c + '=?' for c in ('owner', 'owner_route', 'updated_at') if c in step_cols]
+            vals = [{'owner': 'apex', 'owner_route': 'apex', 'updated_at': time.time()}[c] for c in ('owner', 'owner_route', 'updated_at') if c in step_cols]
+            if sets:
+                conn.execute(f"UPDATE project_steps SET {', '.join(sets)} WHERE step_id=?", vals + [step_id])
+        elif 'owner_route' in step_cols:
+            if 'updated_at' in step_cols:
+                conn.execute('UPDATE project_steps SET owner_route=?, updated_at=? WHERE step_id=?', (doer, time.time(), step_id))
+            else:
+                conn.execute('UPDATE project_steps SET owner_route=? WHERE step_id=?', (doer, step_id))
+        said = f'doer: {DOER_WORDS[doer]}' + hand_over(conn, step_id, doer, actor)   # Practice 278
     elif action == 'impact' and len(args) > 2:   # owner 13 Nov: the owner corrects HB's impact class; kept as a training example
         from core import hb_change_impact
         said = hb_change_impact.correct(conn, step_id, args[2].lower(), actor)

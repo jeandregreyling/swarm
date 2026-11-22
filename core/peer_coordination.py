@@ -108,6 +108,7 @@ class Supervisor:
             reconcile(conn, agent)
             if self.alive(agent):
                 self.attempts.pop(agent, None)
+                self.__dict__.setdefault('outage_said', set()).discard(agent)   # Practice 247: back up - a later outage is said again
                 state, detail = 'running', 'HB peer worker holds its singleton lock'
             else:
                 # An interrupted request can include side effects. Never replay it silently.
@@ -122,11 +123,17 @@ class Supervisor:
                         count = 0      # Practice 206: after a cool-down, a new round of three tries - never give up for good
                     if count >= 3:
                         state, detail = 'unavailable', 'HB peer worker failed to start after three attempts; inspect hb-supervised-worker.log'
-                        pending = conn.execute("SELECT w.request_id,m.conversation_id FROM hb_peer_work w JOIN peer_messages m ON m.id=w.request_id WHERE w.principal=? AND w.state='queued'", (agent,)).fetchall()
-                        for request_id, conversation_id in pending:
-                            conn.execute("UPDATE hb_peer_work SET state='failed',stage=?,updated_at=? WHERE request_id=?", (detail, time.time(), request_id))
-                            conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'system',0)",
-                                (conversation_id, f'HB could not deliver request {request_id} to {agent}: {detail}. No successful reply was recorded.'))
+                        # Practice 247 (JD 21 Nov: 'I never want to see that again'): queued work is NOT failed - it waits and runs when
+                        # the worker is back (HB tries again after the cool-down). One plain line per outage, never one per request.
+                        outages = self.__dict__.setdefault('outage_said', set())
+                        if agent not in outages:
+                            outages.add(agent)
+                            waiting = conn.execute("SELECT m.conversation_id, COUNT(*) FROM hb_peer_work w JOIN peer_messages m ON m.id=w.request_id "
+                                                   "WHERE w.principal=? AND w.state='queued' GROUP BY m.conversation_id", (agent,)).fetchall()
+                            for conversation_id, n in waiting:
+                                conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'system',0)",
+                                    (conversation_id, f'⚠ The {agent} worker did not start (3 tries; see its hb-supervised-worker.log). '
+                                                      f'{n} request(s) wait in the queue - nothing is lost; HB tries again in {self.COOL_DOWN // 60} minutes.'))
                     else:
                         try:
                             self.launch(agent)
@@ -368,6 +375,11 @@ def start():
                             LOG.exception('Nanny tick failed')
                         from core.hb_runtime_reload import tick as reload_tick
                         reload_tick(conn)
+                        try:
+                            from core.hb_system_atlas import tick as atlas_tick
+                            atlas_tick()
+                        except Exception:
+                            LOG.exception('System atlas tick failed')
                     from core.hb_tasks import flush_memory
                     flush_memory()
                     from core.hb_local_jobs import supervise

@@ -101,3 +101,111 @@ def test_popup_has_a_place_for_action_errors():
     out = subprocess.run([node, '-e', code, str(JS)], capture_output=True, text=True, timeout=20)
     assert out.returncode == 0, out.stderr[-500:]
     assert 'class="hbl-said hbl-dim"' in out.stdout and 'role="status"' in out.stdout
+
+
+@pytest.mark.parametrize('outcome', ['success', 'http_error', 'missing_id', 'network_error', 'changed_popup'])
+def test_later_button_persists_deferral_and_other_controls_stay_working(outcome):
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('node is not installed')
+    harness = r"""
+const fs = require('fs'), vm = require('vm'), assert = require('assert');
+const [js, outcome] = process.argv.slice(1);
+const listeners = {}, storage = new Map();
+const note = {textContent: ''}, pane = {scrollTop: 0, querySelectorAll: () => []};
+let removed = false, resolveFetch, rejectFetch;
+const calls = [];
+const box = {querySelector: () => note, remove: () => {removed = true;}};
+const laterBtn = {disabled: false};
+const laterTarget = {closest: (sel) => sel.includes(', ') || sel === '#hb-live-pop' ? box : sel === '[data-later]' ? laterBtn : null};
+const otherTarget = {closest: (sel) => sel.includes(', ') || sel === '#hb-live-pop' ? box : null};
+const document = {hidden: true, readyState: 'loading', body: {classList: {add: () => {}}},
+  addEventListener: (k, fn) => {listeners[k] = fn;}, querySelectorAll: () => [],
+  getElementById: (id) => id === 'hb-live-pop' && !removed ? box : id === 'hb-live-pane' ? pane : id === 'hb-live-style' ? {} : null};
+const context = {document, AbortController, window: {confirm: () => true},
+  localStorage: {getItem: (k) => storage.get(k) || null, setItem: (k, v) => storage.set(k, v)},
+  fetch: (url, opts) => {calls.push([url, JSON.parse(opts.body)]); return new Promise((res, rej) => {resolveFetch = res; rejectFetch = rej;});},
+  setInterval: () => {}, setTimeout: () => {}, clearTimeout: () => {}, console};
+vm.runInNewContext(fs.readFileSync(js, 'utf8'), context);
+const state = context.window.hbLive.state;
+state.popup = 'accept:S-0C67666A79';
+state.snap = {needs_you: [{key: 'accept:S-0C67666A79', kind: 'accept', title: 'Test step'}]};
+(async () => {
+  // Unhandled drawer/popup click must not throw ReferenceError on `more`.
+  listeners.click({target: otherTarget});
+  listeners.click({target: laterTarget});
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], '/api/deferred');
+  assert.equal(calls[0][1].source_id, 'accept:S-0C67666A79');
+  assert.equal(laterBtn.disabled, true);
+  assert.equal(removed, false, 'Later must not hide popup before HB confirms');
+  listeners.click({target: laterTarget});
+  assert.equal(calls.length, 1, 'Double-click must not resend POST');
+  if (outcome === 'changed_popup') state.popup = 'accept:S-NEW0000001';
+  if (outcome === 'network_error') rejectFetch(new Error('offline'));
+  else resolveFetch({ok: outcome !== 'http_error', json: async () =>
+    outcome === 'http_error' ? {ok: false, error: 'DB busy'} :
+    outcome === 'missing_id' ? {ok: true} : {ok: true, id: 42}});
+  await new Promise(setImmediate);
+  await new Promise(setImmediate);
+  assert.equal(laterBtn.disabled, false);
+  if (outcome === 'success') {
+    assert.equal(removed, true);
+    assert.equal(state.popup, null);
+  } else {
+    assert.equal(removed, false, 'Error or newer popup must stay visible');
+    if (outcome !== 'changed_popup') assert.ok(note.textContent.length > 0, 'Show real failure message');
+    else assert.equal(state.popup, 'accept:S-NEW0000001');
+  }
+})().catch((e) => {console.error(e); process.exitCode = 1;});
+"""
+    out = subprocess.run([node, '-e', harness, str(JS), outcome], capture_output=True, text=True, timeout=20)
+    assert out.returncode == 0, out.stderr[-1500:]
+
+
+def test_refresh_queues_follow_up_when_busy_so_approval_reconciles():
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('node is not installed')
+    harness = r"""
+const fs = require('fs'), vm = require('vm'), assert = require('assert');
+const [js] = process.argv.slice(1);
+const listeners = {}, storage = new Map();
+const pane = {scrollTop: 0, querySelectorAll: () => []};
+let removed = false, resolveFirst, fetchCount = 0;
+const box = {querySelector: () => ({textContent: ''}), remove: () => {removed = true;}};
+const document = {hidden: false, readyState: 'loading', body: {classList: {add: () => {}}},
+  addEventListener: (k, fn) => {listeners[k] = fn;}, querySelectorAll: () => [],
+  getElementById: (id) => id === 'hb-live-pop' && !removed ? box : id === 'hb-live-pane' ? pane : id === 'hb-live-style' ? {} : null};
+const context = {document, AbortController, window: {confirm: () => true},
+  localStorage: {getItem: (k) => storage.get(k) || null, setItem: (k, v) => storage.set(k, v)},
+  fetch: () => {
+    fetchCount++;
+    if (fetchCount === 1) return new Promise((res) => {resolveFirst = res;});
+    return Promise.resolve({ok: true, json: async () => ({ok: true, needs_you: [], master: {items: []}})});
+  },
+  setInterval: () => {}, setTimeout: () => {}, clearTimeout: () => {}, console};
+vm.runInNewContext(fs.readFileSync(js, 'utf8'), context);
+const state = context.window.hbLive.state;
+state.popup = 'accept:S-0C67666A79';
+(async () => {
+  context.window.hbLive.refresh();
+  assert.equal(state.busy, true);
+  // Second refresh called while first poll is still in flight (e.g. post-Approve)
+  context.window.hbLive.refresh();
+  assert.equal(fetchCount, 1);
+  // First poll resolves with stale pending item; queued follow-up refresh must run and dismiss popup
+  resolveFirst({ok: true, json: async () => ({ok: true, needs_you: [{key: 'accept:S-0C67666A79', kind: 'accept'}], master: {items: []}})});
+  await new Promise(setImmediate);
+  await new Promise(setImmediate);
+  await new Promise(setImmediate);
+  await new Promise(setImmediate);
+  assert.equal(fetchCount, 2, 'follow-up refresh must run after in-flight poll completes');
+  assert.equal(removed, true);
+  assert.equal(state.popup, null);
+})().catch((e) => {console.error(e); process.exitCode = 1;});
+"""
+    out = subprocess.run([node, '-e', harness, str(JS)], capture_output=True, text=True, timeout=20)
+    assert out.returncode == 0, out.stderr[-1500:]
+
+

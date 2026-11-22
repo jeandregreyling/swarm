@@ -29,11 +29,20 @@ def _tracked_tests(root: Path, tests: object) -> list[str]:
         ["git", "--no-pager", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "tests"],
         capture_output=True, text=True, timeout=10, check=True,
         env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"}).stdout.split("\0"))
+    normalized = []
     for value in tests:
         if isinstance(value, str) and "::" in value:
             path, _, name = value.partition("::")
             raise ValueError(f"tests lists files only, not pytest node IDs; to run one function send "
                              f'{{"tests":["{path}"],"keyword":"{name.split("::")[-1]}"}}')
+        if (isinstance(value, str) and re.fullmatch(r"test_[\w-]+\.py", value)
+                and f"tests/{value}" in tracked):
+            value = f"tests/{value}"
+        if (isinstance(value, str) and re.fullmatch(r"tests/(?:[\w-]+/)*test_[\w-]+\.py", value)
+                and value not in tracked and not (root / value).exists()):
+            # Practice 244 (21 Nov): APEX read "not tracked" as a dead end and stopped; the file simply did not exist yet.
+            raise PermissionError(f"{value} does not exist yet. Create it now with propose_write_file (real asserts on the "
+                                  "behaviour the step describes), then call run_tests again with the same arguments.")
         if (not isinstance(value, str) or not re.fullmatch(r"tests/(?:[\w-]+/)*test_[\w-]+\.py", value)
                 or value not in tracked):
             raise PermissionError(f"Not a tracked or non-ignored tests/test_*.py file: {value!r}")
@@ -44,7 +53,8 @@ def _tracked_tests(root: Path, tests: object) -> list[str]:
             raise PermissionError("Test path escapes the repository")
         if not path.is_file() or path.stat().st_size>1_000_000:
             raise PermissionError("Test must be a bounded regular source file")
-    return tests
+        normalized.append(value)
+    return normalized
 
 
 NOT_RUN = " NOT RUN: no pytest started, so there is no exit code, verdict or ALM run."
@@ -110,6 +120,12 @@ def run_tests(args: dict, root: Path = ROOT) -> dict:
                        "--no-header", "-o", "addopts=", *tests]
             if keyword:
                 command += ["-k", keyword]
+            # Tests execute repository code; scratch HOME alone does not stop a test
+            # from deleting real files. Fail closed if the read-only sandbox cannot run.
+            command = ['/usr/bin/bwrap', '--die-with-parent', '--unshare-net',
+                       '--ro-bind', '/', '/', '--dev', '/dev', '--proc', '/proc',
+                       '--tmpfs', '/tmp', '--tmpfs', '/run', '--ro-bind', str(root), str(root),
+                       '--bind', scratch, scratch, '--chdir', str(root), '--', *command]
             started = time.monotonic()
             try:
                 result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True,

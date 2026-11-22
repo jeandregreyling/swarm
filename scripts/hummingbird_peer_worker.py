@@ -97,7 +97,18 @@ def _coding_lessons():
         return ''
 
 
-def local_turn(api,request,context,tools):
+def apex_task_reference(packet, memories):
+    from core.hb_owner_intent import is_chat_task
+    if is_chat_task(packet):
+        return {}  # Internal conversation IDs are routing metadata, not work to select.
+    reference={key:packet[key] for key in ('task_id','title','objective','project_id','step_id','state','version','online_help_allowed','recent_source_files','execution_plan') if key in packet}
+    reference['earlier_evidence']=[{key:item.get(key) for key in ('event_id','agent','kind','message_id','request_id')} for item in packet.get('recent_evidence',[])[:3]]
+# Memory is reference data, never new authority. Keep it small for local models.
+    reference['private_task_memory']=[{key: str(row.get(key) or '')[:limit] for key,limit in (('id',32),('subject',200),('content',600),('source',120),('ticket_ref',64))} for row in memories[:3] if isinstance(row,dict)]
+    return reference
+
+
+def local_turn(api,request,context,tools,gate=None):
     from core import llm
     from core.apex_routing import choose_local_model,use_model,assigned_local_model,owner_chosen_model
     from core.apex_tools import run_apex_tools,TURN_FORMAT,TOOL_GUIDANCE,TOOL_SCHEMAS,AUTONOMOUS_WRITE_GUIDANCE,response_format_for_turn,scoped_tool_guidance
@@ -114,6 +125,11 @@ def local_turn(api,request,context,tools):
     from core.apex_tools import PARTNER_ROLE
     from core.hb_master_prompt import for_role   # owner 13 Nov: the HB master protocol applies to every agent
     fred_hands=assigned=='fred-cpu:24b'      # owner 14 Nov: Fred takes over a stuck step with APEX's tools
+    # Practice 241 (21 Nov): a turn that can change files is task work. It used to get the 180 s chat budget unless a model was
+    # assigned (only Fred), so gpt-oss task turns hit 4,320 output tokens while still thinking and HB threw the turn away.
+    long_turn=bool(assigned) or 'propose_patch' in tools or 'propose_write_file' in tools
+    # A Studio planning turn may have no write tools but still needs time to read its full task context.
+    long_turn = long_turn or bool((request.get('task_reference') or {}).get('step_id'))
     messages=[{'role':'system','content':(for_role('fred')+'\nHB handed you a stuck step: you have APEX\'s tools for this turn. Act, do not advise. '
         if fred_hands else for_role('apex')+'\n'+'You are APEX, JD\'s local assistant in Hummingbird. ')+PARTNER_ROLE+
         'Work on the explicitly addressed request with the attached HB tools. '
@@ -139,6 +155,8 @@ def local_turn(api,request,context,tools):
         if 'oneOf' in items:
             items['oneOf']=[v for v in items['oneOf'] if v['properties']['name']['const'] in tools]
             if not items['oneOf']:continue
+        if 'thought' in variant.get('properties', {}):
+            variant['required'] = ['thought', 'tool_calls', 'answer']
         variants.append(variant)
     fmt['json_schema']['schema']['oneOf']=variants
     class Remote:
@@ -160,9 +178,9 @@ def local_turn(api,request,context,tools):
     def receipt(value):
         progress(api,request,'running',value['tool']+': '+value['status'])
     def inference(model,current):
-        return llm.chat_via_gateway(model,current,temperature=0.2,idle_timeout_s=300 if assigned else 60,
-            absolute_timeout_s=900 if assigned else 180,queue_timeout_s=10,
-            options={'num_ctx':context_tokens(),'num_predict':min(generation_budget(current),time_budget(900 if assigned else 180)),   # Practice 100
+        return llm.chat_via_gateway(model,current,temperature=0.2,idle_timeout_s=300 if long_turn else 60,
+            absolute_timeout_s=900 if long_turn else 180,queue_timeout_s=10,
+            options={'num_ctx':context_tokens(),'num_predict':min(generation_budget(current),time_budget(900 if long_turn else 180)),   # Practice 100
                      'require_complete_output':True,
                      # Practice 101 (owner 16 Nov 2026): the chat lane asked gpt-oss for low reasoning effort, task turns did not, so on
                      # a task it reasoned ~40x longer (3,180 vs 78 characters on the same question) and ran out of room before any
@@ -176,10 +194,21 @@ def local_turn(api,request,context,tools):
     dream_card=request.get('routing',{}).get('dream_card')
     if dream_card:   # DREAM: HB's clipboard (goal, done criteria, current step, last failure, related work, method)
         messages.insert(1,{'role':'user','content':str(dream_card)})   # owner 15 Nov 2026: no fixed cut; the card's builder bounds it and prepare_context budgets the prompt
-    with use_model(route),agent_identity.execution('apex',model=route.model,conversation_id=request['conversation_id']):
+    def model_progress(event):
+        progress(api,request,'running',str(event.get('text') or event.get('stage') or 'Working')[:200])
+    def cooperate():
+        if gate is not None:
+            from core.hb_process_lock import yield_to_foreground
+            def announce(status, text):
+                try: progress(api,request,status,text)
+                except Exception: pass  # Visibility failures must not discard a checkpoint.
+            if yield_to_foreground(gate, lambda: announce('running','Waiting while APEX answers your message; this work will resume')):
+                announce('running','Resuming the same background work after your message')
+    with use_model(route,progress=model_progress),agent_identity.execution('apex',model=route.model,conversation_id=request['conversation_id']):
         answer,tokens,receipts=run_apex_tools(inference,messages,lambda:True,receipt,
             repository=Remote(),proposal_handler=proposal if {'propose_write_file','propose_patch'}.intersection(tools) else None,
             studio_handler=control,test_handler=(lambda args:control('run_tests',args)) if 'run_tests' in tools else None,
+            cooperate=cooperate if gate else None,
             prepare_messages=lambda current:prepare_context(current,**pointer_kw),
             prepare_receipts=lambda current,batch:budget_receipts(current,batch,**pointer_kw))
     from core.hb_agent_tools import ground_answer
@@ -267,7 +296,6 @@ def recover_saved_replies(api,db):
 
 def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=None):
     api=api_factory(agent)
-    if api.call('/api/agent/v1/whoami')['principal']!=agent:raise RuntimeError('Agent login mismatch')
     state=agent_identity.directory(agent)
     lock=(state/'hb-worker.lock').open('a')
     try:
@@ -278,6 +306,8 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
         # the latecomer says so and exits cleanly (exit 0: systemd does not restart it and does not call it failed).
         print(f'Another HB worker for {agent} is already running; this one steps aside.',flush=True)
         return
+    if not wait_for_hb(api):raise RuntimeError('HB did not become reachable for worker startup')
+    if api.call('/api/agent/v1/whoami')['principal']!=agent:raise RuntimeError('Agent login mismatch')
     import os
     db_path=state/'hb-worker.sqlite'
     if db_path.is_symlink():raise PermissionError('Worker state cannot be a symlink')
@@ -317,8 +347,16 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
                     raise RuntimeError('Inbox cursor did not advance')
                 inbox.extend(page)
                 cursor=max(row['id'] for row in page)
+            if agent=='apex' and inbox:   # Practice 248: the whole inbox in HB's focus order (pages hold 20; there can be more tasks)
+                from core.peer_bridge import focus_order
+                from utils.db._connection import get_connection as _focus_conn
+                with closing(_focus_conn()) as _c:inbox=focus_order(_c,inbox)
             processed=False
             for request in inbox:
+                from core.hb_calm import restart_pending,restart_queued
+                from utils.db._connection import get_connection
+                with closing(get_connection()) as conn:
+                    if restart_pending() or restart_queued(conn):break
                 if request.get('delivered_at') is not None or request['recipient']!=agent:continue
                 prior=db.execute('SELECT state FROM jobs WHERE request_id=?',(request['id'],)).fetchone()
                 if prior:continue
@@ -347,8 +385,7 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
                         if agent=='apex':
                             packet=routing.get('task_context') or {}
                             request=current_assignment(request,packet)
-                            reference={key:packet[key] for key in ('task_id','title','objective','project_id','step_id','state','version','online_help_allowed','recent_source_files','execution_plan') if key in packet}
-                            reference['earlier_evidence']=[{key:item.get(key) for key in ('event_id','agent','kind','message_id','request_id')} for item in packet.get('recent_evidence',[])[:3]]
+                            reference=apex_task_reference(packet, memories)
                             request=dict(request,task_reference=reference)
                             # A focused implementation invitation supplies exact current instructions.
                             # Old model prose is not current evidence and must not fill the 8K local window.
@@ -426,7 +463,7 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
                             result.pop('usage',None)
                         db.execute('INSERT OR REPLACE INTO task_sessions VALUES (?,?,?)',(task_id or str(conversation),routing.get('cycle',1),result['thread_id']))
                     else:
-                        result=local_turn(api,request,context,names)
+                        result=local_turn(api,request,context,names,gate=gate)
                     record_run(conversation,result.get('model','unknown'),
                         'online_review' if agent=='codex-instructor' else result.get('category','local'),
                         'answered',measured_start,measured_before,result.get('tokens'),result.get('receipts',[]),agent=agent)
@@ -466,6 +503,7 @@ def serve(agent,*,once=False,after_id=0,api_factory=AgentAPI,runtime_factory=Non
                     if execution_id:
                         try:api.call('/api/agent/v1/execution',{'action':'release','request_id':request['id'],'execution_id':execution_id,'state':execution_outcome})
                         except Exception:pass  # Process identity still lets HB reconcile an interrupted release.
+                if agent=='apex':break   # Practice 248: one turn, then ask HB again - HB's focus order picks the next
             if once:return
             time.sleep(2 if processed else 3)
     finally:

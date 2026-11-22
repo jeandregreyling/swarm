@@ -199,6 +199,93 @@
       ],
       "means": "every local model under its real name with its role, HB exam, agent account, unbound class and job tags (coder, generalist, router, summariser, file organiser, queue organiser, whippersnapper, duck ...)",
       "where": "/srv/archive/models/MODELS.md and models.json; KC page hb://library/models; hb_agents tags (class:, role:, job:); hb_model_jobs (ranked who does what); rebuilt by runtime/claude_helpers/model_library.py"
+    },
+    {
+      "words": [
+        "theme",
+        "themes",
+        "pink",
+        "colour",
+        "color",
+        "accent",
+        "dark mode",
+        "light mode",
+        "css",
+        "style",
+        "styling"
+      ],
+      "means": "HB UI themes, colour palettes, and CSS custom properties (--accent, --bg, --surface, --text)",
+      "where": "frontend/static/css/themes.css (all theme definitions and --accent/--bg variables), frontend/static/css/core.css, frontend/static/js/hb-live.js (inline board styles); reload UI with Ctrl+Shift+R"
+    },
+    {
+      "words": [
+        "pds",
+        "payday super",
+        "pay day super"
+      ],
+      "means": "Australian Payday Super reform (legislation requiring employers to pay Superannuation Guarantee with each payday from 1 July 2026; ATO & SAP HCM / ECP / SuccessFactors EC Payroll legal change). Keep strictly separate from STP2 (pay disaggregation) and MCB (quarterly super cap) unless a note explicitly links them.",
+      "where": "Check KC first (knowledge_search 'Payday Super' / 'PDS'), then SAP Notes (core/hb_sap_notes.py, /note <num>), then web_search for latest ATO & SAP Payday Super notes"
+    },
+    {
+      "words": [
+        "stp2",
+        "stp phase 2",
+        "single touch payroll"
+      ],
+      "means": "Australian Single Touch Payroll Phase 2 (ATO disaggregation of gross pay into income types and components). Distinct from Payday Super (PDS) and MCB.",
+      "where": "KC (knowledge_search 'STP Phase 2'), core/hb_sap_notes.py"
+    },
+    {
+      "words": [
+        "mcb",
+        "maximum contribution base",
+        "sg",
+        "superannuation guarantee"
+      ],
+      "means": "Australian Superannuation Guarantee (SG statutory rate on OTE) and Maximum Contribution Base (MCB earnings cap per period). Keep distinct from PDS payment timing and STP2 reporting.",
+      "where": "KC (knowledge_search 'MCB' / 'Superannuation Guarantee'), core/hb_sap_notes.py"
+    },
+    {
+      "words": [
+        "sap note",
+        "sap notes",
+        "hrsp",
+        "clc",
+        "ecp",
+        "kba"
+      ],
+      "means": "SAP Notes / KBAs, HR Support Packages (HRSP), Country Legal Changes (CLC), Employee Central Payroll (ECP)",
+      "where": "core/hb_sap_notes.py (/note <num>), core/hb_sap_note_job.py (/notes run KC<id>), KC (knowledge_search), web_search for latest public SAP/ATO announcements"
+    },
+    {
+      "words": [
+        "vortex",
+        "backup",
+        "restore",
+        "rollback",
+        "time machine"
+      ],
+      "means": "Vortex daily verified memory backup & rollback system (30-day retention in /mnt/archive/vortex/memory-backups, systemd --user swarm-vortex-backup.timer) plus per-step file rollback in core/hb_change_sets.py (/revert S-xxxx)",
+      "where": "core/vortex_backup.py, core/vortex_health.py, core/vortex_ledger.py, scripts/vortex_restore.py, core/hb_change_sets.py"
+    },
+    {
+      "words": [
+        "tile",
+        "tiles",
+        "media center",
+        "media player",
+        "potato farm",
+        "mondcraft",
+        "money hub",
+        "downloads",
+        "services tile",
+        "email tile",
+        "trace",
+        "system map",
+        "atlas"
+      ],
+      "means": "HB workspace tiles and their backend blueprints + frontend view scripts (full live map in Knowledge Centre hb://system-atlas)",
+      "where": "core/hb_system_atlas.py (KC hb://system-atlas); frontend/static/js/views/ (email.js, studio.js, knowledge.js, services.js, media-center.js, potato-farm.js, downloads.js, mondcraft.js, money-hub.js, trace.js, terminal.js, agents.js, access.js) + frontend/blueprints/"
     }
   ]
 }

@@ -32,7 +32,8 @@ _FEELING = re.compile(r"\b(?:stupid|dumb|dummest|useless|uiseless|loser|shit|cra
                       r"not (?:an?|good|helpful|acceptable)\b|same answer|wtf|oh my god|screaming|scr4eaming)", re.I)
 _ACTION = re.compile(r"\b(?:build|fix|implement|create|make|add|update|change|install|write|run|test|repair|remove|deploy|refactor|"
                      r"connect|enable|disable|set ?up|configure|download|index|rename|migrate|restart|merge|move|clean|show|open|"
-                     r"explain|list|check|review|design|research|find|compare|summari[sz]e|draft|audit|verify|expose|complete|integrate|plan)\b", re.I)
+                     r"explain|list|check|review|design|research|find|compare|summari[sz]e|draft|audit|verify|expose|complete|integrate|plan|"
+                     r"look|search|investigate|explore|enhance|upgrade|style|theme)\b", re.I)
 
 
 _ONBOARD = re.compile(r'\bon-?board(ing|ed)?\b', re.I)
@@ -48,7 +49,7 @@ _HANDLE = re.compile(r'(?<![\w.+-])@([A-Za-z][\w-]*(?:\.[A-Za-z][\w-]+)*)')   # 
 _STATUS_ASK = re.compile(r"\b(?:share|show|list|tell|give|what|what's|whats|which|where|how many|summari[sz]e|update me|status|report|any|anything|is there)\b", re.I)
 _STATUS_ABOUT = re.compile(r"\b(?:open tasks?|tasks? (?:are )?(?:still )?(?:open|left|remaining|outstanding|pending)|task list|the tasks|the queue|backlog|status|progress|"
                            r"where (?:we|you|things) (?:are|stand)|what(?:'s| is) (?:left|open|next|outstanding|pending|blocked|stuck)|"
-                           r"what (?:are you|is hb|is apex) (?:doing|working on|trying to do)|proposed solutions?|needs? me|waiting (?:for|on) me)\b", re.I)
+                           r"what (?:are you|is hb|is apex) (?:doing|working on|trying to do|busy with|up to)|proposed solutions?|needs? me|waiting (?:for|on) me)\b", re.I)
 _STATUS_WORK = re.compile(r"\b(?:build|fix|implement|create|install|write|repair|remove|deploy|refactor|rename|migrate|merge|move|delete|cancel|change)\b", re.I)
 
 

@@ -54,6 +54,8 @@ def health_memory():
             })
         finally:
             conn.close()
+    except PermissionError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 403
     except Exception as exc:
         return jsonify({'error': str(exc)}), 500
 

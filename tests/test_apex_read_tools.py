@@ -449,6 +449,10 @@ def test_transport_schema_restricts_arguments_to_each_tool():
         "task_evidence":(["evidence_id","offset"],["evidence_id"]),
     "task_plan":(["next_action","base_plan_event_id"],["next_action"]),
     "runtime_reload":([],[]),
+    "hb_restart":(["scope","reason"],[]),
+    "hb_service":(["action","service","reason"],["action"]),
+    "hb_media_download":(["query","format"],["query"]),
+    "hb_custom_tool":(["action","name","payload"],["action"]),
     "git_clear_stale_lock":([],[]),
 
         "studio_note":(["content"],["content"]),

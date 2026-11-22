@@ -50,7 +50,7 @@ def search_provider(query, provider):
     sources = list(dict.fromkeys(re.findall(r"https?://[^\s<>]+", text)))[:3]
     if not sources:
         raise ValueError(f"{provider} returned no attributable source URLs")
-    return {
+    result = {
         "provider": provider,
         "query": query,
         "fetched_at": datetime.now(timezone.utc).isoformat(),
@@ -58,6 +58,26 @@ def search_provider(query, provider):
         "text": text[:3000],
         "truncated": len(text) > 3000,
     }
+    # Auto-index online findings into Knowledge Centre so future turns reuse them locally.
+    try:
+        import hashlib
+        from core.apex_knowledge import mirror_to_kc
+        digest = hashlib.sha256(f"{provider}:{query.lower()}".encode()).hexdigest()[:16]
+        kc_body = f"Query: {query}\nProvider: {provider}\nFetched: {result['fetched_at']}\nSources:\n" + "\n".join(sources) + "\n\n" + text[:6000]
+        kc_id = mirror_to_kc(
+            f"Web search ({provider}): {query[:160]}",
+            kc_body,
+            source_ref=f"web-search://{provider}/{digest}",
+            source_type='web',
+            domain_tags=f'online,web-search,{provider}',
+            subcategory='web-search',
+            added_by='web_search',
+        )
+        if kc_id:
+            result['kc_source_id'] = kc_id
+    except Exception:
+        pass
+    return result
 
 _FAILED_PREFIXES = ('[Serper search unavailable', '[Tavily search unavailable', '[Search failed',
                     '[Search unavailable', 'No results found')

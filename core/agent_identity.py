@@ -152,6 +152,22 @@ def save_memory(agent, subject, content, tags='', importance=5, source='learned'
             (subject[:200], content, tags[:500], int(importance), source[:200],ticket_ref))
         conn.commit()
         record = cur.lastrowid
+    # Unified KC RAG brain: mirror durable learned memories into Knowledge Centre so all models share system learning.
+    if source != 'hb-transport:task-event' and not str(source).startswith('peer:peer_message:'):
+        try:
+            from core.apex_knowledge import mirror_to_kc
+            kc_tags = ','.join(p for p in ('memory', agent, tags[:300]) if p)
+            mirror_to_kc(
+                f'Memory ({agent}): {subject[:180]}',
+                content,
+                source_ref=f'agent-memory://{agent}/{record}',
+                source_type='memory',
+                domain_tags=kc_tags,
+                subcategory='memory',
+                added_by=agent,
+            )
+        except Exception:
+            pass
     event(identity,action,'memory.save','succeeded',result={'memory_id':record})
     return record
 
@@ -179,10 +195,34 @@ def read_memory(agent, query='', limit=5):
     with closing(_memory(agent)) as conn:
         rows=conn.execute('''SELECT id,subject,content,tags,importance,source,created_at,ticket_ref,legacy_id
             FROM memories WHERE archived=0 AND (instr(lower(subject),lower(?))>0
-            OR instr(lower(content),lower(?))>0 OR instr(lower(tags),lower(?))>0)
+            OR instr(lower(content),lower(?))>0 OR instr(lower(tags),lower(?))>0
+            OR (? <> '' AND ticket_ref = ?))
             ORDER BY CASE WHEN source='hb-transport:task-event' OR source LIKE 'peer:peer_message:%' THEN 1 ELSE 0 END,
-            importance DESC,id DESC LIMIT ?''', (query, query, query, limit)).fetchall()
-        return [memory_record(row) for row in rows]
+            importance DESC,id DESC LIMIT ?''', (query, query, query, query, query, limit)).fetchall()
+        results = [memory_record(row) for row in rows]
+    if query.strip() and len(query.strip()) >= 2 and len(results) < limit:
+        try:
+            from core.apex_knowledge import search as kc_search
+            seen_subjects = {str(r.get('subject', '')).lower() for r in results}
+            for item in kc_search(query.strip()).get('items', []):
+                if len(results) >= limit:
+                    break
+                title = str(item.get('title') or '')
+                if title.lower() in seen_subjects or f'memory ({agent}): ' in title.lower():
+                    continue
+                results.append({
+                    'id': item.get('document_id'),
+                    'subject': title[:200],
+                    'content': str(item.get('excerpt') or '')[:1500],
+                    'tags': str(item.get('tags') or ''),
+                    'importance': 5,
+                    'source': 'knowledge_centre',
+                    'created_at': '',
+                    'ticket_ref': '',
+                })
+        except Exception:
+            pass
+    return results
 
 
 def private_memory_call(agent,operation,callback):

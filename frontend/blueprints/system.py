@@ -36,6 +36,18 @@ def api_platform():
     try:
         from core.platform import summary
         return jsonify(summary())
+    except ImportError:
+        import os, platform as _plat, shutil, sys
+        return jsonify({
+            'ok': True,
+            'os': _plat.system(),
+            'release': _plat.release(),
+            'machine': _plat.machine(),
+            'python': sys.version.split()[0],
+            'systemd': bool(shutil.which('systemctl')),
+            'node': bool(shutil.which('node')),
+            'pid': os.getpid(),
+        })
     except Exception as e:
         return jsonify({'ok': False, 'error': f'platform probe failed: {e}'}), 500
 

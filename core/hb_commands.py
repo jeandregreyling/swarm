@@ -55,6 +55,7 @@ COMMANDS = [
     ('nanny', '/nanny on [minutes]|off|status|report', 'The nanny bot (small CPU model) that watches the system', False),
     ('unload', '/unload model-name', 'Unload an HB-managed local model to free memory', False),
     ('stop', '/stop', 'Stop all current work now', False),
+    ('restart', '/restart [ui|all] [reason]', 'Restart HB cleanly (announced maintenance; ui = HB web/backend, all = UI + APEX worker)', False),
     ('admin', '/admin [rocm | approve A-xxxx | decline A-xxxx | check rocm]', "Admin steps: HB proposes, you approve, Linux asks for your password in a terminal window", False),
     ('apex', '/apex [models | model <name> | back | backend | bench rocm|vulkan]', 'Which model plays APEX and on which GPU backend; swap or test them (HB backs up, restarts, checks, rolls back)', False),
     ('roles', '/roles [set <role> <model>]', 'Which model plays each role (APEX, Fred, counsel, reviewer, homework); set changes one', False),
@@ -180,6 +181,12 @@ def parse(body):
         return ('tidy', ['yes'] if len(words) > 1 and words[1].lower() in ('yes', 'confirm') else [])
     if cmd == 'today':   # owner 14 Nov: daily grounding (core/hb_grounding.py)
         return ('today', [])
+    if cmd == 'restart':
+        scope = words[1].lower() if len(words) > 1 else 'ui'
+        if scope not in ('ui', 'all'):
+            return None
+        reason = ' '.join(words[2:]).strip()[:200] if len(words) > 2 else ''
+        return ('restart', [scope] + ([reason] if reason else []))
     if cmd == 'drive':
         sub = words[1].lower() if len(words) > 1 else 'on'
         return ('drive', [sub]) if sub in ('on', 'off', 'status', 'start', 'stop') else None
@@ -929,6 +936,12 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'clip':
         from core import hb_clipboard
         return hb_clipboard.edit(conn, args, actor)
+    if command == 'restart':
+        from core.hb_agent_tools import hb_restart_tool
+        scope = args[0] if args else 'ui'
+        reason = args[1] if len(args) > 1 else f'Owner /restart ({actor})'
+        res = hb_restart_tool({'scope': scope, 'reason': reason})
+        return f"🔄 HB restart queued ({res['scope']}): {res['reason']}. Maintenance banner will show once any running turn finishes."
     if command == 'consult':
         from core import hb_consultant
         return hb_consultant.open_consultation(conn, conversation_id, args[0], actor)
@@ -1092,6 +1105,49 @@ def _confirm_text(conn, command):
     return None
 
 
+def _direct_hb_answer(conn, conversation_id, body, actor):
+    """Answer direct @hb / @hummingbird plain-English questions immediately from HB's own records (0 tokens)."""
+    from core import hb_owner_intent as oi, hb_learning, hb_queue
+    intent = oi.classify(body)
+    if intent == 'status':
+        return oi.status_text(conn, conversation_id)
+    if intent == 'drive':
+        return hb_queue.drive_on(conn, actor, conversation_id)
+    if re.search(r'\b(ram|memory|swap|nvme|gpu|rig|hardware|models?|vram)\b', body, re.I):
+        try:
+            from core import hb_live, hb_apex_swap
+            t = hb_live.telemetry()
+            g, r = t.get('gpu') or {}, t.get('ram') or {}
+            lines = [
+                f"HB live rig telemetry: APEX={hb_apex_swap.playing()} ({hb_apex_swap.backend()}), "
+                f"RAM={r.get('used_gb','?')}/{r.get('total_gb','?')} GB, "
+                f"GPU={g.get('busy_pct','?')}% · {g.get('vram_used_gb','?')}/{g.get('vram_total_gb','?')} GB VRAM · {g.get('temp_c','?')}°C."
+            ]
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE name='hb_model_jobs'").fetchone():
+                rows = conn.execute("SELECT job, GROUP_CONCAT(agent_id) FROM hb_model_jobs WHERE passed=1 GROUP BY job ORDER BY job").fetchall()
+                if rows:
+                    lines.append('Benchmarked jobs: ' + '; '.join(f"{j}: {m}" for j, m in rows[:8]))
+            return '\n'.join(lines)
+        except Exception:
+            pass
+    gloss = hb_learning.glossary_for(body)
+    kc_hits = []
+    try:
+        from core.apex_knowledge import search as kc_search
+        if len(body.strip()) >= 3:
+            kc_hits = kc_search(body.strip()[:120]).get('items', [])[:3]
+    except Exception:
+        pass
+    if gloss or kc_hits:
+        parts = ['HB direct lookup (0 tokens):']
+        if gloss:
+            parts.append(gloss)
+        if kc_hits:
+            parts.append('Knowledge Centre matches: ' + '; '.join(f"KC{h.get('document_id')} {str(h.get('title') or '')[:80]}" for h in kc_hits))
+        return '\n'.join(parts)
+    return None
+
+
 def handle(conn, conversation_id, text, actor, *, interpreter=interpret, after=None):
     """Return HB's reply for a "/" (or @hb) message. `after` collects work to run after commit."""
     ensure_schema(conn)
@@ -1113,6 +1169,10 @@ def handle(conn, conversation_id, text, actor, *, interpreter=interpret, after=N
             _remember(conn, conversation_id, command, 'confirm')
             return _confirm_text(conn, command)
         return run(conn, conversation_id, *parsed, actor, after)
+    if re.match(r'^\s*@(hb|hummingbird)\b', str(text or ''), re.I) and len(body.split()) >= 2:
+        direct = _direct_hb_answer(conn, conversation_id, body, actor)
+        if direct:
+            return direct
     near = suggest(body)                                                       # C
     if near:
         _remember(conn, conversation_id, near, 'suggest')

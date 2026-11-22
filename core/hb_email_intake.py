@@ -188,6 +188,14 @@ def address(header):
 def trusted(conn):
     found = {r[0] for r in conn.execute('SELECT address FROM hb_email_trusted')}
     try:
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE name='hb_channel_identities'").fetchone():
+            for (key,) in conn.execute("SELECT key FROM hb_channel_identities WHERE key LIKE 'email:%'"):
+                addr = str(key).split(':', 1)[1].strip().lower()
+                if addr:
+                    found.add(addr)
+    except Exception:
+        pass
+    try:
         from utils.config import GHOST_EMAIL
         found.add(GHOST_EMAIL.lower())
     except Exception:
@@ -285,7 +293,10 @@ def check(conn, mailbox=_mailbox, now=None):
     box = mailbox()
     try:
         box.select('inbox')
-        status, found = box.search(None, 'UNSEEN', 'SINCE', time.strftime('%d-%b-%Y', time.gmtime(since - 86400)))
+        # Search recent mail (not only UNSEEN) so reading an email in Gmail or HB's Email tile never hides it from intake;
+        # hb_email_seen deduplicates every Message-ID so nothing is ever processed twice.
+        lookback = max(since - 86400, now - 7 * 86400)
+        status, found = box.search(None, 'SINCE', time.strftime('%d-%b-%Y', time.gmtime(lookback)))
         for num in (found[0].split() if status == 'OK' and found and found[0] else []):
             status, data = box.fetch(num, '(BODY.PEEK[])')
             if status != 'OK' or not data or not isinstance(data[0], tuple):

@@ -464,6 +464,48 @@ def apex_live(url='http://127.0.0.1:8080', fetch=None):
             'model': model, 'device': {'rocm': 'ROCm', 'vulkan': 'Vulkan'}.get(where or '', where)}
 
 
+def _apex_activity(conn):
+    """Latest active APEX tool name and internal monologue thought(s) for the live meter."""
+    out = {'active_tool': '', 'thought': '', 'thoughts': []}
+    try:
+        rows = conn.execute(
+            "SELECT kind, payload FROM hb_task_events WHERE agent='apex' AND kind IN ('progress','tool_result','tool_failure') "
+            "ORDER BY event_id DESC LIMIT 25"
+        ).fetchall()
+    except Exception:
+        return out
+    known_tools = {
+        'read_file', 'grep_repo', 'list_files', 'get_diff', 'git_status', 'propose_patch', 'propose_write_file',
+        'run_tests', 'change_set', 'knowledge_search', 'knowledge_read', 'web_search', 'reference_lookup',
+        'hb_media_download', 'hb_service', 'hb_restart', 'gpu_profile', 'hb_tasks', 'alm_step_get',
+        'task_context', 'task_plan', 'studio_evidence_get', 'studio_resume', 'memory_search', 'memory_save',
+    }
+    for kind, raw in rows:
+        try:
+            p = json.loads(raw or '{}')
+        except (TypeError, ValueError):
+            continue
+        if not out['active_tool']:
+            t = str(p.get('tool') or '').strip()
+            if t:
+                out['active_tool'] = t
+            elif kind == 'progress':
+                st = str(p.get('stage') or '').strip()
+                first = st.split(':', 1)[0].split(' ', 1)[0]
+                if first in known_tools:
+                    out['active_tool'] = first
+        if kind == 'progress':
+            st = str(p.get('stage') or '').strip()
+            if st.startswith('💭 '):
+                thought = st[2:].strip()
+                if thought and thought not in out['thoughts']:
+                    out['thoughts'].append(thought)
+    if out['thoughts']:
+        out['thought'] = out['thoughts'][0]
+        out['thoughts'] = out['thoughts'][:4]
+    return out
+
+
 def snapshot(conn, now=None, tele=None, items=None):
     now = now or time.time()
     found = items if items is not None else _merge(_log_items(conn, now) + _peer_items(conn) + _admin_items(conn))
@@ -488,6 +530,8 @@ def snapshot(conn, now=None, tele=None, items=None):
     out['version'] = hashlib.sha1(json.dumps(out, sort_keys=True, default=str).encode()).hexdigest()[:12]
     out['telemetry'], out['at'] = tele, now
     out['apex_live'], out['started'] = apex_live(), STARTED      # Practice 200 (outside the version hash: it changes every read)
+    if isinstance(out['apex_live'], dict) and out['apex_live'].get('up'):
+        out['apex_live'].update(_apex_activity(conn))
     try:                                                       # Practice 280: GPU mode for HB Live's buttons
         from core.hb_power import gpu_mode
         out.setdefault('telemetry', {}).setdefault('gpu', {})

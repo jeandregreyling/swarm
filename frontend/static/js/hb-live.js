@@ -39,9 +39,46 @@
     return title && stage && title !== stage ? title + ' · ' + stage : (title || stage || 'working');
   }
 
+  function chunkMeta(chunks) {
+    if (!chunks || !chunks.total) return null;
+    const total = Number(chunks.total) || 0;
+    if (!total) return null;
+    if (chunks.doing && typeof chunks.doing === 'object') {
+      const n = Number(chunks.doing.n) || 0;
+      if (!n) return null;
+      const done = chunks.done != null ? Number(chunks.done) : Math.max(0, n - 1);
+      return { total, n, done, text: String(chunks.doing.text || ''), showDone: false };
+    }
+    if (typeof chunks.doing === 'number' && chunks.doing > 0) {
+      const n = Number(chunks.doing);
+      const done = chunks.done != null ? Number(chunks.done) : Math.max(0, n - 1);
+      const text = String(chunks.next || (Array.isArray(chunks.list) ? chunks.list[n - 1] : '') || '');
+      return { total, n, done, text, showDone: chunks.done != null };
+    }
+    return null;
+  }
+
   function chunkLine(chunks) {
-    if (!chunks || !chunks.total || !chunks.doing || typeof chunks.doing !== 'object') return '';
-    return 'chunk ' + chunks.doing.n + '/' + chunks.total + ': ' + chunks.doing.text;
+    const m = chunkMeta(chunks);
+    if (!m) return '';
+    return 'chunk ' + m.n + '/' + m.total + (m.text ? ': ' + m.text : '');
+  }
+
+  function chunkDots(chunks) {
+    const m = chunkMeta(chunks);
+    if (!m) return '';
+    let out = '<span class="hbl-chunk-row">';
+    for (let idx = 1; idx <= m.total; idx++) {
+      const cls = idx <= m.done ? 'done' : idx === m.n ? 'doing' : 'todo';
+      out += `<span class="hb-chunk-dot ${cls}"></span>`;
+    }
+    return out + '</span>';
+  }
+
+  function chunkRowCount(chunks) {
+    const m = chunkMeta(chunks);
+    if (!m) return '';
+    return ' · ' + (m.showDone ? m.done : m.n) + '/' + m.total;
   }
 
   function renderStrip(snap) {
@@ -178,7 +215,7 @@
       `<b>${esc(it.actor || SHORT[it.lane] || '')}</b>` + (it.model ? ` · ${esc(it.model)}` : '') + (it.device ? ` · ${esc(it.device)}` : '') +
       (it.since ? ` · <span class="hbl-elapsed">${took((now || snap.at || 0) - it.since)}</span>` : '') + (it.purpose ? ` · <i>${esc(it.purpose)}</i>` : '') +
       `</div><div class="hbl-item-title">${esc(it.title)}</div>` + renderLights(it.lights) +
-      (chunkLine(it.chunks) ? `<div class="hbl-live-line">${esc(chunkLine(it.chunks))}</div>` : '') +
+      (chunkLine(it.chunks) ? `<div class="hbl-live-line">${esc(chunkLine(it.chunks))}${chunkDots(it.chunks)}</div>` : '') +
       (it.last_step ? `<div class="hbl-dim">${esc(it.last_step)}</div>` : '') + renderTrail((it.trail || []).slice(-6)) + '</div>').join('');
     return `<div class="hbl-active">${needChip}${chips}${alert}</div>${cards ? `<div class="hbl-cards">${cards}</div>` : ''}`;
   }
@@ -220,7 +257,7 @@
       if (folded) return;
       html += '<ul class="hbl-list">' + rows.map((i) =>
         `<li data-step="${esc(i.step_id)}" data-task="${esc(i.task_id || '')}" title="${esc(i.note || i.why || '')}">` +
-        `<span class="hbl-row-title">${esc(i.title)}${i.chunks && i.chunks.doing ? ' · ' + esc(i.chunks.doing.n) + '/' + esc(i.chunks.total) : ''}</span><span class="hbl-tag">${esc(i.doer || 'apex')}</span>` +
+        `<span class="hbl-row-title">${esc(i.title)}${esc(chunkRowCount(i.chunks))}</span><span class="hbl-tag">${esc(i.doer || 'apex')}</span>` +
         (chunkLine(i.chunks) ? `<div class="hbl-live-line">${esc(chunkLine(i.chunks))}</div>` : '') +
         (i.live ? `<div class="hbl-live-line">● ${esc(SHORT[i.live.lane] || i.live.lane)}: ${esc(i.live.last_step || 'working')}</div>` : '') +
         (i.note && key === 'spec' ? `<div class="hbl-dim">${esc(i.note)}</div>` : '') +
@@ -245,11 +282,22 @@
       '<span class="hbl-lg">DREAM</span>' + lights.dream.map((l) => one(l, l.letter)).join('') + '</div>';
   }
 
+  const TOOL_ICON = {
+    grep_repo: '⌕', read_file: '▤', list_files: '☰', get_diff: '±', git_status: '⎇',
+    propose_patch: '✎', propose_write_file: '✚', run_tests: '✓', change_set: '◈',
+    knowledge_search: '✦', knowledge_read: '✦', web_search: '◎', reference_lookup: '↗',
+    hb_media_download: '▶', hb_service: '⚙', hb_restart: '↻', gpu_profile: '⚡',
+    hb_tasks: '☑', memory_search: '◉', memory_save: '◉', task_plan: '▤',
+  };
+
   // Practice 200: the APEX meter - always on top of main chat (owner: "let me see the actual token count and what APEX is doing")
   function renderMeter(a, rate, lit) {
     if (!a || !a.up) return '<div class="hbl-meter hbl-meter-down">⬢ APEX\'s model server is not answering' + (lit || '') + '</div>';
     const n = (x) => Number(x || 0).toLocaleString('en-AU');
-    const who = `⬢ <b>APEX</b> <span class="hbl-dim">${esc(a.model || '')}${a.device ? ' · ' + esc(a.device) : ''}</span>`;
+    const toolPill = a.active_tool
+      ? ` <span class="hbl-tool-pill" title="Current/last HB tool executed by APEX">${esc(TOOL_ICON[a.active_tool] || '▸')} ${esc(a.active_tool)}</span>`
+      : '';
+    const who = `⬢ <b>APEX</b> <span class="hbl-dim">${esc(a.model || '')}${a.device ? ' · ' + esc(a.device) : ''}</span>${toolPill}`;
     let what;
     if (!a.busy) what = `<span class="hbl-dim">idle · last prompt ${n(a.prompt_tokens)} tokens</span>`;
     else if (a.prompt_tokens && a.prompt_done + a.prompt_cached < a.prompt_tokens && !a.generated) {
@@ -258,13 +306,20 @@
         (rate ? ` <span class="hbl-dim">${n(Math.round(rate))} tok/s</span>` : '');
     } else what = `<b>writing</b> ${n(a.generated)} tokens` + (rate ? ` <span class="hbl-dim">· ${rate.toFixed(1)} tok/s</span>` : '');
     const ctx = a.ctx ? ` <span class="hbl-dim">· context ${n(a.prompt_tokens + a.generated)} / ${n(a.ctx)}</span>` : '';
-    return `<div class="hbl-meter${a.busy ? ' hbl-meter-busy' : ''}">${who} · ${what}${ctx}${lit || ''}</div>`;
+    const thoughtHtml = a.thought
+      ? `<details class="hbl-thought"${a.thoughtOpen ? ' open' : ''}><summary data-thought-toggle="1">💭 APEX thinking: ${esc(a.thought)}</summary>` +
+        ((a.thoughts && a.thoughts.length > 1)
+          ? '<div class="hbl-thought-list">' + a.thoughts.map((t) => `<div>· ${esc(t)}</div>`).join('') + '</div>'
+          : '') + '</details>'
+      : '';
+    return `<div class="hbl-meter${a.busy ? ' hbl-meter-busy' : ''}">${who} · ${what}${ctx}${lit || ''}${thoughtHtml}</div>`;
   }
 
   function renderBoard(snap, opts) {
     const o = opts || {};
     const lit = snap.apex_lights ? renderLights(snap.apex_lights, snap.apex_lights.running ? 'this turn' : 'last turn') : '';
-    return renderMeter(snap.apex_live, o.rate, lit) + `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
+    const meterLive = snap.apex_live ? Object.assign({}, snap.apex_live, { thoughtOpen: !!(o.open && o.open.thought) }) : snap.apex_live;
+    return renderMeter(meterLive, o.rate, lit) + `<div class="hbl-pane-head"><button type="button" class="hbl-fold" data-pane-fold="1">${o.collapsed ? '▸' : '▾'} HB Live</button>` +
       `<span class="hbl-dim" title="CPU mode: the energy preference of the amd-pstate driver (the CPU still boosts on demand; 'powersave' is only the governor's name)">${esc(systemLine(snap))}</span>${renderPower(snap)}</div>` +
       // Practice 208 (JD 21 Nov: "the clipboard ... there's nothing in there"): the list sat under the worker cards and vanished when the
       // box was short or folded. Now: who is busy (one row) -> the clipboard -> the worker cards; folded still shows the clipboard's count.
@@ -428,6 +483,13 @@
 .hbl-row-title{flex:1 1 260px;min-width:0}.hbl-row-ctl{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .hbl-tag{padding:0 6px;border:1px solid var(--border,#444);border-radius:8px;font-size:10.5px;color:var(--text-dim,#aaa)}
 .hbl-needs .hbl-row-title{color:#ffb300}.hbl-live-line{flex-basis:100%;color:#2ecc71;font-size:11.5px}
+.hbl-chunk-row{display:inline-flex;gap:3px;align-items:center;margin-left:6px;vertical-align:middle}
+.hb-chunk-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:#555}
+.hb-chunk-dot.done{background:#2ecc71}.hb-chunk-dot.doing{background:#ffb300}.hb-chunk-dot.todo{background:#444}
+.hbl-tool-pill{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;margin-left:4px;border-radius:10px;border:1px solid var(--accent,#00e08a);color:var(--accent,#00e08a);font-size:10.5px;font-weight:600;background:rgba(0,224,138,.08)}
+.hbl-thought{flex-basis:100%;margin-top:3px;font-size:11.5px;color:var(--text-dim,#bbb)}
+.hbl-thought summary{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hbl-thought-list{padding:4px 0 2px 14px;display:flex;flex-direction:column;gap:2px}
 .hbl-primary,.hbl-mini,.hbl-more,.hbl-ctl button,.hbl-ctl select{font-size:11px;padding:2px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--border,#444);
   background:var(--bg,#111);color:var(--text,#ddd)}
 .hbl-primary{border-color:var(--accent,#00e08a);color:var(--accent,#00e08a);font-weight:600}
@@ -459,10 +521,16 @@
 #hb-live-drawer .hb-models{max-height:none;overflow:visible;resize:none}
 .hbl-drawer-grip{position:sticky;float:left;top:0;margin:-6px 0 0 -12px;width:6px;height:100%;min-height:100vh;cursor:ew-resize;border-radius:3px}
 .hbl-drawer-grip:hover{background:rgba(46,204,113,.35)}
-#hb-live-drawer{scrollbar-width:thin;scrollbar-color:var(--border,#444) transparent}
-#hb-live-drawer{position:fixed;right:14px;top:70px;bottom:96px;width:min(460px,94vw);overflow:auto;z-index:9000;padding:6px 12px 10px;
-  background:var(--card,#161616);color:var(--text,#ddd);border:1px solid var(--border,#333);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);font-size:12.5px}
-.hbl-drawer-head{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-6px;z-index:1;padding:6px 0;background:var(--card,#161616)}
+#hb-live-drawer{scrollbar-width:thin;scrollbar-color:rgba(16,232,164,.35) transparent}
+#hb-live-drawer{position:fixed;right:14px;top:70px;bottom:96px;width:min(470px,94vw);overflow:auto;z-index:9000;padding:10px 16px 14px;
+  background:linear-gradient(145deg,rgba(16,232,164,.09),rgba(255,184,77,.05) 52%,rgba(244,114,182,.06)),rgba(16,20,24,.78);
+  backdrop-filter:blur(18px) saturate(165%);-webkit-backdrop-filter:blur(18px) saturate(165%);
+  color:var(--text,#e8f0ec);border:1px solid rgba(255,255,255,.15);border-radius:16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 22px 52px rgba(0,0,0,.52);font-size:12.5px;
+  transition:opacity .18s cubic-bezier(.22,1,.36,1),transform .18s cubic-bezier(.22,1,.36,1)}
+.hbl-drawer-head{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-10px;z-index:1;margin:-10px -16px 8px;padding:10px 16px;
+  background:rgba(16,20,24,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.10);border-radius:16px 16px 0 0}
 .hbl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:2px 0 4px}
 .hbl-tasks-chip{font-size:12px;padding:3px 12px;border-radius:14px;border:1px solid var(--accent,#00e08a);background:transparent;color:var(--accent,#00e08a);cursor:pointer;font-weight:600}
 .hbl-tasks-needs{border-color:#ffb300;color:#ffb300}
@@ -612,7 +680,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
   }
 
   // In chat: /commands in HB's and APEX's messages are one-click buttons; HB's raw JSON hand-offs read as one line
-  const CMD = /(^|[\s(])(\/(?:accept|reject|continue|pause|cancel|plan|workflow|drive|done|board|status|tasks|approvals|clip|yes|no|today|channels)\b(?: [A-Z]-[0-9A-F]{6,12}| (?:on|off|next|status|auto)\b| S-[0-9A-F]{10})*)/g;
+  const CMD = /(^|[\s(])(\/(?:accept|reject|continue|pause|cancel|plan|workflow|drive|done|board|status|tasks|approvals|clip|yes|no|today|channels|restart|grant|deny)\b(?: [A-Z]-[0-9A-F]{6,12}| (?:on|off|next|status|auto|ui|all)\b| S-[0-9A-F]{10})*)/g;
   function decorate() {
     document.querySelectorAll('#home-chat-messages .hc-bubble:not([data-hbl-done])').forEach((b) => {
       b.dataset.hblDone = '1';
@@ -795,7 +863,30 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       if (m) { m.scrollIntoView({ behavior: 'smooth', block: 'center' }); m.style.outline = '2px solid #ffb300'; setTimeout(() => { m.style.outline = ''; }, 2500); }
       return;
     }
-    if (t.closest('[data-later]')) { settle(S.popup); return; }
+    const later = t.closest('[data-later]');
+    if (later) {
+      if (later.disabled) return;
+      const key = S.popup;
+      const item = (((S.snap || {}).needs_you) || []).find((n) => n && n.key === key) || {};
+      const label = String(item.title || item.label || key || 'Needs-you item').trim();
+      const note = pop && pop.querySelector('.hbl-said');
+      later.disabled = true;
+      boundedRequest((signal) => fetch('/api/deferred', {
+        method: 'POST', credentials: 'same-origin', signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: `Deferred: ${label}`, source: 'hb-live-needs-you', source_id: String(key || ''), pinned_by: 'hb-live-ui' }),
+      })).then(({ ok, data: d }) => {
+        if (!ok || !d || d.ok !== true || d.id == null) {
+          if (note) note.textContent = (d && (d.error || d.said)) || 'Could not defer item - try again.';
+          return;
+        }
+        if (S.popup === key) { settle(key); }
+        else if (key) { const known = seen(); known.add(key); ls('hbLive.needsSeen', JSON.stringify(Array.from(known).slice(-300))); }
+      }).catch((error) => {
+        if (note) note.textContent = error.name === 'TimeoutError' ? error.message : 'HB did not save deferral - try again.';
+      }).finally(() => { later.disabled = false; });
+      return;
+    }
     const more = t.closest('[data-more]');
     if (more) { const b = document.querySelector(`[data-more-box="${CSS.escape(more.dataset.more)}"]`); if (b) b.hidden = !b.hidden; return; }
     // Practice 209: the Tasks chip in the top bar opens the clipboard (unfolds the pane and scrolls to the list)
@@ -808,6 +899,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     }
     const fold = t.closest('[data-fold]');
     if (fold) { S.open[fold.dataset.fold] = !S.open[fold.dataset.fold]; render(); return; }
+    if (t.closest('[data-thought-toggle]')) { S.open.thought = !S.open.thought; return; }
     const drw = t.closest('[data-drawer]');   // Practice 285/287: one drawer, Tasks or Status
     if (t.closest('.hbl-drawer-grip')) return;   // Practice 290: the grip drags, it does not close
     if (drw) { const want = drw.dataset.drawer === 'status' ? 'status' : 'tasks', now = ls('hbLive.drawer') === '1' ? 'tasks' : ls('hbLive.drawer');
@@ -823,13 +915,21 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const s = e.target.closest && e.target.closest('#hb-live-pane select[data-q], #hb-live-pop select[data-q], #hb-live-drawer select[data-q]');
     if (s) send({ [s.dataset.q]: [s.dataset.a, s.dataset.id, s.value] }, e.target.closest('#hb-live-pane') || e.target.closest('#hb-live-drawer'));
   });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const mode = ls('hbLive.drawer');
+    if (mode && mode !== '0') { ls('hbLive.drawer', '0'); render(); }
+  });
 
-  let pending = null;
+  let pending = null, refreshQueued = false;
   function refresh() {
-    if (document.hidden || S.busy || classic()) return;
+    if (document.hidden || classic()) return;
+    if (S.busy) { refreshQueued = true; return; }
     S.busy = true;
+    let okRun = false;
     boundedRequest((signal) => fetch('/api/peer/v1/hb/live', { credentials: 'same-origin', signal })).then(({ ok, data: d }) => {
       if (!ok || !d || !d.ok) return;
+      okRun = true;
       // Practice 200: HB restarted (new code) - reload this page once, unless JD is typing
       if (S.started && d.started && d.started !== S.started) {
         const input = document.getElementById('home-chat-input');
@@ -842,7 +942,11 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       S.snap = d;
       popup();
       render();
-    }).catch(() => {}).finally(() => { S.busy = false; });
+    }).catch(() => { refreshQueued = false; }).finally(() => {
+      S.busy = false;
+      if (okRun && refreshQueued) { refreshQueued = false; refresh(); }
+      else refreshQueued = false;
+    });
   }
   function soon() { clearTimeout(pending); pending = setTimeout(refresh, 300); }
 

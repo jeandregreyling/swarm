@@ -47,6 +47,51 @@ def _tables(conn):
     return {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
 
 
+def mirror_to_kc(title, content, *, source_ref, source_type='note', domain_tags='', subcategory='note', added_by='hummingbird'):
+    """Idempotently index a note, memory, or online lookup into Knowledge Centre (knowledge_sources)."""
+    import hashlib
+    import time
+    title = str(title or '').strip()[:240]
+    content = str(content or '').strip()[:16000]
+    source_ref = str(source_ref or '').strip()[:300]
+    if not title or not content or not source_ref:
+        return None
+    try:
+        with closing(get_connection()) as conn, conn:
+            if 'knowledge_sources' not in _tables(conn):
+                return None
+            cols = {r[1] for r in conn.execute('PRAGMA table_info(knowledge_sources)')}
+            digest = hashlib.sha256(content.encode('utf-8', errors='replace')).hexdigest()
+            now = time.strftime('%Y-%m-%d %H:%M:%S')
+            existing = conn.execute('SELECT source_id FROM knowledge_sources WHERE source_ref=? LIMIT 1', (source_ref,)).fetchone()
+            if existing:
+                sets = ['title=?', 'raw_text=?']
+                vals = [title, content]
+                if 'domain_tags' in cols and domain_tags:
+                    sets.append('domain_tags=?'); vals.append(str(domain_tags)[:500])
+                if 'updated_at' in cols:
+                    sets.append('updated_at=?'); vals.append(now)
+                if 'content_hash' in cols:
+                    sets.append('content_hash=?'); vals.append(digest)
+                conn.execute(f"UPDATE knowledge_sources SET {', '.join(sets)} WHERE source_id=?", vals + [existing[0]])
+                return int(existing[0])
+            row_map = {
+                'title': title, 'raw_text': content, 'source_type': str(source_type)[:40],
+                'source_ref': source_ref, 'domain_tags': str(domain_tags)[:500],
+                'status': 'active', 'added_by': str(added_by)[:64],
+                'subcategory': str(subcategory)[:40], 'created_at': now, 'updated_at': now,
+                'content_hash': digest,
+            }
+            use_cols = [c for c in row_map if c in cols]
+            cur = conn.execute(
+                f"INSERT INTO knowledge_sources({', '.join(use_cols)}) VALUES ({', '.join('?' for _ in use_cols)})",
+                [row_map[c] for c in use_cols],
+            )
+            return int(cur.lastrowid)
+    except Exception:
+        return None
+
+
 _STOP_WORDS = set('''the and for with from that this what which who how why when where into about does have has are was were
 is be of to in on at by an a or as it its can you your please find show give tell reply document documents doc docs
 knowledge centre center kc hb task nothing here there some any all not just also like only very much more most

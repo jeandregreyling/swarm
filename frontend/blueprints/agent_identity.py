@@ -137,6 +137,15 @@ def _tools(principal):
         controls.update(CONTROL_READ_TOOLS)
         if agent == 'apex':
             controls.add('alm_step_get')
+            controls.add('hb_tasks')   # Practice 252
+            controls.add('request_access')   # Practice 270
+            controls.add('gpu_profile')   # Practice 271
+            controls.add('hb_restart')
+            controls.add('hb_service')
+            controls.add('hb_media_download')
+            controls.add('hb_custom_tool')
+            controls.update({'apex_dispatch','runtime_reload','studio_evidence_get','studio_resume','web_search',
+                             'workflow_control','workflow_status'})   # Practice 258: all of APEX's tools (not studio_accept)
         if agent=='codex-instructor':
             controls.update(CODEX_WORKFLOW_READ_TOOLS | CODEX_WORKFLOW_WRITE_TOOLS)
         if writable:
@@ -237,7 +246,7 @@ def tools():
                         enforce_write_scope(conn,task,context['request_id'],tool,args)
                     version=conn.execute('SELECT task_version FROM hb_task_requests WHERE request_id=?',(context['request_id'],)).fetchone()[0]
                     if task['state']=='completed':raise PermissionError('Task already passed acceptance')
-                    if version!=task['version']:raise peers.PeerError(409,'Task instructions changed; call task_context before any further side effect')
+                    if version!=task['version']:raise peers.PeerError(409,f'Task instructions changed (version {version} -> {task["version"]}). Do this now: call task_context ONCE to read the new instruction, then repeat this exact {tool} call - it will succeed. Do not end the turn without retrying it.')
             runtime.CURRENT.get().update(model=context['model'],model_provenance='agent_runtime_report',
                 conversation_id=invitation[0],requested_by=invitation[1],peer_request_id=context['request_id'])
         repository = ReadOnlyRepository()

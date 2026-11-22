@@ -9,6 +9,7 @@ import logging
 import ast
 import os
 from pathlib import Path
+import re
 import secrets
 import stat
 import subprocess
@@ -22,6 +23,18 @@ from core.apex_tools import MAX_DIFF_BYTES, MAX_FILE_BYTES, MAX_WRITE_BYTES, Rea
 LOG = logging.getLogger(__name__)
 PROPOSAL_TOOLS = {"propose_write_file", "propose_commit", "propose_patch"}
 APPROVAL_TIMEOUT = 900
+
+
+def placeholder_definition(node):
+    """Practice 250 (21 Nov): a test function that proves nothing - its body is only a docstring, pass, `assert True`, or a skip.
+    APEX could not replace his own `def test_placeholder(): assert True` with a real test because a complete-file write may not
+    remove definitions; removing a placeholder loses nothing."""
+    import ast
+    body = [s for s in node.body if not (isinstance(s, ast.Expr) and isinstance(getattr(s, 'value', None), ast.Constant))]
+    trivial = all(isinstance(s, ast.Pass) or isinstance(s, ast.Assert) and isinstance(s.test, ast.Constant) and bool(s.test.value)
+                  for s in body)
+    skipped = any('skip' in ast.unparse(d) for d in getattr(node, 'decorator_list', []))
+    return trivial or skipped
 
 
 def session_identity(token: str) -> str:
@@ -222,11 +235,27 @@ class ApprovalStore:
             state = states[paths[0]]
             before = state[0].decode("utf-8") if state is not None else ""
             if patch:
-                if (args['exact_old_text'] in args['new_text'] and args['new_text'] in before
-                        and before.count(args['exact_old_text'])==1):
+                exact_old = args["exact_old_text"]
+                new_text = args["new_text"]
+                if (exact_old in new_text and new_text in before
+                        and before.count(exact_old)==1):
                     raise ValueError('This exact insertion is already present in current source; no duplicate write was proposed. Read back the existing result and continue with the next unfinished action.')
-                matches = before.count(args["exact_old_text"])
-                if matches == 0 and args["new_text"].strip() and before.count(args["new_text"]) == 1:
+                matches = before.count(exact_old)
+                if matches == 0:
+                    # Heal accidental line-number prefixes copied from read_file (e.g. "57: def foo...") only when stripped text matches uniquely.
+                    _lnum = re.compile(r'^\s*\d+:\s?')
+                    old_lines = exact_old.splitlines(keepends=True)
+                    non_empty = [ln for ln in old_lines if ln.strip()]
+                    if non_empty and all(_lnum.match(ln) for ln in non_empty):
+                        stripped_old = ''.join(_lnum.sub('', ln, count=1) if ln.strip() else ln for ln in old_lines)
+                        if stripped_old and before.count(stripped_old) == 1:
+                            new_lines = new_text.splitlines(keepends=True)
+                            new_non_empty = [ln for ln in new_lines if ln.strip()]
+                            stripped_new = (''.join(_lnum.sub('', ln, count=1) if ln.strip() else ln for ln in new_lines)
+                                            if new_non_empty and all(_lnum.match(ln) for ln in new_non_empty) else new_text)
+                            if stripped_old != stripped_new:
+                                exact_old, new_text, matches = stripped_old, stripped_new, 1
+                if matches == 0 and new_text.strip() and before.count(new_text) == 1:
                     # Owner 14 Nov: APEX re-sent a finished patch for many turns ("matched 0 locations") and never reached the next one.
                     raise ValueError("ALREADY APPLIED: this patch's new_text is already in the file, so this change is done. "
                                      "Do not send it again; go to the next patch in your plan. No source changed.")
@@ -235,7 +264,7 @@ class ApprovalStore:
                         f"Exact patch text matched {matches} locations; provide a larger unique context "
                         "chunk from a fresh raw read. No transaction created."
                     )
-                after = before.replace(args["exact_old_text"], args["new_text"], 1)
+                after = before.replace(exact_old, new_text, 1)
                 if len(after.encode("utf-8")) > MAX_FILE_BYTES:
                     raise ValueError("Patched file exceeds the 1 MiB limit")
             else:
@@ -259,6 +288,9 @@ class ApprovalStore:
                     if original_tree:
                         definitions=lambda tree:{n.name for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef))}
                         removed=definitions(original_tree)-definitions(updated_tree)
+                        if removed and paths[0].startswith('tests/'):   # Practice 250: replacing a placeholder test is the point, not a loss
+                            removed={n.name for n in original_tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef,ast.ClassDef))
+                                     and n.name in removed and not placeholder_definition(n)}
                         if removed:raise ValueError('Complete-file write would remove existing definitions: '+', '.join(sorted(removed))+'. Use a reviewed exact patch for an intentional removal; a fragment cannot replace the module.')
             diff = "".join(difflib.unified_diff(
                 before.splitlines(keepends=True), after.splitlines(keepends=True),
