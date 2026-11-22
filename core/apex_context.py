@@ -25,12 +25,26 @@ FINAL_ANSWER_RESERVE = 1024
 # than the model can write in the time the call has.
 DECODE_TOKENS_PER_S = float(os.environ.get('APEX_DECODE_TOKENS_PER_S', '30'))   # measured 38/s on gpt-oss:20b (Vulkan), 16 Nov
 TIME_SHARE = 0.8
+PROMPT_EVAL_RESERVE_S = float(os.environ.get('APEX_PROMPT_EVAL_RESERVE_S', '30'))
 
 
-def time_budget(seconds, tokens_per_s=None) -> int:
-    """How many tokens the model can write in `seconds` (80% of it, at a safe speed); never less than FINAL_ANSWER_RESERVE."""
-    rate = DECODE_TOKENS_PER_S if tokens_per_s is None else float(tokens_per_s)
-    return max(FINAL_ANSWER_RESERVE, int(max(0.0, float(seconds)) * TIME_SHARE * rate))
+def time_budget(seconds, tokens_per_s=None, prompt_eval_reserve_s=None) -> int:
+    """How many tokens the model can write in `seconds` (80% of usable decode time, at a model-safe speed); never less than FINAL_ANSWER_RESERVE."""
+    secs = max(0.0, float(seconds))
+    if tokens_per_s is None:
+        if 'APEX_DECODE_TOKENS_PER_S' in os.environ:
+            rate = DECODE_TOKENS_PER_S
+        else:
+            try:
+                from core.hb_apex_swap import decode_tokens_per_s
+                rate = float(decode_tokens_per_s(DECODE_TOKENS_PER_S))
+            except Exception:
+                rate = DECODE_TOKENS_PER_S
+        reserve = (PROMPT_EVAL_RESERVE_S if secs > PROMPT_EVAL_RESERVE_S * 2 else 0.0) if prompt_eval_reserve_s is None else max(0.0, float(prompt_eval_reserve_s))
+    else:
+        rate = float(tokens_per_s)
+        reserve = 0.0 if prompt_eval_reserve_s is None else max(0.0, float(prompt_eval_reserve_s))
+    return max(FINAL_ANSWER_RESERVE, int(max(0.0, secs - reserve) * TIME_SHARE * rate))
 _RESERVE = contextvars.ContextVar("apex_output_reserve", default=None)
 APEX_REASONING_EFFORT = "low"
 READ_BUDGET_WARNING = (

@@ -359,6 +359,16 @@ def command(conn, args, actor='owner'):
 DEFAULT_PREFS = {'research': 'swift-qwen3.8-27b'}
 TURN_BY_MODEL = {'swift-qwen3.8-27b': 600, 'qwen2.5-32b-instruct': 900}
 ROUNDS_BY_MODEL = {'swift-qwen3.8-27b': 20}   # Practice 154; 266: Swift plays APEX now - same 20 rounds as 243
+DECODE_BY_MODEL = {
+    'mistral-nemo-12b-abliterated': 13.0,
+    'mistral-nemo-12b': 13.0,
+    'mistral-nemo-12b-q8': 11.0,
+    'gemma3:12b': 14.0,
+    'qwen2.5:14b-instruct': 14.0,
+    'swift-qwen3.8-27b': 10.0,
+    'qwen2.5-32b-instruct': 8.0,
+    'mixtral-8x7b': 12.0,
+}
 _playing_cache = {'key': None, 'name': None}
 
 
@@ -386,6 +396,10 @@ def turn_rounds(default=6):
 
 def turn_seconds(default=360):
     return TURN_BY_MODEL.get(playing() or '', default)
+
+
+def decode_tokens_per_s(default=30.0):
+    return DECODE_BY_MODEL.get(playing() or '', default)
 
 
 def ensure_prefs(conn):
@@ -437,8 +451,17 @@ def manual_pick(text, modes=None, rows=None):
             modes = current_modes()
         except Exception:
             modes = {}
-    on = [names[m.lower()] for m, mode in (modes or {}).items() if mode == 'on' and m.lower() in names]
-    return (on[0], f'{on[0]} is switched On in Live status') if on else (None, '')
+    # Never auto-hijack the GPU APEX seat with a CPU-only Fred reviewer model unless explicitly @-mentioned.
+    # Also keep the currently playing APEX model if it is already switched On.
+    on = [names[m.lower()] for m, mode in (modes or {}).items()
+          if mode == 'on' and m.lower() in names and not m.lower().startswith('fred-cpu')]
+    if not on:
+        return None, ''
+    have = str(playing() or '').lower()
+    if have and any(c.lower() == have for c in on):
+        picked = next(c for c in on if c.lower() == have)
+        return picked, f'{picked} is switched On in Live status'
+    return on[0], f'{on[0]} is switched On in Live status'
 
 
 def review(text, search=None):

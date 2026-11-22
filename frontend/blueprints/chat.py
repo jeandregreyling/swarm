@@ -3004,6 +3004,8 @@ def api_chat():
                        'require_complete_output': apex_lane and not (fault or continuing_recovery)}
             if apex_lane and not (fault or continuing_recovery):
                 options['reasoning_effort'] = APEX_REASONING_EFFORT
+                options.setdefault('dry_multiplier', 0.5)
+                options.setdefault('dry_allowed_length', 3)
             return llm.chat_via_gateway(
                 model, messages, temperature=0.2, idle_timeout_s=min(60, remaining), absolute_timeout_s=remaining,
                 queue_timeout_s=min(240, max(1, remaining // 2)),   # Practice 201: wait for the model instead of failing after 1 s
@@ -3013,10 +3015,13 @@ def api_chat():
 
         def _offline_response(exc, conversation_id=None, *, recovery=False):
             _LOG.error('APEX offline: %s', exc)
+            exc_text = str(exc)
+            is_read_timeout = 'read timed out' in exc_text.lower() or 'read timeout' in exc_text.lower()
             payload = {
                 'ok': False, 'state': STATE_OFFLINE, 'agent': APEX_AGENT['name'],
                 'model': selected_model, 'storage_degraded': bool(recovery),
-                'response': f"APEX is offline: {exc}",
+                'response': (f"APEX timed out while generating (server is still running): {exc}"
+                             if is_read_timeout else f"APEX is offline: {exc}"),
                 'routed_from': routed_from,
             }
             if conversation_id is not None:

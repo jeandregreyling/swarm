@@ -752,6 +752,9 @@ def _chat_payload(model: str, messages: list[dict], *, temperature: float | None
         if effort not in ("low", "medium", "high"):
             raise ValueError("reasoning_effort must be low, medium or high")
         payload["reasoning_effort"] = effort
+    for key in ("repeat_penalty", "dry_multiplier", "dry_base", "dry_allowed_length"):
+        if options.get(key) is not None:
+            payload[key] = options[key]
     return payload
 
 
