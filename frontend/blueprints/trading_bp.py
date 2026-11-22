@@ -226,6 +226,145 @@ def get_summary():
 # Y.58 — Pattern detection stub. Logs a request to scan known symbols for
 # breakout / mean-reversion / divergence patterns. Real implementation will
 # consume Tasker output once markets-watch job lands.
+PAPER_TABLE = 'trading_paper_trades'
+
+
+def _init_paper(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {PAPER_TABLE} (
+            trade_id      TEXT PRIMARY KEY,
+            symbol        TEXT NOT NULL,
+            side          TEXT NOT NULL,
+            strategy      TEXT,
+            entry_price   REAL NOT NULL,
+            stop_loss     REAL NOT NULL,
+            take_profit   REAL,
+            quantity      REAL NOT NULL,
+            risk_usd      REAL NOT NULL,
+            exit_price    REAL,
+            pnl           REAL,
+            r_multiple    REAL,
+            status        TEXT NOT NULL DEFAULT 'open',
+            notes         TEXT,
+            opened_at     REAL NOT NULL,
+            closed_at     REAL
+        )
+        """
+    )
+    conn.commit()
+
+
+def _paper_scorecard_from_db(conn: sqlite3.Connection) -> dict[str, Any]:
+    from core.paper_trading_risk import DEFAULT_STARTING_CAPITAL, evaluate_portfolio_scorecard
+    _init_paper(conn)
+    closed = [_row_to_dict(r) for r in conn.execute(
+        f"SELECT * FROM {PAPER_TABLE} WHERE status = 'closed' ORDER BY closed_at ASC"
+    ).fetchall()]
+    open_n = conn.execute(f"SELECT COUNT(*) AS n FROM {PAPER_TABLE} WHERE status = 'open'").fetchone()['n']
+    card = evaluate_portfolio_scorecard(closed, starting_capital=DEFAULT_STARTING_CAPITAL)
+    card['open_trades'] = open_n
+    return card
+
+
+@trading_bp.route('/api/trading/paper/size', methods=['POST'])
+def paper_size():
+    from core.paper_trading_risk import DEFAULT_RISK_PCT, size_position
+    body = request.get_json(silent=True) or {}
+    with connect() as conn:
+        card = _paper_scorecard_from_db(conn)
+    equity = float(body.get('equity') if body.get('equity') is not None else card['current_equity_usd'])
+    try:
+        sized = size_position(
+            equity=equity,
+            entry_price=float(body['entry_price']),
+            stop_loss_price=float(body['stop_loss_price']),
+            side=str(body.get('side') or 'buy'),
+            risk_pct=float(body.get('risk_pct', DEFAULT_RISK_PCT)),
+            take_profit_price=body.get('take_profit_price'),
+        )
+        return jsonify({'ok': True, 'sizing': sized})
+    except (KeyError, TypeError, ValueError) as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+
+
+@trading_bp.route('/api/trading/paper/open', methods=['POST'])
+def paper_open():
+    from core.paper_trading_risk import DEFAULT_RISK_PCT, size_position
+    body = request.get_json(silent=True) or {}
+    symbol = str(body.get('symbol') or '').strip().upper()
+    if not symbol:
+        return jsonify({'ok': False, 'error': 'symbol is required'}), 400
+    with connect() as conn:
+        card = _paper_scorecard_from_db(conn)
+        if card['circuit_breaker_tripped']:
+            return jsonify({'ok': False, 'error': 'Paper circuit breaker tripped (>=15% drawdown); new trades halted'}), 409
+        try:
+            sized = size_position(
+                equity=card['current_equity_usd'],
+                entry_price=float(body['entry_price']),
+                stop_loss_price=float(body['stop_loss_price']),
+                side=str(body.get('side') or 'buy'),
+                risk_pct=float(body.get('risk_pct', DEFAULT_RISK_PCT)),
+                take_profit_price=body.get('take_profit_price'),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            return jsonify({'ok': False, 'error': str(exc)}), 400
+        trade_id = gen_id('PPR')
+        ts = now_ts()
+        conn.execute(
+            f"INSERT INTO {PAPER_TABLE} (trade_id, symbol, side, strategy, entry_price, stop_loss, take_profit, "
+            f"quantity, risk_usd, status, notes, opened_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)",
+            (
+                trade_id, symbol, sized['side'], body.get('strategy') or '',
+                sized['entry_price'], sized['stop_loss_price'], sized['take_profit_price'],
+                sized['quantity'], sized['max_loss_usd'], body.get('notes') or '', ts,
+            ),
+        )
+        conn.commit()
+    return jsonify({'ok': True, 'paper_only': True, 'trade_id': trade_id, 'sizing': sized}), 201
+
+
+@trading_bp.route('/api/trading/paper/<trade_id>/close', methods=['POST'])
+def paper_close(trade_id: str):
+    body = request.get_json(silent=True) or {}
+    try:
+        exit_price = float(body['exit_price'])
+        if exit_price <= 0:
+            raise ValueError('exit_price must be positive')
+    except (KeyError, TypeError, ValueError) as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    with connect() as conn:
+        _init_paper(conn)
+        row = conn.execute(f"SELECT * FROM {PAPER_TABLE} WHERE trade_id = ?", (trade_id,)).fetchone()
+        if not row:
+            return jsonify({'ok': False, 'error': 'paper trade not found'}), 404
+        if row['status'] != 'open':
+            return jsonify({'ok': False, 'error': 'paper trade already closed'}), 409
+        entry = float(row['entry_price'])
+        qty = float(row['quantity'])
+        risk_usd = float(row['risk_usd']) or 1.0
+        pnl = round((exit_price - entry) * qty if row['side'] == 'buy' else (entry - exit_price) * qty, 2)
+        r_mult = round(pnl / risk_usd, 2)
+        conn.execute(
+            f"UPDATE {PAPER_TABLE} SET exit_price = ?, pnl = ?, r_multiple = ?, status = 'closed', closed_at = ? WHERE trade_id = ?",
+            (exit_price, pnl, r_mult, now_ts(), trade_id),
+        )
+        conn.commit()
+        card = _paper_scorecard_from_db(conn)
+    return jsonify({'ok': True, 'trade_id': trade_id, 'pnl': pnl, 'r_multiple': r_mult, 'scorecard': card})
+
+
+@trading_bp.route('/api/trading/paper/scorecard', methods=['GET'])
+def paper_scorecard():
+    with connect() as conn:
+        card = _paper_scorecard_from_db(conn)
+        trades = [_row_to_dict(r) for r in conn.execute(
+            f"SELECT * FROM {PAPER_TABLE} ORDER BY opened_at DESC LIMIT 50"
+        ).fetchall()]
+    return jsonify({'ok': True, 'scorecard': card, 'trades': trades})
+
+
 @trading_bp.route('/api/trading/scan-patterns', methods=['POST'])
 def scan_patterns():
     from flask import request as _req  # local import to avoid module-load order issues
