@@ -1358,8 +1358,10 @@ function _weatherIcon(code, isDay) {
 
 function _hbWeatherMood(weather, hour) {
   const h = Number.isFinite(hour) ? hour : new Date().getHours();
-  const code = weather && weather.code != null ? Number(weather.code) : null;
-  const temp = weather && weather.temp != null ? Number(weather.temp) : null;
+  const rawCode = weather ? (weather.weathercode ?? weather.code) : null;
+  const rawTemp = weather ? (weather.temperature ?? weather.temp) : null;
+  const code = rawCode != null ? Number(rawCode) : null;
+  const temp = rawTemp != null ? Number(rawTemp) : null;
   const isDay = weather && weather.is_day != null ? Boolean(weather.is_day) : (h >= 6 && h < 20);
   if (code != null && code >= 95) {
     return { mood: 'storm', label: 'Storm', a: 'rgba(99, 102, 241, 0.22)', b: 'rgba(16, 232, 164, 0.16)', c: 'rgba(56, 189, 248, 0.13)' };
@@ -1389,7 +1391,8 @@ function applyHummingbirdWeatherMood() {
   document.body.style.setProperty('--hb-aura-a', spec.a);
   document.body.style.setProperty('--hb-aura-b', spec.b);
   document.body.style.setProperty('--hb-aura-c', spec.c);
-  const tempStr = weather && weather.temp != null ? ` ${Math.round(Number(weather.temp))}°C` : '';
+  const rawT = weather ? (weather.temperature ?? weather.temp) : null;
+  const tempStr = rawT != null ? ` ${Math.round(Number(rawT))}°C` : '';
   const btn = document.getElementById('theme-picker-btn');
   if (btn) btn.title = `Hummingbird Liquid-Glass · ${primaryCity}: ${spec.label}${tempStr}`;
   return spec;
@@ -1539,6 +1542,7 @@ function saveWorldClockZones(zones) {
   localStorage.setItem('world-clock-zones', JSON.stringify(
     zones.map(zone => ({ name: zone.city, timeZone: zone.timeZone }))
   ));
+  if (typeof _fetchClockWeather === 'function') _fetchClockWeather();
 }
 
 function getTimeForTimezone(timeZone) {
@@ -1617,8 +1621,8 @@ function updateWorldClocks() {
       const analog = createAnalogClockHTML(time);
       const weather = _getClockWeather(zone.city);
       const weatherHtml = weather && weather.temperature != null
-        ? `<div style="font-size:9px;color:var(--text-dim);margin-top:1px;">${_weatherIcon(weather.weathercode, weather.is_day !== false)} ${Math.round(weather.temperature)}°C ${weather.description || ''}</div>`
-        : '';
+        ? `<div class="clock-weather-row" style="font-size:9px;color:var(--text-dim);margin-top:1px;min-height:14px;line-height:14px;white-space:nowrap;">${_weatherIcon(weather.weathercode, weather.is_day !== false)} ${Math.round(weather.temperature)}°C ${weather.description || ''}</div>`
+        : `<div class="clock-weather-row" style="font-size:9px;color:var(--text-faint);margin-top:1px;min-height:14px;line-height:14px;white-space:nowrap;">·</div>`;
       
       html += `
         <div class="world-clock-item" onclick="openTimezonePicker(${idx})" style="gap: 8px;">

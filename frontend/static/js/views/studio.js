@@ -1595,16 +1595,16 @@ function openWindowHelp(windowId) {
   // the inline dict below if the fetch fails (offline, route missing, etc).
   const helpText = {
     home: {
-      title: 'Fridays Home',
-      body: 'Landing dashboard for quick access. Open tiles to use specific swarm tools. Use Settings for theme and transparency controls.\n\nQuick chat relay guide:\n1) Agents can request another agent using @agent, AGENT:, or route/ask language.\n2) If Auto Relay is ON, detected relay routes are queued automatically.\n3) Route buttons still appear for manual control when you want to review first.\n4) Relay temporarily targets the requested agent for that turn.'
+      title: 'Hummingbird (HB) Home',
+      body: 'Welcome to Hummingbird — your local multi-agent workspace powered by APEX (GPU coder & executive assistant), 💃 Shakira (Business Analyst), Nanny Bot (system health), and NEON (Copilot-Instructor).\n\nQuick tips:\n• Right Sundial: Search, 🍯 Nectar Wallet, Trace (Esc closes), Needs You, Services (live restarts), Themes (Hummingbird Liquid-Glass + Melbourne weather), and Help.\n• Left Sundial: live GPU/CPU/RAM/Temp telemetry + 8-fan Boost control.\n• Commands in chat & Telegram: /status, /nectar, /accept S-xxxx, /restart, /board, /nanny on.'
     },
     chat: {
-      title: 'Chat Window',
-      body: 'Review conversation history, open full transcripts, and manage conversation titles. Use this for swarm dialogue and message context.\n\nHow to relay:\n- Write @gemma (or another agent) followed by a request.\n- You can also use: "ask gemma ..." or "Gemma, ...".\n- Turn on Auto Relay in Chat controls for automatic chaining.\n- Keep Auto Relay off when you want explicit human approval per hop.'
+      title: 'Hummingbird Chat',
+      body: 'Talk directly to APEX, Hummingbird, or @copilot in main chat — or from your phone via Telegram (with native 🌺 Approve / ⏸ Hold buttons and two-way sync).\n\nAll code changes flow through HB Practices -> APEX build & pytest -> independent QA -> your Approve click.'
     },
     terminal: {
-      title: 'Fridays Native Terminal',
-      body: 'This is the Fridays native terminal, not your host shell. Commands are routed through API controls and ALM proposal governance, and are intended for swarm operations (services, health checks, diagnostics). For unrestricted host access, use an external terminal session.'
+      title: 'Hummingbird Native Terminal',
+      body: 'Hummingbird governed terminal for swarm operations (service status, diagnostics, and ALM-checked actions). For raw host shell access, use your external terminal.'
     },
     files: {
       title: 'Workspace Files',
