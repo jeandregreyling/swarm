@@ -86,12 +86,22 @@ def test_a_proposal_is_checked_by_hb_and_becomes_apex_work(plan, tmp_path, monke
                                              'tests': ['tests/test_mod.py']})
     assert out['step_id'] == 'S-0000000P01' and (root / 'pkg/mod.py').read_text().endswith('return 1\n')    # nothing changed
     assert hp.pending(root) == ['S-0000000P01']
+    from core import hb_plan_workflow, hb_chunks
+    draft = next(s for s in hb_plan_workflow.steps(conn, P) if s['step_id'] == 'S-0000000P01')
+    assert draft['skip'] == 'not APEX work (owner hummingbird)'
+    assert draft['task_id'] is None
     result = hp.check(conn, 'S-0000000P01', root=root)
     assert result['verified'] and (root / 'pkg/mod.py').read_text().endswith('return 1\n')                   # proven, put back
     step = conn.execute("SELECT owner, description FROM project_steps WHERE step_id='S-0000000P01'").fetchone()
     assert step[0] == 'apex' and step[1].startswith('HB extra tools: change_set\nPREPARED (proposed by gemini-advisor')
     assert conn.execute("SELECT 1 FROM hb_tasks WHERE step_id='S-0000000P01'").fetchone()                      # in APEX's queue
     assert hp.pending(root) == []
+    task = hb_tasks.get(conn, conn.execute("SELECT task_id FROM hb_tasks WHERE step_id='S-0000000P01'").fetchone()[0])
+    chunks = hb_chunks.ensure(conn, task)
+    assert chunks[0][1] == 'change_set show'
+    assert chunks[1][1] == 'change_set apply'
+    assert chunks[2][1].startswith('run_tests with ')
+    assert 'Done when: python -m pytest tests/test_mod.py passes' in task['objective']
     said = [r[0] for r in conn.execute("SELECT content FROM messages WHERE from_agent='hummingbird' ORDER BY id")]
     assert said[-2].startswith('📜 gemini-advisor proposed a change') and said[-1].startswith("✅ HB checked gemini-advisor's proposal")
 
@@ -110,9 +120,25 @@ def test_a_failing_or_untested_proposal_waits_for_review_and_secrets_are_refused
     hp.create(conn, 'gemini-advisor', {'title': 'Wrong value', 'why': 'make it three for no reason',
                                        'edits': [{'path': 'pkg/mod.py', 'old': '    return 1', 'new': '    return 3'}], 'tests': ['tests/test_mod.py']})
     assert not hp.check(conn, 'S-0000000P02', root=root)['verified']
-    assert conn.execute("SELECT owner FROM project_steps WHERE step_id='S-0000000P02'").fetchone()[0] == 'claude-code'
+    assert conn.execute("SELECT owner FROM project_steps WHERE step_id='S-0000000P02'").fetchone()[0] == 'hummingbird'
     hp.create(conn, 'gemini-advisor', {'title': 'An idea only', 'why': 'discuss splitting the module'})
     assert 'no code' in hp.check(conn, 'S-0000000P03', root=root)['why']
     with pytest.raises(PermissionError):
         hp.create(conn, 'gemini-advisor', {'title': 'Read the key', 'why': 'just to check it is set',
                                            'edits': [{'path': 'config.py', 'old': 'x', 'new': 'y'}]})
+
+
+@pytest.mark.parametrize(('path', 'old', 'message'), [
+    ('pkg/missing.py', 'return 1', 'does not exist'),
+    ('pkg/mod.py', 'made up text', 'found 0 times'),
+])
+def test_proposal_rejects_invented_edit_before_creating_step(plan, tmp_path, monkeypatch, path, old, message):
+    conn, _, _ = plan
+    root = _repo(tmp_path)
+    monkeypatch.setattr(cs, 'ROOT', root)
+    from core.knowledge import projects
+    monkeypatch.setattr(projects, 'add_step', lambda *a, **k: pytest.fail('Invalid proposal created a step'))
+    with pytest.raises(ValueError, match=message):
+        hp.create(conn, 'apex', {'title': 'Fix controls', 'why': 'Make controls visible for agents',
+                                 'edits': [{'path': path, 'old': old, 'new': 'replacement'}]})
+    assert hp.pending(root) == []

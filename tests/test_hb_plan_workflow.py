@@ -228,3 +228,53 @@ def test_step_dependencies_are_recorded_and_enforced():
     assert not hb_task_manager.dependencies_ready(conn, {'task_id': 'T-000000000002'})
     conn.execute("UPDATE hb_tasks SET state='completed' WHERE task_id='T-000000000001'")
     assert hb_task_manager.dependencies_ready(conn, {'task_id': 'T-000000000002'})
+
+
+
+def test_queued_start_does_not_claim_apex_is_already_working(plan, monkeypatch):
+    from core import hb_dream_method
+
+    conn, _, tasks = plan
+    task = hb_tasks.get(conn, tasks['S-00000000A1'])
+    hb_dream_method.set_done(conn, task, ['tests/test_hb_plan_workflow.py passes'], 'fixture owner')
+    wf.configure(conn, True, 'fixture owner', P, 1)
+    monkeypatch.setattr(wf, '_dispatch_doer', lambda *args: False)
+    text = wf.start(conn, wf.settings(conn, P),
+                    {'step_id': task['step_id'], 'task_id': task['task_id'], 'title': task['title']})
+    assert 'Queued for APEX; waiting for worker pickup' in text
+    assert 'APEX works on it now' not in text
+    assert not conn.execute('SELECT 1 FROM hb_task_requests WHERE task_id=?', (task['task_id'],)).fetchone()
+
+
+
+def test_continue_on_waiting_plan_is_not_falsely_reported_as_running(plan):
+    from core import hb_dream_method
+
+    conn, _, tasks = plan
+    task = hb_tasks.get(conn, tasks['S-00000000A1'])
+    hb_dream_method.set_done(conn, task, ['tests/test_hb_plan_workflow.py passes'], 'fixture owner')
+    hb_tasks.event(conn, task, 'user', 'continuation_control', {'mode': 'on', 'actor': 'fixture owner'})
+    tm.register(conn, task)
+    conn.execute("UPDATE hb_task_manager SET enabled=1,state='waiting_plan',phase='plan' WHERE task_id=?", (task['task_id'],))
+    row = next(s for s in wf.steps(conn, P) if s['task_id'] == task['task_id'])
+    assert row['skip'] is None
+    assert wf.next_ready(conn, P)['task_id'] == task['task_id']
+    conn.execute("UPDATE hb_task_manager SET state='queued' WHERE task_id=?", (task['task_id'],))
+    row = next(s for s in wf.steps(conn, P) if s['task_id'] == task['task_id'])
+    assert row['skip'] == 'HB manager: queued'
+    hb_tasks.event(conn, task, 'user', 'continuation_control', {'mode': 'off', 'actor': 'fixture owner'})
+    row = next(s for s in wf.steps(conn, P) if s['task_id'] == task['task_id'])
+    assert 'Continue off' in row['skip']
+
+
+def test_no_ready_message_names_blockers_in_main_text(plan):
+    conn, _, tasks = plan
+    for tid in tasks.values():
+        hb_tasks.event(conn, hb_tasks.get(conn, tid), 'user', 'continuation_control', {'mode': 'off', 'actor': 'fixture owner'})
+    wf.configure(conn, True, 'fixture owner', P, 1)
+    wf.tick(conn)
+    text = conn.execute("SELECT content FROM messages WHERE from_agent='hummingbird' ORDER BY id DESC LIMIT 1").fetchone()[0]
+    assert 'what is stopping each one' in text
+    assert 'Learning L1: harvest verified examples (held by you (Continue off))' in text
+    assert 'Agent identities (held by you (Continue off))' in text
+    assert 'Nothing in the plan is ready' not in text

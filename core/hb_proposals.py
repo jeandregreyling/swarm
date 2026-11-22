@@ -3,7 +3,8 @@
 "Gemini should have access to write to Studio proposals and tasks but should be instructed to make code changes through HB, not by itself."
 
   create(...)  tool studio_proposal: a Studio step in the living plan ("Proposal (<agent>): <title>") with why, and a DRAFT change set
-               (exact edits and/or new files, plus the test that proves it). Unchanged edits fail immediately so the local
+               (exact edits and/or new files, plus the test that proves it). HB owns the draft until its check passes.
+               Unchanged edits fail immediately so the local
                caller can correct them in its own turn. Nothing in HB's code changes.
   tick(...)    HB checks one draft at a time in the background: core/hb_change_sets.prepare applies it, runs its test and puts the files back.
                Passes -> the step becomes a ready APEX task with the change set ("HB extra tools: change_set"); fails or has no test -> it waits
@@ -53,11 +54,15 @@ def _clean(args):
 
 def create(conn, agent, args, task=None):
     title, why, edits, files, test = _clean(args)
+    # Reject invented or stale edit targets before creating a Studio step.
+    # The normal change-set check repeats this validation before execution.
+    if edits:
+        cs._after(cs.ROOT, {'edits': edits, 'new_files': files})
     from core.knowledge import projects
     desc = (f'Proposed by {agent} (an advisor; it does not change HB itself). HB checks the proposal by running its test with the change applied, '
             f'then puts the files back.\nWhy: {why}\n' + (f"Files: {', '.join(sorted({e['path'] for e in edits} | set(files)))}\n" if edits or files else 'No code: a proposal for discussion.\n')
             + (f"Test: {', '.join(test['tests'])}{' -k ' + test['keyword'] if test.get('keyword') else ''}\n" if test else ''))
-    sid = projects.add_step(PLAN, f'Proposal ({agent}): {title}'[:160], description=desc, owner='claude-code')
+    sid = projects.add_step(PLAN, f'Proposal ({agent}): {title}'[:160], description=desc, owner='hummingbird')
     conn.execute('UPDATE project_steps SET order_idx=?, updated_at=? WHERE step_id=?', (35.0, time.time(), sid))
     d = cs._dir(sid)
     d.mkdir(parents=True, exist_ok=True)
@@ -100,7 +105,7 @@ def check(conn, sid, root=None, run=None):
     bg.finish('proposal')
     from core.hb_plain import name
     if result['verified']:
-        line = (f"HB extra tools: change_set\nPREPARED (proposed by {p['agent']}, checked by HB {time.strftime('%d %b %H:%M')}): change_set show, "
+        line = (f"HB extra tools: change_set\nPREPARED (proposed by {p['agent']}, checked by HB {time.strftime('%d %b %H:%M')}):\nDo: change_set show, then "
                 f"change_set apply, then run_tests with {json.dumps(p['test'])}, then report in 2-4 lines.\nDone when: python -m pytest "
                 f"{' '.join(p['test']['tests'])}{' -k ' + repr(p['test']['keyword']) if p['test'].get('keyword') else ''} passes\n")
         conn.execute("UPDATE project_steps SET owner='apex', description=?||description, updated_at=? WHERE step_id=?", (line, time.time(), sid))

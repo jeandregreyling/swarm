@@ -162,12 +162,10 @@ def steps(conn, project_id=DEFAULT_PROJECT):
             why = 'no HB task in main chat'
         elif task[1] == 'paused' or _owner_mode(conn, task[0]) == 'off':
             why = _parked_why(conn, task[0]) or 'held by you (Continue off)'      # Practice 180
-        elif _owner_mode(conn, task[0]) in ('on', 'auto'):
-            why = 'already running on your own Continue On'
-        elif managed and conn.execute("SELECT 1 FROM hb_task_manager WHERE task_id=? AND enabled=1 AND state IN "
+        elif managed and (manager := conn.execute("SELECT state FROM hb_task_manager WHERE task_id=? AND enabled=1 AND state IN "
                                       "('queued','running','needs_owner','waiting_provider','waiting_resources','waiting_dependencies')",
-                                      (task[0],)).fetchone():
-            why = 'already in progress with HB'
+                                      (task[0],)).fetchone()):
+            why = 'HB manager: ' + manager[0].replace('_', ' ')
         elif task and _needs_spec(conn, task[0]):
             why = 'needs a spec: ' + _needs_spec(conn, task[0])
         elif deps:
@@ -343,7 +341,7 @@ def start(conn, w, step, now=None):
         criteria = set_done(conn, task, [card['check']], f"HB homework ({card.get('model')} on the CPU; owner approved all automation)")
         with_fred = _run(conn, task, w, 'BA spec done on the CPU: it gives the scope, design, check and chunks', card.get('plan') or [])
         from core.hb_plain import message
-        executor = 'Fred works on the CPU' if with_fred else 'APEX starts straight away'
+        executor = 'Fred has the CPU assignment' if with_fred else 'APEX is queued for worker pickup'
         text = message(f"▶ Starting: {name_of(step['title'])}.", f'The homework is done (spec card from the CPU model), so {executor}.',
                        details=[f"step {step['step_id']}", f"task {task['task_id']}", f"check: {card['check']}"])
         hb_tasks.event(conn, task, 'hummingbird', 'workflow_started', {'project_id': w['project_id'], 'step_id': step['step_id'],
@@ -357,13 +355,13 @@ def start(conn, w, step, now=None):
         _update(conn, w['project_id'], stage='running')
         with_fred = _dispatch_doer(conn, w, task, now)
         from core.hb_plain import message, name
-        executor = 'Fred works on it on the CPU' if with_fred else 'APEX works on it now'
+        executor = 'Fred has the CPU assignment' if with_fred else 'Queued for APEX; waiting for worker pickup'
         text = message(f"▶ Starting: {name(step['title'])}.", f"{executor}. HB only asks you if it gets stuck.",
                        details=[f"step {step['step_id']}", f"task {task['task_id']}", f"done criteria from: {source}"])
     else:
         _queue_plan(conn, w, task, now)
         from core.hb_plain import message, name
-        text = message(f"🔎 Next up: {name(step['title'])}.", "APEX is reading up on it first and will propose a short plan. Nothing changes until you approve the plan.",
+        text = message(f"🔎 Next up: {name(step['title'])}.", "Queued for APEX to read up and propose a short plan. Nothing changes until you approve the plan.",
                        details=[f"step {step['step_id']}", f"task {task['task_id']}"])
     hb_tasks.event(conn, task, 'hummingbird', 'workflow_started',
                    {'project_id': w['project_id'], 'step_id': step['step_id'], 'actor': w.get('actor')})
@@ -428,7 +426,7 @@ def _check_plan(conn, w, task, now):
         set_done(conn, task, proposal['done_when'], f"HB auto-approve ({w.get('actor') or 'owner'}: all automation approved)")
         _run(conn, task, w, 'HB approved the plan (auto-approve)', proposal.get('plan') or [])
         from core.hb_plain import message, name
-        _post(conn, task, message(f"☰ Plan approved by HB: {name(task['title'])}.", 'APEX works on it now.',
+        _post(conn, task, message(f"☰ Plan approved by HB: {name(task['title'])}.", 'APEX is queued for worker pickup.',
                                   details=['Done when: ' + '; '.join(proposal['done_when'])]
                                   + [f'{n}. {p}' for n, p in enumerate(proposal.get('plan') or [], 1)]))
         return 'auto-approved'
@@ -678,11 +676,10 @@ def tick(conn, now=None):
         if step:
             posted.append(start(conn, w, step, now))
         elif w['stage'] != 'finished':
-            waiting = [f"{s['step_id']} ({s['skip']})" for s in steps(conn, w['project_id'])][:6]
+            waiting = [f"{s['title'][:70]} ({s['skip']})" for s in steps(conn, w['project_id'])]
             from core.hb_plain import message
-            text = message('⏹ Nothing in the plan is ready to start right now.' if waiting else '🏁 Every step of the plan is closed.',
-                           'HB starts the next step as soon as one is ready.' if waiting else '',
-                           details=['waiting: ' + '; '.join(waiting)] if waiting else [])
+            text = message('⏹ No next step can start; here is what is stopping each one:' if waiting else '🏁 Every step of the plan is closed.',
+                           '\n'.join('- ' + item for item in waiting) if waiting else '')
             _update(conn, w['project_id'], stage='finished', note=text)
             mid = conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) "
                                "VALUES (?,'hummingbird','user',?,'response',0)", (w['conversation_id'] or MAIN_CHAT, text)).lastrowid
