@@ -438,13 +438,14 @@
     border-radius: 50% !important; justify-content: center !important; }
   #home-controls > button:not(#auth-user-pill):hover, #services-dropdown-btn:hover {
     border-color: var(--accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+  /* 7 evenly spaced buttons on the exact r=58px ring centered at (75, 75) */
   #spotlight-tip          { left: 75px;  top: 17px; }
-  #troubleshoot-btn       { left: 125px; top: 46px; }
-  #dial-needs-you         { left: 125px; top: 104px; }
-  #services-dropdown-wrap { left: 75px;  top: 133px; }
-  #home-settings-btn      { left: 25px;  top: 104px; }
-  #home-help-btn          { left: 25px;  top: 46px; font-size: 14px !important; }
-  #dial-nectar-btn        { left: 118px; top: 18px; font-size: 13px !important; }
+  #dial-nectar-btn        { left: 120px; top: 39px; font-size: 13px !important; }
+  #troubleshoot-btn       { left: 132px; top: 88px; }
+  #dial-needs-you         { left: 100px; top: 127px; }
+  #services-dropdown-wrap { left: 50px;  top: 127px; }
+  #home-settings-btn      { left: 18px;  top: 88px; }
+  #home-help-btn          { left: 30px;  top: 39px; font-size: 14px !important; }
   #auth-user-pill { left: 75px; top: 75px; width: 60px !important; height: 60px !important; border-radius: 50% !important;
     flex-direction: column !important; padding: 4px !important; gap: 2px !important; font-size: 10px !important; font-weight: 600; }
   #auth-user-pill-label { max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

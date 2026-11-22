@@ -430,42 +430,53 @@ function openIdentityManager() {
   const existing = document.getElementById('identity-manager-panel');
   if (existing) { existing.remove(); return; }
 
-  const profiles = Array.isArray(window.__fridaysProfiles) ? window.__fridaysProfiles : [];
-  if (!profiles.length) {
-    showToast('No user profiles loaded yet', 'error');
-    return;
-  }
+  const HB_ACTIVE_ROSTER = [
+    { username: 'ghost', display_name: 'JD (Owner)' },
+    { username: 'apex', display_name: 'APEX (Local GPU Coder & EA)' },
+    { username: 'hummingbird', display_name: 'Hummingbird (Coordinator)' },
+    { username: 'shakira', display_name: '💃 Shakira (Business Analyst)' },
+    { username: 'nanny', display_name: 'Nanny Bot (System Health)' },
+    { username: 'copilot-instructor', display_name: 'NEON · Copilot-Instructor' },
+  ];
   const state = _getAuthState();
 
-  // Create inline panel anchored to the pill button
+  // Create inline Liquid-Glass panel anchored cleanly below the right sundial
   const pill = document.getElementById('auth-user-pill');
   const panel = document.createElement('div');
   panel.id = 'identity-manager-panel';
-  panel.style.cssText = 'position:fixed;top:42px;right:12px;z-index:10001;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,0.35);padding:12px 14px;min-width:220px;max-width:300px;font-size:11px;color:var(--text);';
+  panel.style.cssText = 'position:fixed;top:64px;right:16px;z-index:10001;background:color-mix(in srgb,var(--card,#10181e) 90%,transparent);backdrop-filter:blur(20px) saturate(170%);border:1px solid var(--border);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,0.48);padding:12px 14px;min-width:240px;max-width:310px;font-size:11px;color:var(--text);';
 
-  const actingOptions = profiles.map(p => {
+  const actingOptions = HB_ACTIVE_ROSTER.map(p => {
     const sel = p.username === state.acting_user ? ' selected' : '';
-    return `<option value="${_escHtml(p.username)}"${sel}>${_escHtml(p.display_name || p.username)}</option>`;
+    return `<option value="${_escHtml(p.username)}"${sel}>${_escHtml(p.display_name)}</option>`;
   }).join('');
-  const proxyOptions = `<option value="">None</option>` + profiles.map(p => {
+  const proxyOptions = `<option value="">None (direct as JD)</option>` + HB_ACTIVE_ROSTER.filter(p => p.username !== 'ghost').map(p => {
     const sel = p.username === state.proxy_as ? ' selected' : '';
-    return `<option value="${_escHtml(p.username)}"${sel}>${_escHtml(p.display_name || p.username)}</option>`;
+    return `<option value="${_escHtml(p.username)}"${sel}>${_escHtml(p.display_name)}</option>`;
   }).join('');
 
   panel.innerHTML =
-    `<div style="font-weight:700;margin-bottom:8px;">Identity</div>` +
+    `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b>🪶 Hummingbird Identity</b><button id="idm-x" type="button" style="background:none;border:0;color:var(--text-dim);cursor:pointer;font-size:14px;">✕</button></div>` +
     `<label style="display:block;margin-bottom:3px;color:var(--text-dim);">Acting as</label>` +
-    `<select id="idm-acting" style="width:100%;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;margin-bottom:8px;">${actingOptions}</select>` +
-    `<label style="display:block;margin-bottom:3px;color:var(--text-dim);">Proxy as</label>` +
-    `<select id="idm-proxy" style="width:100%;padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;margin-bottom:10px;">${proxyOptions}</select>` +
+    `<select id="idm-acting" style="width:100%;padding:5px 7px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;margin-bottom:8px;">${actingOptions}</select>` +
+    `<label style="display:block;margin-bottom:3px;color:var(--text-dim);">Proxy as (optional)</label>` +
+    `<select id="idm-proxy" style="width:100%;padding:5px 7px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;margin-bottom:10px;">${proxyOptions}</select>` +
     `<div style="display:flex;gap:6px;justify-content:flex-end;">` +
-      `<button id="idm-apply" style="padding:4px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:11px;cursor:pointer;">Apply</button>` +
-      `<button id="idm-close" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;">Close</button>` +
+      `<button id="idm-apply" style="padding:4px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#000;font-weight:700;font-size:11px;cursor:pointer;">Apply</button>` +
+      `<button id="idm-close" style="padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-size:11px;cursor:pointer;">Close</button>` +
     `</div>`;
 
   document.body.appendChild(panel);
 
-  const close = () => panel.remove();
+  const onEsc = (e) => {
+    if (e.key === 'Escape') { close(); e.preventDefault(); }
+  };
+  const close = () => {
+    document.removeEventListener('keydown', onEsc, true);
+    panel.remove();
+  };
+  document.addEventListener('keydown', onEsc, true);
+  panel.querySelector('#idm-x')?.addEventListener('click', close);
   panel.querySelector('#idm-close').addEventListener('click', close);
   panel.querySelector('#idm-apply').addEventListener('click', () => {
     const actingNorm = (panel.querySelector('#idm-acting').value || 'ghost').toLowerCase();

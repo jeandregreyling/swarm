@@ -203,6 +203,17 @@ function toggleTroubleshootPanel(forceOpen) {
   _renderTroubleshootPanel();
   _renderGlitchSection();
 }
+if (typeof document !== 'undefined' && !window.__hbTraceEscBound) {
+  window.__hbTraceEscBound = true;
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const modal = document.getElementById('troubleshoot-modal');
+    if (modal && modal.classList.contains('open')) {
+      toggleTroubleshootPanel(false);
+      e.preventDefault();
+    }
+  }, true);
+}
 
 function toggleTroubleshootEnabled(forceEnabled) {
   const state = _troubleshootState();

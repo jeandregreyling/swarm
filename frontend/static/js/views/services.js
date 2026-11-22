@@ -9,29 +9,41 @@ function toggleServicesDropdown() {
     menu.style.display = 'none';
     return;
   }
+  // Portal to document.body so #services-dropdown-wrap's CSS transform never traps position:fixed off-screen!
+  if (menu.parentElement !== document.body) {
+    document.body.appendChild(menu);
+  }
   const rect = btn.getBoundingClientRect();
-  // Open downward from the home header; upward if the button sits low on screen.
   const openUp = rect.top > window.innerHeight / 2;
   if (openUp) {
     menu.style.top = '';
-    menu.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    menu.style.bottom = Math.max(12, window.innerHeight - rect.top + 6) + 'px';
   } else {
     menu.style.bottom = '';
-    menu.style.top = (rect.bottom + 6) + 'px';
+    menu.style.top = Math.max(12, rect.bottom + 6) + 'px';
   }
-  menu.style.right = (window.innerWidth - rect.right) + 'px';
+  menu.style.right = Math.max(12, window.innerWidth - rect.right) + 'px';
   menu.style.display = 'block';
   loadServicesPanel();
 }
 
-// Close dropdown when clicking outside
+// Close dropdown when clicking outside or pressing Escape
 document.addEventListener('click', e => {
   const wrap = document.getElementById('services-dropdown-wrap');
-  if (wrap && !wrap.contains(e.target)) {
-    const menu = document.getElementById('services-dropdown-menu');
-    if (menu) menu.style.display = 'none';
+  const menu = document.getElementById('services-dropdown-menu');
+  if (!menu || menu.style.display === 'none') return;
+  if ((!wrap || !wrap.contains(e.target)) && !menu.contains(e.target)) {
+    menu.style.display = 'none';
   }
 });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const menu = document.getElementById('services-dropdown-menu');
+  if (menu && menu.style.display !== 'none') {
+    menu.style.display = 'none';
+    e.preventDefault();
+  }
+}, true);
 
 function loadServicesPanel() {
   const panel = document.getElementById('services-panel');
