@@ -268,8 +268,21 @@ def weak_test(text):
     if not REAL_ASSERT.search(body):
         return (f'{m.group(1)} has no real check (assert True or import only). A test asserts the behaviour the spec describes and '
                 'FAILS before the code exists - write those asserts, run it, report the failure')
-    if re.search(r'^\s*(?:@pytest\.mark\.skip\b|pytest\.skip\()', body, re.M):
+    if re.search(r'^\s*@pytest\.mark\.skip\b', body, re.M):
         return f'{m.group(1)} skips itself - a skipped test proves nothing; remove the skip and make it check the behaviour'
+    # Flag unconditional pytest.skip() directly in a test body (not conditional env guards like `if not node: pytest.skip(...)`).
+    try:
+        import ast as _ast
+        tree = _ast.parse(body)
+        for node in _ast.walk(tree):
+            if isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)) and node.name.startswith('test_'):
+                for stmt in node.body:
+                    if isinstance(stmt, _ast.Expr) and isinstance(stmt.value, _ast.Call):
+                        fn = stmt.value.func
+                        if isinstance(fn, _ast.Attribute) and fn.attr == 'skip':
+                            return f'{m.group(1)} skips itself - a skipped test proves nothing; remove the skip and make it check the behaviour'
+    except SyntaxError:
+        pass
     return None
 
 
@@ -364,10 +377,13 @@ def focus(conn, task, writer=None):
     if not doing:
         return f"All {total} chunks of this task are done - run the step's own check and report the receipts."
     nxt = next((r for r in rows if r[2] == 'todo'), None)
-    return (f"HB CHUNK - work ONLY on chunk {doing[0]} of {total}: {doing[1]}\n"
-            f"Finish it with your tools in this turn and stop; HB gives you the next chunk."
+    remaining = [r for r in rows if r[2] == 'todo']
+    up_next = '; '.join(f'{r[0]}. {r[1][:90]}' for r in remaining[:4])
+    return (f"HB GUIDE (step {doing[0]} of {total}): {doing[1]}\n"
+            f"YOU decide the chunking and pace: combine consecutive steps in this turn whenever your window has room "
+            f"(e.g. show -> apply -> run_tests in one clean flow), or break a big step into smaller bites if you hit a snag."
             + (f"\nDone so far: " + '; '.join(f'{r[0]}. {r[1][:80]}' for r in done) if done else '')
-            + (f"\nNext after this: {nxt[1][:120]}" if nxt else "\nThis is the last chunk: then run the step's own check."))
+            + (f"\nRemaining steps you can also tackle this turn: {up_next}" if up_next else "\nThis is the last step: run the step's own check and report!"))
 
 
 def command(conn, args, actor):
