@@ -1355,6 +1355,45 @@ function _weatherIcon(code, isDay) {
   return cloud;                                                    // fallback
 }
 
+function _hbWeatherMood(weather, hour) {
+  const h = Number.isFinite(hour) ? hour : new Date().getHours();
+  const code = weather && weather.code != null ? Number(weather.code) : null;
+  const temp = weather && weather.temp != null ? Number(weather.temp) : null;
+  const isDay = weather && weather.is_day != null ? Boolean(weather.is_day) : (h >= 6 && h < 20);
+  if (code != null && code >= 95) {
+    return { mood: 'storm', label: 'Storm', a: 'rgba(99, 102, 241, 0.22)', b: 'rgba(16, 232, 164, 0.16)', c: 'rgba(56, 189, 248, 0.13)' };
+  }
+  if ((code != null && ((code >= 51 && code <= 67) || (code >= 80 && code <= 82))) || (temp != null && temp <= 13)) {
+    return { mood: 'rain', label: 'Cool & Rainy', a: 'rgba(45, 212, 191, 0.17)', b: 'rgba(56, 189, 248, 0.15)', c: 'rgba(148, 163, 184, 0.12)' };
+  }
+  if (!isDay || h >= 20 || h < 5) {
+    return { mood: 'night', label: 'Starlit Night', a: 'rgba(16, 232, 164, 0.14)', b: 'rgba(139, 92, 246, 0.15)', c: 'rgba(255, 184, 77, 0.08)' };
+  }
+  if (h >= 5 && h < 10) {
+    return { mood: 'dawn', label: 'Blossom Dawn', a: 'rgba(244, 114, 182, 0.17)', b: 'rgba(255, 184, 77, 0.15)', c: 'rgba(16, 232, 164, 0.14)' };
+  }
+  if ((code != null && code <= 1) || (temp != null && temp >= 22)) {
+    return { mood: 'sunny', label: 'Sunlit Nectar', a: 'rgba(255, 184, 77, 0.19)', b: 'rgba(16, 232, 164, 0.17)', c: 'rgba(244, 114, 182, 0.13)' };
+  }
+  return { mood: 'mild', label: 'Emerald Breeze', a: 'rgba(16, 232, 164, 0.16)', b: 'rgba(244, 114, 182, 0.13)', c: 'rgba(255, 184, 77, 0.11)' };
+}
+
+function applyHummingbirdWeatherMood() {
+  if (!document.body || !document.body.classList.contains('theme-hummingbird')) return null;
+  const zones = loadWorldClockZones();
+  const primaryCity = (zones && zones[0] && zones[0].city) || 'Melbourne';
+  const weather = _getClockWeather(primaryCity);
+  const spec = _hbWeatherMood(weather, new Date().getHours());
+  document.body.dataset.hbWeather = spec.mood;
+  document.body.style.setProperty('--hb-aura-a', spec.a);
+  document.body.style.setProperty('--hb-aura-b', spec.b);
+  document.body.style.setProperty('--hb-aura-c', spec.c);
+  const tempStr = weather && weather.temp != null ? ` ${Math.round(Number(weather.temp))}°C` : '';
+  const btn = document.getElementById('theme-picker-btn');
+  if (btn) btn.title = `Hummingbird Liquid-Glass · ${primaryCity}: ${spec.label}${tempStr}`;
+  return spec;
+}
+
 function _fetchClockWeather() {
   const zones = loadWorldClockZones();
   const cities = zones.map(z => z.city).join(',');
@@ -1366,6 +1405,7 @@ function _fetchClockWeather() {
       for (const [city, w] of Object.entries(data || {})) {
         _clockWeatherCache[city] = { data: w, fetchedAt: now };
       }
+      applyHummingbirdWeatherMood();
     })
     .catch(() => {});
 }
@@ -2053,6 +2093,9 @@ function _applyNamedTheme(name) {
       }
     }
   });
+  if (activeNamed === 'hummingbird' && typeof applyHummingbirdWeatherMood === 'function') {
+    applyHummingbirdWeatherMood();
+  }
   refreshAutoWindowThemes();
 }
 
