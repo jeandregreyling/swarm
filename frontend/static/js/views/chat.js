@@ -652,7 +652,7 @@ function chatPeerProgressJob(detail, conversationId) {
       && /^[a-z0-9-]{1,80}$/.test(detail.activity_id) ? `-activity-${detail.activity_id}` : '');
   return {job_id: `peer-${Number(conversationId)}-${agent}${suffix}`, agent,
     status: detail.status, stage: String(detail.stage || (detail.status === 'queued'
-      ? 'Queued: waiting for the attached agent' : detail.status))};
+      ? 'Waiting for APEX to become available' : detail.status))};
 }
 
 function applyChatPeerProgress(detail, conversationId) {
@@ -4851,12 +4851,12 @@ function _friendlyThinkingStage(stage, status = 'running') {
   const raw = String(stage || '').trim();
   const lower = raw.toLowerCase();
   if (!raw) return status === 'running' ? 'Warming up the worker' : String(status || 'finished');
-  if (lower.includes('queued')) return 'Queued for the worker';
+  if (lower.includes('queued') || lower.includes('waiting for the attached agent')) return 'Waiting for APEX to become available';
   if (lower.includes('dispatching')) return 'Opening the local line';
   if (lower.includes('reading swarm')) return 'Checking the live thread';
   if (lower.includes('loading memory')) return 'Gathering useful memory';
   if (lower.includes('synthes')) return 'Shaping the answer';
-  if (lower.includes('thinking')) return 'The worker is writing';
+  if (lower.includes('thinking')) return raw.replace(/_/g, ' ');
   if (lower.includes('direct_dispatch') || lower.includes('gateway: dispatch')) return 'Starting the local model';
   if (lower.includes('first token')) return 'First words arrived';
   if (lower.includes('heartbeat')) return 'Still writing';
@@ -4886,16 +4886,8 @@ function _renderThinkingBubble(job, history) {
     : '';
   const dotClass = job.status === 'failed' ? 'red' : (job.status === 'completed' ? 'green' : 'amber');
   const currentStage = _friendlyThinkingStage(job.stage || 'running', job.status || 'running');
-  const etaRemaining = Number(job.eta_remaining_seconds || 0);
-  const etaSeconds = Number(job.eta_seconds || 0);
   const elapsedMs = Number(job.elapsed_ms || 0);
-  const targetMs = Math.max(1000, Number((job.eta_seconds || 12) * 1000));
-  const pct = job.status === 'completed'
-    ? 100
-    : (job.status === 'failed' ? 100 : Math.min(98, Math.max(4, Math.floor((elapsedMs / targetMs) * 100))));
   const metaBits = [];
-  if (etaRemaining > 0) metaBits.push('ETA ~' + etaRemaining + 's');
-  else if (etaSeconds > 0 && job.status === 'running') metaBits.push('ETA ~' + etaSeconds + 's');
   if (elapsedMs > 0) metaBits.push('elapsed ' + _formatPendingElapsed(elapsedMs));
   if (job.status && job.status !== 'running') metaBits.push(String(job.status));
   const ts = new Date().toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -4929,7 +4921,6 @@ function _renderThinkingBubble(job, history) {
     ${_thinkingVisualHtml(job)}
     <div class="chat-pending-stage">${_escapeHtml(currentStage)}</div>
     ${checklistHtml}
-    <div class="chat-pending-progress"><div class="chat-pending-progress-fill" style="width:${pct}%"></div></div>
     <div class="chat-pending-meta">${metaBits.map(bit => `<span>${_escapeHtml(bit)}</span>`).join('')}</div>
     <div class="chat-pending-footer" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">${stopBtn}</div>`;
 }
@@ -5379,8 +5370,8 @@ function _appendChatBubble(sender, text, opts = {}) {
 
   bubble.innerHTML = `
     <div class="chat-meta ${isUser ? '' : 'icon-meta'}" style="display:flex;align-items:center;gap:8px;">
-      <span>${senderMetaHtml}</span>
-      <span style="font-size:9px;color:var(--text-dim);opacity:0.7;margin-left:auto;white-space:nowrap;">${_tokCount ? `<span style="opacity:0.55;margin-right:5px;">${_escapeHtml(_tokCount)}</span>` : ''}${_tsLabel}${!isUser && Number(opts.chainDepth) > 0 ? `<span class="chat-bubble-chain-badge" title="Relay chain: ${Number(opts.chainDepth)} hop${Number(opts.chainDepth) !== 1 ? 's' : ''} remaining">\u26d3${Number(opts.chainDepth)}</span>` : ''}</span>
+      <span>${senderMetaHtml}${_tokCount && !/unavailable/i.test(_tokCount) ? `<span class="chat-tok-chip" title="Tokens this reply used" style="margin-left:6px;padding:0 7px;border-radius:9px;border:1px solid var(--border,#444);font-size:10.5px;color:var(--text-dim);white-space:nowrap;">${_escapeHtml(_tokCount)}</span>` : ''}</span>
+      <span style="font-size:9px;color:var(--text-dim);opacity:0.7;margin-left:auto;white-space:nowrap;">${_tsLabel}${!isUser && Number(opts.chainDepth) > 0 ? `<span class="chat-bubble-chain-badge" title="Relay chain: ${Number(opts.chainDepth)} hop${Number(opts.chainDepth) !== 1 ? 's' : ''} remaining">\u26d3${Number(opts.chainDepth)}</span>` : ''}</span>
     </div>
     ${hbTaskBadge(opts.task,opts.conversationId,opts.replyToMessageId,opts.messageId)}
     ${hbRequestControl(opts.requestControl,opts.conversationId)}

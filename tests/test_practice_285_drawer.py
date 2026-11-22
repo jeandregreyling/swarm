@@ -32,7 +32,7 @@ def _node(expr):
 def test_the_banner_keeps_only_who_is_working_and_a_tasks_chip():
     html = _node('R.renderBoard(snap, {drawer: true})')
     assert 'hbl-board' not in html and 'Task one' not in html
-    assert 'data-drawer="1"' in html and '📋 Tasks · 2 open · 1 needs you' in html and 'hbl-active' in html
+    assert 'data-drawer="tasks"' in html and '📋 Tasks · 2 open · 1 needs you' in html   # Practice 287: Tasks or Status and 'hbl-active' in html
 
 
 def test_the_drawer_holds_the_task_list():

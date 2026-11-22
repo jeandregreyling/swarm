@@ -275,7 +275,8 @@
         if (o.drawer) {    // Practice 285: the list lives in the drawer; the banner keeps who is working and one Tasks chip
           const needs = (snap.needs_you || []).filter((n) => n.kind !== 'status').length;
           const tasks = `<button type="button" class="hbl-tasks-chip${needs ? ' hbl-tasks-needs' : ''}" data-drawer="1" title="Open the task list">📋 Tasks · ${open} open${needs ? ' · ' + needs + ' need' + (needs === 1 ? 's' : '') + ' you' : ''}</button>`;
-          return `<div class="hbl-row">${tasks}${renderTalk()}</div>` + chips + (o.collapsed ? '' : cards);
+          const status = '<button type="button" class="hbl-tasks-chip hbl-status-chip" data-drawer="status" title="APEX, its window, GPU/CPU mode and the model switches">⚙ Status</button>';   // Practice 287
+          return `<div class="hbl-row">${tasks.replace('data-drawer="1"', 'data-drawer="tasks"')}${status}${renderTalk()}</div>` + chips + (o.collapsed ? '' : cards);
         }
         return o.collapsed ? chips + `<button type="button" class="hbl-clip-open" data-pane-fold="1">📋 Clipboard · ${open} open - show</button>`
           : chips + `<div class="hbl-board">${renderList(snap, o.controls, o.needsControls, o.open)}</div>` + cards;
@@ -288,6 +289,19 @@
     const o = opts || {};
     return '<div class="hbl-drawer-head"><b>📋 Tasks</b><button type="button" class="hbl-mini" data-drawer="1" title="Close">✕</button></div>' +
       renderList(snap, o.controls, o.needsControls, o.open);
+  }
+  // Practice 287 (JD 22 Nov: "the live status dropdown is hideously designed and completely unusable ... the context of that section is also
+  // quite fucked"): a clean Status drawer - APEX, its window, GPU/CPU mode and the model switches (chat.js handles [data-hb-models] clicks).
+  function renderStatus(snap, modelsHtml) {
+    const a = snap.apex_live || {}, c = (snap.telemetry || {}).cpu || {};
+    const n = (x) => Number(x || 0).toLocaleString('en-AU');
+    return '<div class="hbl-drawer-head"><b>⚙ Status</b><button type="button" class="hbl-mini" data-drawer="status" title="Close">✕</button></div>' +
+      '<div class="hbl-sub">APEX</div>' +
+      `<div class="hbl-note">${a.up ? '' : '⚠ model server not answering · '}<b>${esc(a.model || 'unknown model')}</b>${a.device ? ' · ' + esc(a.device) : ''}` +
+      `${a.ctx ? ' · window ' + n(a.ctx) + ' tokens' : ''}${a.busy ? ' · working' : ' · idle'}</div>` +
+      '<div class="hbl-sub">Power</div>' + `<div class="hbl-note">${renderPower(snap)}${c.governor ? ' <span class="hbl-dim">CPU ' + esc(cpuMode(c)) + '</span>' : ''}</div>` +
+      '<div class="hbl-sub">Models (Auto = HB decides · On = preferred · Off = never)</div>' +
+      `<div class="chat-live-stack hb-models" data-hb-models>${modelsHtml || '<small>Loading the models…</small>'}</div>`;
   }
   const TALK = [['apex', 'APEX'], ['fred', 'Fred'], ['claude', 'Claude'], ['codex', 'Codex'], ['git', 'Copilot'], ['gemini', 'Gemini']];
   function renderTalk() {
@@ -353,7 +367,7 @@
   }
 
   const R = { renderStrip, renderLane, renderMaster, renderSystem, renderTrail, renderActive, renderList, renderBoard, renderNeedsPopup,
-    primaryFor, systemLine, renderPower, renderDrawer, renderTalk, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
+    primaryFor, systemLine, renderPower, renderDrawer, renderStatus, renderTalk, renderMeter, renderLights, renderDoers, arm, took, esc, ICON, SHORT };
   root.HBLiveRender = R;
   if (typeof module !== 'undefined' && module.exports) module.exports = R;
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -422,6 +436,13 @@
 .hbl-l-bad{opacity:1;color:#ff5252;border-color:#ff5252;background:rgba(255,82,82,.12)}
 .hbl-meter .hbl-lights{margin:3px 0 0}
 .hbl-armed{background:#c62828 !important;border-color:#ff5252 !important;color:#fff !important;font-weight:700;animation:hblPulse 1.4s infinite}
+#hb-scroll-bottom{position:fixed;z-index:9100;width:44px;height:44px;border-radius:50%;border:1px solid var(--border,#444);cursor:pointer;
+  background:var(--card,#1b1b1b);color:var(--text,#ddd);font-size:20px;line-height:1;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:.92}
+#hb-scroll-bottom:hover{border-color:var(--accent,#00e08a);color:var(--accent,#00e08a)}
+#hb-scroll-bottom.hb-follow{border-color:#2ecc71;color:#2ecc71;animation:hblPulse 1.4s infinite}
+#hb-scroll-bottom[hidden]{display:none}
+#hb-live-drawer .hb-models{max-height:none;overflow:visible;resize:none}
+#hb-live-drawer{scrollbar-width:thin;scrollbar-color:var(--border,#444) transparent}
 #hb-live-drawer{position:fixed;right:14px;top:70px;bottom:96px;width:min(460px,94vw);overflow:auto;z-index:9000;padding:6px 12px 10px;
   background:var(--card,#161616);color:var(--text,#ddd);border:1px solid var(--border,#333);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);font-size:12.5px}
 .hbl-drawer-head{display:flex;justify-content:space-between;align-items:center;position:sticky;top:-6px;z-index:1;padding:6px 0;background:var(--card,#161616)}
@@ -454,7 +475,37 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.focus();
   }
+  // Practice 287 (JD 22 Nov: "the round button that hovers in the main chat window at the bottom right corner when I scroll up to let me
+  // instantly scroll back to the bottom ... if I double click it, it automatically stays tracking the bottom"): click = jump to the latest
+  // message; double click = follow mode on/off (the button glows and the chat keeps to the bottom until you scroll up).
+  function scrollButton() {
+    const list = document.getElementById('home-chat-messages');
+    if (!list || !document.body || !document.createElement || document.getElementById('hb-scroll-bottom')) return;
+    const b = document.createElement('button');
+    b.id = 'hb-scroll-bottom'; b.type = 'button'; b.textContent = '↓';
+    b.title = 'Jump to the latest message · double-click: keep following the newest message';
+    document.body.appendChild(b);
+    S.follow = ls('hbLive.follow') === '1';
+    const atBottom = () => list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+    const toBottom = (smooth) => list.scrollTo({ top: list.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+    const update = () => {
+      const r = list.getBoundingClientRect();
+      b.style.left = Math.round(r.right - 64) + 'px'; b.style.top = Math.round(r.bottom - 64) + 'px';
+      b.hidden = !list.offsetParent || (atBottom() && !S.follow);
+      b.classList.toggle('hb-follow', !!S.follow);
+    };
+    b.addEventListener('click', () => { toBottom(true); setTimeout(update, 400); });
+    b.addEventListener('dblclick', () => { S.follow = !S.follow; ls('hbLive.follow', S.follow ? '1' : '0'); toBottom(false); update(); });
+    list.addEventListener('scroll', update, { passive: true });
+    list.addEventListener('wheel', (e) => { if (e.deltaY < 0 && S.follow) { S.follow = false; ls('hbLive.follow', '0'); update(); } }, { passive: true });
+    if (root.MutationObserver) new MutationObserver(() => { if (S.follow) toBottom(false); update(); }).observe(list, { childList: true, subtree: true });
+    root.addEventListener('resize', update);
+    setInterval(update, 1000);
+    update();
+  }
+
   function pane() {
+    try { scrollButton(); } catch (e) { /* no main chat on this page */ }
     if (classic()) { document.body.classList.remove('hb-live-on'); return null; }
     document.body.classList.add('hb-live-on');   // HB Live: hides the HB-now pill, live box, HB Driving board and Needs-you bar in main chat
     let el = document.getElementById('hb-live-pane');
@@ -493,8 +544,12 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     const opts = { rate: S.rate, collapsed: ls('hbLive.collapsed') === '1', now: Date.now() / 1000, controls: S.controls,
       needsControls: S.needsControls, open: S.open, drawer: true };   // Practice 285: the list is in the drawer
     el.innerHTML = R.renderBoard(S.snap, opts);
-    dr.hidden = ls('hbLive.drawer') !== '1';
-    dr.innerHTML = dr.hidden ? '' : R.renderDrawer(S.snap, opts);
+    const mode = ls('hbLive.drawer') === '1' ? 'tasks' : ls('hbLive.drawer');   // Practice 287: 'tasks' or 'status'
+    dr.hidden = mode !== 'tasks' && mode !== 'status';
+    if (mode === 'status' && (!S.modelsAt || Date.now() - S.modelsAt > 20000) && typeof root.hbModelsLoad === 'function') {
+      S.modelsAt = Date.now(); setTimeout(() => root.hbModelsLoad(dr), 0);
+    }
+    dr.innerHTML = dr.hidden ? '' : mode === 'status' ? R.renderStatus(S.snap, root.hbModelsHtml) : R.renderDrawer(S.snap, opts);
     open.forEach((id) => { const sel = '[data-more-box="' + CSS.escape(id) + '"]'; const b = (el.querySelector && el.querySelector(sel)) || (dr.querySelector && dr.querySelector(sel)); if (b) b.hidden = false; });
     el.scrollTop = top; dr.scrollTop = dtop;
     popup();
@@ -710,7 +765,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     if (more) { const b = document.querySelector(`[data-more-box="${CSS.escape(more.dataset.more)}"]`); if (b) b.hidden = !b.hidden; return; }
     // Practice 209: the Tasks chip in the top bar opens the clipboard (unfolds the pane and scrolls to the list)
     if (t.closest('[data-win="master"]')) {
-      ls('hbLive.drawer', '1');   // Practice 285: the Tasks chip opens the drawer
+      ls('hbLive.drawer', 'tasks');   // Practice 285: the Tasks chip opens the drawer
       ls('hbLive.collapsed', '0'); render();
       const list = document.querySelector('#hb-live-pane .hbl-board');
       if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -718,7 +773,9 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
     }
     const fold = t.closest('[data-fold]');
     if (fold) { S.open[fold.dataset.fold] = !S.open[fold.dataset.fold]; render(); return; }
-    if (t.closest('[data-drawer]')) { ls('hbLive.drawer', ls('hbLive.drawer') === '1' ? '0' : '1'); render(); return; }   // Practice 285
+    const drw = t.closest('[data-drawer]');   // Practice 285/287: one drawer, Tasks or Status
+    if (drw) { const want = drw.dataset.drawer === 'status' ? 'status' : 'tasks', now = ls('hbLive.drawer') === '1' ? 'tasks' : ls('hbLive.drawer');
+      ls('hbLive.drawer', now === want ? '0' : want); render(); return; }
     const at = t.closest('[data-at]');
     if (at) { insertAt(at.dataset.at); return; }
     if (t.closest('[data-pane-fold]')) { ls('hbLive.collapsed', ls('hbLive.collapsed') === '1' ? '0' : '1'); render(); return; }
