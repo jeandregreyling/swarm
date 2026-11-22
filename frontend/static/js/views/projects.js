@@ -317,12 +317,51 @@
       </div>
 
       ${_renderPacketRollup(p, steps)}
-      <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--card) 92%,var(--accent) 8%),var(--card));">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
-          <div>
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;">Project Blackboard (${blackboard.length})</div>
-            <div style="font-size:9px;color:var(--text-dim);margin-top:2px;">Visible handoff notes for agents: decisions, risks, tests, research, and next steps.</div>
+      <div id="studio-plan-steps-top" style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px;background:var(--card);">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);font-weight:800;">Plan Steps (${(_packetFilter ? steps.filter(s => _packetOf(s) === _packetFilter) : steps).length}${_packetFilter ? ' / ' + steps.length + ' — filtered to ' + _packetFilter : ''})</div>
+          <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+            <label style="font-size:9px;color:var(--text-dim);display:inline-flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="pd-hide-done" onchange="document.querySelectorAll('#studio-plan-steps-top [data-step-done=1]').forEach(el=>el.style.display=this.checked?'none':'grid')"> Hide done/skipped</label>
+            <input id="pd-step-title" placeholder="New step title…" style="padding:3px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;outline:none;">
+            <button onclick="projectsAddStep('${_esc(p.project_id)}')" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;">+ Step</button>
           </div>
+        </div>
+        ${(() => {
+          const visible = _packetFilter ? steps.filter(s => _packetOf(s) === _packetFilter) : steps;
+          return visible.length ? visible.map((s, i) => `
+          <div data-step-done="${(s.status === 'done' || s.status === 'skipped') ? '1' : '0'}" style="display:grid;grid-template-columns:24px 78px 1fr 72px 92px 58px 146px;gap:6px;padding:5px 6px;border-top:1px solid var(--border);align-items:center;font-size:10px;">
+            <span style="color:var(--text-dim);font-family:monospace;">${i + 1}.</span>
+            <code style="font-size:9px;color:var(--accent);font-family:monospace;user-select:all;">${_esc(s.step_id)}</code>
+            <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_esc(s.title)}">${_esc(s.title)}</span>
+            <span style="color:var(--text-dim);font-size:9px;">${_esc(s.owner || 'apex')}</span>
+            <select onchange="projectsSetStepStatus('${_esc(s.step_id)}', this.value)"
+              style="background:var(--window-header);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:2px;font-size:9px;">
+              ${['todo','doing','blocked','partial','done','skipped'].map(x => `<option value="${x}"${x === s.status ? ' selected' : ''}>${x}</option>`).join('')}
+            </select>
+            <span style="font-size:8px;color:${_stepStatusColor(s.status)};font-weight:700;text-transform:uppercase;text-align:right;">${_esc(s.status)}</span>
+            <span style="display:flex;gap:2px;justify-content:flex-end;">
+              <button onclick="projectsOpenStep('${_esc(s.step_id)}')" title="Open step detail (ALM)"
+                style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">⤢</button>
+              <button onclick="projectsRunStepTests('${_esc(s.step_id)}')" title="Run only this step's tests"
+                style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">▶</button>
+              <button onclick="projectsCompleteStep('${_esc(s.step_id)}')" title="Mark done + auto-write KC doc"
+                style="background:none;border:1px solid var(--border);color:#4caf50;border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">✓</button>
+              <button onclick="projectsSetStepStatus('${_esc(s.step_id)}','skipped')" title="Move to Later / fuckitforlater queue"
+                style="background:none;border:1px solid var(--border);color:#ffb84d;border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">⏸</button>
+              <button onclick="projectsEditStep('${_esc(s.step_id)}','${_esc((s.title||'').replace(/'/g, '&#39;'))}')" title="Rename step"
+                style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">✎</button>
+              <button onclick="projectsDeleteStep('${_esc(s.step_id)}','${_esc((s.title||'').replace(/'/g, '&#39;'))}')" title="Delete step"
+                style="background:none;border:1px solid var(--border);color:var(--danger,#f77);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">🗑</button>
+            </span>
+          </div>
+        `).join('') : `<div style="padding:6px;color:var(--text-dim);font-size:10px;">${_packetFilter ? 'No steps in ' + _esc(_packetFilter) + '. Click clear filter above.' : 'No steps yet. Add one to start the plan.'}</div>`;
+        })()}
+      </div>
+
+      <details id="studio-blackboard-drawer" style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--card) 92%,var(--accent) 8%),var(--card));">
+        <summary style="cursor:pointer;user-select:none;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;">Project Blackboard &amp; Activity Log (${blackboard.length} notes — click to expand)</summary>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:8px 0;">
+          <div style="font-size:9px;color:var(--text-dim);">Visible handoff notes for agents: decisions, risks, tests, research, and next steps.</div>
           <div style="display:grid;grid-template-columns:92px minmax(180px,1fr) auto;gap:4px;align-items:start;max-width:620px;flex:1;">
             <select id="pd-blackboard-kind" style="padding:4px 6px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;">
               ${['note','handoff','decision','risk','test','research'].map(x => `<option value="${x}">${x}</option>`).join('')}
@@ -347,45 +386,8 @@
                 style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:2px 6px;font-size:9px;cursor:pointer;">Archive</button>
             </span>
           </div>
-        `; }).join('') : '<div style="padding:6px;color:var(--text-dim);font-size:10px;border-top:1px solid var(--border);">No blackboard notes yet. Add the first handoff note so the next agent starts warm instead of cold.</div>'}
-      </div>
-
-      <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:var(--card);">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);font-weight:700;">Plan Steps (${(_packetFilter ? steps.filter(s => _packetOf(s) === _packetFilter) : steps).length}${_packetFilter ? ' / ' + steps.length + ' — filtered to ' + _packetFilter : ''})</div>
-          <div style="display:flex;gap:4px;">
-            <input id="pd-step-title" placeholder="New step title…" style="padding:3px 8px;background:var(--window-header);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:10px;outline:none;">
-            <button onclick="projectsAddStep('${_esc(p.project_id)}')" style="background:var(--accent);color:#000;border:none;border-radius:4px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;">+ Step</button>
-          </div>
-        </div>
-        ${(() => {
-          const visible = _packetFilter ? steps.filter(s => _packetOf(s) === _packetFilter) : steps;
-          return visible.length ? visible.map((s, i) => `
-          <div style="display:grid;grid-template-columns:24px 1fr 80px 100px 64px 130px;gap:6px;padding:5px 6px;border-top:1px solid var(--border);align-items:center;font-size:10px;">
-            <span style="color:var(--text-dim);font-family:monospace;">${i + 1}.</span>
-            <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_esc(s.title)}">${_esc(s.title)}</span>
-            <span style="color:var(--text-dim);font-size:9px;">${_esc(s.owner || 'seven')}</span>
-            <select onchange="projectsSetStepStatus('${_esc(s.step_id)}', this.value)"
-              style="background:var(--window-header);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:2px;font-size:9px;">
-              ${['todo','doing','blocked','partial','done','skipped'].map(x => `<option value="${x}"${x === s.status ? ' selected' : ''}>${x}</option>`).join('')}
-            </select>
-            <span style="font-size:8px;color:${_stepStatusColor(s.status)};font-weight:700;text-transform:uppercase;text-align:right;">${_esc(s.status)}</span>
-            <span style="display:flex;gap:2px;justify-content:flex-end;">
-              <button onclick="projectsOpenStep('${_esc(s.step_id)}')" title="Open step detail (ALM)"
-                style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">⤢</button>
-              <button onclick="projectsRunStepTests('${_esc(s.step_id)}')" title="Run only this step's tests"
-                style="background:none;border:1px solid var(--border);color:var(--accent);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">▶</button>
-              <button onclick="projectsCompleteStep('${_esc(s.step_id)}')" title="Mark done + auto-write KC doc"
-                style="background:none;border:1px solid var(--border);color:#4caf50;border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">✓</button>
-              <button onclick="projectsEditStep('${_esc(s.step_id)}','${_esc((s.title||'').replace(/'/g, '&#39;'))}')" title="Rename step"
-                style="background:none;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">✎</button>
-              <button onclick="projectsDeleteStep('${_esc(s.step_id)}','${_esc((s.title||'').replace(/'/g, '&#39;'))}')" title="Delete step"
-                style="background:none;border:1px solid var(--border);color:var(--danger,#f77);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">🗑</button>
-            </span>
-          </div>
-        `).join('') : `<div style="padding:6px;color:var(--text-dim);font-size:10px;">${_packetFilter ? 'No steps in ' + _esc(_packetFilter) + '. Click clear filter above.' : 'No steps yet. Add one to start the plan.'}</div>`;
-        })()}
-      </div>
+        `; }).join('') : '<div style="padding:6px;color:var(--text-dim);font-size:10px;border-top:1px solid var(--border);">No blackboard notes yet.</div>'}
+      </details>
 
       <div style="border:1px solid var(--border);border-radius:5px;padding:10px;margin-bottom:12px;background:var(--card);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
