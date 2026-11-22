@@ -54,6 +54,21 @@ function _sundialResidencyHtml(metricKey) {
     note = '<div class="stip-empty">VRAM ' + vitals.gpu_vram_used_gb + ' / ' + vitals.gpu_vram_total_gb + ' GB' +
       (vitals.gpu_busy_percent != null ? ' · GPU busy ' + vitals.gpu_busy_percent + '%' : '') + '</div>';
   }
+  if (bucket === 'gpu' && vitals.gpu_tuning) {
+    const tuning = vitals.gpu_tuning;
+    note += '<div class="stip-empty">' + (tuning.available
+      ? 'Configured GPU maximums: core ' + _escapeDiamondHtml(tuning.core_max_mhz) + ' MHz · memory ' + _escapeDiamondHtml(tuning.memory_max_mhz) + ' MHz (' + _escapeDiamondHtml(tuning.card) + ')'
+      : 'GPU tuning unavailable: ' + _escapeDiamondHtml(tuning.error)) + '</div>';
+  }
+  if (bucket === 'gpu' && vitals.live_telemetry && vitals.live_telemetry.gpu) {
+    const g = vitals.live_telemetry.gpu;
+    const measures = [];
+    if (g.clock_mhz != null) measures.push('Current core ' + _escapeDiamondHtml(g.clock_mhz) + ' MHz');
+    if (g.power_w != null) measures.push('Power ' + _escapeDiamondHtml(g.power_w) + ' W');
+    if (g.power_cap_w != null) measures.push('Power cap ' + _escapeDiamondHtml(g.power_cap_w) + ' W');
+    if (g.junction_temp_c != null) measures.push('Junction ' + _escapeDiamondHtml(g.junction_temp_c) + ' °C');
+    if (measures.length) note += '<div class="stip-empty">' + measures.join(' · ') + '</div>';
+  }
   if (bucket === 'swap' && vitals.swap_total_gb === 0) {
     return '<div class="stip-section"><div class="stip-section-title">' + title + '</div><div class="stip-empty">Swap is off (0 GB configured). Larger models will need virtual RAM.</div></div>';
   }
@@ -136,8 +151,28 @@ function _initSundial() {
     node.innerHTML = '<span class="sundial-dot">' + (SUNDIAL_ICONS[m.key] || '') + '</span><span class="sundial-val">\u2014</span>';
     node.style.left = nx + 'px';
     node.style.top  = ny + 'px';
-    node.addEventListener('mouseenter', () => _showSundialTip(m, node));
-    node.addEventListener('mouseleave', _hideSundialTip);
+    node.addEventListener('mouseenter', () => {
+      const tip = document.getElementById('sundial-tip');
+      if (tip && tip._hideTimer) { clearTimeout(tip._hideTimer); tip._hideTimer = null; }
+      if (tip && tip._pinned && tip._pinnedKey !== m.key) return;
+      _showSundialTip(m, node);
+    });
+    node.addEventListener('mouseleave', () => {
+      const tip = document.getElementById('sundial-tip');
+      if (tip && tip._pinned) return;
+      _hideSundialTip();
+    });
+    node.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tip = document.getElementById('sundial-tip');
+      if (tip && tip._pinned && tip._pinnedKey === m.key && tip.style.display !== 'none') {
+        tip._pinned = false; tip._pinnedKey = null; tip.style.display = 'none';
+        return;
+      }
+      _showSundialTip(m, node);
+      const t2 = document.getElementById('sundial-tip');
+      if (t2) { t2._pinned = true; t2._pinnedKey = m.key; }
+    });
     wrap.appendChild(node);
   });
 
@@ -173,12 +208,25 @@ function _showSundialTip(metric, node) {
     });
     tip.addEventListener('mouseleave', () => {
       tip._hover = false;
+      if (tip._pinned) return;
       if (tip._hideTimer) clearTimeout(tip._hideTimer);
       tip._hideTimer = setTimeout(() => {
-        tip.style.display = 'none';
+        if (!tip._hover && !tip._pinned) {
+          tip.style.display = 'none';
+          if (tip._statusPoll) { clearInterval(tip._statusPoll); tip._statusPoll = null; }
+        }
         tip._hideTimer = null;
-        if (tip._statusPoll) { clearInterval(tip._statusPoll); tip._statusPoll = null; }
-      }, 120);
+      }, 450);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && tip.style.display !== 'none') {
+        tip._pinned = false; tip._pinnedKey = null; tip.style.display = 'none';
+      }
+    }, true);
+    document.addEventListener('click', (e) => {
+      if (tip._pinned && !tip.contains(e.target) && !e.target.closest('.sundial-node')) {
+        tip._pinned = false; tip._pinnedKey = null; tip.style.display = 'none';
+      }
     });
     tip.addEventListener('click', async (e) => {
       const fanBtn = e.target.closest('.stip-fan-btn');
@@ -315,11 +363,12 @@ function _hideSundialTip() {
   // to 320ms so a slow cursor traversing the 4px overlap zone between the
   // node and the tip can land on Auto / Boost / Unload buttons without the
   // tip vanishing mid-click.
+  if (tip._pinned) return;
   if (tip._hideTimer) clearTimeout(tip._hideTimer);
   tip._hideTimer = setTimeout(() => {
-    if (!tip._hover) tip.style.display = 'none';
+    if (!tip._hover && !tip._pinned) tip.style.display = 'none';
     tip._hideTimer = null;
-  }, 320);
+  }, 650);
 }
 
 /* ── System Pulse Fetch ──────────────────────────────────────────────────── */
