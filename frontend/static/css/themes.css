@@ -43,15 +43,93 @@ body.theme-hummingbird {
   background-attachment: fixed !important;
   transition: background-image 0.8s ease;
 }
+/* Living breathing iridescent aurora canvas behind frosted Liquid-Glass surfaces */
+@keyframes hb-aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(2.5%, -2%, 0) scale(1.06); }
+  100% { transform: translate3d(-1.5%, 2%, 0) scale(1.02); }
+}
+body.theme-hummingbird::before {
+  content: '';
+  position: fixed;
+  inset: -8%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 46% 38% at 18% 22%, var(--hb-aura-a, rgba(16, 232, 164, 0.22)), transparent 68%),
+    radial-gradient(ellipse 42% 36% at 84% 18%, var(--hb-aura-b, rgba(244, 114, 182, 0.17)), transparent 66%),
+    radial-gradient(ellipse 52% 40% at 50% 86%, var(--hb-aura-c, rgba(255, 184, 77, 0.15)), transparent 70%);
+  filter: blur(28px);
+  animation: hb-aurora-drift 24s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.theme-hummingbird::before { animation: none !important; }
+}
 body.theme-hummingbird #home-chat-view,
 body.theme-hummingbird .hc-composer,
 body.theme-hummingbird #hb-live-pane,
+body.theme-hummingbird #hb-live-drawer,
+body.theme-hummingbird #hb-live-pop,
+body.theme-hummingbird #services-dropdown-menu,
+body.theme-hummingbird #troubleshoot-modal,
+body.theme-hummingbird #taskbar,
 body.theme-hummingbird #bottom-dock,
 body.theme-hummingbird .bottom-bar {
-  background: color-mix(in srgb, rgba(14, 22, 28, 0.78) calc(var(--glass-opacity, 0.84) * 100%), transparent) !important;
+  background: linear-gradient(155deg, rgba(255,255,255,0.06), rgba(16,232,164,0.04) 48%, rgba(244,114,182,0.03)),
+              color-mix(in srgb, rgba(12, 20, 26, 0.80) calc(var(--glass-opacity, 0.84) * 100%), transparent) !important;
   backdrop-filter: blur(22px) saturate(185%) !important;
   -webkit-backdrop-filter: blur(22px) saturate(185%) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 14px 36px rgba(0, 0, 0, 0.36);
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 -1px 0 rgba(16, 232, 164, 0.10), 0 18px 46px rgba(0, 0, 0, 0.44);
+}
+/* Tactile iridescent Liquid-Glass Core Workspace tiles */
+body.theme-hummingbird .home-card {
+  background: linear-gradient(145deg, rgba(255,255,255,0.07), rgba(16,232,164,0.05) 55%, rgba(255,184,77,0.04)),
+              color-mix(in srgb, rgba(16, 26, 33, 0.74) calc(var(--glass-opacity, 0.84) * 100%), transparent) !important;
+  backdrop-filter: blur(24px) saturate(195%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(195%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 26px rgba(0, 0, 0, 0.34);
+  transition: transform 0.22s cubic-bezier(.22,.61,.36,1), box-shadow 0.22s ease, border-color 0.22s ease !important;
+}
+body.theme-hummingbird .home-card:hover {
+  border-color: color-mix(in srgb, var(--accent, #10e8a4) 65%, rgba(255,255,255,0.4)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 16px 38px rgba(0, 0, 0, 0.45), 0 0 24px color-mix(in srgb, var(--accent, #10e8a4) 30%, transparent) !important;
+}
+/* Frosted crystal World Clocks + Left/Right Sundial halos */
+body.theme-hummingbird .world-clock-item {
+  padding: 8px 11px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(160deg, rgba(255,255,255,0.08), rgba(16,232,164,0.04)), color-mix(in srgb, rgba(14,22,28,0.68) calc(var(--glass-opacity, 0.84) * 100%), transparent) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 20px rgba(0, 0, 0, 0.28);
+}
+body.theme-hummingbird #sundial,
+body.theme-hummingbird #home-controls {
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16,232,164,0.09) 0%, rgba(14,22,28,0.52) 64%, transparent 72%);
+  box-shadow: inset 0 0 22px rgba(255, 255, 255, 0.08), 0 0 28px rgba(16, 232, 164, 0.12);
+}
+body.theme-hummingbird #home-controls > button,
+body.theme-hummingbird #services-dropdown-btn {
+  backdrop-filter: blur(14px) saturate(175%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 4px 14px rgba(0, 0, 0, 0.36);
+}
+/* Specular Liquid-Glass focus glow on inputs & refined taskbar pills */
+body.theme-hummingbird input:focus,
+body.theme-hummingbird textarea:focus,
+body.theme-hummingbird select:focus {
+  border-color: var(--accent, #10e8a4) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #10e8a4) 26%, transparent) !important;
+  outline: none;
+}
+body.theme-hummingbird .taskbar-control-btn:hover,
+body.theme-hummingbird .taskbar-launcher-btn:hover {
+  border-color: color-mix(in srgb, var(--accent, #10e8a4) 60%, rgba(255,255,255,0.3)) !important;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent, #10e8a4) 28%, transparent);
+  transform: translateY(-1px);
 }
 /* Speaker colour-coding in main chat (instant visual scan across all themes) */
 #home-chat-messages .hc-bubble[data-hb-speaker="apex"] {

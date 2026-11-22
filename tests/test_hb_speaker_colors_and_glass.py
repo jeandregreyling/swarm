@@ -16,5 +16,5 @@ def test_speaker_tints_and_liquid_glass_aurora_in_themes_css():
     css = (ROOT / 'frontend/static/css/themes.css').read_text(encoding='utf-8')
     for speaker in ('apex', 'hummingbird', 'copilot', 'user'):
         assert f'[data-hb-speaker="{speaker}"]' in css
-    assert 'radial-gradient(circle at 14% 18%, rgba(16, 232, 164, 0.16)' in css
+    assert 'var(--hb-aura-a, rgba(16, 232, 164, 0.16))' in css
     assert 'backdrop-filter: blur(22px) saturate(185%)' in css
