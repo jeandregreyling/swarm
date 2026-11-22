@@ -26,7 +26,32 @@ MAX_CALLS = 48   # Practice 243: 12 calls ended real work mid-task; scales with 
 MAX_WEB_CALLS = 4     # Practice 175: web_search calls have their own allowance on top of MAX_CALLS
 MAX_ROUNDS = 20   # Practice 243 (JD 21 Nov: "APEX can never run out of turn"): 6 rounds ended real work mid-task; the 900 s work turn (241) bounds it
 OUTPUT_RETRY_NOTICE = ("[HB: your last reply hit the output limit while you were still thinking, so nothing ran. Think in a few lines, then make ONE tool call for the current chunk now.]")
-MAX_READ_LINES = 100
+MAX_READ_LINES = 450   # Dynamic baseline for 24K-token GPU window (was legacy hardcoded 100)
+_READ_BACKOFF = 0      # Adaptive step-down counter when a turn hits context/timeout pressure
+
+
+def dynamic_read_limit(ctx_tokens: int | None = None, backoff_level: int | None = None) -> int:
+    """Compute APEX's read_file line budget dynamically from the active model's context window (benchmark-driven, not hardcoded 100)."""
+    ctx = ctx_tokens
+    if ctx is None:
+        try:
+            from core.seven_llm import registry
+            entry = registry.get(active_model())
+            ctx = int(entry.ctx) if entry and getattr(entry, 'ctx', None) else 24832
+        except Exception:
+            ctx = 24832
+    base = max(150, min(600, int(int(ctx) / 55)))
+    lvl = _READ_BACKOFF if backoff_level is None else max(0, int(backoff_level))
+    if lvl > 0:
+        base = max(120, base // (2 ** min(lvl, 3)))
+    return base
+
+
+def record_read_pressure(hit_pressure: bool = True) -> int:
+    """Step read chunk size down on context overflow/timeout, or recover smoothly on clean turns."""
+    global _READ_BACKOFF
+    _READ_BACKOFF = min(3, _READ_BACKOFF + 1) if hit_pressure else max(0, _READ_BACKOFF - 1)
+    return dynamic_read_limit()
 MAX_GREP_FILES = 2000
 GREP_SECONDS = 8.0
 TURN_SECONDS = 360
@@ -714,8 +739,9 @@ class ReadOnlyRepository:
 
             def _bool(value):
                 return {"true": True, "false": False}.get(value.strip().lower(), value) if type(value) is str else value
+            limit = dynamic_read_limit()
             start = _int(args.get("start", 1))
-            end = _int(args.get("end", start + MAX_READ_LINES - 1)) if type(start) is int else None
+            end = _int(args.get("end", start + limit - 1)) if type(start) is int else None
             if type(start) is not int or type(end) is not int or start < 1 or end < start:
                 raise ValueError("Invalid line range: start and end must be whole numbers with 1 <= start <= end")
             raw = _bool(args.get("raw", False))
@@ -728,12 +754,9 @@ class ReadOnlyRepository:
             if not lines:
                 return "[empty text file]"
             end = min(end, len(lines))                          # asking past the end is not an error
-            cut = end >= start + MAX_READ_LINES
+            cut = end >= start + limit
             if cut:
-                if raw:
-                    raise ValueError(f"Raw reads are limited to {MAX_READ_LINES} lines; the file has {len(lines)}. "
-                                     f"Call read_file with start={start}, end={start + MAX_READ_LINES - 1}, then start={start + MAX_READ_LINES}.")
-                end = start + MAX_READ_LINES - 1
+                end = start + limit - 1
             if raw:
                 return "".join(text.splitlines(keepends=True)[start - 1:end])
             body = "\n".join(f"{i}: {line}" for i, line in enumerate(lines, 1) if start <= i <= end)

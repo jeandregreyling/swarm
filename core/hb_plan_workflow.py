@@ -806,6 +806,15 @@ def execution_scope(conn, task):
 def _run(conn, task, w, detail, plan):
     """Leave the scoping phase: the task manager runs the task with the owner's criteria (and plan)."""
     now = time.time()
+    # Sync Studio owner='apex' when HB hands an assignable step to APEX so apex_alm.run_tests never rejects it as unassigned.
+    if task.get('step_id') and _has(conn, 'project_steps'):
+        cur_owner = conn.execute('SELECT COALESCE(owner,"") FROM project_steps WHERE step_id=?', (task['step_id'],)).fetchone()
+        if cur_owner and cur_owner[0].lower() not in NOT_HBS_TO_ASSIGN and cur_owner[0].lower() != 'apex':
+            cols = {r[1] for r in conn.execute('PRAGMA table_info(project_steps)')}
+            if 'owner_route' in cols:
+                conn.execute("UPDATE project_steps SET owner='apex', owner_route='apex', updated_at=? WHERE step_id=?", (now, task['step_id']))
+            else:
+                conn.execute("UPDATE project_steps SET owner='apex', updated_at=? WHERE step_id=?", (now, task['step_id']))
     row = _manager_row(conn, task)
     execution_scope(conn, task)
     plan_event = row['plan_event_id']

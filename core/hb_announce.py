@@ -102,6 +102,11 @@ def _outcome(conn, key):
             return 'unknown', ''
         row = conn.execute("SELECT kind, text FROM hb_activity_log WHERE run_id=? AND kind IN ('finish','error') ORDER BY id DESC LIMIT 1", (key,)).fetchone()
         if not row:
+            tid = _task_of(conn, key)
+            if tid:
+                sc = conn.execute("SELECT json_extract(payload,'$.ready') FROM hb_task_events WHERE task_id=? AND kind='spec_card' ORDER BY event_id DESC LIMIT 1", (tid,)).fetchone()
+                if sc is not None:
+                    return ('done', '') if sc[0] else ('paused', 'BA spec not ready yet')
             return 'unknown', ''
         return ('failed', str(row[1] or '')[:120]) if row[0] == 'error' else (('turn', '') if _task_of(conn, key) else ('done', ''))
     except Exception:

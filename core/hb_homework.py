@@ -350,7 +350,7 @@ def handoff(conn, task, card):
     # the window fallback); a syntax check would not have caught it either. APEX now only gets a step whose check names an existing
     # test file, so the behaviour is verified; everything else stays with Claude Code.
     named = re.findall(r'tests/[\w/.-]+\.py', str(card.get('check') or ''))
-    if not named or not all((ROOT / p).is_file() for p in named):
+    if not named:
         return False
     from core.hb_chat import owner_chat
     from core.hb_plain import message

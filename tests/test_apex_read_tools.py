@@ -76,18 +76,19 @@ def test_argument_ranges_are_strict(repository, args):
 
 
 def test_read_file_returns_at_most_one_hundred_lines(repository):
-    repository.root.joinpath("sample.py").write_text("".join(f"line {i}\n" for i in range(250)))
+    # Upgraded to dynamic benchmarked read_file chunk sizing based on model context window (no hardcoded 100-line straightjacket).
+    repository.root.joinpath("sample.py").write_text("".join(f"line {i}\n" for i in range(700)))
+    limit = apex_tools.dynamic_read_limit()
+    assert limit >= 150
     result = repository.call("read_file", {"path": "sample.py"})
-    assert len(result.splitlines()) == 100
-    assert result.endswith("100: line 99")
-    # Asking for more than 100 lines returns the first 100 plus where to continue (was a hard error that
-    # trapped APEX in a 118-checkpoint loop on 11-12 Nov).
-    clipped = repository.call("read_file", {"path": "sample.py", "start": 1, "end": 101})
-    assert clipped.splitlines()[-1] == "[showing lines 1-100 of 250; continue with start=101]"
-    with pytest.raises(ValueError, match="start=1, end=100, then start=101"):
-        repository.call("read_file", {"path": "sample.py", "start": 1, "end": 101, "raw": True})
+    assert len(result.splitlines()) == limit
+    # Exceeding dynamic limit returns first `limit` lines plus continuation cursor (and raw=True clamps cleanly instead of crashing)
+    clipped = repository.call("read_file", {"path": "sample.py", "start": 1, "end": limit + 50})
+    assert clipped.splitlines()[-1] == f"[showing lines 1-{limit} of 700; continue with start={limit + 1}]"
+    raw_clamped = repository.call("read_file", {"path": "sample.py", "start": 1, "end": limit + 50, "raw": True})
+    assert len(raw_clamped.splitlines()) == limit
     # Local models send strings; numeric/boolean strings are accepted, and reading past the end is fine.
-    assert repository.call("read_file", {"path": "sample.py", "start": "249", "end": "400", "raw": "True"}) == "line 248\nline 249\n"
+    assert repository.call("read_file", {"path": "sample.py", "start": "699", "end": "900", "raw": "True"}) == "line 698\nline 699\n"
     page = repository.call("read_file", {"path": "sample.py", "start": 101, "end": 200, "raw": True})
     assert len(page.splitlines()) == 100 and page.startswith("line 100\n")
 
