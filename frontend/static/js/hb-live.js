@@ -690,6 +690,10 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       return true;
     }).catch((error) => {
       if (note) note.textContent = error.name === 'TimeoutError' ? error.message : 'HB did not answer - try again.';
+      if (error.name === 'TimeoutError') {
+        if (note) note.textContent += ' Checking saved status; do not repeat the action.';
+        refresh();
+      }
       return false;
     });
   }

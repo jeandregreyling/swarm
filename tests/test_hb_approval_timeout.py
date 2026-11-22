@@ -18,6 +18,10 @@ def test_successful_approval_keeps_existing_resolution_and_clears_deadline():
     run_node('success', 'success')
 
 
+def test_timed_out_approval_reads_saved_state_without_reposting():
+    run_node('accepted', 'success')
+
+
 def run_node(action_stall, live_stall):
     node = shutil.which('node')
     if not node:
@@ -51,7 +55,7 @@ const context = {document, AbortController, window: {confirm: () => true}, conso
     calls.push({url, options});
     const live = url === '/api/peer/v1/hb/live';
     const mode = live ? liveMode : actionStall;
-    if (mode === 'headers') return pending(options.signal, live, false);
+    if (mode === 'headers' || mode === 'accepted') return pending(options.signal, live, false);
     if (mode === 'body') return Promise.resolve({ok: true, json: () => pending(options.signal, live, true)});
     return Promise.resolve({ok: true, json: async () => live ? emptySnap : {ok: true, said: 'Approved'}});
   }};
@@ -76,7 +80,7 @@ async function advance(ms) {
   now = until; await flush();
 }
 (async () => {
-  if (actionStall === 'success') {document.hidden = false; liveMode = 'success';}
+  if (actionStall === 'success' || actionStall === 'accepted') {document.hidden = false; liveMode = 'success';}
   listeners.click({target}); listeners.click({target});
   assert.equal(calls.filter(c => c.url === '/api/peer/v1/hb/queue').length, 1);
   assert.deepEqual(JSON.parse(calls[0].options.body), {task: ['accept', 'S-0123456789']});
@@ -86,6 +90,18 @@ async function advance(ms) {
     assert.equal(button.disabled, false); assert.equal(removed, true);
     await advance(20000);
     assert.equal(calls[0].options.signal.aborted, false, 'successful requests clear their deadline');
+    assert.equal(timers.size, 0); return;
+  }
+  if (actionStall === 'accepted') {
+    await advance(15000);
+    assert.equal(button.disabled, false);
+    assert.equal(calls.filter(c => c.url === '/api/peer/v1/hb/queue').length, 1);
+    assert.equal(calls.filter(c => c.url === '/api/peer/v1/hb/live').length, 1);
+    assert.equal(removed, true, 'saved approval closes the stale card even when POST confirmation stalls');
+    assert.equal(state.snap.needs_you.length, 0);
+    lateAction(); await flush();
+    assert.equal(removed, true);
+    assert.equal(calls.filter(c => c.url === '/api/peer/v1/hb/queue').length, 1);
     assert.equal(timers.size, 0); return;
   }
   await advance(14999);
