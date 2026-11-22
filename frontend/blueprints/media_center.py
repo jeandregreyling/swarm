@@ -19,6 +19,12 @@ from core.media_center.framework import (
     update_project,
     update_project_routing,
 )
+from core.media_center.audio_engine import (
+    get_media_asset,
+    is_media_filename,
+    list_media_assets,
+    save_media_asset,
+)
 from core.media_center.storage import MEDIA_STORAGE_ROOT
 
 media_center_bp = Blueprint("media_center", __name__)
@@ -177,6 +183,51 @@ def media_center_run_job(job_id: str):
     if not job:
         return jsonify({"ok": False, "error": "job not found"}), 404
     return jsonify({"ok": True, "job": job})
+
+
+@media_center_bp.route("/api/media-center/library", methods=["GET"])
+def media_center_library_list():
+    items = list_media_assets()
+    return jsonify({"ok": True, "assets": items, "count": len(items)})
+
+
+@media_center_bp.route("/api/media-center/library/<asset_id>", methods=["GET"])
+def media_center_library_get(asset_id: str):
+    asset = get_media_asset(asset_id)
+    if not asset:
+        return jsonify({"ok": False, "error": "asset not found"}), 404
+    return jsonify({"ok": True, "asset": asset})
+
+
+@media_center_bp.route("/api/media-center/library/upload", methods=["POST"])
+def media_center_library_upload():
+    import base64
+    if "file" in request.files:
+        f = request.files["file"]
+        filename = f.filename or "upload.wav"
+        data = f.read()
+        content_type = f.mimetype or ""
+        title = request.form.get("title") or ""
+        artist = request.form.get("artist") or ""
+    else:
+        body = request.get_json(silent=True) or {}
+        filename = str(body.get("filename") or "upload.wav")
+        raw_b64 = str(body.get("data_base64") or "")
+        if not raw_b64:
+            return jsonify({"ok": False, "error": "file or data_base64 is required"}), 400
+        try:
+            data = base64.b64decode(raw_b64)
+        except Exception:
+            return jsonify({"ok": False, "error": "invalid base64 audio payload"}), 400
+        content_type = str(body.get("content_type") or "")
+        title = str(body.get("title") or "")
+        artist = str(body.get("artist") or "")
+    if not data:
+        return jsonify({"ok": False, "error": "empty file"}), 400
+    if not is_media_filename(filename, content_type):
+        return jsonify({"ok": False, "error": f"unsupported media file type: {filename}"}), 400
+    asset = save_media_asset(filename, data, source="upload", metadata={"title": title, "artist": artist})
+    return jsonify({"ok": True, "asset": asset})
 
 
 @media_center_bp.route("/api/media-center/artifacts/<path:artifact_path>", methods=["GET"])

@@ -109,6 +109,28 @@ def attachment_text(filename, content_type, data):
                  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx', 'application/msword': '.doc',
                  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx', 'application/zip': '.zip'}
         name += guess.get(str(content_type).lower(), '')
+    from core.media_center.audio_engine import is_media_filename, save_media_asset
+    media_limit = MAX_ATTACHMENT * 2
+    if is_media_filename(name, content_type):
+        if len(data) > media_limit:
+            return None, f'media file too large ({len(data) // 1024 ** 2} MB; limit {media_limit // 1024 ** 2} MB)'
+        try:
+            asset = save_media_asset(name, data, source='email_intake')
+            probe = asset.get('probe') or {}
+            analysis = asset.get('analysis') or {}
+            cues = ', '.join(f"{c['label']}@{c['time_sec']}s" for c in (analysis.get('cue_points') or []))
+            summary = (
+                f"Media Center Asset Ingested: {asset['title']} ({asset['filename']})\n"
+                f"Asset ID: {asset['id']}\n"
+                f"Playback URL: {asset['url']}\n"
+                f"Kind: {asset['kind']} · Codec: {probe.get('codec') or 'unknown'} · "
+                f"Duration: {probe.get('duration_sec', 0)}s · Sample Rate: {probe.get('sample_rate', 0)} Hz\n"
+                f"Estimated BPM: {analysis.get('bpm', 'n/a')} · Loudness: {analysis.get('rms_db', 'n/a')} dBFS RMS / {analysis.get('peak_db', 'n/a')} dBFS Peak\n"
+                f"Auto Cue Points: {cues or 'none'}"
+            )
+            return summary, None
+        except Exception as exc:
+            return None, f'media ingest failed ({type(exc).__name__})'
     if len(data) > MAX_ATTACHMENT:
         return None, f'too large ({len(data) // 1024 ** 2} MB; limit {MAX_ATTACHMENT // 1024 ** 2} MB)'
     text, why = document_reader.read(name, data)
