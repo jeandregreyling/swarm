@@ -1631,6 +1631,43 @@ def repeated_rejection(call: dict, receipts: list[dict]) -> dict | None:
     return None
 
 
+def earlier_failure(call, task_id=None, conn=None):
+    """Practice 293 (JD 22 Nov: "the same step cannot be executed twice expecting a different result"): the error of this exact call
+    (tool and arguments) if it already failed on this task in an earlier turn and nothing changed since (no change, no passing check)."""
+    own = conn is None
+    try:
+        if task_id is None:
+            from core.agent_identity import CURRENT
+            actor = CURRENT.get() or {}
+            task_id = actor.get('task_id')
+            if not task_id and actor.get('peer_request_id'):
+                from utils.db._connection import get_connection
+                conn = conn or get_connection()
+                row = conn.execute('SELECT task_id FROM hb_task_requests WHERE request_id=?', (actor['peer_request_id'],)).fetchone()
+                task_id = row[0] if row else None
+        if not task_id:
+            return None
+        if conn is None:
+            from utils.db._connection import get_connection
+            conn = get_connection()
+        since = conn.execute("SELECT COALESCE(MAX(event_id),0) FROM hb_task_events WHERE task_id=? AND (kind='mutation' OR "
+                             "(kind='test_result' AND json_extract(payload,'$.alm_run_status')='pass'))", (task_id,)).fetchone()[0]
+        for payload, in conn.execute("SELECT payload FROM hb_task_events WHERE task_id=? AND kind='tool_failure' AND event_id>? "
+                                     "ORDER BY event_id DESC LIMIT 60", (task_id, since)):
+            p = json.loads(payload or '{}')
+            if p.get('tool') == call.get('name') and (p.get('arguments') or {}) == (call.get('arguments') or {}):
+                return str(p.get('error') or 'failed')[:300]
+        return None
+    except Exception:
+        return None
+    finally:
+        if own and conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
 def repeated_read(call: dict, receipts: list[dict]) -> dict | None:
     """Reuse completed writes; read facts expire after a subsequent mutation."""
     if call.get("name") in _PROPOSAL_ARGUMENTS:
@@ -2524,6 +2561,11 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                     raise PermissionError(f"{call['name']} refused: HB's turn authorization said no (the task may have been stopped, "
                                           "paused, cancelled or handed over, or the owner session ended)")
                 earlier = repeated_rejection(call, receipts)
+                before = earlier_failure(call) if earlier is None else None   # Practice 293: never the same failed call twice
+                if before is not None:
+                    raise ValueError(f"REPEATED FROM AN EARLIER TURN: this exact call already failed on this task ({before}) and nothing "
+                                     "has changed since. Doing it again cannot give a different result: change the arguments as the error "
+                                     "says, or do a different action.")
                 if earlier is not None:
                     raise ValueError(
                         f"REPEATED CALL: receipt {earlier['id']} already rejected this exact call this turn "

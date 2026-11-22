@@ -207,6 +207,12 @@ def write(conn, task, model=call_model):
     card.update(ready=ready, not_ready=reasons, facts=gathered, model=MODEL, seconds=round(time.time() - started, 1),
                 task_version=task.get('version'))
     hb_tasks.event(conn, task, 'homework', 'spec_card', card)
+    try:   # Practice 293 (JD 22 Nov: the BA was "not actually reporting on the scope or main question or chunks and details"): the spec in main chat
+        from core.hb_chat import owner_chat
+        conn.execute("INSERT INTO messages(conversation_id,from_agent,to_agent,content,message_type,tokens_used) VALUES (?,'hummingbird','user',?,'response',0)",
+                     (owner_chat(conn), spec_post(task, card)))
+    except Exception:
+        pass
     handoff(conn, task, card)                            # Practice 113: a READY backlog card goes to APEX
     bg.finish('homework', conn, task, (f"📝 BA spec for {str(task.get('title') or '')[:70]}: READY - check: {card.get('check')}"
                                        if ready else f"📝 BA spec for {str(task.get('title') or '')[:70]}: not ready - {'; '.join(reasons)[:160]}"))
@@ -239,6 +245,12 @@ def backlog(conn, limit=2):
         if conn.execute("SELECT 1 FROM hb_task_events e JOIN hb_tasks t ON t.task_id=e.task_id WHERE t.step_id=? AND e.kind='spec_card'",
                         (step_id,)).fetchone():
             continue                                     # carded before: never twice
+        try:   # Practice 293: a step with a prepared change set is already specced and built - no BA spec for it
+            from core import hb_change_sets
+            if hb_change_sets.load(step_id):
+                continue
+        except Exception:
+            pass
         row = conn.execute("SELECT task_id FROM hb_tasks WHERE step_id=? AND state NOT IN ('completed','cancelled') "
                            "ORDER BY created_at DESC LIMIT 1", (step_id,)).fetchone()
         if row:
@@ -296,6 +308,23 @@ def handoff(conn, task, card):
                  (owner_chat(conn), message(f'📐 Spec ready for "{str(row[1])[:120]}": APEX takes it.', f"Done when: {card.get('check')}",
                                             details=[f'Studio step {step_id}', f"goal: {str(card.get('goal'))[:200]}"])))
     return True
+
+
+def spec_post(task, card):
+    """Practice 293: the BA's whole spec as one main-chat message."""
+    lines = [f"📝 BA spec: {str(task.get('title') or '')[:110]} - " + ('READY for APEX' if card.get('ready') else 'NOT ready')]
+    lines.append(f"Main question: {card.get('goal') or '-'}")
+    for key, word in (('scope_in', 'In scope'), ('scope_out', 'Out of scope'), ('design', 'Design'), ('risks', 'Risks')):
+        if card.get(key):
+            lines.append(f'{word}: ' + '; '.join(str(x) for x in card[key]))
+    lines.append(f"Check: {card.get('check') or '-'}")
+    if card.get('plan'):
+        lines.append('Chunks: ' + ' '.join(f'{n}. {p}' for n, p in enumerate(card['plan'], 1)))
+    if card.get('questions'):
+        lines.append('Question for JD: ' + '; '.join(card['questions']))
+    if not card.get('ready') and card.get('not_ready'):
+        lines.append('Not ready because: ' + '; '.join(card['not_ready']) + ' (the BA is told this on its next spec)')
+    return '\n'.join(lines)[:3000]
 
 
 def summary(card):
