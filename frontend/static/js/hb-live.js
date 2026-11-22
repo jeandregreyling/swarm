@@ -502,6 +502,12 @@
 .hbl-cmd{display:inline;padding:0 6px;margin:0 1px;border-radius:6px;border:1px solid var(--accent,#00e08a);background:transparent;color:var(--accent,#00e08a);
   font:inherit;font-size:.92em;cursor:pointer}
 .hbl-json summary{cursor:pointer;color:var(--text-dim,#999)}
+#hb-celebrate-layer{position:fixed;inset:0;pointer-events:none;z-index:9990;overflow:hidden}
+.hb-flyer{position:fixed;pointer-events:none;will-change:transform,opacity;filter:drop-shadow(0 4px 12px rgba(16,232,164,.45));animation:hb-soar var(--dur,4.4s) cubic-bezier(.22,.61,.36,1) forwards}
+.hb-petal{position:fixed;pointer-events:none;will-change:transform,opacity;filter:drop-shadow(0 2px 8px rgba(255,184,77,.4));animation:hb-flutter var(--dur,4.8s) ease-out forwards}
+@keyframes hb-soar{0%{transform:translate3d(-12vw,var(--sy,60vh),0) scale(.85) rotate(-8deg);opacity:0}12%{opacity:1}50%{transform:translate3d(48vw,calc(var(--sy,60vh) - 18vh),0) scale(1.12) rotate(6deg);opacity:1}88%{opacity:.95}100%{transform:translate3d(112vw,calc(var(--sy,60vh) - 28vh),0) scale(.95) rotate(-4deg);opacity:0}}
+@keyframes hb-flutter{0%{transform:translate3d(var(--sx,20vw),104vh,0) rotate(0deg) scale(.8);opacity:0}15%{opacity:1}80%{opacity:.9}100%{transform:translate3d(calc(var(--sx,20vw) + var(--drift,12vw)),-10vh,0) rotate(var(--spin,320deg)) scale(1.15);opacity:0}}
+@media (prefers-reduced-motion:reduce){#hb-celebrate-layer{display:none!important}}
 .hbl-lights{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:3px 0;font-size:11px}
 .hbl-lg{font-weight:700;font-size:10px;letter-spacing:.06em;color:var(--text-dim,#999);margin:0 1px 0 6px}
 .hbl-light{display:inline-flex;align-items:center;gap:3px;min-width:16px;justify-content:center;padding:0 6px;border-radius:9px;
@@ -773,6 +779,13 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
         return;
       }
       const sender = String((b._chatMessage || {}).from_agent || (b._chatMessage || {}).sender || '').toLowerCase();
+      if (/🎉\s*CELEBRATION|🎁\s*GRAND GIFT FOR APEX/i.test(text) && b.dataset.messageId) {
+        const ck = 'hbLive.celebrated.' + b.dataset.messageId;
+        if (!ls(ck) && typeof window.hbLaunchCelebration === 'function') {
+          ls(ck, '1');
+          window.hbLaunchCelebration('🎁 Gift for APEX!');
+        }
+      }
       if (!['hummingbird', 'apex', 'hb'].includes(sender)) return;
       upgradeLightTicks(body);
       const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
@@ -786,6 +799,47 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
       });
     });
   }
+
+  // ── Flying Hummingbirds & Flowers celebration overlay (rare gifts & major milestones!) ──
+  window.hbLaunchCelebration = function (bannerText) {
+    if (typeof document === 'undefined') return 0;
+    let layer = document.getElementById('hb-celebrate-layer');
+    if (layer) layer.remove();
+    layer = document.createElement('div');
+    layer.id = 'hb-celebrate-layer';
+    document.body.appendChild(layer);
+    const birdSvg = '<svg viewBox="0 0 48 36" width="44" height="34" fill="none" aria-hidden="true"><defs><linearGradient id="hbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10e8a4"/><stop offset="55%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#ffb84d"/></linearGradient></defs><path d="M8 22 C16 14, 24 12, 34 15 L46 13 L35 18 C31 24, 22 28, 12 27 Z" fill="url(#hbg)"/><path d="M16 16 C12 4, 22 2, 27 13 Z" fill="#f472b6" opacity="0.9"/><path d="M19 18 C17 7, 26 6, 29 15 Z" fill="#10e8a4" opacity="0.85"/><circle cx="33" cy="15.5" r="1.4" fill="#090e12"/></svg>';
+    for (let i = 0; i < 6; i += 1) {
+      const bird = document.createElement('div');
+      bird.className = 'hb-flyer';
+      bird.innerHTML = birdSvg;
+      bird.style.setProperty('--sy', (16 + i * 11) + 'vh');
+      bird.style.setProperty('--dur', (3.6 + (i % 3) * 0.65) + 's');
+      bird.style.animationDelay = (i * 0.28) + 's';
+      layer.appendChild(bird);
+    }
+    const blooms = ['🌺', '🌸', '🌼', '🌻', '✨', '🍯'];
+    for (let j = 0; j < 22; j += 1) {
+      const p = document.createElement('div');
+      p.className = 'hb-petal';
+      p.textContent = blooms[j % blooms.length];
+      p.style.fontSize = (18 + (j % 4) * 5) + 'px';
+      p.style.setProperty('--sx', (4 + ((j * 17) % 90)) + 'vw');
+      p.style.setProperty('--drift', ((j % 2 ? 1 : -1) * (8 + (j % 5) * 4)) + 'vw');
+      p.style.setProperty('--spin', ((j % 2 ? 1 : -1) * (180 + j * 15)) + 'deg');
+      p.style.setProperty('--dur', (3.8 + (j % 4) * 0.55) + 's');
+      p.style.animationDelay = ((j % 7) * 0.22) + 's';
+      layer.appendChild(p);
+    }
+    if (bannerText) {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;top:22px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:999px;border:1px solid rgba(255,184,77,.65);background:linear-gradient(135deg,rgba(16,232,164,.24),rgba(244,114,182,.22),rgba(14,22,28,.92));backdrop-filter:blur(18px);color:#edf7f3;font-weight:700;font-size:13px;box-shadow:0 12px 36px rgba(0,0,0,.45);';
+      toast.textContent = '🌺 ' + bannerText + ' 🌻';
+      layer.appendChild(toast);
+    }
+    setTimeout(() => { if (layer.parentNode) layer.remove(); }, 6200);
+    return 28;
+  };
 
   // ── HB Live L4a: controls in the Tasks window, through HB's own routes (/hb/queue task, clip, switch) ──
   function controlsFor(i) {
