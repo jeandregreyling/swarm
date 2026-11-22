@@ -468,7 +468,7 @@ def test_peer_api_reads_assigned_studio_step_and_records_audit(api, enrolled, mo
     payload['arguments'] = {'step_id': other}
     response = client.post('/api/agent/v1/tools', headers=headers('apex'), json=payload)
     other_out = json.loads(response.get_json()['output'])
-    assert other_out['status'] == 'found' and other_out['assigned_to_apex'] is False and other_out['read_only'] is True
+    assert other_out['status'] == 'found' and other_out['assigned_to_apex'] is False and other_out['read_only'] is False and other_out['writable'] is True
     payload['arguments'] = {'step_id': step, 'unexpected': True}
     response = client.post('/api/agent/v1/tools', headers=headers('apex'), json=payload)
     assert response.status_code == 400 and 'only step_id' in response.get_json()['error']

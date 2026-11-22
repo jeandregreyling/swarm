@@ -289,6 +289,28 @@ def write(conn, task, model=call_model):
 # Now those get a task so homework can card them, two at a time; a READY card (concrete goal and check) hands the step to APEX with the
 # spec written into it. JD's own steps and steps that were carded before are left alone.
 BACKLOG_OWNERS = ('claude-code',)
+
+
+def update_step(conn, step_id, *, owner=None, status=None, note=None, actor='shakira'):
+    """Full read/write Studio access for Shakira (BA) on any step regardless of current owner."""
+    if not isinstance(step_id, str) or not re.fullmatch(r'S-[0-9A-F]{10}', step_id):
+        raise ValueError('step_id must look like S- followed by 10 uppercase hex characters')
+    row = conn.execute('SELECT project_id, status, owner, description FROM project_steps WHERE step_id=?', (step_id,)).fetchone()
+    if not row:
+        raise ValueError('Unknown Studio step')
+    new_status = status if status is not None else row[1]
+    if new_status not in {'todo', 'doing', 'blocked', 'partial', 'done', 'skipped'}:
+        raise ValueError('Invalid Studio step status')
+    new_owner = str(owner).strip().lower() if owner is not None else row[2]
+    if owner is not None and not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', new_owner):
+        raise ValueError('Invalid owner name')
+    desc = row[3] or ''
+    if note and str(note).strip():
+        stamp = time.strftime('%d %b %H:%M')
+        desc = (desc.rstrip() + '\n\n' if desc.strip() else '') + f'[{actor} {stamp}] {str(note).strip()[:1000]}'
+    conn.execute('UPDATE project_steps SET status=?, owner=?, description=?, updated_at=? WHERE step_id=?',
+                 (new_status, new_owner, desc, time.time(), step_id))
+    return {'ok': True, 'project_id': row[0], 'step_id': step_id, 'status': new_status, 'owner': new_owner}
 _SKIP = {}            # Practice 115: step_id -> when binding its homework task failed; skipped for SKIP_S
 SKIP_S = 3600
 

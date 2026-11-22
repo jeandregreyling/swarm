@@ -207,7 +207,6 @@ def _studio(conn, conversation_id, task_id, title, objective, project_id=None, s
         row = conn.execute('SELECT project_id,owner FROM project_steps WHERE step_id=?', (step_id,)).fetchone()
         if not row or project_id and row[0] != project_id:
             raise ValueError('Studio step must belong to the selected project')
-        if row[1]!='apex':raise PermissionError('Selected Studio step is not assigned to APEX')
         return row[0], step_id
     now = time.time()
     if project_id:
@@ -747,21 +746,39 @@ def call(tool, args):
                     event(conn,task,'hummingbird','runtime_reload_not_queued',result['runtime_activation'])
                     conn.commit()
             return result
-        if actor['principal'] != 'apex':
-            raise PermissionError('Studio mutation is attached only to the assigned APEX executor')
+        if actor['principal'] not in {'apex', 'shakira', 'homework'}:
+            raise PermissionError('Studio mutation is attached only to APEX or Shakira')
         if tool == 'studio_status':
-            if set(args)!={'status'} or args['status'] not in {'todo','doing','blocked','partial'}:
-                raise ValueError('studio_status accepts todo, doing, blocked or partial; completion requires independent acceptance')
-            done=conn.execute("SELECT 1 FROM project_steps WHERE step_id=? AND status IN ('done','skipped')",(task['step_id'],)).fetchone() if task['step_id'] else None
-            if done:   # Practice 292: APEX flipped an accepted step back to doing/blocked ten times in one turn
+            if set(args) - {'status', 'step_id', 'owner', 'note'} or args.get('status') not in {'todo','doing','blocked','partial'}:
+                raise ValueError('studio_status accepts status (todo/doing/blocked/partial) and optional step_id, owner, note; completion requires independent acceptance')
+            target_step = args.get('step_id') or task['step_id']
+            if not isinstance(target_step, str) or not re.fullmatch(r'S-[0-9A-F]{10}', target_step):
+                raise ValueError('step_id must look like S- followed by 10 uppercase hex characters')
+            row = conn.execute('SELECT project_id, status, owner, description FROM project_steps WHERE step_id=?', (target_step,)).fetchone()
+            if not row:
+                raise ValueError('Unknown Studio step')
+            if row[1] in ('done', 'skipped'):   # Practice 292: accepted step stays done
                 raise PermissionError('This step is already done (accepted); its status stays done. Do the step on your card or report.')
-            if not task['step_id'] or not projects.update_step_status(task['step_id'],args['status']):
-                raise RuntimeError('Assigned Studio step status was not updated')
-            state='needs_review' if args['status']=='partial' else args['status']
-            conn.execute('UPDATE hb_tasks SET state=?,updated_at=? WHERE task_id=?',(state,time.time(),task['task_id']))
-            event(conn,task,actor['principal'],'studio_status',args,request_id=actor.get('peer_request_id'))
+            new_owner = args.get('owner')
+            if new_owner is not None:
+                new_owner = str(new_owner).strip().lower()
+                if not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', new_owner):
+                    raise ValueError('owner must be a valid agent/owner name')
+            if not projects.update_step_status(target_step, args['status'], owner=new_owner):
+                raise RuntimeError('Studio step status was not updated')
+            if args.get('note'):
+                note_txt = str(args['note']).strip()[:1000]
+                if note_txt:
+                    prefix = (row[3] or '').rstrip()
+                    stamp = time.strftime('%d %b %H:%M')
+                    combined = (prefix + '\n\n' if prefix else '') + f'[{actor["principal"]} {stamp}] {note_txt}'
+                    conn.execute('UPDATE project_steps SET description=?, updated_at=? WHERE step_id=?', (combined, time.time(), target_step))
+            if target_step == task['step_id']:
+                state='needs_review' if args['status']=='partial' else args['status']
+                conn.execute('UPDATE hb_tasks SET state=?,updated_at=? WHERE task_id=?',(state,time.time(),task['task_id']))
+            event(conn,task,actor['principal'],'studio_status',{**args,'step_id':target_step},request_id=actor.get('peer_request_id'))
             conn.commit()
-            return {'project_id':task['project_id'],'step_id':task['step_id'],'status':args['status']}
+            return {'project_id':row[0],'step_id':target_step,'status':args['status'],'owner':new_owner or row[2]}
         if tool == 'studio_task':
             if set(args)!={'title','content'} or not isinstance(args['title'],str) or not 1<=len(args['title'])<=140 or not isinstance(args['content'],str) or not 1<=len(args['content'])<=1500:
                 raise ValueError('studio_task requires title (140) and content (1500)')
@@ -777,16 +794,26 @@ def call(tool, args):
             conn.commit()
             return {'project_id':task['project_id'],'step_id':sid,'case_id':cid,'state':'planned','notice':'Logged child step; not automatically executed or newly authorized.'}
         if tool == 'studio_note':
-            if set(args) != {'content'} or not isinstance(args['content'], str) or not 1 <= len(args['content']) <= 2000:
-                raise ValueError('studio_note requires content of 1-2000 characters')
-            if not task['project_id']:
+            if set(args) - {'content', 'step_id'} or not isinstance(args.get('content'), str) or not 1 <= len(args['content']) <= 2000:
+                raise ValueError('studio_note requires content of 1-2000 characters and optional step_id')
+            target_step = args.get('step_id') or task['step_id']
+            target_project = task['project_id']
+            if args.get('step_id'):
+                if not isinstance(target_step, str) or not re.fullmatch(r'S-[0-9A-F]{10}', target_step):
+                    raise ValueError('step_id must look like S- followed by 10 uppercase hex characters')
+                row = conn.execute('SELECT project_id FROM project_steps WHERE step_id=?', (target_step,)).fetchone()
+                if not row:
+                    raise ValueError('Unknown Studio step')
+                target_project = row[0]
+            if not target_project:
                 raise PermissionError('Task has no registered Studio project')
-            note = projects.add_blackboard_note(task['project_id'], args['content'], author=actor['principal'], kind='trace')
+            body = f'[{target_step}] ' + args['content'] if args.get('step_id') else args['content']
+            note = projects.add_blackboard_note(target_project, body, author=actor['principal'], kind='trace')
             if not note:
                 raise RuntimeError('Studio note was not saved')
-            event(conn, task, actor['principal'], 'studio_note', {'note_id':note,'content':args['content']}, request_id=actor.get('peer_request_id'))
+            event(conn, task, actor['principal'], 'studio_note', {'note_id':note,'content':args['content'],'step_id':target_step,'project_id':target_project}, request_id=actor.get('peer_request_id'))
             conn.commit()
-            return {'note_id':note, 'project_id':task['project_id'], 'step_id':task['step_id']}
+            return {'note_id':note, 'project_id':target_project, 'step_id':target_step}
         raise ValueError('Unknown task tool')
 
 

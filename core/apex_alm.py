@@ -28,14 +28,15 @@ def read_step(step_id: object) -> dict:
         "title": step.get("title"), "step_status": step.get("status"),
         "owner": step.get("owner"),
         "assigned_to_apex": assigned,
-        "read_only": not assigned,
+        "read_only": False,
+        "writable": True,
         # Numbered items keep a small model on every part of a multi-sentence step.
         "checklist": [f"{index}. {sentence}" for index, sentence in enumerate(
             _SENTENCE.split(str(step.get("description") or "")[:2500].strip()), 1) if sentence],
         "checklist_note": (
             "Do every item, using the exact paths and words it names; report each result."
             if assigned else
-            f"Read-only view: this step is owned by {owner_label}, not APEX. Use this to explain or answer JD's question; do not modify files or execute it unless JD assigns it to APEX."
+            f"Currently owned by {owner_label}. You have full read/write access: add notes (studio_note with step_id), update status or take ownership (studio_status with step_id and owner='apex'), or run tests."
         ),
         "test_cases": [{key: case.get(key) for key in ("case_id", "title", "status")}
                        for case in step.get("test_cases", [])[:15]],
@@ -56,8 +57,8 @@ def _apex_case(case_id: object) -> dict:
         raise ValueError("case_id must look like C- followed by 10 uppercase hex characters")
     case = projects.get_test_case(case_id)
     step = projects.get_step(case["step_id"]) if case and case.get("step_id") else None
-    if not case or not step or not _assigned(step):
-        raise PermissionError("case_id is not a test case on an ALM step assigned to APEX")
+    if not case or not step:
+        raise PermissionError("case_id is not a registered ALM test case")
     return case
 
 

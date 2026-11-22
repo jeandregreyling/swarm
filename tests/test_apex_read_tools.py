@@ -456,8 +456,8 @@ def test_transport_schema_restricts_arguments_to_each_tool():
     "hb_custom_tool":(["action","name","payload"],["action"]),
     "git_clear_stale_lock":([],[]),
 
-        "studio_note":(["content"],["content"]),
-        "studio_status":(["status"],["status"]),
+        "studio_note":(["content", "step_id"],["content"]),
+        "studio_status":(["status", "step_id", "owner", "note"],["status"]),
         "studio_task":(["title","content"],["title","content"]),
         "reference_lookup":(["query","allow_online"],["query"]),
         "reference_import":(["kind","repo","revision","path"],["kind","repo","revision","path"]),

@@ -31,8 +31,9 @@ def test_alm_read_step_shows_non_apex_steps_read_only(isolated_studio):
     assert res["title"] == "Online providers: Gemini, Codex, others"
     assert res["owner"] == "jd"
     assert res["assigned_to_apex"] is False
-    assert res["read_only"] is True
-    assert "Read-only view" in res["checklist_note"]
+    assert res["read_only"] is False
+    assert res["writable"] is True
+    assert "full read/write access" in res["checklist_note"]
 
 
 def test_doer_ok_still_rejects_next_step_promise_after_studio_task_only():

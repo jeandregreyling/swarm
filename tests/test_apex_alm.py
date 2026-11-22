@@ -37,10 +37,10 @@ def test_read_step_returns_apex_assignment_with_cases(alm):
     assert [case["case_id"] for case in result["test_cases"]] == [alm["case"]]
 
 
-def test_read_step_exposes_non_apex_steps_as_read_only(alm):
+def test_read_step_exposes_non_apex_steps_as_writable(alm):
     result = apex_alm.read_step(alm["other"])
-    assert result["status"] == "found" and result["assigned_to_apex"] is False and result["read_only"] is True
-    assert "title" in result and "Read-only view" in result["checklist_note"]
+    assert result["status"] == "found" and result["assigned_to_apex"] is False and result["read_only"] is False and result["writable"] is True
+    assert "title" in result and "full read/write access" in result["checklist_note"]
     assert apex_alm.read_step("S-0000000000")["status"] == "not_found"
 
 
@@ -125,10 +125,10 @@ def test_case_title_used_as_keyword_is_refused_with_the_fix_and_creates_no_run(a
     assert alm["runs"].list_runs(case_id=case_a) == []
 
 
-def test_cases_outside_apex_steps_and_bad_args_create_no_run(alm):
+def test_unknown_case_and_bad_args_create_no_run(alm):
     calls = []
     with pytest.raises(PermissionError, match="NOT RUN: no pytest started"):
-        apex_alm.run_recorded_tests({"tests": ["tests/test_x.py"], "case_id": alm["other_case"]},
+        apex_alm.run_recorded_tests({"tests": ["tests/test_x.py"], "case_id": "C-0000000000"},
                                     calls.append, validate=accept)
     with pytest.raises(ValueError, match="NOT RUN: no pytest started"):
         apex_alm.run_recorded_tests({"tests": ["tests/test_x.py"], "case_id": "C-1"},
