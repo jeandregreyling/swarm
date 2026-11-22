@@ -84,7 +84,8 @@ def test_main_chat_scroll_is_contained_and_has_a_jump_to_latest_arrow():
     js = (root / 'js' / 'views' / 'home-chat.js').read_text()
     block = css[css.index('#home-chat-messages {'):]
     assert 'overscroll-behavior: contain' in block[:block.index('}')]
-    assert '#hc-jump-bottom.show' in css and '_hcInitJumpButton();' in js and "list.scrollTo({ top: list.scrollHeight" in js
+    live = (root / 'js' / 'hb-live.js').read_text()
+    assert "b.id = 'hb-scroll-bottom'" in live and "list.scrollTo({ top: list.scrollHeight" in live
 
 
 ROOT_STATIC = __import__('pathlib').Path(__file__).resolve().parents[1] / 'frontend' / 'static'
@@ -206,3 +207,49 @@ def _run_older_loader_in_node(js):
         "}, 50);\n")
     result = subprocess.run([node, '-e', harness], capture_output=True, text=True, timeout=20)
     assert result.returncode == 0 and 'ok' in result.stdout, (result.stdout + result.stderr)[-500:]
+
+
+
+def test_only_the_new_scroll_control_is_created_and_follow_still_toggles():
+    import shutil
+    import subprocess
+    import pytest
+
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('node is not installed')
+    home = (ROOT_STATIC / 'js/views/home-chat.js').read_text()
+    init = home[home.index('window.initHomeChat = function'):home.index('// ── Session 28')]
+    assert '_hcInitJumpButton();' not in init
+    live = (ROOT_STATIC / 'js/hb-live.js').read_text()
+    fn = live[live.index('  function scrollButton()'):live.index('  function pane()')]
+    harness = r"""
+const assert = require('assert');
+const elements = new Map(), events = {}, storage = new Map(), S = {};
+let retired = false, created = 0;
+elements.set('hc-jump-bottom', {remove() {retired = true; elements.delete('hc-jump-bottom');}});
+const list = {scrollHeight: 1000, scrollTop: 0, clientHeight: 100, offsetParent: {},
+  getBoundingClientRect: () => ({right: 500, bottom: 400}),
+  addEventListener() {}, scrollTo(options) {this.scrollTop = options.top;}};
+const document = {body: {appendChild(b) {elements.set(b.id, b); created++;}},
+  getElementById: id => id === 'home-chat-messages' ? list : elements.get(id),
+  createElement: () => ({style: {}, classList: {toggle() {}},
+    addEventListener(kind, fn) {events[kind] = fn;}})};
+const root = {addEventListener() {}, MutationObserver: class {observe() {}}};
+const MutationObserver = root.MutationObserver;
+const ls = (key, value) => value === undefined ? storage.get(key) : storage.set(key, value);
+const setInterval = () => 0, setTimeout = fn => fn();
+"""
+    assertions = """
+scrollButton(); scrollButton();
+assert.equal(retired, true);
+assert.equal(elements.has('hc-jump-bottom'), false);
+assert.equal(created, 1);
+assert.equal(elements.has('hb-scroll-bottom'), true);
+events.click(); assert.equal(list.scrollTop, 1000);
+events.dblclick(); assert.equal(S.follow, true); assert.equal(storage.get('hbLive.follow'), '1');
+events.dblclick(); assert.equal(S.follow, false); assert.equal(storage.get('hbLive.follow'), '0');
+"""
+    run = subprocess.run([node, '-e', harness + fn + assertions],
+                         capture_output=True, text=True, timeout=20)
+    assert run.returncode == 0, run.stderr[-1000:]

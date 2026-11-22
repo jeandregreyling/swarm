@@ -194,7 +194,6 @@
 
   window.initHomeChat = function () {
     _hcEnsureChatFirst();
-    _hcInitJumpButton();
     _hcInitOlderLoader();
     if (_hcInitialized) {
       _hcLoadThreadsListOnly();
@@ -1852,8 +1851,6 @@
     if (!body) return;
 
     const hist = _hcJobHistory[job.job_id] || [];
-    const progressPct = Math.min(4 + hist.length * 7, 88);
-
     const doneItems = hist.slice(0, -1).map(s =>
       `<div class="hc-think-item done"><span class="hc-think-done">✓</span><span class="hc-think-text">${_hcEsc(s)}</span></div>`
     ).join('');
@@ -1862,8 +1859,7 @@
       : `<div class="hc-think-item current"><span class="hc-think-bird" aria-hidden="true"><svg viewBox="0 0 32 32" width="16" height="16"><path class="hb-beak" d="M2 13.5 L11 15" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="13" cy="15" r="3" fill="currentColor"/><ellipse cx="19" cy="18" rx="6" ry="3.4" fill="currentColor" transform="rotate(22 19 18)"/><path d="M23.5 21 L30 27 L26.5 21.5 L31 22.5 Z" fill="currentColor"/><path class="hb-wing" d="M17 16 Q21 4 28 6 Q23 12 19 17 Z" fill="currentColor" opacity=".8"/></svg></span><span class="hc-think-text">initializing…</span></div>`;
 
     body.innerHTML =
-      `<div class="hc-think-checklist">${doneItems}${currentItem}</div>` +
-      `<div class="hc-think-progress"><div class="hc-think-progress-fill" style="width:${progressPct}%"></div></div>`;
+      `<div class="hc-think-checklist">${doneItems}${currentItem}</div>`;
   }
 
   // ── Pending jobs (SSE-driven; no timer loop) ─────────────────────────────

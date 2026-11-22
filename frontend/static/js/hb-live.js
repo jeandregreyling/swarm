@@ -506,6 +506,7 @@ body.hb-live-on #hb-now,body.hb-live-on #hb-live-activity,body.hb-live-on #hb-cl
   // instantly scroll back to the bottom ... if I double click it, it automatically stays tracking the bottom"): click = jump to the latest
   // message; double click = follow mode on/off (the button glows and the chat keeps to the bottom until you scroll up).
   function scrollButton() {
+    document.getElementById('hc-jump-bottom')?.remove();
     const list = document.getElementById('home-chat-messages');
     if (!list || !document.body || !document.createElement || document.getElementById('hb-scroll-bottom')) return;
     const b = document.createElement('button');
