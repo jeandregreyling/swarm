@@ -41,6 +41,7 @@ COMMANDS = [
     ('agents', '/agents [onboard-local | onboard <id> <profile> <about> | examine <id|@handle> | handles <id> <h1,h2> | retire <id> | model <id> <model>]', 'Onboarded HB agents (own memory, KC page, tools); onboard-local makes every benchmarked local model an agent', False),
     ('bench', '/bench [all|model name|status]', 'Benchmark the local models: GPU fit and programmer / researcher / social / useless (results in main chat and Studio)', False),
     ('merits', '/merits', "How each agent is doing: checked successes, fixes for others, tags and badges", False),
+    ('nectar', '/nectar', "Show APEX's Flower & Nectar wallet balance and spend menu (QA review, online assist, commission tool)", False),
     ('downloads', '/downloads', 'Big downloads HB is tracking: progress, connection, Studio step', False),
     ('audit', '/audit [on|off]', 'HB\'s file audit: the reviewer model goes through the interface files (Practice 114)', False),
     ('tidy', '/tidy [yes]', 'Close chat lines HB wrongly made into tasks (remarks, go-aheads); lists them first', False),
@@ -144,6 +145,8 @@ def parse(body):
         return ('audit', words[1:2])
     if cmd == 'merits':
         return ('merits', [])
+    if cmd == 'nectar':
+        return ('nectar', [])
     if cmd == 'bench':
         return ('bench', words[1:])
     if cmd == 'agents':
@@ -1032,6 +1035,9 @@ def run(conn, conversation_id, command, args, actor, after=None):
     if command == 'merits':
         from core import hb_merits
         return hb_merits.status_text(conn)
+    if command == 'nectar':
+        from core import hb_nectar
+        return hb_nectar.summary_text(conn, 'APEX')
     if command == 'audit':
         from core import hb_file_audit
         return hb_file_audit.command(conn, args)

@@ -103,7 +103,15 @@ def on_accept(conn, step_id, task_ids, title):
             from core.hb_plain import name
             from core.hb_live import _real_model   # Practice 208: the real model, not APEX's port stand-in name
             who = ' and '.join(f"{r} ({_real_model(m)})" if m else r for r, m, _ in people)
-            lines.append(f"🌺 HB gives {who} a flower: {name(title)} is done and its check passed. (+{POINTS['success']} {cat})")
+            nectar_tail = ''
+            try:
+                from core import hb_nectar
+                mut_count = conn.execute("SELECT COUNT(*) FROM hb_task_events WHERE task_id=? AND kind='mutation'", (tid,)).fetchone()[0] or 1
+                earned = hb_nectar.earn_flower(conn, people[0][0], step_id, files_count=int(mut_count), title=title)
+                nectar_tail = f" · 🍯 +{earned['nectar']} Nectar ({earned['emoji']} {earned['label']}; wallet {earned['balance']})"
+            except Exception:
+                pass
+            lines.append(f"🌺 HB gives {who} a flower: {name(title)} is done and its check passed. (+{POINTS['success']} {cat}){nectar_tail}")
     return [_post(conn, line) for line in lines]
 
 
