@@ -873,15 +873,17 @@ STEP_READ_ERROR = (
 )
 FINAL_ANSWER_NOTICE = (
     "BACKEND CONTEXT LIMIT: the context window is full, so no further tool can run this turn. "
-    'Return your final answer now as {"tool_calls":[],"answer":"..."} using only the receipts '
-    "above: report each result with its receipt id or alm_run_id, and name any part of the task "
-    "left unfinished."
+    'Return your final answer now as {"tool_calls":[],"answer":"..."} answering the operator\'s '
+    "original question directly. Never end with 'I will ...' or promise future reads. For tool/code "
+    "work, report each receipt id or alm_run_id and name any unfinished part; for a general concept "
+    "question where searched notes were unrelated, answer the concept plainly instead of narrating unrelated notes."
 )
 ROUND_LIMIT_NOTICE = (
     "BACKEND ROUND LIMIT: this turn has used all its tool rounds, so no further tool can run. "
-    'Return your final answer now as {"tool_calls":[],"answer":"..."} using only the receipts '
-    "above: report each result with its receipt id or alm_run_id, and name any part of the task "
-    "left unfinished."
+    'Return your final answer now as {"tool_calls":[],"answer":"..."} answering the operator\'s '
+    "original question directly. Never end with 'I will ...' or promise future reads. For tool/code "
+    "work, report each receipt id or alm_run_id and name any unfinished part; for a general concept "
+    "question where searched notes were unrelated, answer the concept plainly instead of narrating unrelated notes."
 )
 TIME_LIMIT_NOTICE = ROUND_LIMIT_NOTICE.replace(
     "BACKEND ROUND LIMIT: this turn has used all its tool rounds",
@@ -982,10 +984,17 @@ def repeats_earlier(answer: str, messages: list[dict]) -> bool:
 
 # Practice 262 (JD 22 Nov 00:1x: "make APEX a predator who always DOES the DREAM ... he should say 'I've done this, is it working?'
 # not 'I can possibly maybe do fuckall'"). An offer, promise or question back, with no action receipt this turn, is not delivered.
-DOER_OFFER = re.compile(r"\b(?:I can(?: start| do| proceed| create| run| implement| help)?|I(?:'| a)?ll (?:start|do|proceed|create|run|implement|now)|"
-                        r"I will (?:start|do|proceed|create|run|implement|now)|let me know|please (?:provide|attach|grant|confirm|tell)|"
+DOER_OFFER = re.compile(r"\b(?:I can(?: start| do| proceed| create| run| implement| help)?|I(?:'| a)?ll (?:start|do|proceed|create|run|implement|now|read|check|search|look|investigate|fetch|review)|"
+                        r"I will (?:start|do|proceed|create|run|implement|now|read|check|search|look|investigate|fetch|review)|let me know|please (?:provide|attach|grant|confirm|tell)|"
                         r"would you like|if you (?:want|need|can|provide|grant)|I(?:'m| am) ready|shall I|do you want|I need (?:you|either|the|a|permission)|"
                         r"I don'?t have (?:permission|access)|tell me (?:which|what|the exact)|next step(?: would be| is to)|I'?m here to help)\b", re.I)
+DOER_CLOSING_NOTICE = (
+    "HB ACTION CHECK: your answer was not delivered because it ended with a promise of future action "
+    "('I will ...') when no more tools can run this turn. Answer the operator's original question "
+    "directly now: {question!r}. Never write 'I will ...' or promise future reads or steps. If the "
+    "Knowledge Centre notes searched did not directly cover a general concept, explain the concept "
+    "plainly and state briefly that KC had no direct note on it instead of narrating unrelated SAP Notes."
+)
 DOER_ACTIONS = {'propose_patch', 'propose_write_file', 'run_tests', 'change_set', 'hb_tasks', 'studio_note', 'studio_task',
                 'terminal_run', 'task_plan', 'memory_save', 'apex_dispatch', 'ask_instructor', 'studio_status',
                 'hb_restart', 'hb_service', 'gpu_profile', 'hb_media_download', 'hb_custom_tool'}
@@ -2396,11 +2405,12 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
             working.append({'role': 'user', 'content': 'HB ACTION CHECK: listing tasks did not satisfy the request to start work. Choose an eligible ID from the latest work list and inspect its context; continue an eligible task when appropriate. Respect paused controls and pending owner review. Report an actual action or a specific verified blocker; do not claim queued work is complete.'})
             return None
         delivered = _grounded(answer, can_retry, can_fix)
-        if delivered is not None and can_retry and doer_retry_used < 2 and not doer_ok(answer, receipts):   # Practice 262
+        if delivered is not None and (can_retry or can_fix) and doer_retry_used < 2 and not doer_ok(answer, receipts):   # Practice 262
             doer_retry_used += 1
-            say_step('HB doer check sent the answer back: an offer or question, nothing done yet')
+            say_step('HB doer check sent the answer back: an offer or promise, nothing done yet')
             working.append({"role": "assistant", "content": answer, "rejected_answer": True})
-            working.append({"role": "user", "content": DOER_NOTICE})
+            notice = DOER_CLOSING_NOTICE.format(question=latest_user[:300]) if final_answer else DOER_NOTICE
+            working.append({"role": "user", "content": notice})
             return None
         if delivered is not None and can_retry and not dump_retry_used and pasted_output(answer, receipts, latest_user):   # Practice 272
             dump_retry_used = 1
@@ -2462,7 +2472,7 @@ def _run_apex_tools(call_model, messages: list[dict], authorize, emit_receipt,
                 final_reason = 'three rounds in a row without progress'
                 say_step('HB stopped the rounds: 3 in a row without a change, a check or anything new read')
                 working.append({"role": "user", "content": STALL_NOTICE})
-        if round_index == MAX_ROUNDS + 1 and not run_report_retry_used:
+        if round_index == MAX_ROUNDS + 1 and not (run_report_retry_used or doer_retry_used):
             break
         if round_index == MAX_ROUNDS and not final_answer:
             if no_tools or not receipts:
