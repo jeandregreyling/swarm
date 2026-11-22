@@ -1,0 +1,202 @@
+/* Liquid-Glass Serato-Inspired Dual-Deck DAW & YouTube Visualizer Console */
+.serato-studio-shell {
+  margin: 10px 0 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(10, 18, 30, 0.84), rgba(16, 28, 42, 0.78));
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  backdrop-filter: blur(18px) saturate(165%);
+  -webkit-backdrop-filter: blur(18px) saturate(165%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 32px rgba(0, 0, 0, 0.36);
+  color: #e6f4ff;
+}
+.serato-studio-shell.is-collapsed .serato-body { display: none; }
+.serato-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.serato-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.serato-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(16, 232, 164, 0.16);
+  border: 1px solid rgba(16, 232, 164, 0.45);
+  color: #6ef7c8;
+  font-weight: 600;
+}
+.serato-upload-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.serato-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #edf7ff;
+  border-radius: 9px;
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.12s ease;
+}
+.serato-btn:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.55);
+  transform: translateY(-1px);
+}
+.serato-btn-emerald {
+  background: linear-gradient(135deg, rgba(16, 232, 164, 0.24), rgba(16, 185, 129, 0.16));
+  border-color: rgba(16, 232, 164, 0.55);
+  color: #b7ffea;
+}
+.serato-btn-gold {
+  background: linear-gradient(135deg, rgba(255, 184, 77, 0.24), rgba(245, 158, 11, 0.16));
+  border-color: rgba(255, 184, 77, 0.55);
+  color: #fff0cc;
+}
+.serato-decks-grid {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) minmax(210px, 260px) minmax(250px, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+@media (max-width: 1100px) {
+  .serato-decks-grid { grid-template-columns: 1fr; }
+}
+.serato-deck {
+  padding: 12px;
+  border-radius: 13px;
+  background: rgba(7, 14, 24, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.serato-deck[data-deck="A"] { border-top: 2px solid #10e8a4; }
+.serato-deck[data-deck="B"] { border-top: 2px solid #38bdf8; }
+.serato-deck-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.serato-deck-title {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.serato-bpm-pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fde68a;
+}
+.serato-wave-canvas {
+  width: 100%;
+  height: 74px;
+  border-radius: 9px;
+  background: rgba(4, 8, 15, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  display: block;
+}
+.serato-cues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.serato-cue-pad {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+  cursor: pointer;
+}
+.serato-controls-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  font-size: 10px;
+  color: #9fb8cc;
+}
+.serato-controls-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.serato-controls-row input[type="range"],
+.serato-mixer input[type="range"] {
+  width: 100%;
+  accent-color: #10e8a4;
+}
+.serato-mixer {
+  padding: 12px;
+  border-radius: 13px;
+  background: rgba(12, 18, 30, 0.78);
+  border: 1px solid rgba(192, 132, 252, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+}
+.serato-crate {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
+.serato-crate-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+  max-height: 170px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+.serato-crate-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  font-size: 11px;
+}
+.serato-video-preview {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(6, 12, 22, 0.85);
+  border: 1px solid rgba(16, 232, 164, 0.35);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.serato-video-preview video {
+  max-width: 320px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}

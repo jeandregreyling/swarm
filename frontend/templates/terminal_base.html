@@ -109,6 +109,7 @@
 <link rel="stylesheet" href="/static/css/views/agents.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/views/localai.css?v=2">
 <link rel="stylesheet" href="/static/css/views/media-center.css?v=6">
+<link rel="stylesheet" href="/static/css/views/media-serato.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/views/downloads.css?v={{ ASSET_VERSION }}">
 <link rel="stylesheet" href="/static/css/responsive.css">
 <link rel="stylesheet" href="/static/css/home-chat.css?v={{ ASSET_VERSION }}">
@@ -2721,6 +2722,7 @@
 
     <section class="media-transport-bar" id="media-center-transport">
       <button class="media-action-btn media-action-btn-primary" onclick="mediaCenterMakePreview()">Make playable preview</button>
+      <button class="media-action-btn" onclick="window.seratoToggleStudio && window.seratoToggleStudio()">🎛️ Serato Decks</button>
       <button class="media-action-btn" onclick="mediaCenterOpenResearch('references')">Add song or clip</button>
       <button class="media-action-btn" onclick="mediaCenterSetBottomTab('queue')">Play outputs</button>
       <button class="media-action-btn" onclick="mediaCenterQueueSelected('generate-audio')">Queue audio only</button>
@@ -2728,6 +2730,8 @@
       <button class="media-action-btn" onclick="mediaCenterOpenReviewPlan()">Studio trail</button>
       <button class="media-action-btn" onclick="mediaCenterOpenResearch('routing')">Advanced routing</button>
     </section>
+
+    <section id="media-serato-studio" class="serato-studio-shell"></section>
 
     <div class="media-editor-shell" id="media-center-grid">
       <aside class="media-left-dock media-sidebar">
@@ -3356,6 +3360,7 @@
 <script src="/static/js/views/money-hub.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/localai.js?v={{ ASSET_VERSION }}-seven-first1"></script>
 <script src="/static/js/views/media-center.js?v={{ ASSET_VERSION }}"></script>
+<script src="/static/js/views/media-serato-decks.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/trace.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/onboarding.js?v={{ ASSET_VERSION }}"></script>
 <script src="/static/js/views/diamond.js?v={{ ASSET_VERSION }}"></script>
