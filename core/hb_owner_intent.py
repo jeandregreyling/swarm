@@ -103,11 +103,17 @@ def operating_feedback(text):
                 and not _ACTION.search(body) and _OPERATING_DIRECTIVE.search(body))
 
 
+_NOISE_CMD = re.compile(r"^/(?:yes|no|permissions\b|hb\s+send\s+a\s+flower\b)", re.I)
+_NOISE_VENT = re.compile(r"\b(?:stop making excuses|just do it|fix everything|ask online models how to fi[cx] the system)\b", re.I)
+
+
 def classify(text):
     """'drive', 'remark', 'agents' (onboard @X: HB answers) or None (a real request: a new task)."""
     body = _FILLER.sub('', str(text or '')).strip()
-    if not body or body.startswith('/'):
+    if not body:
         return None
+    if body.startswith('/'):
+        return 'remark' if _NOISE_CMD.match(body) else None
     if _ONBOARD.search(body) and [h for h in _HANDLE.findall(body) if h.lower() not in ('apex', 'hb', 'hummingbird')]:
         return 'agents'                                  # 14 Nov: "onboard @X" is HB's job (core/hb_agents.onboard_request), not a task
     words = len(body.split())
@@ -119,7 +125,7 @@ def classify(text):
         return 'drive'
     if operating_feedback(body):
         return 'remark'
-    if _SELF.search(body) or _FEELING.search(body):
+    if _SELF.search(body) or _FEELING.search(body) or _NOISE_VENT.search(body):
         return 'remark'
     if _GO.search(body) and not _ACTION.search(body):
         return 'drive'                                   # "all clear, now you can go ahead" (but "go ahead and fix X" is work)
@@ -168,7 +174,7 @@ def card(conn, task, kind=None):
     who = {'user': 'JD', 'ghost': 'JD'}.get(latest[1], latest[1]) if latest else 'JD'
     kind = kind or classify(said) or 'remark'
     status = hb_queue.summary(conn, task['conversation_id'])
-    lines = [f"DREAM CLIPBOARD for {task['task_id']} (held by HB; reference, not new permission):"]
+    lines = ['DREAM CLIPBOARD for this conversation (reference, not a work task or new permission):']
     if latest:
         lines.append(f'Latest message for you, from {who} (message {latest[0]}): "{said.strip()[:900]}"')
     lines += ['Answer THAT message. Do NOT create a task, do NOT ask JD for criteria, do NOT ask what they mean.',
