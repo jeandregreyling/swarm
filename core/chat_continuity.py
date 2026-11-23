@@ -1,7 +1,10 @@
 """Explicit local chat continuity when primary conversation storage is corrupt."""
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import json
 import logging
 import sqlite3
@@ -309,7 +312,15 @@ class ContinuityChat:
             import os
 
             os.chmod(lock_path, 0o600)
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if fcntl is not None:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            else:
+                import msvcrt
+                try:
+                    lock.seek(0)
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+                except OSError as exc:
+                    raise BlockingIOError("Continuity lock is held") from exc
             if path.exists():
                 thread = self.read(thread["id"], owner)
             previous = thread["messages"][-24:]

@@ -318,6 +318,102 @@ def local_telemetry():
     return jsonify({'ok': True, 'telemetry': payload})
 
 
+@hive_bp.get('/system-profile')
+def system_profile_endpoint():
+    """Return live cross-platform hardware, runtime models, and APEX/FRED/HB recommendations."""
+    from core.hive.node_enrollment import load_enrollment
+    from core.hive.system_profile import collect_system_profile
+
+    force = request.args.get('force', '0') in ('1', 'true', 'yes')
+    profile = collect_system_profile(force=force)
+    enr = load_enrollment()
+    return jsonify({
+        'ok': True,
+        'enrolled': bool(enr and enr.get('enrolled')),
+        'enrollment': enr,
+        **profile,
+    })
+
+
+@hive_bp.get('/enrollment')
+def get_local_enrollment():
+    """Return this host's node enrollment state plus live recommendations."""
+    from core.hive.node_enrollment import load_enrollment
+    from core.hive.system_profile import collect_system_profile
+
+    enr = load_enrollment()
+    profile = collect_system_profile()
+    return jsonify({
+        'ok': True,
+        'enrolled': bool(enr and enr.get('enrolled')),
+        'enrollment': enr,
+        'hardware': profile.get('hardware'),
+        'recommended_models': profile.get('recommended_models'),
+        'available_models': (profile.get('runtimes') or {}).get('models') or [],
+    })
+
+
+@hive_bp.post('/enrollment')
+def post_local_enrollment():
+    """Enroll or update this host (node_id, label, role, APEX/FRED/HB models, shareable manifest)."""
+    from core.hive.node_enrollment import enroll_local_node
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return _err('expected JSON object', 400)
+    for field in ('node_id', 'label', 'role', 'leader_url', 'endpoint_url'):
+        v = data.get(field)
+        if v is not None and not isinstance(v, str):
+            return _err(f'{field} must be a string', 400)
+    models = data.get('models')
+    if models is not None and not isinstance(models, dict):
+        return _err('models must be an object with apex/fred/hb keys', 400)
+    share = data.get('share')
+    if share is not None and not isinstance(share, dict):
+        return _err('share must be an object', 400)
+    try:
+        result = enroll_local_node(
+            node_id=data.get('node_id'),
+            label=data.get('label'),
+            role=data.get('role') or 'worker',
+            leader_url=data.get('leader_url') or '',
+            endpoint_url=data.get('endpoint_url') or '',
+            models=models,
+            share=share,
+        )
+    except ValueError as exc:
+        return _err(str(exc), 400)
+    except Exception as exc:
+        _LOG.exception('enroll_local_node failed')
+        return _err(f'enrollment failed: {exc}', 500)
+    return jsonify({'ok': True, **result})
+
+
+@hive_bp.get('/peers/capabilities')
+def peer_capabilities():
+    """List what every enrolled potato node can run and share (+ optional ?model= lookup)."""
+    from core.hive.node_enrollment import (
+        discover_peer_capabilities,
+        enrolled_node_id,
+        find_peer_for_model,
+    )
+
+    if os.environ.get('SWARM_PLATFORM') == 'windows':
+        nodes = _list_nodes_from_db(_hive_db_path())
+    else:
+        nodes, _ = _safe_list_nodes()
+    if request.args.get('expected', '1') != '0':
+        nodes = _with_expected_farm_nodes(nodes)
+
+    peers = discover_peer_capabilities(nodes)
+    resp: dict[str, Any] = {'ok': True, 'count': len(peers), 'peers': peers}
+    wanted_model = (request.args.get('model') or '').strip()
+    if wanted_model:
+        exclude = enrolled_node_id() if request.args.get('exclude_self', '0') == '1' else None
+        resp['model_match'] = find_peer_for_model(wanted_model, nodes, exclude_node_id=exclude)
+    return jsonify(resp)
+
+
 # ── Enrolment ────────────────────────────────────────────────────────────
 
 @hive_bp.post('/enrol')

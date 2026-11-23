@@ -8,12 +8,13 @@ Stage 1 (this file): a role register. model_for(role) returns the model that pla
 Nothing else decides here: no loading, no benchmarking. Later stages assign from the benchmark and cover connections, disks and ports."""
 import time
 
-DEFAULTS = {'apex': 'gpt-oss:20b', 'deep': 'fred-cpu:24b', 'counsel': 'fred-cpu:24b', 'review': 'fred-cpu:24b', 'homework': 'homework-cpu:7b'}
-STAND_INS = {'apex': ('qwen2.5:7b-instruct', 'apex-direct:7b'), 'deep': ('qwen2.5-32b-instruct', 'mistral-small:24b', 'qwen2.5:14b-instruct'),
-             'counsel': ('mistral-small:24b', 'qwen2.5:14b-instruct', 'homework-cpu:7b'), 'review': ('mistral-small:24b', 'qwen2.5:14b-instruct'),
-             'homework': ('qwen2.5:7b-instruct', 'apex-direct:7b', 'llama3.2:latest')}
+DEFAULTS = {'apex': 'gpt-oss:20b', 'deep': 'fred-cpu:24b', 'counsel': 'fred-cpu:24b', 'review': 'fred-cpu:24b', 'homework': 'homework-cpu:7b', 'hb': 'homework-cpu:7b'}
+STAND_INS = {'apex': ('qwen2.5:7b-instruct', 'apex-direct:7b', 'Qwen2.5:latest', 'gemma3:latest'), 'deep': ('qwen2.5-32b-instruct', 'mistral-small:24b', 'qwen2.5:14b-instruct', 'gemma4:26b', 'Mistral:latest'),
+             'counsel': ('mistral-small:24b', 'qwen2.5:14b-instruct', 'homework-cpu:7b', 'Qwen2.5:latest'), 'review': ('mistral-small:24b', 'qwen2.5:14b-instruct', 'Mistral:latest'),
+             'homework': ('qwen2.5:7b-instruct', 'apex-direct:7b', 'llama3.2:latest', 'Llama3.2:latest', 'qwen:latest'),
+             'hb': ('Llama3.2:latest', 'llama3.2:latest', 'qwen:latest', 'gemma3:latest')}
 WORDS = {'apex': 'APEX, the main worker on the GPU', 'deep': 'Fred, the slow deep thinker in RAM', 'counsel': 'the counsel that scopes vague steps',
-         'review': 'the local reviewer', 'homework': 'the small CPU model that writes spec cards'}
+         'review': 'the local reviewer', 'homework': 'the small CPU model that writes spec cards', 'hb': 'HB, the fast local coordinator'}
 
 
 def ensure_schema(conn):
@@ -23,9 +24,24 @@ def ensure_schema(conn):
 def _known(model):
     try:
         from core.seven_llm import registry
-        return registry.get(model) is not None
+        if registry.get(model) is not None:
+            return True
     except Exception:
         return True          # cannot check: trust the name rather than re-assign blindly
+    try:
+        from core.hive.node_enrollment import enrolled_role_models
+        if str(model or '').strip().lower() in {v.lower() for v in enrolled_role_models().values()}:
+            return True
+    except Exception:
+        pass
+    try:
+        from core.hive.system_profile import collect_system_profile
+        models = (collect_system_profile().get('runtimes') or {}).get('models') or []
+        if str(model or '').strip().lower() in {str(m.get('name') or '').lower() for m in models}:
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def _assigned(conn, role):
@@ -47,10 +63,20 @@ def resolve(role, conn=None, known=_known):
     """(model, why) for a role. Unknown roles raise KeyError."""
     default = DEFAULTS[role]
     assigned = _assigned(conn, role)
-    first = assigned or default
+    enrolled_model = None
+    if not assigned:
+        try:
+            from core.hive.node_enrollment import enrolled_role_models
+            enrolled_model = enrolled_role_models().get(role)
+        except Exception:
+            enrolled_model = None
+    first = assigned or enrolled_model or default
     if known(first):
-        return first, ('set in the role register' if assigned else 'the default for this role')
-    for model in ((default,) if assigned else ()) + STAND_INS.get(role, ()):
+        reason = ('set in the role register' if assigned else
+                  'set by node enrollment' if enrolled_model else
+                  'the default for this role')
+        return first, reason
+    for model in ((default,) if (assigned or enrolled_model) else ()) + STAND_INS.get(role, ()):
         if known(model):
             return model, f'{first} is not on this machine; {model} stands in'
     return first, f'{first} is not on this machine and no stand-in is either'

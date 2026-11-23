@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import ctypes
 import logging
+import os
 import platform as _platform
 import shutil
 from ctypes import wintypes
@@ -107,19 +108,54 @@ def _wmi_thermal_zone_temp_c() -> float | None:
     return None
 
 
+def _has_ollama_windows() -> bool:
+    if shutil.which('ollama') or shutil.which('ollama.exe'):
+        return True
+    for base in (
+        os.environ.get('LOCALAPPDATA'),
+        os.environ.get('ProgramFiles'),
+        os.environ.get('ProgramFiles(x86)'),
+    ):
+        if base and os.path.isfile(os.path.join(base, 'Programs', 'Ollama', 'ollama.exe')):
+            return True
+        if base and os.path.isfile(os.path.join(base, 'Ollama', 'ollama.exe')):
+            return True
+    return False
+
+
+def _psutil_cpu_load_pct() -> float | None:
+    if not _is_windows():
+        return None
+    try:
+        import psutil  # type: ignore
+        return round(float(psutil.cpu_percent(interval=0.05)), 1)
+    except Exception:
+        return None
+
+
+def _psutil_swap_used_mb() -> int | None:
+    if not _is_windows():
+        return None
+    try:
+        import psutil  # type: ignore
+        return int(psutil.swap_memory().used // (1024 * 1024))
+    except Exception:
+        return None
+
+
 class WindowsProvider(GenericProvider):
     def platform_name(self) -> str:
         return 'windows'
 
     def capabilities(self) -> list:
         caps = ['inference.cpu', 'scheduler.coordinator', 'storage.bulk']
-        if shutil.which('ollama') or shutil.which('ollama.exe'):
+        if _has_ollama_windows():
             caps.append('inference.ollama')
         return caps
 
     def compute(self) -> dict:
         return {
-            'cpu_load_pct': None,
+            'cpu_load_pct': _psutil_cpu_load_pct(),
             'cpu_peak_temp_c': _wmi_thermal_zone_temp_c(),
             'cpu_throttled': None,
             'gpu_present': False,
@@ -142,7 +178,7 @@ class WindowsProvider(GenericProvider):
         return {
             'ram_total_mb': total,
             'ram_free_mb': avail,
-            'swap_used_mb': None,
+            'swap_used_mb': _psutil_swap_used_mb(),
         }
 
     def power(self) -> dict:

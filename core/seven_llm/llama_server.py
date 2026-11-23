@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import contextlib
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import glob
 import hashlib
 import json
@@ -37,8 +40,10 @@ CACHE_RAM_MIB = int(os.environ.get("SEVEN_LLAMA_CACHE_RAM_MIB", "256"))
 # Make the kernel pick a model server before editors/browsers under memory pressure.
 OOM_SCORE_ADJ = int(os.environ.get("SEVEN_LLAMA_OOM_SCORE_ADJ", "900"))
 SYSTEMD_SCOPE = os.environ.get("SEVEN_LLAMA_SYSTEMD_SCOPE", "auto").strip().lower()
-LOCK_PATH = os.environ.get("SEVEN_LLAMA_LOCK_PATH", f"/tmp/seven-llama-server-{os.getuid()}.lock")
-STATE_PATH = os.environ.get("SEVEN_LLAMA_STATE_PATH", f"/tmp/seven-llama-server-{os.getuid()}.state.json")
+_UID_TAG = str(os.getuid()) if hasattr(os, "getuid") else (os.environ.get("USERNAME") or "win")
+_TMP_DIR = "/tmp" if hasattr(os, "getuid") else os.environ.get("TEMP", os.path.expanduser("~"))
+LOCK_PATH = os.environ.get("SEVEN_LLAMA_LOCK_PATH", os.path.join(_TMP_DIR, f"seven-llama-server-{_UID_TAG}.lock"))
+STATE_PATH = os.environ.get("SEVEN_LLAMA_STATE_PATH", os.path.join(_TMP_DIR, f"seven-llama-server-{_UID_TAG}.state.json"))
 
 
 @dataclass
@@ -214,11 +219,22 @@ def _kill_pid(pid: int, *, timeout: int = 10) -> None:
 @contextlib.contextmanager
 def _cross_process_lock():
     with open(LOCK_PATH, "a+") as fh:
-        fcntl.flock(fh, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(fh, fcntl.LOCK_UN)
+        if fcntl is not None:
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(fh, fcntl.LOCK_UN)
+        else:
+            import msvcrt
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_LOCK, 1)
+            try:
+                yield
+            finally:
+                fh.seek(0)
+                with contextlib.suppress(OSError):
+                    msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
 
 
 def _load_state() -> dict[str, dict[str, Any]]:

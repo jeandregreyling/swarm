@@ -26,8 +26,21 @@ from .contract import (
     validate_telemetry,
     validate_policy,
 )
-from .local_node import LocalNode, build_local_telemetry
+from .local_node import LocalNode, build_local_telemetry, reset_local_node
+from .node_enrollment import (
+    discover_peer_capabilities,
+    enroll_local_node,
+    find_peer_for_model,
+    load_enrollment,
+)
 from .registry import HiveRegistry, get_registry
+from .system_profile import (
+    build_shareable_manifest,
+    collect_system_profile,
+    probe_hardware,
+    probe_runtimes,
+    recommend_role_models,
+)
 
 __all__ = [
     'CONTRACT_VERSION',
@@ -38,6 +51,16 @@ __all__ = [
     'validate_policy',
     'LocalNode',
     'build_local_telemetry',
+    'reset_local_node',
     'HiveRegistry',
     'get_registry',
+    'probe_hardware',
+    'probe_runtimes',
+    'recommend_role_models',
+    'build_shareable_manifest',
+    'collect_system_profile',
+    'enroll_local_node',
+    'load_enrollment',
+    'discover_peer_capabilities',
+    'find_peer_for_model',
 ]

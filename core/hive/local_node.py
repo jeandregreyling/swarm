@@ -44,6 +44,13 @@ def _default_node_id(platform_name: str) -> str:
     env = os.environ.get('SWARM_NODE_ID', '').strip()
     if env:
         return env
+    try:
+        from .node_enrollment import enrolled_node_id
+        enrolled = enrolled_node_id()
+        if enrolled:
+            return enrolled
+    except Exception:
+        pass
     seed = _machine_seed()
     digest = hashlib.sha1(seed.encode('utf-8')).hexdigest()[:16]
     short_plat = platform_name.split('-', 1)[0]
@@ -90,6 +97,27 @@ class LocalNode:
             else:
                 power['thermal_pressure'] = 'nominal'
 
+        system_profile = None
+        shareable = None
+        try:
+            from .system_profile import build_shareable_manifest, collect_system_profile
+            from .node_enrollment import load_enrollment
+            prof = collect_system_profile()
+            enr = load_enrollment()
+            system_profile = {
+                'hardware': prof.get('hardware'),
+                'recommended_models': prof.get('recommended_models'),
+                'ollama_online': bool((prof.get('runtimes') or {}).get('ollama', {}).get('online')),
+                'model_count': len((prof.get('runtimes') or {}).get('models') or []),
+            }
+            shareable = build_shareable_manifest(
+                prof.get('hardware') or {},
+                prof.get('runtimes') or {},
+                enr,
+            )
+        except Exception:
+            _LOG.debug('system_profile enrichment skipped', exc_info=True)
+
         return build_telemetry(
             self.node_id,
             self.platform_name,
@@ -98,6 +126,8 @@ class LocalNode:
             memory=memory,
             power=power,
             capabilities=self.capabilities(),
+            system_profile=system_profile,
+            shareable=shareable,
         )
 
 
@@ -109,6 +139,12 @@ def get_local_node() -> LocalNode:
     if _SINGLETON is None:
         _SINGLETON = LocalNode()
     return _SINGLETON
+
+
+def reset_local_node() -> None:
+    """Clear the cached LocalNode singleton (e.g. after node enrollment changes node_id)."""
+    global _SINGLETON
+    _SINGLETON = None
 
 
 def build_local_telemetry(node_id: str | None = None,

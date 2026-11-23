@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import argparse
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import hashlib
 import json
 import os
@@ -527,7 +530,15 @@ class RecoverySupervisor:
         if lock_path.is_symlink():
             raise ValueError("Worker lock cannot be a symlink")
         with lock_path.open("a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if fcntl is not None:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            else:
+                import msvcrt
+                try:
+                    lock.seek(0)
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+                except OSError as exc:
+                    raise BlockingIOError("Worker lock is held") from exc
             task_file = path / "task.json"
             task = json.loads(task_file.read_text())
             if task["status"] == "running":

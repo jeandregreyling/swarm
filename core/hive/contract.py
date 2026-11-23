@@ -109,6 +109,8 @@ def build_telemetry(
     memory: dict | None = None,
     power: dict | None = None,
     capabilities: Iterable[str] | None = None,
+    system_profile: dict | None = None,
+    shareable: dict | None = None,
     ts: float | None = None,
 ) -> dict:
     """Build a v0 telemetry envelope, filling in null-default subtrees.
@@ -152,6 +154,10 @@ def build_telemetry(
         'power': out_power,
         'capabilities': caps_list,
     }
+    if system_profile is not None:
+        payload['system_profile'] = dict(system_profile)
+    if shareable is not None:
+        payload['shareable'] = dict(shareable)
     validate_telemetry(payload)
     return payload
 
@@ -316,6 +322,12 @@ def validate_telemetry(payload: dict) -> None:
             raise ContractError(
                 'telemetry.capabilities: items must be non-empty strings'
             )
+
+    # Optional v0+ system awareness extensions (backward-compatible)
+    for opt_key in ('system_profile', 'shareable'):
+        if opt_key in payload and payload[opt_key] is not None:
+            if not isinstance(payload[opt_key], dict):
+                raise ContractError(f'telemetry.{opt_key}: expected dict')
 
 
 def validate_policy(payload: dict) -> None:

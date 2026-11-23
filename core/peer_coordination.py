@@ -1,6 +1,9 @@
 """HB-owned supervision of fixed peer workers; no model-selected commands."""
 from contextlib import closing
-import fcntl
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
 import logging
 import json
 from pathlib import Path
@@ -19,15 +22,40 @@ ROOT = Path(__file__).resolve().parents[1]
 TERMINAL = {'completed', 'failed', 'needs_review'}
 
 
+def _lock_nonblocking(stream):
+    if fcntl is not None:
+        fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return
+    import msvcrt
+    try:
+        stream.seek(0)
+        msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+    except OSError as exc:
+        raise BlockingIOError('Lock is held') from exc
+
+
+def _unlock(stream):
+    if fcntl is not None:
+        fcntl.flock(stream, fcntl.LOCK_UN)
+        return
+    import msvcrt
+    try:
+        stream.seek(0)
+        msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+    except OSError:
+        pass
+
+
 def worker_alive(agent):
     path = agent_identity.STATE / agent / 'hb-worker.lock'
     try:
-        with path.open('r') as stream:
+        mode = 'r' if fcntl is not None else 'r+'
+        with path.open(mode) as stream:
             try:
-                fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                _lock_nonblocking(stream)
             except BlockingIOError:
                 return True
-            fcntl.flock(stream, fcntl.LOCK_UN)
+            _unlock(stream)
     except FileNotFoundError:
         pass
     return False
@@ -152,7 +180,7 @@ def start():
     # recognized by their own locks, so a healthy worker is never duplicated.
     lock = (agent_identity.STATE / 'hb-coordinator.lock').open('a')
     try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _lock_nonblocking(lock)
     except BlockingIOError:
         lock.close()
         return
