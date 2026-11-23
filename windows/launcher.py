@@ -76,6 +76,7 @@ os.environ.setdefault('SANDPITS_ROOT', os.path.join(_DATA_ROOT, 'sandpits'))
 
 _PORT = int(os.environ.get('PORT', 5050))
 _HOST = '127.0.0.1'
+_BIND_HOST = os.environ.get('SWARM_HOST', '0.0.0.0')
 _URL  = f'http://{_HOST}:{_PORT}'
 _REQUIRED_RUNTIME_MODULES = ('flask', 'requests', 'psutil')
 
@@ -138,7 +139,7 @@ def _run_server():
         pass
 
     app = create_app()
-    with make_server(_HOST, _PORT, app, server_class=_Server) as httpd:
+    with make_server(_BIND_HOST, _PORT, app, server_class=_Server) as httpd:
         httpd.serve_forever()
 
 

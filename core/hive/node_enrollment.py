@@ -243,12 +243,68 @@ def enroll_local_node(
         except Exception:
             _LOG.debug('Could not update HiveRegistry during enrollment', exc_info=True)
 
+    leader_push: dict[str, Any] | None = None
+    if chosen_leader and role_clean != 'leader':
+        leader_push = push_telemetry_to_leader(
+            leader_url=chosen_leader,
+            node_id=chosen_node_id,
+            label=chosen_label,
+            notes=f"{hw.get('tier')} ({hw.get('primary_backend')})",
+        )
+
     return {
         'enrollment': record,
         'saved_to': str(saved_to),
         'synced_roles': synced_roles,
         'recommended_models': rec_models,
+        'leader_push': leader_push,
     }
+
+
+def push_telemetry_to_leader(
+    *,
+    leader_url: str = '',
+    node_id: str | None = None,
+    label: str | None = None,
+    notes: str | None = None,
+    timeout: float = 5.0,
+) -> dict[str, Any]:
+    """Push this node's full telemetry (including system_profile + shareable) to a Hive leader."""
+    import urllib.request
+    import urllib.error
+
+    enr = load_enrollment() or {}
+    target = (str(leader_url or '').strip() or str(enr.get('leader_url') or '').strip()).rstrip('/')
+    if not target:
+        return {'ok': False, 'error': 'no leader_url configured'}
+
+    from .local_node import build_local_telemetry
+    payload = build_local_telemetry(node_id=node_id or enr.get('node_id'))
+    if label or enr.get('label'):
+        payload['label'] = label or enr.get('label')
+    if notes:
+        payload['notes'] = notes
+
+    url = f'{target}/api/hive/telemetry'
+    body = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={'Content-Type': 'application/json', 'Accept': 'application/json'},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode('utf-8', errors='replace')
+            try:
+                parsed = json.loads(raw)
+            except Exception:
+                parsed = {'raw': raw[:200]}
+            return {'ok': 200 <= resp.status < 300, 'status': resp.status, 'leader_url': target, 'response': parsed}
+    except urllib.error.HTTPError as exc:
+        return {'ok': False, 'status': exc.code, 'leader_url': target, 'error': str(exc)}
+    except Exception as exc:
+        return {'ok': False, 'leader_url': target, 'error': str(exc)}
 
 
 def discover_peer_capabilities(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
