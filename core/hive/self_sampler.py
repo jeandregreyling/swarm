@@ -26,15 +26,49 @@ _thread: threading.Thread | None = None
 _stop = threading.Event()
 
 
+def _tick() -> dict:
+    """Execute one self-sample + optional leader push tick."""
+    node = get_local_node()
+    enr = None
+    try:
+        from .node_enrollment import load_enrollment, push_telemetry_to_leader
+        enr = load_enrollment()
+    except Exception:
+        push_telemetry_to_leader = None  # type: ignore[assignment]
+
+    label = (enr or {}).get('label') if isinstance(enr, dict) else None
+    payload = build_local_telemetry(node_id=node.node_id)
+    reg = get_registry()
+    reg.record_telemetry(payload)
+
+    leader_push = None
+    if isinstance(enr, dict) and push_telemetry_to_leader is not None:
+        leader_url = str(enr.get('leader_url') or '').strip()
+        role = str(enr.get('role') or 'worker').strip().lower()
+        if leader_url and role != 'leader':
+            leader_push = push_telemetry_to_leader(
+                leader_url=leader_url,
+                node_id=node.node_id,
+                label=label,
+                timeout=5.0,
+            )
+            if not leader_push.get('ok'):
+                _LOG.debug(
+                    'self-sampler leader push failed node=%s leader=%s err=%s',
+                    node.node_id,
+                    leader_url,
+                    leader_push.get('error'),
+                )
+    return {'node_id': node.node_id, 'leader_push': leader_push}
+
+
 def _sampler_loop(interval: float) -> None:
     node = get_local_node()
     _LOG.info('hive self-sampler started node=%s interval=%.0fs',
               node.node_id, interval)
     while not _stop.is_set():
         try:
-            payload = build_local_telemetry(node_id=node.node_id)
-            reg = get_registry()
-            reg.record_telemetry(payload)
+            _tick()
         except Exception:
             _LOG.exception('self-sampler tick failed')
         # interruptible wait so SIGTERM exits within ~1s

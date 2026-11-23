@@ -6,6 +6,10 @@ POST /api/onboarding/test-key — validate an API key before saving
 """
 
 import os
+import platform
+import shutil
+import socket
+import sys
 import logging
 import requests as _requests
 
@@ -74,6 +78,140 @@ def _check_lmstudio() -> dict:
     return {'running': False, 'models': 0}
 
 
+def _detect_lan_endpoint() -> str:
+    """Best-effort LAN URL for this host (e.g. http://10.0.0.9:5050)."""
+    port = os.environ.get('PORT', '5050').strip() or '5050'
+    ip = ''
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.connect(('10.255.255.255', 1))
+            ip = sock.getsockname()[0]
+        finally:
+            sock.close()
+    except Exception:
+        ip = ''
+    if not ip or ip.startswith('127.'):
+        try:
+            ip = socket.gethostbyname(socket.gethostname())
+        except Exception:
+            ip = '127.0.0.1'
+    return f'http://{ip}:{port}'
+
+
+def _ollama_install_hint() -> str:
+    sys_os = platform.system().lower()
+    if sys_os == 'windows':
+        return 'winget install Ollama.Ollama  (or https://ollama.com/download/windows)'
+    if sys_os == 'darwin':
+        return 'brew install ollama  (or https://ollama.com/download/mac)'
+    return 'curl -fsSL https://ollama.com/install.sh | sh'
+
+
+def _build_packager_snapshot(force: bool = False) -> dict:
+    """Build the Welcome Aboard Packager preflight + hardware + enrollment snapshot."""
+    profile: dict = {}
+    try:
+        from core.hive.system_profile import collect_system_profile
+        profile = collect_system_profile(force=force)
+    except Exception as exc:
+        logger.debug('packager system_profile error: %s', exc)
+
+    enrollment = None
+    try:
+        from core.hive.node_enrollment import load_enrollment
+        enrollment = load_enrollment()
+    except Exception as exc:
+        logger.debug('packager load_enrollment error: %s', exc)
+
+    sampler_running = False
+    try:
+        from core.hive import self_sampler
+        sampler_running = self_sampler.is_running()
+    except Exception:
+        pass
+
+    hw = profile.get('hardware') or {}
+    rt = profile.get('runtimes') or {}
+    rec = profile.get('recommended_models') or {}
+    ollama_rt = rt.get('ollama') or {}
+    models = rt.get('models') or []
+    git_ok = bool(shutil.which('git'))
+    detected_endpoint = _detect_lan_endpoint()
+
+    preflight = [
+        {
+            'id': 'python',
+            'label': 'Python Runtime',
+            'status': 'ok',
+            'detail': f'Python {platform.python_version()} ({platform.system()})',
+            'install_hint': '',
+        },
+        {
+            'id': 'git',
+            'label': 'Git CLI',
+            'status': 'ok' if git_ok else 'warn',
+            'detail': 'Installed' if git_ok else 'Not found in PATH (optional for updates)',
+            'install_hint': 'winget install Git.Git' if platform.system().lower() == 'windows' else 'sudo apt install git',
+        },
+        {
+            'id': 'ollama',
+            'label': 'Ollama Local Runtime',
+            'status': 'ok' if (ollama_rt.get('online') or ollama_rt.get('reachable') or ollama_rt.get('running')) else 'missing',
+            'detail': (
+                f"Running on {ollama_rt.get('url', '127.0.0.1:11434')} ({len(models)} models)"
+                if (ollama_rt.get('online') or ollama_rt.get('reachable') or ollama_rt.get('running'))
+                else 'Not reachable on 127.0.0.1:11434'
+            ),
+            'install_hint': _ollama_install_hint(),
+        },
+        {
+            'id': 'local_models',
+            'label': 'Local AI Models',
+            'status': 'ok' if len(models) > 0 else 'missing',
+            'detail': (
+                f"{len(models)} model(s) ready — recommended APEX: {(rec.get('apex') or {}).get('model') or 'none'}"
+                if models
+                else 'No local models pulled yet'
+            ),
+            'install_hint': 'ollama pull llama3.2:latest && ollama pull qwen2.5:latest',
+        },
+        {
+            'id': 'node_enrollment',
+            'label': 'Node & Role Enrollment (APEX / FRED / HB)',
+            'status': 'ok' if (enrollment and enrollment.get('enrolled')) else 'warn',
+            'detail': (
+                f"Enrolled as {enrollment.get('node_id')} ({enrollment.get('role')})"
+                if (enrollment and enrollment.get('enrolled'))
+                else 'Not enrolled yet — configure node identity and APEX/FRED/HB models below'
+            ),
+            'install_hint': '',
+        },
+        {
+            'id': 'telemetry_sampler',
+            'label': 'Hive Telemetry Heartbeat',
+            'status': 'ok' if sampler_running else 'warn',
+            'detail': (
+                'Background heartbeat running (30s interval)'
+                if sampler_running
+                else 'Will start automatically when pipes are connected'
+            ),
+            'install_hint': '',
+        },
+    ]
+
+    return {
+        'hardware': hw,
+        'runtimes': rt,
+        'recommended_models': rec,
+        'enrollment': enrollment,
+        'enrolled': bool(enrollment and enrollment.get('enrolled')),
+        'detected_endpoint_url': detected_endpoint,
+        'sampler_running': sampler_running,
+        'preflight': preflight,
+    }
+
+
 @onboarding_bp.route('/api/onboarding/status')
 def onboarding_status():
     """Aggregated setup health check for the onboarding wizard.
@@ -109,13 +247,64 @@ def onboarding_status():
     except Exception:
         remote_nodes = []
 
+    packager = _build_packager_snapshot(force=False)
+
     return jsonify({
         'local_ai': local_ai,
         'cloud_agents': cloud_agents,
         'cloud_agents_configured': cloud_ready,
         'cloud_agents_total': len(_CLOUD_AGENTS),
         'cloud_nodes': len(remote_nodes),
-        'complete': local_ai['ready'] and cloud_ready >= 1,
+        'packager': packager,
+        'complete': local_ai['ready'] and (packager['enrolled'] or cloud_ready >= 1),
+    })
+
+
+@onboarding_bp.route('/api/onboarding/packager')
+def onboarding_packager():
+    """Welcome Aboard Packager preflight + hardware/model recommendations."""
+    force = request.args.get('refresh') in ('1', 'true', 'yes')
+    return jsonify({'ok': True, **_build_packager_snapshot(force=force)})
+
+
+@onboarding_bp.route('/api/onboarding/packager/connect', methods=['POST'])
+def onboarding_packager_connect():
+    """Connect all HB pipes: enroll node, bind APEX/FRED/HB models, start heartbeat, push to leader."""
+    data = request.get_json(silent=True) or {}
+    models = data.get('models') if isinstance(data.get('models'), dict) else {}
+    share = data.get('share') if isinstance(data.get('share'), dict) else None
+    try:
+        from core.hive.node_enrollment import enroll_local_node
+        models_map = {}
+        for role_key in ('apex', 'fred', 'hb'):
+            val = str(data.get(f'{role_key}_model') or models.get(role_key) or '').strip()
+            if val:
+                models_map[role_key] = val
+        result = enroll_local_node(
+            node_id=str(data.get('node_id') or '').strip() or None,
+            label=str(data.get('label') or '').strip() or None,
+            role=str(data.get('role') or 'worker').strip() or 'worker',
+            leader_url=str(data.get('leader_url') or '').strip(),
+            endpoint_url=str(data.get('endpoint_url') or '').strip() or _detect_lan_endpoint(),
+            models=models_map or None,
+            share=share,
+        )
+    except Exception as exc:
+        logger.exception('packager connect failed')
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+    sampler_running = False
+    try:
+        from core.hive import self_sampler
+        self_sampler.start()
+        sampler_running = self_sampler.is_running()
+    except Exception:
+        pass
+
+    return jsonify({
+        'ok': True,
+        **result,
+        'sampler_running': sampler_running,
     })
 
 

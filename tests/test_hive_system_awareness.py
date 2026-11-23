@@ -247,3 +247,88 @@ def test_hive_blueprint_enrollment_and_peer_routes(tmp_path, monkeypatch):
         r4 = client.get('/api/hive/peers/capabilities?model=Qwen2.5:latest')
         assert r4.status_code == 200
         assert r4.get_json()['ok'] is True
+
+
+def test_self_sampler_tick_pushes_to_leader_for_worker(tmp_path, monkeypatch):
+    from core.hive import self_sampler
+    from core.hive.node_enrollment import save_enrollment
+    from core.hive.local_node import reset_local_node
+
+    enr_file = tmp_path / 'node_enrollment.json'
+    monkeypatch.setenv('SWARM_NODE_ENROLLMENT', str(enr_file))
+    monkeypatch.setenv('SWARM_HIVE_DB', str(tmp_path / 'hive.db'))
+    monkeypatch.delenv('SWARM_NODE_ID', raising=False)
+    save_enrollment({
+        'enrolled': True,
+        'node_id': 'potato-4',
+        'label': 'potato-4 Dell',
+        'role': 'worker',
+        'leader_url': 'http://10.0.0.8:5050',
+        'models': {'apex': 'Qwen2.5:latest', 'fred': 'gemma4:26b', 'hb': 'Llama3.2:latest'},
+    }, path=enr_file)
+    reset_local_node()
+
+    pushed = {}
+
+    def _fake_push(**kwargs):
+        pushed.update(kwargs)
+        return {'ok': True, 'status': 200, 'leader_url': kwargs.get('leader_url')}
+
+    with mock.patch('core.hive.node_enrollment.push_telemetry_to_leader', side_effect=_fake_push):
+        res = self_sampler._tick()
+        assert res['node_id'] == 'potato-4'
+        assert res['leader_push']['ok'] is True
+        assert pushed['leader_url'] == 'http://10.0.0.8:5050'
+        assert pushed['node_id'] == 'potato-4'
+    reset_local_node()
+
+
+def test_onboarding_welcome_aboard_packager_routes(tmp_path, monkeypatch):
+    from frontend.blueprints.onboarding import onboarding_bp
+    from core.hive.local_node import reset_local_node
+
+    enr_file = tmp_path / 'node_enrollment.json'
+    monkeypatch.setenv('SWARM_NODE_ENROLLMENT', str(enr_file))
+    monkeypatch.setenv('SWARM_HIVE_DB', str(tmp_path / 'hive.db'))
+    monkeypatch.setenv('SWARM_HIVE_DISABLE_SELF_SAMPLER', '1')
+    reset_local_node()
+
+    app = Flask(__name__)
+    app.register_blueprint(onboarding_bp)
+    client = app.test_client()
+
+    fake_profile = {
+        'ts': 1700000000,
+        'hardware': _dell_hw(),
+        'runtimes': _dell_runtimes(),
+        'recommended_models': recommend_role_models(_dell_hw(), _dell_runtimes()),
+    }
+    with mock.patch('core.hive.system_profile.collect_system_profile', return_value=fake_profile), \
+         mock.patch('core.hive.node_enrollment.collect_system_profile', return_value=fake_profile), \
+         mock.patch('core.hive.node_enrollment.push_telemetry_to_leader', return_value={'ok': True, 'status': 200, 'leader_url': 'http://10.0.0.8:5050'}):
+        r_pkg = client.get('/api/onboarding/packager')
+        assert r_pkg.status_code == 200
+        pkg = r_pkg.get_json()
+        assert pkg['ok'] is True
+        assert pkg['enrolled'] is False
+        ollama_check = next(c for c in pkg['preflight'] if c['id'] == 'ollama')
+        assert ollama_check['status'] == 'ok'
+        assert pkg['recommended_models']['apex']['model'] == 'Qwen2.5:latest'
+
+        r_conn = client.post('/api/onboarding/packager/connect', json={
+            'node_id': 'potato-4',
+            'label': 'potato-4 Dell OptiPlex 7090',
+            'role': 'worker',
+            'leader_url': 'http://10.0.0.8:5050',
+            'endpoint_url': 'http://10.0.0.9:5050',
+            'models': {'apex': 'Qwen2.5:latest', 'fred': 'gemma4:26b', 'hb': 'Llama3.2:latest'},
+        })
+        assert r_conn.status_code == 200
+        conn_body = r_conn.get_json()
+        assert conn_body['ok'] is True
+        assert conn_body['enrollment']['node_id'] == 'potato-4'
+        assert conn_body['leader_push']['ok'] is True
+
+        r_after = client.get('/api/onboarding/packager')
+        assert r_after.get_json()['enrolled'] is True
+    reset_local_node()

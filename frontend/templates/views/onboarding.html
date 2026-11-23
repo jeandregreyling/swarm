@@ -7,15 +7,17 @@
 
     <!-- Progress bar -->
     <div id="onboarding-progress" style="display:flex;align-items:center;gap:0;margin-bottom:28px;">
-      <div class="ob-step-dot active" data-step="0">1</div>
+      <div class="ob-step-dot active" data-step="0" title="Welcome & Preflight">1</div>
       <div class="ob-step-line"></div>
-      <div class="ob-step-dot" data-step="1">2</div>
+      <div class="ob-step-dot" data-step="1" title="Local AI & Role Models">2</div>
       <div class="ob-step-line"></div>
-      <div class="ob-step-dot" data-step="2">3</div>
+      <div class="ob-step-dot" data-step="2" title="Hive Node & Telemetry">3</div>
       <div class="ob-step-line"></div>
-      <div class="ob-step-dot" data-step="3">4</div>
+      <div class="ob-step-dot" data-step="3" title="Cloud API Keys">4</div>
       <div class="ob-step-line"></div>
-      <div class="ob-step-dot" data-step="4">5</div>
+      <div class="ob-step-dot" data-step="4" title="Remote Nodes">5</div>
+      <div class="ob-step-line"></div>
+      <div class="ob-step-dot" data-step="5" title="Ready">6</div>
     </div>
 
     <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim);margin-bottom:8px;cursor:pointer;user-select:none;">
@@ -67,40 +69,40 @@
       })();
     </script>
 
-    <!-- ═══ STEP 0: Welcome ═══ -->
+    <!-- ═══ STEP 0: Welcome & Welcome Aboard Preflight ═══ -->
     <div class="ob-step" data-step="0">
       <h2 style="font-size:22px;font-weight:800;margin:0 0 6px;color:var(--text);">Welcome to Hummingbird</h2>
-      <p style="color:var(--text-dim);font-size:13px;margin:0 0 20px;line-height:1.6;">
-        This wizard will walk you through connecting your AI infrastructure — local models, cloud API keys, and remote nodes.
-        It takes about 2 minutes. You can always re-run it from the Agents window (Enrollment / Reset Walkthrough).
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.6;">
+        This Welcome Aboard packager inspects this machine's hardware and installed runtimes, connects your local AI models (APEX, FRED, HB), and wires up Hive telemetry so new and existing systems join the mesh cleanly.
       </p>
-      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;">
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">What we'll set up:</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-dim);">
-            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 12v1.5M11 12v1.5M4 13.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></span> <strong style="color:var(--text);">Local AI</strong> — Check Ollama / LM Studio connectivity
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-dim);">
-            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span> <strong style="color:var(--text);">Cloud API Keys</strong> — Groq, Anthropic, xAI, Gemini, Tavily, GitHub
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-dim);">
-            <span style="font-size:16px;"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" style="vertical-align:-2px"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 8h10M8 3a7 7 0 0 0 0 10M8 3a7 7 0 0 1 0 10" stroke="currentColor" stroke-width="1.1"/></svg></span> <strong style="color:var(--text);">Remote Nodes</strong> — Connect other Swarm instances for federation
-          </div>
+
+      <!-- Live System & Preflight Scan -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);">System Preflight &amp; Hardware Profile</div>
+          <button onclick="obRefreshPackager()" class="ob-btn-secondary" style="padding:4px 10px;font-size:11px;">↻ Re-scan</button>
+        </div>
+        <div id="ob-hw-summary" style="font-size:12px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;">
+          Scanning hardware and runtimes...
+        </div>
+        <div id="ob-preflight-list" style="display:flex;flex-direction:column;gap:6px;">
+          <!-- Rendered by JS -->
         </div>
       </div>
+
       <div style="background:color-mix(in srgb, var(--accent) 6%, var(--card));border:1px solid var(--border);border-radius:10px;padding:14px;">
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M4 8.5C3 7.5 3 5.5 5 4.5s4 0 4 2c0 1.5-1 2-1 3M8 12h0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Free out-of-the-box</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" style="vertical-align:-1px"><path d="M4 8.5C3 7.5 3 5.5 5 4.5s4 0 4 2c0 1.5-1 2-1 3M8 12h0" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Works on fresh &amp; pre-equipped machines</div>
         <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
-          <strong>DuckDuckGo search</strong> works without any API key — Duck (the swarm's librarian) uses it for web searches instantly. Tavily adds deeper research if you configure it.
+          Already have Ollama or models installed? We'll detect and bind them automatically. On a fresh machine, we'll show exact OS install steps and wire everything once ready.
         </div>
       </div>
     </div>
 
-    <!-- ═══ STEP 1: Local AI ═══ -->
+    <!-- ═══ STEP 1: Local AI & APEX / FRED / HB Models ═══ -->
     <div class="ob-step" data-step="1" style="display:none;">
-      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" style="vertical-align:-2px"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 12v1.5M11 12v1.5M4 13.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg> Local AI</h2>
+      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" style="vertical-align:-2px"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M5 12v1.5M11 12v1.5M4 13.5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg> Local AI &amp; Role Models</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">
-        Hummingbird uses <strong>Ollama</strong> to run local models (Gemma, LLaMA, Mistral, Qwen). The Swarm's local agents depend on it.
+        Hummingbird uses <strong>Ollama</strong> (or llama-server) to run local models. Pick which local models to assign to <strong>APEX</strong>, <strong>FRED</strong>, and <strong>HB</strong> for this hardware tier.
       </p>
 
       <div id="ob-local-status" style="display:flex;flex-direction:column;gap:10px;">
@@ -120,20 +122,84 @@
         </div>
       </div>
 
+      <!-- APEX / FRED / HB Model Picker -->
+      <div id="ob-role-models-box" style="margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;">Assign Models for APEX, FRED &amp; HB</div>
+        <div id="ob-role-models-hint" style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">
+          Pre-selected based on this machine's RAM and GPU tier.
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+            <span style="color:var(--text);font-weight:600;">APEX <span style="font-weight:400;color:var(--text-dim);">— fast interactive primary</span></span>
+            <select id="ob-model-apex" class="ob-key-input" style="font-family:inherit;"></select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+            <span style="color:var(--text);font-weight:600;">FRED <span style="font-weight:400;color:var(--text-dim);">— deep reasoning / counsel / review</span></span>
+            <select id="ob-model-fred" class="ob-key-input" style="font-family:inherit;"></select>
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+            <span style="color:var(--text);font-weight:600;">HB <span style="font-weight:400;color:var(--text-dim);">— lightweight coordinator / homework</span></span>
+            <select id="ob-model-hb" class="ob-key-input" style="font-family:inherit;"></select>
+          </label>
+        </div>
+      </div>
+
       <div id="ob-local-help" style="display:none;margin-top:16px;padding:14px;background:color-mix(in srgb, var(--accent) 8%, var(--card));border:1px solid var(--border);border-radius:8px;">
-        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Not running?</div>
-        <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Ollama not running?</div>
+        <div id="ob-local-help-body" style="font-size:12px;color:var(--text-dim);line-height:1.6;">
           1. Install Ollama: <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;">curl -fsSL https://ollama.com/install.sh | sh</code><br>
           2. Start it: <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;">ollama serve</code><br>
-          3. Pull a model: <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;">ollama pull gemma3:latest</code><br>
+          3. Pull a starter model: <code style="background:var(--bg-input);padding:2px 6px;border-radius:4px;">ollama pull llama3.2:latest</code><br>
           Then click <strong>Re-check</strong> below.
         </div>
         <button onclick="obCheckLocal()" class="ob-btn-secondary" style="margin-top:10px;">↻ Re-check</button>
       </div>
     </div>
 
-    <!-- ═══ STEP 2: Cloud API Keys ═══ -->
+    <!-- ═══ STEP 2: Hive Node & Telemetry Pipes ═══ -->
     <div class="ob-step" data-step="2" style="display:none;">
+      <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);">Hive Node &amp; Telemetry Pipes</h2>
+      <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">
+        Enroll this machine into the Hive mesh, sync your APEX/FRED/HB role models, and start the live 30s telemetry heartbeat to your leader node.
+      </p>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+            <span style="color:var(--text);font-weight:600;">Node ID</span>
+            <input id="ob-enroll-node-id" type="text" class="ob-key-input" placeholder="e.g. potato-4">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+            <span style="color:var(--text);font-weight:600;">Role</span>
+            <select id="ob-enroll-role" class="ob-key-input" style="font-family:inherit;">
+              <option value="worker">worker (connects to leader)</option>
+              <option value="leader">leader (primary rig)</option>
+            </select>
+          </label>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+          <span style="color:var(--text);font-weight:600;">Display Label</span>
+          <input id="ob-enroll-label" type="text" class="ob-key-input" placeholder="e.g. potato-4 Dell OptiPlex 7090">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+          <span style="color:var(--text);font-weight:600;">This Node Endpoint URL</span>
+          <input id="ob-enroll-endpoint" type="text" class="ob-key-input" placeholder="http://10.0.0.9:5050">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+          <span style="color:var(--text);font-weight:600;">Hive Leader URL <span style="font-weight:400;color:var(--text-dim);">(for workers)</span></span>
+          <input id="ob-enroll-leader" type="text" class="ob-key-input" placeholder="http://10.0.0.8:5050">
+        </label>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+          <button onclick="obConnectPipes()" class="ob-btn-primary" id="ob-connect-pipes-btn">Connect All Pipes &amp; Enroll Node</button>
+          <span id="ob-connect-pipes-status" style="font-size:12px;color:var(--text-dim);"></span>
+        </div>
+        <div id="ob-connect-pipes-receipt" style="display:none;font-size:11px;color:var(--text-dim);background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:10px;line-height:1.6;"></div>
+      </div>
+    </div>
+
+    <!-- ═══ STEP 3: Cloud API Keys ═══ -->
+    <div class="ob-step" data-step="3" style="display:none;">
       <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" style="vertical-align:-2px"><path d="M6.5 9.5A2.5 2.5 0 1 1 9 7h4v2h-1.5v1.5H10V12H8.5V9.9A2.5 2.5 0 0 1 6.5 9.5Z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Cloud API Keys</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 10px;line-height:1.5;">
         Cloud agents need API keys to connect to external providers. Paste each key below — we'll validate it before saving.
@@ -153,8 +219,8 @@
       </div>
     </div>
 
-    <!-- ═══ STEP 3: Remote Nodes ═══ -->
-    <div class="ob-step" data-step="3" style="display:none;">
+    <!-- ═══ STEP 4: Remote Nodes ═══ -->
+    <div class="ob-step" data-step="4" style="display:none;">
       <h2 style="font-size:18px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" style="vertical-align:-2px"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.3"/><path d="M3 8h10M8 3a7 7 0 0 0 0 10M8 3a7 7 0 0 1 0 10" stroke="currentColor" stroke-width="1.1"/></svg> Remote Nodes</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 16px;line-height:1.5;">
         Swarm supports <strong>federation</strong> — connecting multiple Swarm instances to share agents and proposals.
@@ -174,8 +240,8 @@
       </div>
     </div>
 
-    <!-- ═══ STEP 4: Ready ═══ -->
-    <div class="ob-step" data-step="4" style="display:none;">
+    <!-- ═══ STEP 5: Ready ═══ -->
+    <div class="ob-step" data-step="5" style="display:none;">
       <h2 style="font-size:22px;font-weight:800;margin:0 0 6px;color:var(--text);"><svg viewBox="0 0 16 16" width="18" height="18" fill="none" style="vertical-align:-3px"><circle cx="8" cy="8" r="5.5" stroke="var(--success)" stroke-width="1.3"/><path d="M5.5 8l2 2 3.5-4" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> You're all set</h2>
       <p style="color:var(--text-dim);font-size:13px;margin:0 0 20px;line-height:1.6;">
         Here's a summary of your setup. You can always change these later in the <strong>Agents</strong> tile or re-run this wizard.

@@ -239,7 +239,7 @@ def enroll_local_node(
             from .registry import get_registry
             payload = build_local_telemetry(node_id=chosen_node_id)
             reg = get_registry()
-            reg.record_telemetry(payload, label=chosen_label, notes=f"{hw.get('tier')} ({hw.get('primary_backend')})")
+            reg.record_telemetry(payload)
         except Exception:
             _LOG.debug('Could not update HiveRegistry during enrollment', exc_info=True)
 
